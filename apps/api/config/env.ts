@@ -45,7 +45,9 @@ const envObject = {
     KAFKA_USER:process.env.KAFKA_USER || "avnadmin",
 
     PINECONE_API_KEY:process.env.PINECONE_API_KEY,
-    RATE_LIMIT:parseInt(process.env.RATE_LIMIT || "150")
+    RATE_LIMIT:parseInt(process.env.RATE_LIMIT || "150"),
+
+    GITHUB_SECRET:process.env.GITHUB_SECRET
 }
 
 console.log(envObject)

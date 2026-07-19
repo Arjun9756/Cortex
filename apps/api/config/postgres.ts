@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const sql = postgres({
-    host:env.KAFKA_HOST!,
+    host:env.POSTGRES_HOST!,
     port:Number(env.POSTGRES_PORT!),
     password:env.POSTGRES_PASSWORD!,
     database:env.POSTGRES_DATABASE!,
