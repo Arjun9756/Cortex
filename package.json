@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@types/express": "^5.0.6",
+    "bullmq": "^5.80.9",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^5.11.1",

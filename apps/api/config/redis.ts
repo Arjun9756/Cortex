@@ -8,10 +8,11 @@ const redis = new Redis({
     port:Number(env.REDIS_PORT!),
     connectTimeout:15000,
     commandTimeout:15000,
-    maxRetriesPerRequest:15,
+    maxRetriesPerRequest:null,
+    enableReadyCheck:false,
     retryStrategy:function(times){
         return Math.min(10000 , times * 1000)
     }
 })
 
-export default Object.freeze(redis)
+export default redis
