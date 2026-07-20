@@ -13,6 +13,8 @@ export const cortexWorker = new Worker('processing-queue' , async (job)=>{
             break
         case JOBS.NOTION_EVENT:
             break
+        case JOBS.CONFLUENCE_EVENT:
+            break
         default:
             console.warn(`Miscellaneous Event ${job.data.eventID}`)
             break
