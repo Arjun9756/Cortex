@@ -8,7 +8,7 @@ import env from '../../config/env.js'
  * @returns {boolean}
  */
 
-export function validateGithubSignature(signature:string | undefined , payload:any):boolean{
+export function validateGithubSignature(signature:string | undefined , rawBody:Buffer | undefined):boolean{
     const secret = env.GITHUB_SECRET
     if(!secret){
         console.warn(`Github Secret Key is Not Provided`)
@@ -20,8 +20,13 @@ export function validateGithubSignature(signature:string | undefined , payload:a
         return false
     }
 
+    if (!rawBody) {
+        console.warn(`No Raw Body Available For Signature Verification`)
+        return false
+    }
+
     const hmac = crypto.createHmac('sha256' , secret)
-    const digest = 'sha256=' + hmac.update(JSON.stringify(payload)).digest('hex')
+    const digest = 'sha256=' + hmac.update(rawBody).digest('hex')
 
     try{
         return crypto.timingSafeEqual(Buffer.from(digest) , Buffer.from(signature))

@@ -1,10 +1,10 @@
 import {Router} from 'express'
 import { validateGithubSignature } from './validator.js'
-import {parseGithubEvent , IParsedGithubEvent} from './parser.js'
+import {parseGithubEvent , IParsedGithubEvent} from './normalize.js'
 import { pushGithubEventToDatabase } from './controller.js'
 export const githubRouter = Router()
 
-githubRouter.post('/' , async (req , res)=>{
+githubRouter.post('/webhook' , async (req , res)=>{
     
     // 1.Extract Github Signature For Validation
     const signature = req.headers['x-hub-signature-256'] as string
@@ -12,7 +12,7 @@ githubRouter.post('/' , async (req , res)=>{
     const eventType = req.headers['x-github-event'] as string
 
     // 2. Verify Github Signature With Crypto Moduel
-    if(!validateGithubSignature(signature , req.body)){
+    if(!validateGithubSignature(signature , req.rawBody)){
         console.error(`[Security] Invalid Signature For Delivery ID ${deliveryID}`)
         return res.status(403).json({error:"Forbidden: Invalid Signature"})
     }
@@ -29,7 +29,7 @@ githubRouter.post('/' , async (req , res)=>{
         await pushGithubEventToDatabase(parsedEvent)
         console.log(`${deliveryID} Github Webhook Saved To Database`)
 
-        // 4. Push Current Event To Kafka For Proceeding To LLM Neo4j VectorDB and Knowledge Graph
+        // 4. Push Current Event To Kafka For Proceeding To LLM Neo4j VectorDB and Knowledge Graph Currently Handle By BullMQ
 
         return res.status(200).json({
             status:true

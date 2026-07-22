@@ -12,11 +12,10 @@ export interface IParsedGithubEvent{
  */
 export function parseGithubEvent(eventType:string , deliveryID:string , payload:any):IParsedGithubEvent | null{
     try{
-        const parseJson = JSON.parse(payload)
         const response:IParsedGithubEvent = {
             deliveryID,
             event_type:eventType,
-            rawBody:parseJson
+            rawBody:payload
         }
 
         return response

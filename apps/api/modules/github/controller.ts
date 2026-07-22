@@ -1,4 +1,4 @@
-import { IParsedGithubEvent } from "./parser.js";
+import { IParsedGithubEvent } from "./normalize.js";
 import sql from '../../config/postgres.js'
 import { snowflake } from "../../../Utils/Snowflake.js";
 import { cortexQueue } from "../../../../packages/queue/bullmq.js";
