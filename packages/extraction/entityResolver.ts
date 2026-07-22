@@ -1,3 +1,5 @@
+import { upsertRelation , upsertEntity } from "../database/neo4j/graph.repository.js"
+
 type ExtractedEntity = {
     name:string,
     type:string
@@ -16,10 +18,13 @@ export async function resolveEntity(entities:ExtractedEntity[] , newEntity:NewEn
     const idMap:Record<string,string> = {}
     for(const entity of allEntities){
         try{
-            const realID=2
+            const realID = await upsertEntity(entity.name , entity.type)
+            idMap[entity.name] = realID
         }
         catch(error:any){
             console.log(`Error While Inserting Node in Graph DB ${error?.message}`)
         }
     }
+
+    return idMap
 }

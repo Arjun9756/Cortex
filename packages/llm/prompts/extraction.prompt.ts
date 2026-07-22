@@ -36,7 +36,7 @@ ${RELATION_TYPES.join(", ")}
     {"name": "string", "suggestedType": "string" }
   ],
   "newRelations": [
-    { "from": "entity_name", "to": "entity_name", "suggestedType": "string" }
+    { "from": "entity_name", "to": "entity_name", "suggestedType": "string" , "evidence":"string" }
   ],
   "summary": "string"
 }

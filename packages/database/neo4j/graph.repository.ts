@@ -6,7 +6,7 @@ import {driver } from '../../../apps/api/config/neo4j.js'
  * @param type string
  * @returns {Promise<string>} uniqueID
  */
-async function upsertEntity(name:string , type:string){
+export async function upsertEntity(name:string , type:string){
     const session = driver.session()
     try{
         const result = await session.run(`
