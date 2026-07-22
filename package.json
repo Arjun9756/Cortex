@@ -4,6 +4,7 @@
     "bullmq": "^5.80.9",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "groq-sdk": "^1.3.0",
     "ioredis": "^5.11.1",
     "neo4j-driver": "^6.2.0",
     "pino": "^10.3.1",

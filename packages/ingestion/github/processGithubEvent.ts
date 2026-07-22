@@ -1,15 +1,15 @@
 import sql from '../../../apps/api/config/postgres.js'
 import { normalizeGithubEvent } from './normalize.js'
 
-export async function processGithubEvent(eventID:number){
+export async function processGithubEvent(eventID:string){
     try{
-        const [event] = await sql`SELECT *FROM events WHERE id=${eventID.toString()}`
+        const [event] = await sql`SELECT *FROM events WHERE id=${eventID}`
         if(!event){
             console.log(`Event With Event ID For Github ${eventID} Not Found in Database`)
             return null
         }
 
-        const normalizedPayload = normalizeGithubEvent(event.payload , event.event_type)
+        const normalizedPayload = normalizeGithubEvent(event.payload , event.event_type) // This is Object convert to string while sending to AI
         // LLM Train
     }
     catch(error:any){

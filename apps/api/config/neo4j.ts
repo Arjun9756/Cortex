@@ -4,5 +4,5 @@ import env from './env.js'
 async function getServerInfo(){
     console.log(await driver.getServerInfo())
 }
-let driver = neo4j.driver(env.NEO4J_URI! , neo4j.auth.basic(env.NEO4J_USERNAME! , env.NEO4J_PASSWORD!))
+export let driver = neo4j.driver(env.NEO4J_URI! , neo4j.auth.basic(env.NEO4J_USERNAME! , env.NEO4J_PASSWORD!))
 getServerInfo()
