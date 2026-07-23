@@ -9,7 +9,7 @@ export async function pushGithubEventToDatabase(payload:IParsedGithubEvent){
         const uniqueID = snowflake.nextID().toString()
         const [result] = await sql `INSERT INTO events(id , provider , event_type , external_id , payload) VALUES (${uniqueID} , ${'github'} , ${payload.event_type} , ${payload.deliveryID} , ${sql.json(payload.rawBody)}) RETURNING id , created_at`
         
-        await cortexQueue.add(JOBS.GITHUB_EVENT , uniqueID , {
+        await cortexQueue.add(JOBS.GITHUB_EVENT , {id:uniqueID} , {
             attempts:3,
             removeOnComplete:true,
             removeOnFail:true,

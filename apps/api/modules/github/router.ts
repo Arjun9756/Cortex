@@ -19,7 +19,7 @@ githubRouter.post('/webhook' , async (req , res)=>{
 
     const parsedEvent:IParsedGithubEvent | null = parseGithubEvent(eventType , deliveryID , req.body)
     try{
-        if(parsedEvent == null || !parseGithubEvent || parseGithubEvent == undefined){
+        if(parsedEvent == null){
             return res.status(501).json({
                 error:"Not Able To Parse Github Payload"
             })

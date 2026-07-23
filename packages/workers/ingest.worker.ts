@@ -3,15 +3,17 @@ import redis from "../../apps/api/config/redis.js";
 import { JOBS } from "../queue/jobs.js";
 import {Worker} from 'bullmq'
 import {processGithubEvent} from '../ingestion/github/processGithubEvent.js'
+import { processSlackEvent } from "../ingestion/slack/processSlackEvent.js";
 
 export const cortexWorker = new Worker('processing-queue' , async (job)=>{
     switch(job.name){
         case JOBS.GITHUB_EVENT:
-            processGithubEvent(job.data.id)
+            await processGithubEvent(job.data.id)
             break
         case JOBS.JIRA_EVENT:
             break
         case JOBS.SLACK_EVENT:
+            await processSlackEvent(job.data.id)
             break
         case JOBS.NOTION_EVENT:
             break
