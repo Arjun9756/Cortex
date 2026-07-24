@@ -42,3 +42,5 @@ githubRouter.post('/webhook' , async (req , res)=>{
         })
     }
 })
+
+export default githubRouter

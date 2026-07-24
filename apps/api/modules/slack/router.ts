@@ -36,3 +36,5 @@ router.post('/webhook', async (req, res) => {
         status: true
     })
 })
+
+export default router
