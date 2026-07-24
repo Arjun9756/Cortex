@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@google/genai": "^2.13.0",
     "@qdrant/js-client-rest": "^1.18.0",
     "@types/express": "^5.0.6",
     "bullmq": "^5.80.9",

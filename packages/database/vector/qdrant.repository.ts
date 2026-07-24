@@ -1,3 +1,4 @@
+import { ContentEmbedding } from '@google/genai'
 import env from '../../../apps/api/config/env.js'
 import qdrantClient from '../../../apps/api/config/qdrant.js'
 
@@ -25,7 +26,7 @@ export async function ensureCollection() {
     }
 }
 
-export async function upsertVector(id: string, vector: number[], payload: Record<string, any>) {
+export async function upsertVector(id: string, vector:number[], payload: Record<string, any>) {
     try {
         const result = await qdrantClient.upsert(collectionName!, {
             points: [{
