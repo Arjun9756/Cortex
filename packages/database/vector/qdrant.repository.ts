@@ -14,7 +14,7 @@ export async function ensureCollection() {
 
         await qdrantClient.createCollection(env.QDRANT_COLLECTION_NAME as string, {
             vectors: {
-                size: 384,
+                size: 3072,
                 distance: "Cosine"
             }
         })

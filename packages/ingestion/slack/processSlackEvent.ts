@@ -30,7 +30,21 @@ export async function processSlackEvent(eventID: string) {
         // 6.Process The Summary To Create Vector Embeddings For Semantic Search
         const vectorEmbedding: number[] | null | undefined = await generateEmbeddings(summary)
         if (vectorEmbedding) {
-            await upsertVector(crypto.randomUUID(), vectorEmbedding, { entities, relationships })
+            const allEntities = [...entities, ...newEntities.map((e: any) => { return { name: e.name, type: e.suggestedType } })]
+            const allRelations = [...relationships, ...newRelations.map((r: any) => { return { from: r.from, to: r.to, type: r.suggestedType } })]
+
+            await upsertVector(crypto.randomUUID(), vectorEmbedding, {
+                eventID,
+                summary,
+                entities: allEntities,
+                relationships: allRelations,
+                provder:'slack',
+                text:normalizedPayload.text,
+                author:normalizedPayload.author,
+                channel:normalizedPayload.channel,
+                timestamp:normalizedPayload.timestamp,
+                eventType:normalizedPayload.eventType
+            })
         }
         console.log(`Event ${eventID} processed. Summary: ${summary}`)
     }
