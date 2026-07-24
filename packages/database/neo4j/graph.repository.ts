@@ -10,9 +10,9 @@ export async function upsertEntity(name:string , type:string){
     const session = driver.session()
     try{
         const result = await session.run(`
-            MERGE (e:${type} {name:$name)
+            MERGE (e:${type} {name:$name})
             ON CREATE SET e.createdAt = timestamp()
-            ON MATCH SET u.updateAT = timestamp()
+            ON MATCH SET e.updateAt = timestamp()
             RETURN elementId(e) as id
         ` , {name})
 
@@ -34,7 +34,7 @@ export async function upsertRelation(fromID:string , toID:string , type:string ,
             MATCH(b) where elementId(b) = $toID
             MERGE (a)-[r:${type}]->(b)
             ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence
-            ON MATCH SET r.createdAt = timestamp()
+            ON MATCH SET r.updatedAt = timestamp()
         ` , {fromID , toID , evidence:evidence ?? null})
     }
     catch(error:any){
