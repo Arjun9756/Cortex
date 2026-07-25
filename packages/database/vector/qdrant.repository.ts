@@ -1,4 +1,3 @@
-import { ContentEmbedding } from '@google/genai'
 import env from '../../../apps/api/config/env.js'
 import qdrantClient from '../../../apps/api/config/qdrant.js'
 
@@ -7,14 +6,14 @@ const collectionName = env.QDRANT_COLLECTION_NAME
 export async function ensureCollection() {
     try {
         const collections = await qdrantClient.collectionExists(collectionName as string)
-        if (collections) {
-            await qdrantClient.deleteCollection(collectionName!)
+        if (collections.exists) {
             console.log("Collection Already Created")
+            return
         }
 
         await qdrantClient.createCollection(env.QDRANT_COLLECTION_NAME as string, {
             vectors: {
-                size: 3072,
+                size: 384,
                 distance: "Cosine"
             }
         })

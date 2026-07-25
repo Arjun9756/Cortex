@@ -5,16 +5,17 @@ import { ensureCollection } from '../../../packages/database/vector/qdrant.repos
 
 async function startServer(){
     try{
-        await cortexWorker.run()
+        if(cortexWorker.isRunning()){
+            console.log("Cortex Queue Works Running")
+        }
+
         await ensureCollection()
-        app.listen(env.PORT , (error)=>{
-            if(error)
-                throw error
-            console.log(`Cortex is Running on Port ${env.PORT}`)
+        app.listen(parseInt(env.PORT as string) , ()=>{
+            console.log(`Cortex Server is Running on Port ${env.PORT}`)
         })
     }
     catch(error:any){
-        console.log(`Error While Server Starting`)
+        console.log(`Error While Server Starting` , error)
         process.exit(1)
     }
 }

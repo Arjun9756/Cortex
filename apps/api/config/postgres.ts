@@ -12,6 +12,7 @@ const sql = postgres({
     port:Number(env.POSTGRES_PORT!),
     password:env.POSTGRES_PASSWORD!,
     database:env.POSTGRES_DATABASE!,
+    user:env.POSTGRES_USER!,
     max:20,
     connect_timeout:30,
     ssl:{

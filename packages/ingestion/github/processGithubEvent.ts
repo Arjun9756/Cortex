@@ -26,7 +26,7 @@ export async function processGithubEvent(eventID: string) {
         const cleanEventText = JSON.stringify(normalizedPayload)
 
         // 4.Extract From LLm
-        const { entities, newEntities, relationships, newRelations, summary } = await extractFromEvent(cleanEventText)
+        const { entities, newEntities, relationships, newRelations, summary } = await extractFromEvent(cleanEventText , 'github')
 
         //5. Save Onto Graph Database
         await saveExtractionToGraph(entities, newEntities, relationships, newRelations)
@@ -49,6 +49,7 @@ export async function processGithubEvent(eventID: string) {
                 timestamp:normalizedPayload.timestamp,
                 author:normalizedPayload.author
             })
+            console.log('Vector Embedding Created')
         }
 
         console.log(`Event ${eventID} processed. Summary: ${summary}`)

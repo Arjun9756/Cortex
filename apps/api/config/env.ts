@@ -55,5 +55,4 @@ const envObject = {
     QDRANT_COLLECTION_NAME:process.env.QDRANT_COLLECTION_NAME
 }
 
-console.log(envObject)
 export default Object.freeze(envObject)

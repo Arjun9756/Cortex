@@ -27,7 +27,6 @@ app.use(helmet())
 
 // JSON Config
 app.use(express.urlencoded({extended:true}))
-app.use(bodyParser)
 
 app.use(express.json({
     verify:(req:any,res,buf)=>{

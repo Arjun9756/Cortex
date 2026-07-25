@@ -9,7 +9,7 @@ export const groq = new Groq({
 export async function callLLMEntityExtract(prompt:string){
     try{
         const response = await groq.chat.completions.create({
-            model:"moonshotai/kimi-k2-instruct",
+            model:"openai/gpt-oss-120b",
             messages:[
                 {role:"system" , content:"You are a strict JSON extraction engine. Always return valid JSON only, no markdown, no explanation."},
                 {role:'user' , content:prompt}

@@ -6,9 +6,13 @@ export async function generateEmbeddings(text:string){
     try{
         const response = await genAI.models.embedContent({
             model:"gemini-embedding-2",
-            contents:text
+            contents:text,
+            config:{
+                outputDimensionality:384 // 2092 Vector consume more RAM
+            }
         })
         
+        console.log('Genrating Embedding')
         return response.embeddings?.[0]?.values
     }
     catch(error:any){

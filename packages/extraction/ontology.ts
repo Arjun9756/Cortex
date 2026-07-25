@@ -12,7 +12,7 @@ export const ENTITY_TYPES = [
 
 export const RELATION_TYPES = [
     "USES",
-    'HASH_PROBLEM',
+    'HAS_PROBLEM',
     'FIXED_BY',
     'REPLACED_BY',
     'DEPENDS_ON',
@@ -20,5 +20,6 @@ export const RELATION_TYPES = [
     'CREATED',
     'MENTIONED_IN',
     'ASSIGNED_TO',
-    'PART_OF'
+    'PART_OF',
+    'AUTHORED'
 ]as const

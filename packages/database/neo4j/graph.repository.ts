@@ -1,4 +1,5 @@
-import {driver } from '../../../apps/api/config/neo4j.js'
+import {driver} from '../../../apps/api/config/neo4j.js'
+import neo4j from 'neo4j-driver'
 
 /**
  * 
@@ -28,13 +29,14 @@ export async function upsertEntity(name:string , type:string){
 
 export async function upsertRelation(fromID:string , toID:string , type:string , evidence?:string){
     const session = driver.session()
+    console.log(`Upsert Relation ${evidence}`)
     try{
         const result = await session.run(`
             MATCH (a) where elementId(a) = $fromID
             MATCH(b) where elementId(b) = $toID
             MERGE (a)-[r:${type}]->(b)
             ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence
-            ON MATCH SET r.updatedAt = timestamp()
+            ON MATCH SET r.updatedAt = timestamp() , r.evidence = $evidence 
         ` , {fromID , toID , evidence:evidence ?? null})
     }
     catch(error:any){
@@ -54,7 +56,7 @@ export async function getUsedRelationship(){
         })
     }
     catch(error:any){
-        console.log(`Error While Fetching Relationships From Neo4j ${error.message}`)
+        console.log(`Error While Fetching Relationships From Neo4j ${error}`)
     }
     finally{
         await session.close()
@@ -72,7 +74,7 @@ export async function getExistingEntityName(limit:number=50){
     try{
         const result = await session.run(`
             MATCH (e) RETURN e.name as name , labels(e)[0] as type LIMIT $limit
-        ` , {limit})
+        ` , {limit:neo4j.int(limit)})
 
         return result.records.map((e)=>{
             return {name:e.get('name') , type:e.get('type')}

@@ -23,7 +23,7 @@ export async function processSlackEvent(eventID: string) {
         const cleanEventText = JSON.stringify(normalizedPayload)
 
         // 4. Extract Enities and Relationships
-        const { entities, newEntities, relationships, newRelations, summary } = await extractFromEvent(cleanEventText)
+        const { entities, newEntities, relationships, newRelations, summary } = await extractFromEvent(cleanEventText , 'slack')
 
         await saveExtractionToGraph(entities, newEntities, relationships, newRelations)
 
