@@ -56,6 +56,11 @@ export const AgentState = Annotation.Root({
         reducer: (_, next) => next,
         default: () => "",
     }),
+
+    sqlResult:Annotation<any[]>({
+        reducer:(_ , next)=>next,
+        default:()=>[]
+    })
 })
 
 export type AgentStateType = typeof AgentState.State
