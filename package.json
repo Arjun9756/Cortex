@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@google/genai": "^2.13.0",
+    "@langchain/langgraph": "^1.4.8",
     "@qdrant/js-client-rest": "^1.18.0",
     "@types/express": "^5.0.6",
     "body-parser": "^2.3.0",

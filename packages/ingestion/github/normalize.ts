@@ -1,15 +1,35 @@
 import { eventTypes } from './eventTypes.js'
 
+const IGNORED_PATTERNS = [
+  /node_modules/,
+  /package-lock\.json$/,
+  /yarn\.lock$/,
+  /pnpm-lock\.yaml$/,
+  /\.lock$/,
+  /dist\//,
+  /build\//,
+  /\.min\.js$/,
+  /\.map$/,
+  /coverage\//,
+];
+
+function filterRelevantFiles(files: string[]): string[] {
+  return files.filter(f => !IGNORED_PATTERNS.some(pattern => pattern.test(f)));
+}
+
 type CleanGithubEvent = {
-    provider: "github",
-    eventType: string,
-    repository: string,
-    author: string,
-    timestamp: string,
-    [key: string]: any
+  provider: "github",
+  eventType: string,
+  repository: string,
+  author: string,
+  timestamp: string,
+  [key: string]: any
 }
 
 function normalizePush(payload: any): CleanGithubEvent {
+  const allModifiedFiles = payload.commits.flatMap((c: any) => c.modified ?? [])
+  const relevantFiles = filterRelevantFiles(allModifiedFiles)
+
   return {
     provider: "github",
     eventType: "push",
@@ -22,6 +42,8 @@ function normalizePush(payload: any): CleanGithubEvent {
       message: c.message,
       filesChanged: c.modified,
     })),
+    filesChanged: relevantFiles.slice(0, 5), // max 5 files, noise filtered
+    totalFilesChanged: allModifiedFiles.length, // total count, context ke liye
   };
 }
 
@@ -67,27 +89,27 @@ function normalizeIssueComment(payload: any): CleanGithubEvent {
 // ... baaki bhi isi pattern pe
 
 export function normalizeGithubEvent(rawPayload: object, eventType: string): CleanGithubEvent | null {
-    switch (eventType) {
-        case eventTypes.PUSH:
-            return normalizePush(rawPayload)
-        case eventTypes.PULL_REQUEST:
-            return normalizePullRequest(rawPayload)
-        case eventTypes.ISSUES:
-            return normalizeIssue(rawPayload)
-        case eventTypes.ISSUE_COMMENT:
-            return normalizeIssueComment(rawPayload);
-        // case eventTypes.PULL_REQUEST_REVIEW:
-        //     return normalizePRReview(rawPayload)
-        // case eventTypes.PULL_REQUEST_REVIEW_COMMENT:
-        //     return normalizePRReviewComment(rawPayload)
-        // case eventTypes.RELEASE:
-        //     return normalizeRelease(rawPayload)
-        // case eventTypes.CREATE:
-        //     return normalizeCreate(rawPayload);
-        // case eventTypes.DELETE:
-        //     return normalizeDelete(rawPayload);
-        default:
-            console.warn(`Unhandled GitHub event type: ${eventType}`);
-            return null;
-    }
+  switch (eventType) {
+    case eventTypes.PUSH:
+      return normalizePush(rawPayload)
+    case eventTypes.PULL_REQUEST:
+      return normalizePullRequest(rawPayload)
+    case eventTypes.ISSUES:
+      return normalizeIssue(rawPayload)
+    case eventTypes.ISSUE_COMMENT:
+      return normalizeIssueComment(rawPayload);
+    // case eventTypes.PULL_REQUEST_REVIEW:
+    //     return normalizePRReview(rawPayload)
+    // case eventTypes.PULL_REQUEST_REVIEW_COMMENT:
+    //     return normalizePRReviewComment(rawPayload)
+    // case eventTypes.RELEASE:
+    //     return normalizeRelease(rawPayload)
+    // case eventTypes.CREATE:
+    //     return normalizeCreate(rawPayload);
+    // case eventTypes.DELETE:
+    //     return normalizeDelete(rawPayload);
+    default:
+      console.warn(`Unhandled GitHub event type: ${eventType}`);
+      return null;
+  }
 }

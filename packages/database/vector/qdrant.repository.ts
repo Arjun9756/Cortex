@@ -40,9 +40,9 @@ export async function upsertVector(id: string, vector:number[], payload: Record<
     }
 }
 
-export async function searchSimilar(queryVector: number[], topK = 5) {
+export async function searchSimilar(queryVector: number[], topK = 5 , colName?:string) {
     try {
-        const result = await qdrantClient.search(collectionName!, {
+        const result = await qdrantClient.search(collectionName! || colName!, {
             vector: queryVector,
             limit: topK,
             with_payload: true

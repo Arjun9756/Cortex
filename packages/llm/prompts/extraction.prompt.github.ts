@@ -51,6 +51,11 @@ ${entityContextBlock}${relationContextBlock}
     - A commit is PART_OF a repository → from: commit, to: repository
     - A person WORKS_ON a repository → from: person, to: repository
     - Technology X is REPLACED_BY technology Y → from: X (old), to: Y (new)
+  ## RULES:
+...
+11. If the event data includes "totalFilesChanged" that is significantly larger than the number of files listed in "filesChanged", 
+do NOT try to create a FILE entity for every file. Instead, mention the scale of the change in the summary (e.g., "a bulk change affecting 200 files"), and only extract files that seem architecturally 
+significant (e.g., config files, schema files, core modules) from the ones provided.
 
 ## OUTPUT FORMAT (strict JSON):
 {
