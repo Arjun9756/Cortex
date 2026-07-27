@@ -9,9 +9,11 @@ export async function answerNode(state: AgentStateType): Promise<Partial<AgentSt
             model: "openai/gpt-oss-120b",
             messages: [{ role: "user", content: prompt }],
             temperature: 0.3,
+            max_completion_tokens:1024
         });
 
         const answer = response.choices[0]?.message?.content ?? "No answer generated.";
+        console.log(`Last Answer ${answer}`)
         return { answer };
     }
     catch (error: any) {

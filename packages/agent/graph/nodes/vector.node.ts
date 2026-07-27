@@ -7,16 +7,18 @@ interface QdrantSearchResult {
         summary?: any;
         entities?: any;
         relationships?: any;
-        eventId?: any;
+        eventID?: any;
         provider?: any;
     };
 }
 
 export async function vectorNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
+    const pendingTools = state.pendingTools.filter((tool) => tool !== 'vector_search')
+    const executedTools = [...new Set([...state.executedTools, 'vector_search'])]
     try {
         const embedding = await generateEmbeddings(state.query)
         if (!embedding) {
-            return { vectorResult: [] }
+            return { vectorResult: [], pendingTools, executedTools }
         }
 
         const result = await searchSimilar(embedding) as QdrantSearchResult[]
@@ -24,15 +26,15 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
             summary: r.payload?.summary,
             entities: r.payload?.entities,
             relationships: r.payload?.relationships,
-            eventId: r.payload?.eventId,
+            eventId: r.payload?.eventID,
             provider: r.payload?.provider
         }))
 
-        return {vectorResult}
+        return { vectorResult, pendingTools, executedTools }
     }
     catch(error:any){
         return {
-            vectorResult:[]
+            vectorResult: [], pendingTools, executedTools
         }
     }
 }

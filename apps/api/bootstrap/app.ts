@@ -7,6 +7,7 @@ import helmet from 'helmet'
 import env from '../config/env.js'
 import githubRouter from '../modules/github/router.js'
 import slackRouter from '../modules/slack/router.js'
+import { chatCouter } from '../modules/chat/router.js'
 
 const app = express()
 
@@ -44,5 +45,6 @@ app.get('/' , (req,res)=>{
 
 app.use('/api/github' , githubRouter)
 app.use('/api/slack' , slackRouter)
+app.use('/api/chat' , chatCouter)
 
 export default app

@@ -46,12 +46,23 @@ export async function runSafeQuery(queryType: string, params: any) {
             `;
         }
 
+        case 'event_by_id':{
+            if(!params.eventId)
+                return []
+            return await sql `
+                SELECT id, external_id, provider, event_type, payload, created_at
+                FROM events WHERE id = ${params.eventId} LIMIT 1
+            `
+        }
+
         default:
             return [];
     }
 }
 
 export async function sqlNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
+    const pendingTools = state.pendingTools.filter((tool) => tool !== 'sql_search')
+    const executedTools = [...new Set([...state.executedTools, 'sql_search'])]
     try {
         const prompt = buildSqlPlannerPrompt(state.query)
         const response = await groq.chat.completions.create({
@@ -63,17 +74,17 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
 
         let decision;
         try {
-            decision = JSON.parse(response.choices[0]?.message?.content ?? "{queryType:'none'}")
+            decision = JSON.parse(response.choices[0]?.message?.content ?? '{"queryType":"none"}')
         }
         catch (error: any) {
             console.log(`Error While SQL Node ${error?.message}`)
-            decision = `{queryType:"none"}`
+            decision = {queryType:"none"}
         }
 
-        const results = await runSafeQuery(decision.queryType, decision.params)
-        return {sqlResult:results}
+        const results = await runSafeQuery(decision.queryType, decision.params ?? {})
+        return { sqlResult: results, pendingTools, executedTools }
     }
     catch (error: any) {
-        return { sqlResult: [] }
+        return { sqlResult: [], pendingTools, executedTools }
     }
 }

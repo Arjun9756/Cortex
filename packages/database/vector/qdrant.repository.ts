@@ -45,7 +45,7 @@ export async function searchSimilar(queryVector: number[], topK = 5 , colName?:s
         const result = await qdrantClient.search(collectionName! || colName!, {
             vector: queryVector,
             limit: topK,
-            with_payload: true
+            with_payload: true,
         })
 
         return result

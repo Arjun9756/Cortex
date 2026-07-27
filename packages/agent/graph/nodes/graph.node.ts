@@ -2,6 +2,8 @@ import { AgentStateType } from "../state.js";
 import { driver } from "../../../../apps/api/config/neo4j.js";
 
 export async function graphNode(state:AgentStateType):Promise<Partial<AgentStateType>>{
+    const pendingTools = state.pendingTools.filter((tool) => tool !== 'graph_search')
+    const executedTools = [...new Set([...state.executedTools, 'graph_search'])]
     const session = driver.session()
     try{
         const entityName = new Set<string>
@@ -12,7 +14,7 @@ export async function graphNode(state:AgentStateType):Promise<Partial<AgentState
         })
 
         if(entityName.size === 0)
-            return {graphResult:[]}
+            return { graphResult: [], pendingTools, executedTools }
         
         const result = await session.run(`
             MATCH (e) WHERE e.name IN $names
@@ -26,7 +28,7 @@ export async function graphNode(state:AgentStateType):Promise<Partial<AgentState
             connectedTo:item.get('connectedTo')
         }))
 
-        return {graphResult}
+        return { graphResult, pendingTools, executedTools }
     }   
     finally{
         await session.close()

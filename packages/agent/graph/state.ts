@@ -16,6 +16,21 @@ export const AgentState = Annotation.Root({
         }
     }),
 
+    pendingTools: Annotation<string[]>({
+        default: () => [],
+        reducer: (_, next) => next,
+    }),
+
+    executedTools: Annotation<string[]>({
+        default: () => [],
+        reducer: (_, next) => next,
+    }),
+
+    clarificationQuestion: Annotation<string>({
+        default: () => "",
+        reducer: (_, next) => next,
+    }),
+
     // Qdrant Result
     vectorResult:Annotation<any[]>({
         default:()=>[],
@@ -47,7 +62,7 @@ export const AgentState = Annotation.Root({
 
     // Prevent Infinite AI Loop
     iterationCount: Annotation<number>({
-        reducer: (_, next) => next,
+        reducer: (current, next) => next ?? current,
         default: () => 0,
     }),
 

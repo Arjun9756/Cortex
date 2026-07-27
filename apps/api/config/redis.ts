@@ -6,8 +6,8 @@ const redis = new Redis({
     password:env.REDIS_PASSWORD,
     username:env.REDIS_USERNAME,
     port:Number(env.REDIS_PORT!),
-    connectTimeout:15000,
-    commandTimeout:15000,
+    // connectTimeout:15000,
+    // commandTimeout:15000,
     maxRetriesPerRequest:null,
     enableReadyCheck:false,
     retryStrategy:function(times){
