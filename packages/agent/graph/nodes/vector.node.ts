@@ -16,7 +16,7 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
     const pendingTools = state.pendingTools.filter((tool) => tool !== 'vector_search')
     const executedTools = [...new Set([...state.executedTools, 'vector_search'])]
     try {
-        const embedding = await generateEmbeddings(state.query)
+        const embedding = await generateEmbeddings(state.vectorQuery || state.query)
         if (!embedding) {
             return { vectorResult: [], pendingTools, executedTools }
         }

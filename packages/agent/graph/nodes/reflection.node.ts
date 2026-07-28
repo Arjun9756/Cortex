@@ -4,6 +4,9 @@ import { buildReflectionPrompt } from "../../../llm/prompts/reflectionplanner.pr
 
 export async function reflectionNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
     try {
+        if (state.executedTools.includes('graph_search') && state.graphResult.length > 0) {
+            return { needMoreSearch: false, pendingTools: [], iterationCount: state.iterationCount + 1 }
+        }
         if (state.iterationCount >= 2) {
             return { needMoreSearch: false, iterationCount: state.iterationCount + 1 }
         }
@@ -27,9 +30,6 @@ export async function reflectionNode(state: AgentStateType): Promise<Partial<Age
             ? decision.tools.filter((tool: unknown): tool is string => typeof tool === 'string' && allowedTools.has(tool))
             : []
         const pendingTools = requestedTools.filter((tool: string) => !state.executedTools.includes(tool))
-        if (pendingTools.includes('graph_search') && !state.executedTools.includes('vector_search') && !pendingTools.includes('vector_search')) {
-            pendingTools.unshift('vector_search')
-        }
         return { pendingTools, needMoreSearch: pendingTools.length > 0, iterationCount: state.iterationCount + 1 }
     }
     catch (error: any) {

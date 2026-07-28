@@ -31,6 +31,31 @@ export const AgentState = Annotation.Root({
         reducer: (_, next) => next,
     }),
 
+    entities: Annotation<string[]>({
+        default: () => [],
+        reducer: (_, next) => next,
+    }),
+
+    graphAction: Annotation<string>({
+        default: () => 'describeEntity',
+        reducer: (_, next) => next,
+    }),
+
+    graphTarget: Annotation<string>({
+        default: () => '',
+        reducer: (_, next) => next,
+    }),
+
+    graphRelation: Annotation<string>({
+        default: () => '',
+        reducer: (_, next) => next,
+    }),
+
+    vectorQuery: Annotation<string>({
+        default: () => '',
+        reducer: (_, next) => next,
+    }),
+
     // Qdrant Result
     vectorResult:Annotation<any[]>({
         default:()=>[],

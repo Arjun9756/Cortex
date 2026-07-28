@@ -6,9 +6,7 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
             return `[${item?.provider}] [${item?.summary}]`
         }).join('\n')
 
-        const graphText = state.graphResult.map((item) => {
-            return `[${item?.name}] --[${item?.relation}]->[${item?.connectedTo}]`
-        }).join('\n')
+        const graphText = state.graphResult.map((item) => `[GRAPH] ${JSON.stringify(item)}`).join('\n')
 
         const sqlText = state.sqlResult.map((item: any) => {
             return `[Event ID: ${item?.id}] [${item?.provider}] ${JSON.stringify(item?.payload)} (created: ${item?.created_at})`

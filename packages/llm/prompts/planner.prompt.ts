@@ -1,20 +1,24 @@
 export function buildPlannerPrompt(query: string): string {
     return `
-Given this user question about an engineering knowledge graph: "${query}"
+You plan retrieval for an engineering knowledge graph. User question: "${query}"
 
-Decide the next action. Return ONLY a JSON object in exactly one of these forms:
-{"action":"retrieve","tools":["vector_search","graph_search","sql_search"]}
-{"action":"clarify","question":"a concise question for the user"}
-{"action":"answer","tools":[]}
+Return ONLY one JSON object:
+{"action":"retrieve","tools":["graph_search"|"vector_search"|"sql_search"],"entities":["exact names from question"],"graphAction":"describeEntity"|"countNodes"|"listNodes"|"shortestPath"|"dependencyAnalysis"|"impactAnalysis"|"expertiseAnalysis"|"repositorySummary","graphTarget":"COMMIT"|"ISSUE"|"PULL_REQUEST"|null,"graphRelation":"USES"|"DEPENDS_ON"|"AUTHORED"|null,"vectorQuery":"focused semantic sub-question or null"}
+{"action":"clarify","question":"one concise question"}
 
-- Use "vector_search" to find relevant past events/discussions by MEANING (e.g. "why did we migrate X", "what was discussed about Y").
-- Use "graph_search" to find structural relationships between known entities (e.g. "who works on X", "what depends on Y"). Graph search needs an entity, so include "vector_search" too when graph search is selected.
-- Use "sql_search" for structured/factual lookups — counts, recent activity, or looking up a SPECIFIC identifier/ID mentioned in the question.
-
-IMPORTANT: A question can have MULTIPLE parts that need DIFFERENT search types. Read the ENTIRE question carefully and identify every distinct thing being asked, not just the first part. For example, a question asking about a specific event AND asking "why" something happened needs BOTH "sql_search" (for the specific lookup) AND "vector_search"/"graph_search" (for the explanatory part).
-
-Choose "clarify" only if a required entity, time range, metric, or identifier is genuinely ambiguous and no useful answer can be retrieved without it. Ask one direct question. Do not clarify merely because retrieval could be broad.
-
-Never select a database just because it exists. Select only tools that can materially help answer the question.
-`.trim();
+Rules:
+- Named people, repositories, technologies, dependencies, ownership, expertise, counts, lists, and repository summaries are graph-first. Use graph_search directly and extract entity names. Never add vector_search just to discover an explicitly named entity.
+- "Who is Arjun?" -> graph_search, entities ["Arjun"], graphAction "describeEntity".
+- "How many commits did Arjun make?" -> graph_search, entities ["Arjun"], graphAction "countNodes", graphTarget "COMMIT".
+- "Redis kis kisme use hua hai?" or "What uses Redis?" -> graph_search, entities ["Redis"], graphAction "listNodes", graphRelation "USES". Do NOT use dependencyAnalysis for a USES query.
+- "Redis kis kisme use hua hai, count it, and why was Valkey used in place of Redis?" -> tools ["graph_search","vector_search"], entities ["Redis","Valkey"], graphAction "listNodes", graphRelation "USES", vectorQuery "Why was Valkey used in place of Redis?". Every part of a compound question must be covered.
+- "What is Cortex?" -> graph_search, entities ["Cortex"], graphAction "repositorySummary" if it is a repository, otherwise "describeEntity".
+- "How is A related to B?" -> graph_search, entities ["A","B"], graphAction "shortestPath".
+- "What depends on X?" -> graph_search, entities ["X"], graphAction "dependencyAnalysis".
+- "What breaks if X changes?" -> graph_search, entities ["X"], graphAction "impactAnalysis".
+- "Who knows/worked on X?" -> graph_search, entities ["X"], graphAction "expertiseAnalysis".
+- Use SQL for raw event IDs, dates, provider totals, or event-table filters.
+- Use vector search for explanations/discussions: "why", "what was discussed", or semantic context. Combine with graph only when relationships add material value.
+- If the entity name itself is missing, ask a clarification. Do not ask clarification for a name that can be resolved by graph search.
+`.trim()
 }
