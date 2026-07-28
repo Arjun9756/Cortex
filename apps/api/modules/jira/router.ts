@@ -2,7 +2,7 @@ import {Router} from 'express'
 import { validateJiraSignature } from './validator.js'
 import { IJiraParsedEvent, parsedJiraEvent } from './normalize.js'
 import { pushJiraEventToDatabase } from './controller.js'
-const jiraRouter = Router()
+export const jiraRouter = Router()
 
 jiraRouter.post('/webhook' , async (req,res)=>{
     if(!validateJiraSignature(req)){

@@ -4,6 +4,7 @@ import { JOBS } from "../queue/jobs.js";
 import {Worker} from 'bullmq'
 import {processGithubEvent} from '../ingestion/github/processGithubEvent.js'
 import { processSlackEvent } from "../ingestion/slack/processSlackEvent.js";
+import { processJiraEvent } from "../ingestion/jira/processJiraEvent.js";
 
 export const cortexWorker = new Worker('processing-queue' , async (job)=>{
     switch(job.name){
@@ -11,6 +12,7 @@ export const cortexWorker = new Worker('processing-queue' , async (job)=>{
             await processGithubEvent(job.data.id)
             break
         case JOBS.JIRA_EVENT:
+            await processJiraEvent(job.data.id)
             break
         case JOBS.SLACK_EVENT:
             await processSlackEvent(job.data.id)

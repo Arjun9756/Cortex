@@ -4,7 +4,7 @@ import { buildGithubExtractionPrompt } from "../llm/prompts/extraction.prompt.gi
 import { getExistingEntityName, getUsedRelationship } from "../database/neo4j/graph.repository.js"
 import { buildSlackExtractionPrompt } from "../llm/prompts/extraction.prompt.slack.js"
 
-export async function extractFromEvent(cleanEventText: string , provider:"github" | "slack" = "github") {
+export async function extractFromEvent(cleanEventText: string , provider:"github" | "slack" | 'jira' = "github") {
     try {
         
         const existingEntities = await getExistingEntityName(30) // limit 30
