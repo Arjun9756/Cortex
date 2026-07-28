@@ -48,6 +48,7 @@ const envObject = {
     RATE_LIMIT:parseInt(process.env.RATE_LIMIT || "150"),
 
     GITHUB_SECRET:process.env.GITHUB_SECRET,
+    JIRA_SECRET:process.env.JIRA_SECRET,
     SLACK_SECRET:process.env.SLACK_SECRET,
 
     QDRANT_API_KEY:process.env.QDRANT_API_KEY,

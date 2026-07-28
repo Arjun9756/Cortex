@@ -1,0 +1,102 @@
+[
+  {
+    "inputs": {
+      "query": "Why Redis was replaced?"
+    },
+    "outputs": {
+      "expectedTool": ["vector", "graph"],
+      "needClarification": false,
+      "answer": "Redis was replaced with Valkey due to licensing changes."
+    }
+  },
+  {
+    "inputs": {
+      "query": "What happened in event 123?"
+    },
+    "outputs": {
+      "expectedTool": ["sql"],
+      "needClarification": false,
+      "answer": "Event 123 updated README.md in the Cortex repository."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Who owns payment-service?"
+    },
+    "outputs": {
+      "expectedTool": ["graph"],
+      "needClarification": false,
+      "answer": "The payment-service is owned by Team Payments."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Show Redis issue"
+    },
+    "outputs": {
+      "expectedTool": [],
+      "needClarification": true,
+      "answer": "Which repository are you referring to?"
+    }
+  },
+  {
+    "inputs": {
+      "query": "Show latest GitHub event"
+    },
+    "outputs": {
+      "expectedTool": ["sql"],
+      "needClarification": false,
+      "answer": "The latest GitHub event is ..."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Explain BullMQ discussion"
+    },
+    "outputs": {
+      "expectedTool": ["vector"],
+      "needClarification": false,
+      "answer": "BullMQ was discussed regarding background job processing..."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Who created Cortex?"
+    },
+    "outputs": {
+      "expectedTool": ["graph"],
+      "needClarification": false,
+      "answer": "Cortex was created by Arjun."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Why Kafka introduced?"
+    },
+    "outputs": {
+      "expectedTool": ["vector", "graph"],
+      "needClarification": false,
+      "answer": "Kafka was introduced for reliable asynchronous event processing."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Explain migration"
+    },
+    "outputs": {
+      "expectedTool": [],
+      "needClarification": true,
+      "answer": "Which migration are you referring to?"
+    }
+  },
+  {
+    "inputs": {
+      "query": "Show commit abc123"
+    },
+    "outputs": {
+      "expectedTool": ["sql"],
+      "needClarification": false,
+      "answer": "Commit abc123 updated ..."
+    }
+  }
+]
