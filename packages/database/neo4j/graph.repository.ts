@@ -87,3 +87,18 @@ export async function getExistingEntityName(limit:number=50){
         await session.close()
     }
 }
+
+export async function getUsedEntityLabels():Promise<string[]>{
+    const session = driver.session()
+    try{
+        const result = await session.run(`CALL db.labels()`)
+        return result.records.map((item)=> item.get('label'))
+    }
+    catch(error:any){
+        console.log("Error While Fetching The Labels From Graph DB")
+        return []
+    }
+    finally{
+        await session.close()
+    }
+}

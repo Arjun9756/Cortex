@@ -100,6 +100,16 @@ export const AgentState = Annotation.Root({
     sqlResult:Annotation<any[]>({
         reducer:(_ , next)=>next,
         default:()=>[]
+    }),
+
+    webQuery:Annotation<string>({
+        reducer:(_, next)=>next,
+        default:()=>''
+    }),
+
+    WebQueryResult:Annotation<any[]>({
+        reducer:(_,next)=>next,
+        default:()=>[]
     })
 })
 

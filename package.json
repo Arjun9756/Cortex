@@ -3,6 +3,7 @@
     "@google/genai": "^2.13.0",
     "@langchain/langgraph": "^1.4.8",
     "@qdrant/js-client-rest": "^1.18.0",
+    "@tavily/core": "^0.7.6",
     "@types/express": "^5.0.6",
     "body-parser": "^2.3.0",
     "bullmq": "^5.80.9",

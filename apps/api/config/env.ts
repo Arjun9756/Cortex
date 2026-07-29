@@ -53,7 +53,9 @@ const envObject = {
 
     QDRANT_API_KEY:process.env.QDRANT_API_KEY,
     QDRANT_CLUSTER_ENDPOINT:process.env.QDRANT_CLUSTER_ENDPOINT,
-    QDRANT_COLLECTION_NAME:process.env.QDRANT_COLLECTION_NAME
+    QDRANT_COLLECTION_NAME:process.env.QDRANT_COLLECTION_NAME,
+
+    TAVILY_API_KEY:process.env.TAVILY_API_KEY
 }
 
 export default Object.freeze(envObject)
