@@ -91,7 +91,7 @@ async function sendTestSlackWebhook() {
         console.log("Status:", res.status);
         console.log("Response:", parsed);
 
-        if (res.status === 200) {
+        if (res.status === 200 || res.status === 201) {
             console.log("\n✅ Webhook accepted. Now check:");
             console.log("   1. Postgres 'events' table for the new row (provider='slack')");
             console.log("   2. Your worker logs");

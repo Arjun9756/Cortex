@@ -43,12 +43,19 @@ interface RelationMapping {
     pendingWork: { relation: string | null; targetLabel: string | null }
 }
 
+// Bug #2 fix: match schemaCache.ts's 5-minute TTL so new relation types
+// picked up by ongoing extraction are reflected within 5 minutes, not never.
 let relationMappingCache: RelationMapping | null = null
+let relationMappingCacheAt: number = 0
+const RELATION_MAPPING_TTL = 5 * 60 * 1000 // 5 minutes
 
 /**
  * Calculate knowledge risk for a person using weighted formula:
  * Knowledge Risk = 0.30 × Ownership + 0.20 × Dependency + 0.15 × Activity +
  *                  0.15 × Documentation + 0.10 × Expertise + 0.10 × Pending Work
+ *
+ * Returns totalRisk on a 0–1 scale. Callers that store as a percentage
+ * must multiply by 100 before writing to Postgres risk_score column.
  */
 export async function calculateKnowledgeRisk(personName: string): Promise<KnowledgeRiskScore> {
     // Get schema and relation mappings once
@@ -63,7 +70,7 @@ export async function calculateKnowledgeRisk(personName: string): Promise<Knowle
     const expertise = await calculateExpertise(personName, mappings.expertise, schema.relationshipTypes)
     const pendingWork = await calculatePendingWork(personName, mappings.pendingWork, schema.relationshipTypes)
 
-    // Apply weighted formula (normalized to 0-10 scale)
+    // Apply weighted formula — component scores are 0–1, totalRisk is 0–1
     const totalRisk =
         0.30 * ownership.score +
         0.20 * dependency.score +
@@ -74,7 +81,7 @@ export async function calculateKnowledgeRisk(personName: string): Promise<Knowle
 
     return {
         person: personName,
-        totalRisk: Math.round(totalRisk * 100) / 100,
+        totalRisk: Math.round(totalRisk * 100) / 100,   // 0–1, 2 decimal places
         breakdown: {
             ownership: Math.round(ownership.score * 10 * 100) / 100,
             dependency: Math.round(dependency.score * 10 * 100) / 100,
@@ -103,10 +110,13 @@ export async function calculateKnowledgeRisk(personName: string): Promise<Knowle
 }
 
 /**
- * Get relation mappings from LLM (cached)
+ * Get relation mappings from LLM.
+ * Bug #2 fix: cache expires after 5 minutes (matches schemaCache.ts TTL)
+ * so new relation types from ongoing extraction are reflected promptly.
  */
 async function getRelationMappings(nodeLabels: string[], relationships: string[]): Promise<RelationMapping> {
-    if (relationMappingCache) {
+    const now = Date.now()
+    if (relationMappingCache && (now - relationMappingCacheAt) < RELATION_MAPPING_TTL) {
         console.log('[Knowledge Risk] Using cached relation mappings')
         return relationMappingCache
     }
@@ -115,7 +125,7 @@ async function getRelationMappings(nodeLabels: string[], relationships: string[]
 
     try {
         const response = await groq.chat.completions.create({
-            model: 'openai/gpt-oss-120b',
+            model: 'qwen/qwen3.6-27b',
             messages:[{role:'user' , content:prompt}],
             temperature: 0,
             response_format: { type: "json_object" }
@@ -126,13 +136,29 @@ async function getRelationMappings(nodeLabels: string[], relationships: string[]
             throw new Error('Empty response from LLM')
         }
 
-        relationMappingCache = JSON.parse(content)
-        console.log('[Knowledge Risk] Relation mappings:', relationMappingCache)
+        relationMappingCache = JSON.parse(content) as RelationMapping
+        relationMappingCacheAt = now
+        console.log('[Knowledge Risk] Relation mappings refreshed:', relationMappingCache)
 
-        return relationMappingCache!
+        return relationMappingCache
 
     } catch (error: any) {
         console.error('[Knowledge Risk] Failed to get relation mappings:', error.message)
-        throw error
+
+        // Return stale cache if available rather than crashing all risk calculations
+        if (relationMappingCache) {
+            console.warn('[Knowledge Risk] Using stale relation mapping cache as fallback')
+            return relationMappingCache
+        }
+
+        // Last resort: return all-null mapping — all calculators will return 0 gracefully
+        return {
+            ownership:    { relation: null, targetLabel: null },
+            dependency:   { relation: null, targetLabel: null },
+            activity:     { relation: null, targetLabel: null },
+            documentation:{ relation: null, targetLabel: null },
+            expertise:    { relation: null, targetLabel: null },
+            pendingWork:  { relation: null, targetLabel: null },
+        }
     }
 }

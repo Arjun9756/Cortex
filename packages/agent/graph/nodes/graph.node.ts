@@ -1,6 +1,6 @@
 import { AgentStateType } from '../state.js'
 import { executeGraphAction, GRAPH_ACTIONS, resolveGraphEntity } from '../../../graph/graph.service.js'
-import type { EntityCandidate } from '../../../graph/cypher/describe.entity.js'
+import type { EntityCandidate } from '../../../graph/cypher/analysis.cypher.js'
 
 export async function graphNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
     const pendingTools = state.pendingTools.filter((tool) => tool !== 'graph_search')

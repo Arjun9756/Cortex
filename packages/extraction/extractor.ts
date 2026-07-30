@@ -20,11 +20,11 @@ export async function extractFromEvent(cleanEventText: string , provider:"github
         const extraction = await callLLMEntityExtract(prompt)
 
         return {
-            entities: extraction.entities,
-            newEntities: extraction.newEntities,
-            relationships: extraction.relationships,
-            newRelations: extraction.newRelations,
-            summary: extraction.summary
+            entities: extraction.entities ?? [],
+            newEntities: extraction.newEntities ?? [],
+            relationships: extraction.relationships ?? [],
+            newRelations: extraction.newRelations ?? [],
+            summary: extraction.summary ?? ""
         }
     }
     catch (error: any) {

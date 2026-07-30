@@ -159,13 +159,20 @@ export async function calculateActivity(
     count: number;
     evidence: Array<{name: string, type: string, timestamp: number}>
 }> {
+    // Bug #3 fix: guard on schema existence, matching all other calculators
+    if (!mapping.relation || !usedRelations.includes(mapping.relation)) {
+        console.log(`[Activity] Relation "${mapping.relation}" not found in schema, returning 0`)
+        return { score: 0, count: 0, evidence: [] }
+    }
+
     const session = driver.session()
     try {
         const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000)
+        const targetLabel = mapping.targetLabel ? `:${mapping.targetLabel}` : ''
 
-        // Query 1: Get total count
+        // Query 1: Get total count of recent activity
         const countResult = await session.run(
-            `MATCH (p:PERSON {name: $name})-[r]->(e)
+            `MATCH (p:PERSON {name: $name})-[:${mapping.relation}]->(e${targetLabel})
              WHERE e.createdAt >= $timestamp
              RETURN count(e) as totalCount`,
             { name: personName, timestamp: thirtyDaysAgo }
@@ -174,7 +181,7 @@ export async function calculateActivity(
 
         // Query 2: Get evidence (top 10)
         const evidenceResult = await session.run(
-            `MATCH (p:PERSON {name: $name})-[r]->(e)
+            `MATCH (p:PERSON {name: $name})-[:${mapping.relation}]->(e${targetLabel})
              WHERE e.createdAt >= $timestamp
              RETURN e.name as name,
                     labels(e)[0] as type,
@@ -190,18 +197,22 @@ export async function calculateActivity(
             timestamp: record.get('timestamp') as number
         }))
 
-        const score = recentCount > 0 ? 0.3 : 1.0
+        // Bug #4 fix: scale score properly — 0 recent activity = 1.0 (high risk),
+        // 20+ activities = 0.0 (low risk). Consistent with how ownership/expertise scale.
+        // Old code: score = recentCount > 0 ? 0.3 : 1.0  (hardcoded, ignores magnitude)
+        const score = Math.max(0, 1 - Math.min(recentCount / 20, 1))
 
-        console.log(`[Activity] ${recentCount} recent activities, score: ${score}`)
+        console.log(`[Activity] ${recentCount} recent activities in 30d, score: ${score}`)
 
         return { score, count: recentCount, evidence }
     } catch (error: any) {
         console.error('[Activity] Query failed:', error.message)
-        return { score: 0.5, count: 0, evidence: [] }
+        return { score: 0, count: 0, evidence: [] }
     } finally {
         await session.close()
     }
 }
+
 
 export async function calculateDocumentation(
     personName: string,

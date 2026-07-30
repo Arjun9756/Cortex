@@ -1,9 +1,35 @@
-export function buildPlannerPrompt(query: string): string {
+/**
+ * Builds the planner prompt for the LangGraph planner node.
+ *
+ * Injects the LIVE graph schema (entity labels + relationship types) so the
+ * planner can only ever propose types that actually exist in the graph —
+ * never hallucinated ones. This mirrors the pattern already used in
+ * buildKnowledgeRiskPrompt (knowledgeRisk.prompt.ts).
+ *
+ * When schema arrays are empty (e.g. schema fetch failed), the constraint
+ * sections are omitted and the planner falls back to its own reasoning.
+ */
+export function buildPlannerPrompt(query: string, labels: string[] = [], relations: string[] = []): string {
+    const schemaSection = (labels.length > 0 || relations.length > 0)
+        ? `
+## AVAILABLE ENTITY LABELS IN THE GRAPH:
+${labels.length > 0 ? labels.join(', ') : '(none yet — graph may be empty)'}
+
+## AVAILABLE RELATIONSHIP TYPES IN THE GRAPH:
+${relations.length > 0 ? relations.join(', ') : '(none yet — graph may be empty)'}
+
+When choosing graphTarget, pick ONLY from the AVAILABLE ENTITY LABELS above (or null).
+When choosing graphRelation, pick ONLY from the AVAILABLE RELATIONSHIP TYPES above (or null).
+Do NOT invent label/relation names that are not listed.
+`.trim()
+        : ''
+
     return `
 You plan retrieval for an engineering knowledge graph. User question: "${query}"
+${schemaSection ? '\n' + schemaSection : ''}
 
 Return ONLY one JSON object:
-{"action":"retrieve","tools":["graph_search"|"vector_search"|"sql_search"],"entities":["exact names from question"],"graphAction":"describeEntity"|"countNodes"|"listNodes"|"shortestPath"|"dependencyAnalysis"|"impactAnalysis"|"expertiseAnalysis"|"repositorySummary","graphTarget":"COMMIT"|"ISSUE"|"PULL_REQUEST"|null,"graphRelation":"USES"|"DEPENDS_ON"|"AUTHORED"|null,"vectorQuery":"focused semantic sub-question or null"}
+{"action":"retrieve","tools":["graph_search"|"vector_search"|"sql_search"],"entities":["exact names from question"],"graphAction":"describeEntity"|"countNodes"|"listNodes"|"shortestPath"|"dependencyAnalysis"|"impactAnalysis"|"expertiseAnalysis"|"repositorySummary","graphTarget":"<label from schema or null>","graphRelation":"<relation from schema or null>","vectorQuery":"focused semantic sub-question or null"}
 {"action":"clarify","question":"one concise question"}
 
 Rules:

@@ -17,11 +17,15 @@ function filterRelevantFiles(files: string[]): string[] {
   return files.filter(f => !IGNORED_PATTERNS.some(pattern => pattern.test(f)));
 }
 
-type CleanGithubEvent = {
+export type CleanGithubEvent = {
   provider: "github",
   eventType: string,
   repository: string,
   author: string,
+  /** Sender email if available; falls back to commit author email for push events. */
+  authorEmail: string | null,
+  /** Role is not available from GitHub webhook payloads — always null. */
+  authorRole: null,
   timestamp: string,
   [key: string]: any
 }
@@ -30,12 +34,18 @@ function normalizePush(payload: any): CleanGithubEvent {
   const allModifiedFiles = payload.commits.flatMap((c: any) => c.modified ?? [])
   const relevantFiles = filterRelevantFiles(allModifiedFiles)
 
+  // GitHub push: pusher.email may exist; fall back to head_commit.author.email
+  const authorEmail: string | null =
+    payload.pusher?.email ?? payload.head_commit?.author?.email ?? null
+
   return {
     provider: "github",
     eventType: "push",
     repository: payload.repository.name,
     branch: payload.ref.replace("refs/heads/", ""),
     author: payload.pusher.name,
+    authorEmail,
+    authorRole: null,
     timestamp: payload.head_commit?.timestamp ?? new Date().toISOString(),
     commits: payload.commits.map((c: any) => ({
       id: c.id,
@@ -54,6 +64,8 @@ function normalizePullRequest(payload: any): CleanGithubEvent {
     action: payload.action, // opened, closed, merged, etc.
     repository: payload.repository.name,
     author: payload.pull_request.user.login,
+    authorEmail: payload.pull_request.user?.email ?? payload.sender?.email ?? null,
+    authorRole: null,
     timestamp: payload.pull_request.created_at,
     title: payload.pull_request.title,
     body: payload.pull_request.body,
@@ -68,6 +80,8 @@ function normalizeIssue(payload: any): CleanGithubEvent {
     action: payload.action, // opened, closed, labeled, etc.
     repository: payload.repository.name,
     author: payload.issue.user.login,
+    authorEmail: payload.issue.user?.email ?? payload.sender?.email ?? null,
+    authorRole: null,
     timestamp: payload.issue.created_at,
     title: payload.issue.title,
     body: payload.issue.body,
@@ -80,6 +94,8 @@ function normalizeIssueComment(payload: any): CleanGithubEvent {
     eventType: "issue_comment",
     repository: payload.repository.name,
     author: payload.comment.user.login,
+    authorEmail: payload.comment.user?.email ?? payload.sender?.email ?? null,
+    authorRole: null,
     timestamp: payload.comment.created_at,
     body: payload.comment.body,
     relatedIssue: payload.issue.title,

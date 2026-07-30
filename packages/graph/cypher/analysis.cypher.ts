@@ -114,6 +114,8 @@ export async function searchEntityCandidates(searchTerm: string, limit = 5): Pro
         const result = await session.run(`
             MATCH (entity)
             WHERE toLower(entity.name) CONTAINS toLower($searchTerm)
+               OR (entity.email IS NOT NULL AND toLower(entity.email) CONTAINS toLower($searchTerm))
+               OR (entity.externalId IS NOT NULL AND toLower(entity.externalId) CONTAINS toLower($searchTerm))
             RETURN entity.name AS name, labels(entity)[0] AS type
             ORDER BY CASE WHEN toLower(entity.name) = toLower($searchTerm) THEN 0 ELSE 1 END, entity.name
             LIMIT $limit
@@ -122,6 +124,7 @@ export async function searchEntityCandidates(searchTerm: string, limit = 5): Pro
     }
     finally { await session.close() }
 }
+
 
 export async function describeEntity(entityName: string) {
     const session = driver.session()

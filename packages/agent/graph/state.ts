@@ -110,6 +110,11 @@ export const AgentState = Annotation.Root({
     WebQueryResult:Annotation<any[]>({
         reducer:(_,next)=>next,
         default:()=>[]
+    }),
+
+    knowledgeRiskResult: Annotation<any>({
+        reducer: (_, next) => next,
+        default: () => null,
     })
 })
 

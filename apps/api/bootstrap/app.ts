@@ -9,6 +9,7 @@ import githubRouter from '../modules/github/router.js'
 import slackRouter from '../modules/slack/router.js'
 import { chatRouter } from '../modules/chat/router.js'
 import { jiraRouter } from '../modules/jira/router.js'
+import { graphRouter } from '../modules/graph/router.js'
 
 const app = express()
 
@@ -48,5 +49,6 @@ app.use('/api/github' , githubRouter)
 app.use('/api/slack' , slackRouter)
 app.use('/api/jira' , jiraRouter)
 app.use('/api/chat' , chatRouter)
+app.use('/api/graph' , graphRouter)
 
 export default app

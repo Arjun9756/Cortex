@@ -7,7 +7,7 @@ import { JOBS } from "../../../../packages/queue/jobs.js";
 export async function pushJiraEventToDatabase(parsedEvent:IJiraParsedEvent){
     try{
         const uniqueID = snowflake.nextID().toString()
-        const query = await sql `INSERT INTO events(id , provider , event_type , external_id , payload) VALUES (${uniqueID}) , ${parsedEvent.provider} , ${parsedEvent.event_type} , ${parsedEvent.external_id} , ${sql.json(parsedEvent.rawbody)} RETURNING id , created_at`
+        const query = await sql `INSERT INTO events(id , provider , event_type , external_id , payload) VALUES (${uniqueID} , ${parsedEvent.provider} , ${parsedEvent.event_type} , ${parsedEvent.external_id} , ${sql.json(parsedEvent.rawbody)}) RETURNING id , created_at`
 
 
         await cortexQueue.add(JOBS.JIRA_EVENT , {id:uniqueID} , {

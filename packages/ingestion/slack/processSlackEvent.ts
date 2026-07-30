@@ -1,9 +1,10 @@
 import sql from '../../../apps/api/config/postgres.js'
-import { CleanSlackEvent, normalizeSlackEvent } from './normalize.js'
+import { normalizeSlackEvent } from './normalize.js'
 import { extractFromEvent } from '../../extraction/extractor.js'
-import { saveExtractionToGraph } from '../../extraction/processExtraction.js'
+import { saveExtractionToGraph, PersonMetadata } from '../../extraction/processExtraction.js'
 import { upsertVector } from '../../database/vector/qdrant.repository.js'
 import { generateEmbeddings } from '../../llm/providers/gemini.js'
+import crypto from 'crypto'
 
 export async function processSlackEvent(eventID: string) {
     try {
@@ -14,20 +15,28 @@ export async function processSlackEvent(eventID: string) {
             return null
         }
 
-        // 2. Normalize The Payload
-        const normalizedPayload: CleanSlackEvent | null = normalizeSlackEvent(event.payload, event.event_type)
+        // 2. Normalize The Payload (async — resolves Slack user profile)
+        const normalizedPayload = await normalizeSlackEvent(event.payload, event.event_type)
         if (normalizedPayload == null)
             return
 
         // 3. Convert Into Text
         const cleanEventText = JSON.stringify(normalizedPayload)
 
-        // 4. Extract Enities and Relationships
+        // 4. Extract Entities and Relationships
         const { entities, newEntities, relationships, newRelations, summary } = await extractFromEvent(cleanEventText , 'slack')
 
-        await saveExtractionToGraph(entities, newEntities, relationships, newRelations)
+        // 5. Build person metadata from resolved Slack profile (includes email + role)
+        const personMetadata: PersonMetadata[] = [{
+            name: normalizedPayload.author,
+            email: normalizedPayload.authorEmail ?? null,
+            role: normalizedPayload.authorRole ?? null,
+        }]
 
-        // 6.Process The Summary To Create Vector Embeddings For Semantic Search
+        // 6. Save to Graph Database (with enriched PERSON metadata)
+        await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata)
+
+        // 7. Process The Summary To Create Vector Embeddings For Semantic Search
         const vectorEmbedding: number[] | null | undefined = await generateEmbeddings(summary)
         if (vectorEmbedding) {
             const allEntities = [...entities, ...newEntities.map((e: any) => { return { name: e.name, type: e.suggestedType } })]
@@ -38,7 +47,7 @@ export async function processSlackEvent(eventID: string) {
                 summary,
                 entities: allEntities,
                 relationships: allRelations,
-                provder:'slack',
+                provider: 'slack',
                 text:normalizedPayload.text,
                 author:normalizedPayload.author,
                 channel:normalizedPayload.channel,

@@ -2,13 +2,28 @@ import { AgentStateType } from "../state.js";
 import { groq } from "../../../llm/providers/groq.js";
 import { buildPlannerPrompt } from "../../../llm/prompts/planner.prompt.js";
 import { GRAPH_ACTIONS } from '../../../graph/graph.service.js'
+import { getGraphSchema } from '../../../database/neo4j/schemaCache.js'
 
 export async function plannerNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
     let plan: string[] = []
     try {
-        const prompt = buildPlannerPrompt(state.query)
+        // Fetch live schema so the planner only proposes types that actually exist.
+        // Falls back to empty arrays on failure — prompt gracefully omits the constraint
+        // section and planner still works (safe degradation, never crashes).
+        let labels: string[] = []
+        let relations: string[] = []
+        try {
+            const schema = await getGraphSchema()
+            labels = schema.nodeLabels
+            relations = schema.relationshipTypes
+            console.log(`[Planner] Schema injected: ${labels.length} labels, ${relations.length} relations`)
+        } catch (schemaError: any) {
+            console.warn(`[Planner] Schema fetch failed, proceeding without constraints: ${schemaError?.message}`)
+        }
+
+        const prompt = buildPlannerPrompt(state.query, labels, relations)
         const response = await groq.chat.completions.create({
-            model:'qwen/qwen3.6-27b',
+            model:'openai/gpt-oss-120b',
             messages:[{role:'user' , content:prompt}],
             temperature:0,
             response_format:{type:"json_object"},

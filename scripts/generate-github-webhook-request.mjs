@@ -17,7 +17,7 @@ import crypto from "crypto";
 
 // ---------- CONFIG ----------
 const WEBHOOK_URL = process.env.WEBHOOK_URL || "http://localhost:3000/api/github/webhook";
-const GITHUB_SECRET = "cortex_test_secret_2026";
+const GITHUB_SECRET = "cortex_test_secret_2026"; 
 const EVENT_TYPE = process.env.EVENT_TYPE || "issue_comment"; // push | pull_request | issues | issue_comment
 // -----------------------------
 
@@ -34,10 +34,12 @@ const PAYLOADS = {
             full_name: "Arjun9756/Cortex",
         },
         pusher: {
-            name: "Arjun",
+            name: "Arjun Kumar",
+            email: "arjun@company.com",
         },
         head_commit: {
             id: "0d1a26e67d8f5eaf1f6ba7c57a0d7d7c60a2d5e2",
+            author: { name: "Arjun Kumar", email: "arjun@company.com" },
             message: "Migrated Redis to Valkey because of licensing issues",
             timestamp: new Date().toISOString(),
             modified: ["packages/database/redis.ts", "README.md"],
@@ -57,10 +59,11 @@ const PAYLOADS = {
             name: "Cortex",
             full_name: "Arjun9756/Cortex",
         },
+        sender: { login: "Arjun", email: "arjun@company.com" },
         pull_request: {
             title: "Add BullMQ retry strategy for failed jobs",
             body: "This PR adds exponential backoff retries to the processing queue to handle transient Redis/Neo4j failures.",
-            user: { login: "Arjun" },
+            user: { login: "Arjun", email: "arjun@company.com" },
             created_at: new Date().toISOString(),
             merged: false,
         },
@@ -72,10 +75,11 @@ const PAYLOADS = {
             name: "Cortex",
             full_name: "Arjun9756/Cortex",
         },
+        sender: { login: "Arjun", email: "arjun@company.com" },
         issue: {
             title: "Qdrant collection dimension mismatch on restart",
             body: "If GEMINI embedding model changes output size, ensureCollection() should detect mismatch and warn instead of silently failing on upsert.",
-            user: { login: "Arjun" },
+            user: { login: "Arjun", email: "arjun@company.com" },
             created_at: new Date().toISOString(),
         },
     },
@@ -86,11 +90,12 @@ const PAYLOADS = {
             name: "Cortex",
             full_name: "Arjun9756/Cortex",
         },
+        sender: { login: "Arjun", email: "arjun@company.com" },
         issue: {
             title: "Qdrant collection dimension mismatch on restart",
         },
         comment: {
-            user: { login: "Arjun" },
+            user: { login: "Arjun", email: "arjun@company.com" },
             body: "Fixed by adding a dimension check inside ensureCollection() before createCollection().",
             created_at: new Date().toISOString(),
         },
@@ -147,7 +152,7 @@ async function sendTestWebhook() {
         console.log("Status:", res.status);
         console.log("Response:", parsed);
 
-        if (res.status === 200) {
+        if (res.status === 200 || res.status === 201) {
             console.log("\n✅ Webhook accepted. Now check:");
             console.log("   1. Postgres 'events' table for the new row");
             console.log("   2. Your worker logs (should pick up the job from the queue)");
