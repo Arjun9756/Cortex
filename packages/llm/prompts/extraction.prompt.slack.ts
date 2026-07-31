@@ -1,19 +1,6 @@
 import { ENTITY_TYPES, RELATION_TYPES } from "../../extraction/ontology.js";
 
-export function buildSlackExtractionPrompt(
-    cleanEventText: string,
-    existingEntities: { name: string; type: string }[] = [],
-    usedRelationTypes: string[] = []
-): string {
-
-    const entityContextBlock = existingEntities.length > 0
-        ? `\n## KNOWN EXISTING ENTITIES (reuse the EXACT name if the message refers to the same real-world thing):\n${existingEntities.map(e => `- ${e.name} (${e.type})`).join("\n")}\n`
-        : "";
-
-    const relationContextBlock = usedRelationTypes.length > 0
-        ? `\n## RELATION TYPES ALREADY USED IN THE GRAPH (prefer reusing these over inventing new ones):\n${usedRelationTypes.join(", ")}\n`
-        : "";
-
+export function buildSlackExtractionPrompt(cleanEventText: string): string {
     return `
 You are an information extraction engine for a software engineering knowledge graph called Cortex.
 
@@ -26,7 +13,6 @@ ${ENTITY_TYPES.join(", ")}
 
 ## RELATION TYPES (use ONLY these, unless nothing fits):
 ${RELATION_TYPES.join(", ")}
-${entityContextBlock}${relationContextBlock}
 
 ## RULES:
 

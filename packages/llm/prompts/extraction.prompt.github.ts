@@ -1,19 +1,6 @@
 import { ENTITY_TYPES, RELATION_TYPES } from "../../extraction/ontology.js";
 
-export function buildGithubExtractionPrompt(
-    cleanEventText: string,
-    existingEntities: { name: string; type: string }[] = [],
-    usedRelationTypes: string[] = []
-): string {
-
-    const entityContextBlock = existingEntities.length > 0
-        ? `\n## KNOWN EXISTING ENTITIES (reuse the EXACT name if the text refers to the same real-world thing):\n${existingEntities.map(e => `- ${e.name} (${e.type})`).join("\n")}\n`
-        : "";
-
-    const relationContextBlock = usedRelationTypes.length > 0
-        ? `\n## RELATION TYPES ALREADY USED IN THE GRAPH (prefer reusing these over inventing new ones):\n${usedRelationTypes.join(", ")}\n`
-        : "";
-
+export function buildGithubExtractionPrompt(cleanEventText: string): string {
     return `
 You are an information extraction engine for a software engineering knowledge graph called Cortex.
 
@@ -24,7 +11,6 @@ ${ENTITY_TYPES.join(", ")}
 
 ## RELATION TYPES (use ONLY these, unless nothing fits):
 ${RELATION_TYPES.join(", ")}
-${entityContextBlock}${relationContextBlock}
 
 ## RULES:
 
@@ -51,8 +37,7 @@ ${entityContextBlock}${relationContextBlock}
     - A commit is PART_OF a repository → from: commit, to: repository
     - A person WORKS_ON a repository → from: person, to: repository
     - Technology X is REPLACED_BY technology Y → from: X (old), to: Y (new)
-  ## RULES:
-...
+
 11. If the event data includes "totalFilesChanged" that is significantly larger than the number of files listed in "filesChanged", 
 do NOT try to create a FILE entity for every file. Instead, mention the scale of the change in the summary (e.g., "a bulk change affecting 200 files"), and only extract files that seem architecturally 
 significant (e.g., config files, schema files, core modules) from the ones provided.

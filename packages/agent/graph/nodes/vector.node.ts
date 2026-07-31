@@ -8,7 +8,15 @@ interface QdrantSearchResult {
         entities?: any;
         relationships?: any;
         eventID?: any;
+        eventId?: any;
         provider?: any;
+        channel?: any;
+        timestamp?: any;
+        author?: any;
+        repository?: any;
+        text?: any;
+        issueKey?: any;
+        status?: any;
     };
 }
 
@@ -22,17 +30,24 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
         }
 
         const result = await searchSimilar(embedding) as QdrantSearchResult[]
-        const vectorResult = result?.map((r)=>({
+        const vectorResult = result?.map((r) => ({
             summary: r.payload?.summary,
             entities: r.payload?.entities,
             relationships: r.payload?.relationships,
-            eventId: r.payload?.eventID,
-            provider: r.payload?.provider
+            eventId: r.payload?.eventID ?? r.payload?.eventId,
+            provider: r.payload?.provider,
+            channel: r.payload?.channel,
+            timestamp: r.payload?.timestamp,
+            author: r.payload?.author,
+            repository: r.payload?.repository,
+            text: r.payload?.text,
+            issueKey: r.payload?.issueKey,
+            status: r.payload?.status,
         }))
 
         return { vectorResult, pendingTools, executedTools }
     }
-    catch(error:any){
+    catch (error: any) {
         return {
             vectorResult: [], pendingTools, executedTools
         }

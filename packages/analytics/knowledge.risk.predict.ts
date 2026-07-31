@@ -1,4 +1,5 @@
 import { driver } from "../../apps/api/config/neo4j.js";
+import { toReadableTimestamp } from "../database/neo4j/neo4jUtils.js";
 
 export interface KnowledgeRiskScore {
     person: string
@@ -20,12 +21,12 @@ export interface KnowledgeRiskScore {
         assignedWork: number
     }
     evidence: {
-        ownership: Array<{name: string, type: string, createdAt?: number | undefined}>
-        dependency: Array<{name: string, type: string, dependsOn: string}>
-        activity: Array<{name: string, type: string, timestamp: number}>
-        documentation: Array<{name: string, type: string, issue: string}>
-        expertise: Array<{name: string, type: string, reason: string}>
-        pendingWork: Array<{name: string, type: string, status?: string | undefined}>
+        ownership: Array<{ name: string, type: string, createdAt?: string | undefined }>
+        dependency: Array<{ name: string, type: string, dependsOn: string }>
+        activity: Array<{ name: string, type: string, timestamp: string | null }>
+        documentation: Array<{ name: string, type: string, issue: string }>
+        expertise: Array<{ name: string, type: string, reason: string }>
+        pendingWork: Array<{ name: string, type: string, status?: string | undefined }>
     }
 }
 
@@ -36,7 +37,7 @@ export async function calculateOwnership(
 ): Promise<{
     score: number;
     count: number;
-    evidence: Array<{name: string, type: string, createdAt?: number | undefined}>
+    evidence: Array<{ name: string, type: string, createdAt?: string | undefined }>
 }> {
     if (!mapping.relation || !usedRelations.includes(mapping.relation)) {
         console.log(`[Ownership] Relation "${mapping.relation}" not found, returning 0`)
@@ -67,13 +68,14 @@ export async function calculateOwnership(
         )
 
         const evidence = evidenceResult.records.map(record => {
-            const createdAt = record.get('createdAt') as number | null
-            const item: {name: string, type: string, createdAt?: number | undefined} = {
+            const rawCreatedAt = record.get('createdAt')
+            const item: { name: string, type: string, createdAt?: string | undefined } = {
                 name: record.get('name') as string,
                 type: record.get('type') as string
             }
-            if (createdAt !== null && createdAt !== undefined) {
-                item.createdAt = createdAt
+            const readable = toReadableTimestamp(rawCreatedAt)
+            if (readable !== null) {
+                item.createdAt = readable
             }
             return item
         })
@@ -104,7 +106,7 @@ export async function calculateDependency(
 ): Promise<{
     score: number;
     count: number;
-    evidence: Array<{name: string, type: string, dependsOn: string}>
+    evidence: Array<{ name: string, type: string, dependsOn: string }>
 }> {
     if (!mapping.relation || !usedRelations.includes(mapping.relation)) {
         console.log(`[Dependency] Relation "${mapping.relation}" not found, returning 0`)
@@ -157,9 +159,8 @@ export async function calculateActivity(
 ): Promise<{
     score: number;
     count: number;
-    evidence: Array<{name: string, type: string, timestamp: number}>
+    evidence: Array<{ name: string, type: string, timestamp: string | null }>
 }> {
-    // Bug #3 fix: guard on schema existence, matching all other calculators
     if (!mapping.relation || !usedRelations.includes(mapping.relation)) {
         console.log(`[Activity] Relation "${mapping.relation}" not found in schema, returning 0`)
         return { score: 0, count: 0, evidence: [] }
@@ -179,7 +180,7 @@ export async function calculateActivity(
         )
         const recentCount = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0
 
-        // Query 2: Get evidence (top 10)
+        // Query 2: Get evidence (top 10) — convert Neo4j Integer timestamps to ISO strings
         const evidenceResult = await session.run(
             `MATCH (p:PERSON {name: $name})-[:${mapping.relation}]->(e${targetLabel})
              WHERE e.createdAt >= $timestamp
@@ -194,12 +195,9 @@ export async function calculateActivity(
         const evidence = evidenceResult.records.map(record => ({
             name: record.get('name') as string,
             type: record.get('type') as string,
-            timestamp: record.get('timestamp') as number
+            timestamp: toReadableTimestamp(record.get('timestamp'))
         }))
 
-        // Bug #4 fix: scale score properly — 0 recent activity = 1.0 (high risk),
-        // 20+ activities = 0.0 (low risk). Consistent with how ownership/expertise scale.
-        // Old code: score = recentCount > 0 ? 0.3 : 1.0  (hardcoded, ignores magnitude)
         const score = Math.max(0, 1 - Math.min(recentCount / 20, 1))
 
         console.log(`[Activity] ${recentCount} recent activities in 30d, score: ${score}`)
@@ -221,7 +219,7 @@ export async function calculateDocumentation(
 ): Promise<{
     score: number;
     count: number;
-    evidence: Array<{name: string, type: string, issue: string}>
+    evidence: Array<{ name: string, type: string, issue: string }>
 }> {
     if (!mapping.relation || !usedRelations.includes(mapping.relation)) {
         console.log(`[Documentation] Relation "${mapping.relation}" not found, returning neutral`)
@@ -283,7 +281,7 @@ export async function calculateExpertise(
 ): Promise<{
     score: number;
     count: number;
-    evidence: Array<{name: string, type: string, reason: string}>
+    evidence: Array<{ name: string, type: string, reason: string }>
 }> {
     if (!mapping.relation || !usedRelations.includes(mapping.relation)) {
         console.log(`[Expertise] Relation "${mapping.relation}" not found, returning 0`)
@@ -292,25 +290,26 @@ export async function calculateExpertise(
 
     const session = driver.session()
     try {
-        // Query 1: Get total count
+        // Fix 2: Aggregation-based approach avoids expensive per-entity NOT EXISTS correlated subqueries.
+        // Collects all PERSON contributors to each entity, then filters to those where only $name contributed.
         const countResult = await session.run(
             `MATCH (p:PERSON {name: $name})-[]->(e)
-             WHERE NOT EXISTS {
-                 MATCH (other:PERSON)-[]->(e)
-                 WHERE other.name <> $name
-             }
-             RETURN count(DISTINCT e) as totalCount`,
+             WITH e
+             MATCH (e)<-[]-(connectedPerson:PERSON)
+             WITH e, collect(DISTINCT connectedPerson.name) AS connectedPeople
+             WHERE size(connectedPeople) = 1 AND connectedPeople[0] = $name
+             RETURN count(e) AS totalCount`,
             { name: personName }
         )
         const uniqueCount = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0
 
-        // Query 2: Get evidence (top 10)
+        // Fix 2: Evidence query uses same aggregation pattern for consistency and performance
         const evidenceResult = await session.run(
             `MATCH (p:PERSON {name: $name})-[]->(e)
-             WHERE NOT EXISTS {
-                 MATCH (other:PERSON)-[]->(e)
-                 WHERE other.name <> $name
-             }
+             WITH e
+             MATCH (e)<-[]-(connectedPerson:PERSON)
+             WITH e, collect(DISTINCT connectedPerson.name) AS connectedPeople
+             WHERE size(connectedPeople) = 1 AND connectedPeople[0] = $name
              RETURN e.name as name,
                     labels(e)[0] as type,
                     'Only ' + $name + ' uses this' as reason
@@ -344,7 +343,7 @@ export async function calculatePendingWork(
 ): Promise<{
     score: number;
     count: number;
-    evidence: Array<{name: string, type: string, status?: string | undefined}>
+    evidence: Array<{ name: string, type: string, status?: string | undefined }>
 }> {
     if (!mapping.relation || !usedRelations.includes(mapping.relation)) {
         console.log(`[PendingWork] Relation "${mapping.relation}" not found, returning 0`)
@@ -375,7 +374,7 @@ export async function calculatePendingWork(
 
         const evidence = evidenceResult.records.map(record => {
             const status = record.get('status') as string | null
-            const item: {name: string, type: string, status?: string | undefined} = {
+            const item: { name: string, type: string, status?: string | undefined } = {
                 name: record.get('name') as string,
                 type: record.get('type') as string
             }

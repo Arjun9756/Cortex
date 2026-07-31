@@ -23,10 +23,10 @@ export async function calculateAllPersonMetrics() {
 
         for (const record of persons.records) {
             const personName = record.get("name");
-            const externalId = record.get("externalId");
+            const externalId = record.get("externalId") || personName;
 
             if (!externalId) {
-                console.warn(`[PersonMetrics] Skipping person without externalId: ${personName}`);
+                console.warn(`[PersonMetrics] Skipping person without name/externalId`);
                 continue;
             }
 

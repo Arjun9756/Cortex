@@ -10,6 +10,7 @@ import slackRouter from '../modules/slack/router.js'
 import { chatRouter } from '../modules/chat/router.js'
 import { jiraRouter } from '../modules/jira/router.js'
 import { graphRouter } from '../modules/graph/router.js'
+import { dashboardRouter } from '../modules/dashboard/router.js'
 
 const app = express()
 
@@ -50,5 +51,6 @@ app.use('/api/slack' , slackRouter)
 app.use('/api/jira' , jiraRouter)
 app.use('/api/chat' , chatRouter)
 app.use('/api/graph' , graphRouter)
+app.use('/api/dashboard', dashboardRouter)
 
 export default app

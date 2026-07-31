@@ -11,7 +11,14 @@ export type GraphAction = typeof GRAPH_ACTIONS[number]
 export async function resolveGraphEntity(name: string) {
     const candidates = await searchEntityCandidates(name)
     const exact = candidates.filter((candidate: EntityCandidate) => candidate.name.toLowerCase() === name.toLowerCase())
-    return { selected: exact.length === 1 ? exact[0] : undefined, candidates }
+    if (exact.length === 1) {
+        return { selected: exact[0], candidates }
+    }
+    // If only 1 candidate matches (e.g. "arjun" -> "Arjun Kumar"), auto-select it instead of asking clarification
+    if (candidates.length === 1) {
+        return { selected: candidates[0], candidates }
+    }
+    return { selected: undefined, candidates }
 }
 
 export async function executeGraphAction(action: GraphAction, entities: string[], target = '', relation = '') {

@@ -29,10 +29,11 @@ export async function handleChatQuery(req: Request, res: Response) {
             sources: result.vectorResult,
             graphContext: result.graphResult,
             sqlContext: result.sqlResult,
+            knowledgeRiskResult: result.knowledgeRiskResult,
         })
     }
     catch (error: any) {
-        console.warn(`Error in Handle Chat Query ${error.message}`)
+        console.warn(`Error in Handle Chat Query: ${error.message}`)
         return res.status(500).json({ error: "Internal Server Error of Cortex" });
     }
 }

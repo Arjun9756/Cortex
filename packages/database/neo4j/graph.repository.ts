@@ -1,4 +1,4 @@
-import {driver} from '../../../apps/api/config/neo4j.js'
+import { driver } from '../../../apps/api/config/neo4j.js'
 import neo4j from 'neo4j-driver'
 
 /**
@@ -54,32 +54,69 @@ export async function upsertEntity(
         const extraSetClause = setParts.length > 0 ? `, ${setParts.join(', ')}` : ''
 
         let result;
-        if (type === 'PERSON' && extraProperties?.email) {
-            params.email = extraProperties.email
-            // Match existing PERSON node by email OR name (case-insensitive)
-            const existingRes = await session.run(`
-                MATCH (e:PERSON)
-                WHERE (e.email IS NOT NULL AND e.email = $email)
-                   OR toLower(e.name) = toLower($name)
-                RETURN elementId(e) AS id
-                LIMIT 1
-            `, params)
+        if (type === 'PERSON') {
+            let matchedId: string | null = null;
 
-            if (existingRes.records.length > 0) {
-                const id = existingRes.records[0]?.get('id')
-                params.id = id
+            // Step 1: Match by Email if present
+            if (extraProperties?.email) {
+                params.email = extraProperties.email;
+                const emailMatch = await session.run(`
+                    MATCH (e:PERSON)
+                    WHERE e.email IS NOT NULL AND e.email = $email
+                    RETURN elementId(e) AS id LIMIT 1
+                `, params);
+                if (emailMatch.records.length > 0) {
+                    matchedId = emailMatch.records[0].get('id');
+                }
+            }
+
+            // Step 2: Match by externalId if present and no email match
+            if (!matchedId && extraProperties?.externalId) {
+                params.externalId = extraProperties.externalId;
+                const extMatch = await session.run(`
+                    MATCH (e:PERSON)
+                    WHERE e.externalId IS NOT NULL AND e.externalId = $externalId
+                    RETURN elementId(e) AS id LIMIT 1
+                `, params);
+                if (extMatch.records.length > 0) {
+                    matchedId = extMatch.records[0].get('id');
+                }
+            }
+
+            // Step 3: Match by exact case-insensitive Name if still no match
+            if (!matchedId) {
+                const nameMatch = await session.run(`
+                    MATCH (e:PERSON)
+                    WHERE toLower(e.name) = toLower($name)
+                    RETURN elementId(e) AS id LIMIT 1
+                `, params);
+                if (nameMatch.records.length > 0) {
+                    matchedId = nameMatch.records[0].get('id');
+                }
+            }
+
+            // Update existing or Merge new
+            if (matchedId) {
+                params.id = matchedId;
                 result = await session.run(`
                     MATCH (e:PERSON) WHERE elementId(e) = $id
                     SET e.name = $name, e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
-                `, params)
-            } else {
+                `, params);
+            } else if (extraProperties?.email) {
                 result = await session.run(`
                     MERGE (e:PERSON {email: $email})
                     ON CREATE SET e.name = $name, e.createdAt = timestamp()${extraSetClause}
                     ON MATCH SET e.name = $name, e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
-                `, params)
+                `, params);
+            } else {
+                result = await session.run(`
+                    MERGE (e:PERSON {name: $name})
+                    ON CREATE SET e.createdAt = timestamp()${extraSetClause}
+                    ON MATCH SET e.updatedAt = timestamp()${extraSetClause}
+                    RETURN elementId(e) AS id
+                `, params);
             }
         } else {
             result = await session.run(`
@@ -100,72 +137,72 @@ export async function upsertEntity(
     }
 }
 
-export async function upsertRelation(fromID:string , toID:string , type:string , evidence?:string){
+export async function upsertRelation(fromID: string, toID: string, type: string, evidence?: string) {
     const session = driver.session()
     console.log(`Upsert Relation ${evidence}`)
-    try{
+    try {
         const result = await session.run(`
             MATCH (a) where elementId(a) = $fromID
             MATCH(b) where elementId(b) = $toID
             MERGE (a)-[r:${type}]->(b)
             ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence
             ON MATCH SET r.updatedAt = timestamp() , r.evidence = $evidence 
-        ` , {fromID , toID , evidence:evidence ?? null})
+        ` , { fromID, toID, evidence: evidence ?? null })
     }
-    catch(error:any){
+    catch (error: any) {
         console.log(`Error While Upsert of Relation in Graph ${error?.message}`)
     }
-    finally{
+    finally {
         await session.close()
     }
 }
 
-export async function getUsedRelationship(){
+export async function getUsedRelationship() {
     const session = driver.session()
-    try{
+    try {
         const result = await session.run(`CALL db.relationshipTypes()`)
-        return result.records.map((r)=>{
+        return result.records.map((r) => {
             return r.get('relationshipType')
         })
     }
-    catch(error:any){
+    catch (error: any) {
         console.log(`Error While Fetching Relationships From Neo4j ${error}`)
     }
-    finally{
+    finally {
         await session.close()
     }
 }
 
-export async function getExistingEntityName(limit:number=50){
+export async function getExistingEntityName(limit: number = 50) {
     const session = driver.session()
-    try{
+    try {
         const result = await session.run(`
             MATCH (e) RETURN e.name as name , labels(e)[0] as type LIMIT $limit
-        ` , {limit:neo4j.int(limit)})
+        ` , { limit: neo4j.int(limit) })
 
-        return result.records.map((e)=>{
-            return {name:e.get('name') , type:e.get('type')}
+        return result.records.map((e) => {
+            return { name: e.get('name'), type: e.get('type') }
         })
     }
-    catch(error:any){
+    catch (error: any) {
         console.log(`Error While Fetching Relationships From Neo4j ${error.message}`)
     }
-    finally{
+    finally {
         await session.close()
     }
 }
 
-export async function getUsedEntityLabels():Promise<string[]>{
+export async function getUsedEntityLabels(): Promise<string[]> {
     const session = driver.session()
-    try{
+    try {
         const result = await session.run(`CALL db.labels()`)
-        return result.records.map((item)=> item.get('label'))
+        return result.records.map((item) => item.get('label'))
     }
-    catch(error:any){
+    catch (error: any) {
         console.log("Error While Fetching The Labels From Graph DB")
         return []
     }
-    finally{
+    finally {
         await session.close()
     }
 }
@@ -230,8 +267,8 @@ export interface GraphSubgraph {
 }
 
 export interface GraphSubgraphFilters {
-    repository?: string
-    personExternalId?: string
+    repository?: string | undefined
+    personExternalId?: string | undefined
 }
 
 /**

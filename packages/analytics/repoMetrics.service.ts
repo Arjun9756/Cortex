@@ -34,10 +34,10 @@ export async function calculateAllRepoMetrics() {
 
         for (const record of repos.records) {
             const repoName = record.get("name");
-            const externalId = record.get("externalId");
+            const externalId = record.get("externalId") || repoName;
 
             if (!externalId) {
-                console.warn(`[RepoMetrics] Skipping repo without externalId: ${repoName}`);
+                console.warn(`[RepoMetrics] Skipping repo without name/externalId`);
                 continue;
             }
 

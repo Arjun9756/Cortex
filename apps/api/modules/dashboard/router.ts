@@ -1,12 +1,20 @@
 import { Router } from "express";
-import { getDashboardOverview , getPeoplePage , getBusFactorPage , getTechnologiesPage
-    , getTimeline
+import {
+    getDashboardOverview,
+    getPeoplePage,
+    getBusFactorPage,
+    getTechnologiesPage,
+    getTimeline,
+    getFindings,
+    simulateDeparture,
 } from "./controller.js";
 
-export const router = Router()
+export const dashboardRouter = Router()
 
-router.get("/overview", getDashboardOverview);
-router.get("/people", getPeoplePage);
-router.get("/bus-factor", getBusFactorPage);
-router.get("/technologies", getTechnologiesPage);
-router.get("/timeline", getTimeline)
+dashboardRouter.get("/overview", getDashboardOverview);
+dashboardRouter.get("/people", getPeoplePage);
+dashboardRouter.get("/bus-factor", getBusFactorPage);
+dashboardRouter.get("/technologies", getTechnologiesPage);
+dashboardRouter.get("/timeline", getTimeline);
+dashboardRouter.get("/findings", getFindings);
+dashboardRouter.get("/people/:externalId/simulate-departure", simulateDeparture);
