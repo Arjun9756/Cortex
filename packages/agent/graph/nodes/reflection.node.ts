@@ -3,6 +3,11 @@ import { createGroqChatCompletion } from "../../../llm/providers/groq.js";
 import { buildReflectionPrompt } from "../../../llm/prompts/reflectionplanner.prompt.js";
 
 export async function reflectionNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
+    const passCount = state.iterationCount + 1
+    const tStart = Date.now()
+    const startIso = new Date().toISOString()
+    console.log(`[Timing] [reflectionNode] (Pass #${passCount}) Started at ${startIso}`)
+
     try {
         // If there are still pending tools queued up from the planner, continue executing them
         if (state.pendingTools.length > 0) {
@@ -77,5 +82,8 @@ export async function reflectionNode(state: AgentStateType): Promise<Partial<Age
     catch (error: any) {
         console.log(`Error in Reflection Node: ${error?.message}`);
         return { needMoreSearch: false, iterationCount: state.iterationCount + 1 };
+    } finally {
+        const elapsed = Date.now() - tStart
+        console.log(`[Timing] [reflectionNode] (Pass #${passCount}) Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`)
     }
 }

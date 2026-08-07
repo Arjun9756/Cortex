@@ -133,7 +133,8 @@ export const AIChatPage: React.FC = () => {
           const isUser = msg.sender === 'user';
           const isEvidenceOpen = expandedEvidence[msg.id] !== false; // Open by default if risk result present
           const res = msg.response;
-          const kr = res?.knowledgeRiskResult;
+          const krRaw = res?.knowledgeRiskResult;
+          const krList = Array.isArray(krRaw) ? krRaw : (krRaw ? [krRaw] : []);
 
           return (
             <div
@@ -167,77 +168,88 @@ export const AIChatPage: React.FC = () => {
                 {msg.text}
               </div>
 
-              {/* Dedicated Knowledge Loss Risk Visual Breakdown Card */}
-              {!isUser && kr && (
-                <div className="mt-4 w-full bg-[#0d1322] border border-indigo-500/30 rounded-2xl p-6 shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
-                        <ShieldAlert className="h-6 w-6 text-rose-400" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-white text-base">Knowledge Loss Risk Model — {kr.person}</h4>
-                        <p className="text-xs text-slate-400">Calculated Departure Impact Breakdown & Evidence</p>
-                      </div>
-                    </div>
+              {/* Dedicated Knowledge Loss Risk Visual Breakdown Cards */}
+              {!isUser && krList.length > 0 && (
+                <div className="mt-4 w-full space-y-4">
+                  {krList.map((kr, krIdx) => {
+                    if (!kr || !kr.breakdown) return null;
+                    const b = kr.breakdown || {};
+                    const details = kr.details || {};
+                    const evidence = kr.evidence || {};
 
-                    <div className="text-right">
-                      <span className="text-2xl font-extrabold text-rose-400 block">
-                        {Math.round(kr.totalRisk * 100)}%
-                      </span>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Risk Score</span>
-                    </div>
-                  </div>
-
-                  {/* Risk Components Percentage Bars Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                      { label: 'Ownership Concentration', val: Math.round(kr.breakdown.ownership * 10), icon: GitCommit, desc: `${kr.details.ownedItems} owned items` },
-                      { label: 'Recent Activity', val: Math.round(kr.breakdown.activity * 10), icon: Clock, desc: `${kr.details.recentActivity} 30d events` },
-                      { label: 'Expertise / Unique Skills', val: Math.round(kr.breakdown.expertise * 10), icon: Award, desc: `${kr.details.uniqueSkills} unique skills` },
-                      { label: 'Critical Dependencies', val: Math.round(kr.breakdown.dependency * 10), icon: Layers, desc: `${kr.details.criticalDependencies} dependents` },
-                    ].map((item, idx) => (
-                      <div key={idx} className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-medium text-slate-200 flex items-center gap-1.5">
-                            <item.icon className="h-3.5 w-3.5 text-indigo-400" />
-                            {item.label}
-                          </span>
-                          <span className="font-bold text-indigo-300">{item.val}%</span>
-                        </div>
-                        <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
-                          <div
-                            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${Math.max(4, item.val)}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-[10px] text-slate-500 block">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Concrete Evidence List */}
-                  {kr.evidence.expertise && kr.evidence.expertise.length > 0 && (
-                    <div className="space-y-2 pt-2">
-                      <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
-                        <UserCheck className="h-3.5 w-3.5 text-emerald-400" />
-                        <span>Concrete Work Items & Single-Contributor Evidence</span>
-                      </h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {kr.evidence.expertise.map((ev, idx) => (
-                          <div key={idx} className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800/80 text-xs flex items-center justify-between">
-                            <div>
-                              <span className="text-indigo-300 font-semibold">{ev.name}</span>
-                              <span className="text-[10px] text-slate-500 block">{ev.reason}</span>
+                    return (
+                      <div key={krIdx} className="w-full bg-[#0d1322] border border-indigo-500/30 rounded-2xl p-6 shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                              <ShieldAlert className="h-6 w-6 text-rose-400" />
                             </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800 uppercase">
-                              {ev.type}
-                            </span>
+                            <div>
+                              <h4 className="font-bold text-white text-base">Knowledge Loss Risk Model — {kr.person}</h4>
+                              <p className="text-xs text-slate-400">Calculated Departure Impact Breakdown & Evidence</p>
+                            </div>
                           </div>
-                        ))}
+
+                          <div className="text-right">
+                            <span className="text-2xl font-extrabold text-rose-400 block">
+                              {Math.round((kr.totalRisk ?? 0) * 100)}%
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Risk Score</span>
+                          </div>
+                        </div>
+
+                        {/* Risk Components Percentage Bars Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {[
+                            { label: 'Ownership Concentration', val: Math.round((b.ownership ?? 0) * 10), icon: GitCommit, desc: `${details.ownedItems ?? 0} owned items` },
+                            { label: 'Recent Activity', val: Math.round((b.activity ?? 0) * 10), icon: Clock, desc: `${details.recentActivity ?? 0} 30d events` },
+                            { label: 'Expertise / Unique Skills', val: Math.round((b.expertise ?? 0) * 10), icon: Award, desc: `${details.uniqueSkills ?? 0} unique skills` },
+                            { label: 'Critical Dependencies', val: Math.round((b.dependency ?? 0) * 10), icon: Layers, desc: `${details.criticalDependencies ?? 0} dependents` },
+                          ].map((item, idx) => (
+                            <div key={idx} className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="font-medium text-slate-200 flex items-center gap-1.5">
+                                  <item.icon className="h-3.5 w-3.5 text-indigo-400" />
+                                  {item.label}
+                                </span>
+                                <span className="font-bold text-indigo-300">{item.val}%</span>
+                              </div>
+                              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.max(4, item.val)}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-[10px] text-slate-500 block">{item.desc}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Concrete Evidence List */}
+                        {evidence.expertise && evidence.expertise.length > 0 && (
+                          <div className="space-y-2 pt-2">
+                            <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+                              <UserCheck className="h-3.5 w-3.5 text-emerald-400" />
+                              <span>Concrete Work Items & Single-Contributor Evidence</span>
+                            </h5>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {evidence.expertise.map((ev: any, idx: number) => (
+                                <div key={idx} className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800/80 text-xs flex items-center justify-between">
+                                  <div>
+                                    <span className="text-indigo-300 font-semibold">{ev.name}</span>
+                                    <span className="text-[10px] text-slate-500 block">{ev.reason}</span>
+                                  </div>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800 uppercase">
+                                    {ev.type}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               )}
 

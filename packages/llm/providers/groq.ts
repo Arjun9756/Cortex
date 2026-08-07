@@ -41,6 +41,10 @@ export function stripThinkingTags(text: string): string {
  */
 export async function createGroqChatCompletion(params: Record<string, any>, modelTo?: string) {
     const modelToUse = modelTo || params.model || PRIMARY_MODEL
+    const tStart = Date.now()
+    const startIso = new Date().toISOString()
+    console.log(`[Groq:Timing] Request to model (${modelToUse}) started at ${startIso}`)
+
     try {
         const response = await groq.chat.completions.create({
             ...params,
@@ -48,11 +52,17 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
             reasoning_format: "parsed"
         } as any)
 
+        const elapsed = Date.now() - tStart
+        console.log(`[Groq:Timing] Request to model (${modelToUse}) completed in ${elapsed}ms (ended at ${new Date().toISOString()})`)
+
         if (response?.choices?.[0]?.message?.content) {
             response.choices[0].message.content = stripThinkingTags(response.choices[0].message.content)
         }
         return response
     } catch (error: any) {
+        const elapsed = Date.now() - tStart
+        console.log(`[Groq:Timing] Request to model (${modelToUse}) failed after ${elapsed}ms: ${error?.message}`)
+
         const isRateLimit = error?.status === 429 ||
             error?.message?.includes('429') ||
             error?.message?.includes('rate_limit') ||
@@ -60,17 +70,22 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
 
         if (isRateLimit && modelToUse !== FALLBACK_MODEL) {
             console.warn(`[Groq] Model (${modelToUse}) rate limited. Failing over to fallback model (${FALLBACK_MODEL})...`)
+            const fbStart = Date.now()
             try {
                 const fallbackResponse = await groq.chat.completions.create({
                     ...params,
                     model: FALLBACK_MODEL,
                 } as any)
+                const fbElapsed = Date.now() - fbStart
+                console.log(`[Groq:Timing] Fallback request (${FALLBACK_MODEL}) completed in ${fbElapsed}ms (ended at ${new Date().toISOString()})`)
+
                 if (fallbackResponse?.choices?.[0]?.message?.content) {
                     fallbackResponse.choices[0].message.content = stripThinkingTags(fallbackResponse.choices[0].message.content)
                 }
                 return fallbackResponse
             } catch (fallbackError: any) {
-                console.error(`[Groq] Fallback model (${FALLBACK_MODEL}) also failed:`, fallbackError.message)
+                const fbElapsed = Date.now() - fbStart
+                console.error(`[Groq:Timing] Fallback model (${FALLBACK_MODEL}) failed after ${fbElapsed}ms:`, fallbackError.message)
                 throw fallbackError
             }
         }

@@ -61,6 +61,10 @@ export async function runSafeQuery(queryType: string, params: any) {
 }
 
 export async function sqlNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
+    const tStart = Date.now()
+    const startIso = new Date().toISOString()
+    console.log(`[Timing] [sqlNode] Started at ${startIso}`)
+
     const pendingTools = state.pendingTools.filter((tool) => tool !== 'sql_search');
     const executedTools = [...new Set([...state.executedTools, 'sql_search'])];
     try {
@@ -99,5 +103,8 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
     }
     catch (error: any) {
         return { sqlResult: [], pendingTools, executedTools };
+    } finally {
+        const elapsed = Date.now() - tStart
+        console.log(`[Timing] [sqlNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`)
     }
 }

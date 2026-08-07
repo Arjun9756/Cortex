@@ -233,12 +233,36 @@ export async function searchEntitiesByProperty(
             LIMIT $limit
         `, { searchTerm, limit: neo4j.int(limit) })
 
-        return result.records.map((r) => ({
-            name: r.get('name') as string,
-            type: r.get('type') as string,
-            email: r.get('email') as string | null,
-            externalId: r.get('externalId') as string | null,
-        }))
+        if (result.records.length > 0) {
+            return result.records.map((r) => ({
+                name: r.get('name') as string,
+                type: r.get('type') as string,
+                email: r.get('email') as string | null,
+                externalId: r.get('externalId') as string | null,
+            }))
+        }
+
+        // Fallback: Token-based matching for multi-word queries with typos (e.g. "Rohan Verna" -> matches "Rohan Verma")
+        const tokens = searchTerm.trim().split(/\s+/).filter(t => t.length >= 3).map(t => t.toLowerCase())
+        if (tokens.length > 0) {
+            const tokenResult = await session.run(`
+                MATCH (n)
+                WHERE ANY(token IN $tokens WHERE toLower(n.name) CONTAINS token OR (n.email IS NOT NULL AND toLower(n.email) CONTAINS token))
+                RETURN n.name AS name, labels(n)[0] AS type,
+                       n.email AS email, n.externalId AS externalId
+                ORDER BY n.name
+                LIMIT $limit
+            `, { tokens, limit: neo4j.int(limit) })
+
+            return tokenResult.records.map((r) => ({
+                name: r.get('name') as string,
+                type: r.get('type') as string,
+                email: r.get('email') as string | null,
+                externalId: r.get('externalId') as string | null,
+            }))
+        }
+
+        return []
     } catch (error: any) {
         console.log(`Error While Searching Entities By Property: ${error?.message}`)
         return []

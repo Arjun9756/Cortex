@@ -35,9 +35,12 @@ EXAMPLES:
 - "what is the mail and role of arjun" -> graph_search(entities: ["arjun"], action: "describeEntity")
 - "Arjun Kumar leaves the cortex" or "What happens if Arjun leaves?" -> knowledge_risk(personName: "Arjun Kumar")
 - "what is the knowledge risk for arjun and how many commits did he make" -> knowledge_risk(personName: "arjun"), graph_search(entities: ["arjun"], action: "countNodes", target: "COMMIT", relation: "AUTHORED")
+- "how many total Priya are there" or "how many people named Priya" -> graph_search(entities: ["Priya"], action: "countByLabel", target: "PERSON")
+- "how many repositories exist" -> graph_search(entities: [""], action: "countByLabel", target: "REPOSITORY")
+NOTE: countNodes counts relationships OF a specific entity (e.g. Arjun's commits). countByLabel counts how many entities MATCH a name pattern globally (e.g. all Priyas).
 
 Tool Decision Matrix:
-1. graph_search: For named entities, emails, mail, roles, titles, counts, lists ("kis kisme use", "what uses X"), dependencies, or relationships.
+1. graph_search: For named entities, emails, mail, roles, titles, per-entity counts (countNodes), global entity counts (countByLabel), lists ("kis kisme use", "what uses X"), dependencies, or relationships.
 2. vector_search: For explanations, architectural decisions, discussions, or "why" questions ("why was X replaced").
 3. knowledge_risk: For knowledge risk scores, departure impact, or single point of failure risk ("X leaves", "knowledge risk").
 4. sql_search: For raw database event IDs, provider counts, or event log filters.

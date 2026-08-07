@@ -311,17 +311,17 @@ export const PeoplePage: React.FC = () => {
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Risk Breakdown</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                    <BreakdownBar label="Ownership" value={simulation.breakdown.ownership} />
-                    <BreakdownBar label="Dependency" value={simulation.breakdown.dependency} />
-                    <BreakdownBar label="Activity" value={simulation.breakdown.activity} />
-                    <BreakdownBar label="Documentation" value={simulation.breakdown.documentation} />
-                    <BreakdownBar label="Expertise" value={simulation.breakdown.expertise} />
-                    <BreakdownBar label="Pending Work" value={simulation.breakdown.pendingWork} />
+                    <BreakdownBar label="Ownership" value={simulation.breakdown?.ownership ?? 0} />
+                    <BreakdownBar label="Dependency" value={simulation.breakdown?.dependency ?? 0} />
+                    <BreakdownBar label="Activity" value={simulation.breakdown?.activity ?? 0} />
+                    <BreakdownBar label="Documentation" value={simulation.breakdown?.documentation ?? 0} />
+                    <BreakdownBar label="Expertise" value={simulation.breakdown?.expertise ?? 0} />
+                    <BreakdownBar label="Pending Work" value={simulation.breakdown?.pendingWork ?? 0} />
                   </div>
                 </div>
 
                 {/* Affected Repos */}
-                {simulation.affectedRepos.length > 0 && (
+                {(simulation.affectedRepos?.length ?? 0) > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                       <FolderGit2 className="h-3.5 w-3.5 text-cyan-400" />
@@ -338,7 +338,7 @@ export const PeoplePage: React.FC = () => {
                 )}
 
                 {/* Affected Technologies */}
-                {simulation.affectedTechnologies.length > 0 && (
+                {(simulation.affectedTechnologies?.length ?? 0) > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                       <Cpu className="h-3.5 w-3.5 text-purple-400" />
@@ -356,7 +356,7 @@ export const PeoplePage: React.FC = () => {
                 )}
 
                 {/* Owned Items Evidence */}
-                {simulation.evidence.ownership.length > 0 && (
+                {(simulation.evidence?.ownership?.length ?? 0) > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                       <AlertCircle className="h-3.5 w-3.5 text-amber-400" />

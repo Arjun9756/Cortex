@@ -21,6 +21,10 @@ interface QdrantSearchResult {
 }
 
 export async function vectorNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
+    const tStart = Date.now()
+    const startIso = new Date().toISOString()
+    console.log(`[Timing] [vectorNode] Started at ${startIso}`)
+
     const pendingTools = state.pendingTools.filter((tool) => tool !== 'vector_search')
     const executedTools = [...new Set([...state.executedTools, 'vector_search'])]
     try {
@@ -51,5 +55,8 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
         return {
             vectorResult: [], pendingTools, executedTools
         }
+    } finally {
+        const elapsed = Date.now() - tStart
+        console.log(`[Timing] [vectorNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`)
     }
 }

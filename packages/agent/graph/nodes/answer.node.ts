@@ -3,6 +3,10 @@ import { createGroqChatCompletion, stripThinkingTags } from "../../../llm/provid
 import { buildAnswerPrompt } from "../../../llm/prompts/answer.prompt.js";
 
 export async function answerNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
+    const tStart = Date.now()
+    const startIso = new Date().toISOString()
+    console.log(`[Timing] [answerNode] Started at ${startIso} | Final Reflection Passes: ${state.iterationCount}`)
+
     try {
         const prompt = buildAnswerPrompt(state.query, state.evidence);
 
@@ -38,5 +42,8 @@ export async function answerNode(state: AgentStateType): Promise<Partial<AgentSt
     catch (error: any) {
         console.log(`Error While Generating Answer in AnswerNode: ${error?.message}`);
         return { answer: "No answer generated." };
+    } finally {
+        const elapsed = Date.now() - tStart
+        console.log(`[Timing] [answerNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`)
     }
 }

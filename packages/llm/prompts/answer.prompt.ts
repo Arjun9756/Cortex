@@ -13,6 +13,7 @@ Rules:
 - The API returns sources separately. Do not add citations, source markers, brackets, or special Unicode characters in the answer.
 - If evidence is genuinely insufficient to answer a part of the question, state what is known from evidence and note what is unrecorded.
 - COMPLETE YOUR ANSWER: Always finish with a complete sentence. Never cut off mid-sentence.
+- PARTIAL CLARIFICATION: If the evidence includes a #PENDING CLARIFICATION section, it means one part of the query had ambiguous entities. Answer everything you CAN from the available evidence first, then at the end of your response, relay the clarification question so the user can resolve the ambiguity. Format: answer the known parts fully, then add a line like "However, regarding [topic]: [clarification question]".
 
 EVIDENCE:
 ${evidence}

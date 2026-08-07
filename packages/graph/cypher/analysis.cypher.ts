@@ -1,7 +1,13 @@
 import { driver } from '../../../apps/api/config/neo4j.js'
 import neo4j from 'neo4j-driver'
 
-export type EntityCandidate = { name: string; type: string }
+export type EntityCandidate = {
+    name: string
+    type: string
+    email?: string | null
+    role?: string | null
+    externalId?: string | null
+}
 
 export async function countNodes(entityName: string, targetLabel: string, relation = 'AUTHORED', scopeName = '') {
     const session = driver.session()
@@ -116,11 +122,44 @@ export async function searchEntityCandidates(searchTerm: string, limit = 5): Pro
             WHERE toLower(entity.name) CONTAINS toLower($searchTerm)
                OR (entity.email IS NOT NULL AND toLower(entity.email) CONTAINS toLower($searchTerm))
                OR (entity.externalId IS NOT NULL AND toLower(entity.externalId) CONTAINS toLower($searchTerm))
-            RETURN entity.name AS name, labels(entity)[0] AS type
+            RETURN entity.name AS name, labels(entity)[0] AS type,
+                   entity.email AS email, entity.role AS role, entity.externalId AS externalId
             ORDER BY CASE WHEN toLower(entity.name) = toLower($searchTerm) THEN 0 ELSE 1 END, entity.name
             LIMIT $limit
         `, { searchTerm, limit: neo4j.int(limit) })
-        return result.records.map((record) => ({ name: record.get('name'), type: record.get('type') }))
+
+        if (result.records.length > 0) {
+            return result.records.map((record) => ({
+                name: record.get('name'),
+                type: record.get('type'),
+                email: record.get('email') ?? undefined,
+                role: record.get('role') ?? undefined,
+                externalId: record.get('externalId') ?? undefined,
+            }))
+        }
+
+        // Fallback: Token-based match for typos in surname or multi-word terms (e.g. "Rohan Verna" -> matches "Rohan Verma")
+        const tokens = searchTerm.trim().split(/\s+/).filter(t => t.length >= 3).map(t => t.toLowerCase())
+        if (tokens.length > 0) {
+            const tokenResult = await session.run(`
+                MATCH (entity)
+                WHERE ANY(token IN $tokens WHERE toLower(entity.name) CONTAINS token OR (entity.email IS NOT NULL AND toLower(entity.email) CONTAINS token))
+                RETURN entity.name AS name, labels(entity)[0] AS type,
+                       entity.email AS email, entity.role AS role, entity.externalId AS externalId
+                ORDER BY entity.name
+                LIMIT $limit
+            `, { tokens, limit: neo4j.int(limit) })
+
+            return tokenResult.records.map((record) => ({
+                name: record.get('name'),
+                type: record.get('type'),
+                email: record.get('email') ?? undefined,
+                role: record.get('role') ?? undefined,
+                externalId: record.get('externalId') ?? undefined,
+            }))
+        }
+
+        return []
     }
     finally { await session.close() }
 }
@@ -141,6 +180,51 @@ export async function describeEntity(entityName: string) {
             name: record.get('name'), type: record.get('type'), properties: record.get('properties'),
             connections: record.get('connections').filter((item: { connectedTo?: string }) => item.connectedTo),
         }
+    }
+    finally { await session.close() }
+}
+
+// ─── Global Label Count ───────────────────────────────────────────────────────
+
+/**
+ * Allowlist of node labels safe for Cypher interpolation.
+ * Cypher does not support parameterized labels, so we validate against this
+ * list before string interpolation to prevent injection.
+ */
+const ALLOWED_LABELS = ['PERSON', 'REPOSITORY', 'COMMIT', 'PULL_REQUEST', 'ISSUE'] as const
+
+/**
+ * Count how many nodes match a name pattern across a label (or the entire graph).
+ *
+ * Examples:
+ *   countByLabel("Priya", "PERSON")   → how many PERSON nodes contain "Priya"
+ *   countByLabel("",      "REPOSITORY") → total REPOSITORY nodes
+ *   countByLabel("Redis", "")         → any node whose name contains "Redis"
+ */
+export async function countByLabel(searchTerm: string, label: string) {
+    const session = driver.session()
+    try {
+        const normalizedLabel = label?.toUpperCase().trim() || ''
+        if (normalizedLabel && !(ALLOWED_LABELS as readonly string[]).includes(normalizedLabel)) {
+            return { searchTerm: searchTerm || '*', label: normalizedLabel || 'ANY', total: 0, error: `Unknown label: ${label}. Allowed: ${ALLOWED_LABELS.join(', ')}` }
+        }
+
+        let cypher: string
+        if (normalizedLabel && searchTerm) {
+            cypher = `MATCH (n:${normalizedLabel}) WHERE toLower(n.name) CONTAINS toLower($searchTerm) RETURN count(n) AS total, collect(n.name)[0..50] AS names`
+        } else if (normalizedLabel) {
+            cypher = `MATCH (n:${normalizedLabel}) RETURN count(n) AS total, collect(n.name)[0..50] AS names`
+        } else if (searchTerm) {
+            cypher = `MATCH (n) WHERE toLower(n.name) CONTAINS toLower($searchTerm) RETURN count(n) AS total, collect(n.name)[0..50] AS names`
+        } else {
+            cypher = `MATCH (n) RETURN count(n) AS total, collect(n.name)[0..50] AS names`
+        }
+
+        const result = await session.run(cypher, { searchTerm: searchTerm || '' })
+        const record = result.records[0]
+        const total = neo4j.integer.toNumber(record?.get('total') ?? neo4j.int(0))
+        const names = (record?.get('names') ?? []).filter((n: any) => typeof n === 'string' && n.trim())
+        return { searchTerm: searchTerm || '*', label: normalizedLabel || 'ANY', total, names }
     }
     finally { await session.close() }
 }

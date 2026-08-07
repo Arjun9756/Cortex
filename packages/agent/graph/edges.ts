@@ -8,7 +8,16 @@ export function shouldContinue(state: AgentStateType): "vector" | "answer" {
 }
 
 export function routeNextTool(state: AgentStateType): 'vectorNode' | 'graphNode' | 'sqlNode' | 'knowledgeRiskNode' | 'evidenceNode' | 'clarifyNode' {
-    if (state.clarificationQuestion) return 'clarifyNode';
+    if (state.clarificationQuestion) {
+        // FIX 3: If other tools already produced evidence, skip clarifyNode and proceed
+        // to evidenceNode so partial results reach the user alongside the clarification
+        const hasPartialEvidence =
+            (state.vectorResult && state.vectorResult.length > 0) ||
+            (state.sqlResult && state.sqlResult.length > 0) ||
+            state.knowledgeRiskResult;
+        if (!hasPartialEvidence) return 'clarifyNode';
+        // Fall through — clarification will be included in evidence by evidenceNode
+    }
     const nextTool = state.pendingTools[0];
     if (nextTool === 'vector_search') return 'vectorNode';
     if (nextTool === 'graph_search') return 'graphNode';

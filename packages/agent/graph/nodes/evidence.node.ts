@@ -8,46 +8,57 @@ import { toReadableTimestamp } from "../../../database/neo4j/neo4jUtils.js";
  *
  * This ensures the LLM is never shown mixed scales in the same evidence block.
  */
-function buildRiskText(kr: AgentStateType['knowledgeRiskResult']): string {
+function formatSingleRiskText(kr: any): string {
     if (!kr) return '';
 
-    const totalPct = Math.round(kr.totalRisk * 100);
-    const b = kr.breakdown;
+    const totalPct = Math.round((kr.totalRisk ?? 0) * 100);
+    const b = kr.breakdown || {};
     const breakdownPct = {
-        ownership:    Math.round(b.ownership    * 10),
-        dependency:   Math.round(b.dependency   * 10),
-        activity:     Math.round(b.activity     * 10),
-        documentation:Math.round(b.documentation * 10),
-        expertise:    Math.round(b.expertise    * 10),
-        pendingWork:  Math.round(b.pendingWork  * 10),
+        ownership:    Math.round((b.ownership    ?? 0) * 10),
+        dependency:   Math.round((b.dependency   ?? 0) * 10),
+        activity:     Math.round((b.activity     ?? 0) * 10),
+        documentation:Math.round((b.documentation ?? 0) * 10),
+        expertise:    Math.round((b.expertise    ?? 0) * 10),
+        pendingWork:  Math.round((b.pendingWork  ?? 0) * 10),
     };
 
-    // Convert any raw Neo4j Integer timestamps in evidence arrays
-    const safeEvidence = {
-        ownership: kr.evidence.ownership.map((e: { name: string; type: string; createdAt?: any }) => ({
+    const safeEvidence = kr.evidence ? {
+        ownership: (kr.evidence.ownership || []).map((e: { name: string; type: string; createdAt?: any }) => ({
             ...e,
             createdAt: e.createdAt ? toReadableTimestamp(e.createdAt) ?? e.createdAt : undefined
         })),
-        dependency:    kr.evidence.dependency,
-        activity: kr.evidence.activity.map((e: { name: string; type: string; timestamp?: any }) => ({
+        dependency:    kr.evidence.dependency || [],
+        activity: (kr.evidence.activity || []).map((e: { name: string; type: string; timestamp?: any }) => ({
             ...e,
             timestamp: e.timestamp ? toReadableTimestamp(e.timestamp) ?? e.timestamp : null
         })),
-        documentation: kr.evidence.documentation,
-        expertise:     kr.evidence.expertise,
-        pendingWork:   kr.evidence.pendingWork,
-    };
+        documentation: kr.evidence.documentation || [],
+        expertise:     kr.evidence.expertise || [],
+        pendingWork:   kr.evidence.pendingWork || [],
+    } : {};
 
     return [
         `[KNOWLEDGE RISK] Person: ${kr.person}`,
         `Total Risk: ${totalPct}% (0–100 scale)`,
         `Breakdown (each 0–100%): ownership=${breakdownPct.ownership}%, dependency=${breakdownPct.dependency}%, activity=${breakdownPct.activity}%, documentation=${breakdownPct.documentation}%, expertise=${breakdownPct.expertise}%, pendingWork=${breakdownPct.pendingWork}%`,
-        `Details: ownedItems=${kr.details.ownedItems}, criticalDependencies=${kr.details.criticalDependencies}, recentActivity=${kr.details.recentActivity}, documentationGaps=${kr.details.documentationGaps}, uniqueSkills=${kr.details.uniqueSkills}, assignedWork=${kr.details.assignedWork}`,
+        `Details: ownedItems=${kr.details?.ownedItems ?? 0}, criticalDependencies=${kr.details?.criticalDependencies ?? 0}, recentActivity=${kr.details?.recentActivity ?? 0}, documentationGaps=${kr.details?.documentationGaps ?? 0}, uniqueSkills=${kr.details?.uniqueSkills ?? 0}, assignedWork=${kr.details?.assignedWork ?? 0}`,
         `Concrete Evidence: ${JSON.stringify(safeEvidence)}`,
     ].join('\n');
 }
 
+function buildRiskText(kr: AgentStateType['knowledgeRiskResult']): string {
+    if (!kr) return '';
+    if (Array.isArray(kr)) {
+        return kr.map(item => formatSingleRiskText(item)).join('\n\n');
+    }
+    return formatSingleRiskText(kr);
+}
+
 export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
+    const tStart = Date.now()
+    const startIso = new Date().toISOString()
+    console.log(`[Timing] [evidenceNode] Started at ${startIso}`)
+
     try {
         const vectorText = state.vectorResult.map((item) => {
             const metaParts = [`provider: ${item?.provider || 'unknown'}`]
@@ -70,6 +81,12 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
 
         const riskText = buildRiskText(state.knowledgeRiskResult)
 
+        // FIX 3: Include pending clarification so the answer LLM can address
+        // the answerable parts and relay the disambiguation question for the rest
+        const clarificationText = state.clarificationQuestion
+            ? `\n#PENDING CLARIFICATION\n${state.clarificationQuestion}\nNote: One part of the query could not be resolved. Answer what you can from the evidence above, then include this clarification question for the remaining part.`
+            : ''
+
         const evidence = `
 #RELEVANT EVENTS
 ${vectorText}
@@ -82,15 +99,21 @@ ${sqlText}
 
 #KNOWLEDGE RISK DATA
 ${riskText}
+${clarificationText}
         `.trim()
 
         console.log("=== FINAL EVIDENCE STRING PASSED TO LLM ===");
         console.log(evidence);
 
-        return { evidence }
+        // Clear clarificationQuestion after consuming it into evidence, so the
+        // reflectionNode conditional edge won't re-route to clarifyNode
+        return { evidence, clarificationQuestion: '' }
     }
     catch (error: any) {
         console.log("Error in evidenceNode:", error?.message)
         return { evidence: "Error in Cortex Server" }
+    } finally {
+        const elapsed = Date.now() - tStart
+        console.log(`[Timing] [evidenceNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`)
     }
 }

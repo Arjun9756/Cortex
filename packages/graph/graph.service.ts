@@ -1,8 +1,8 @@
 import { describeEntity, type EntityCandidate, searchEntityCandidates } from './cypher/analysis.cypher.js'
-import { countNodes, dependencyAnalysis, expertiseAnalysis, impactAnalysis, listNodes, repositorySummary, shortestPath } from './cypher/analysis.cypher.js'
+import { countNodes, countByLabel, dependencyAnalysis, expertiseAnalysis, impactAnalysis, listNodes, repositorySummary, shortestPath } from './cypher/analysis.cypher.js'
 
 export const GRAPH_ACTIONS = [
-    'describeEntity', 'countNodes', 'listNodes', 'shortestPath',
+    'describeEntity', 'countNodes', 'countByLabel', 'listNodes', 'shortestPath',
     'dependencyAnalysis', 'impactAnalysis', 'expertiseAnalysis', 'repositorySummary',
 ] as const
 
@@ -23,10 +23,18 @@ export async function resolveGraphEntity(name: string) {
 
 export async function executeGraphAction(action: GraphAction, entities: string[], target = '', relation = '') {
     const [primary, secondary] = entities
+
+    // countByLabel allows empty primary (searchTerm), so handle before null guard
+    if (action === 'countByLabel') return countByLabel(primary ?? '', target)
     if (!primary) return null
 
     switch (action) {
-        case 'describeEntity': return describeEntity(primary)
+        case 'describeEntity':
+            if (entities.length > 1) {
+                const results = await Promise.all(entities.map((e) => describeEntity(e)))
+                return results.filter(Boolean)
+            }
+            return describeEntity(primary)
         case 'countNodes': return countNodes(primary, target, 'AUTHORED', secondary)
         case 'listNodes': return listNodes(primary, target, relation)
         case 'shortestPath': return secondary ? shortestPath(primary, secondary) : null

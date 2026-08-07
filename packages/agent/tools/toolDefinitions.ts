@@ -5,7 +5,7 @@ export const TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'graph_search',
-            description: 'Search the Neo4j graph database for named-entity facts: email address, mail, role, title, designation, contact info, "who is X", commit/PR counts, relationships, dependencies, usage ("what uses X", "kis kisme use hua"), expertise, or repository summaries. This is the ONLY tool that returns exact personal properties like email and role. If the user asks for knowledge risk AND personal details (e.g. email or role) about the same person, you MUST call BOTH knowledge_risk AND graph_search — do not assume knowledge_risk returns personal details.',
+            description: 'Search the Neo4j graph database for named-entity facts: email address, mail, role, title, designation, contact info, "who is X", commit/PR counts, relationships, dependencies, usage ("what uses X", "kis kisme use hua"), expertise, repository summaries, or global entity counts ("how many Priyas", "total repositories"). This is the ONLY tool that returns exact personal properties like email and role. If the user asks for knowledge risk AND personal details (e.g. email or role) about the same person, you MUST call BOTH knowledge_risk AND graph_search — do not assume knowledge_risk returns personal details.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -17,7 +17,7 @@ export const TOOL_DEFINITIONS = [
                     action: {
                         type: 'string',
                         enum: GRAPH_ACTIONS as unknown as string[],
-                        description: 'Type of graph query: describeEntity (default for mail/email, role/title, who is), countNodes (how many commits/items), listNodes (usages/what uses X), shortestPath (relationship between 2 nodes), dependencyAnalysis, impactAnalysis, expertiseAnalysis, or repositorySummary.',
+                        description: 'Type of graph query: describeEntity (default for mail/email, role/title, who is), countNodes (how many commits/items a specific entity has), countByLabel (global count of entities matching a name pattern — "how many Priyas", "total repositories"), listNodes (usages/what uses X), shortestPath (relationship between 2 nodes), dependencyAnalysis, impactAnalysis, expertiseAnalysis, or repositorySummary.',
                     },
                     relation: {
                         type: 'string',
