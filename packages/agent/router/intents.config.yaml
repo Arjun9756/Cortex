@@ -1,0 +1,71 @@
+intents:
+  - id: USER_REPOSITORY_MEMBERSHIP
+    description: "User asks which repositories, projects, or codebases a person works in or contributes to"
+    patterns:
+      - "works in how many repo"
+      - "which repos does"
+      - "what repos does"
+      - "repositories for"
+      - "projects of"
+      - "how many repos"
+      - "contributing to"
+      - "what projects does"
+      - "which repositories"
+      - "show me the repos"
+      - "list repos for"
+      - "codebases of"
+      - "involved in which repos"
+    executionPlan:
+      tool: "graph_search"
+      action: "listNodes"
+      target: "REPOSITORY"
+
+  - id: ENTITY_CONTACT_INFO
+    description: "User asks for email, role, designation, or contact details of a person"
+    patterns:
+      - "email and role"
+      - "mail and role"
+      - "role of"
+      - "who is"
+      - "contact info for"
+      - "email address"
+      - "tell me about"
+      - "email of"
+      - "role and email"
+      - "what is the email"
+      - "designation of"
+      - "contact details"
+    executionPlan:
+      tool: "graph_search"
+      action: "describeEntity"
+
+  - id: KNOWLEDGE_RISK_EVALUATION
+    description: "User asks about knowledge risk score, departure risk, or impact if a person leaves, quits, or is fired"
+    patterns:
+      - "knowledge risk"
+      - "leaves the cortex"
+      - "what happens if"
+      - "departure risk"
+      - "single point of failure"
+      - "bus factor"
+      - "if quit"
+      - "if left"
+      - "if leaves"
+      - "impact if gone"
+      - "what would happen if"
+      - "risk if fired"
+      - "departure impact"
+    executionPlan:
+      tool: "knowledge_risk"
+
+  - id: GLOBAL_ENTITY_COUNT
+    description: "User asks how many total repositories or people exist in the system"
+    patterns:
+      - "how many total"
+      - "how many repositories exist"
+      - "total count of"
+      - "list all"
+      - "count all"
+    executionPlan:
+      tool: "graph_search"
+      action: "countByLabel"

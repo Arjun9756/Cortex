@@ -46,7 +46,29 @@ export async function listNodes(entityName: string, targetLabel = '', relation =
     finally { await session.close() }
 }
 
+export async function listNodesMultiHop(entityName: string, targetLabel = '', relation = '') {
+    const session = driver.session()
+    try {
+        const result = await session.run(`
+            MATCH (entity)-[r1]-(intermediate)-[r2]-(target)
+            WHERE toLower(entity.name) = toLower($entityName)
+              AND ($relation = '' OR $targetLabel = 'TECHNOLOGY' OR type(r1) = $relation OR type(r2) = $relation)
+              AND ($targetLabel = '' OR $targetLabel IN labels(target))
+              AND target <> entity
+            RETURN DISTINCT target.name AS name, labels(target)[0] AS type, type(r2) AS relation
+            LIMIT 50
+        `, { entityName, relation, targetLabel })
+        const items = result.records.map((record) => ({ name: record.get('name'), type: record.get('type'), relation: record.get('relation') }))
+        return { entity: entityName, relation: relation || 'ANY', count: items.length, items }
+    }
+    finally { await session.close() }
+}
+
 export async function shortestPath(from: string, to: string) {
+    if (!from || !to || from.trim().toLowerCase() === to.trim().toLowerCase()) {
+        console.log(`[shortestPath] Start and end entities are identical ("${from}"), returning self-node path without Cypher query.`);
+        return [{ nodes: [{ name: from || to, type: 'ENTITY' }], relations: [], note: 'Start and end nodes are identical; no distinct path needed.' }];
+    }
     const session = driver.session()
     try {
         const result = await session.run(`

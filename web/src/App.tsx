@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LandingPage } from './landing/LandingPage';
 import { Sidebar, type NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { DashboardOverviewPage } from './pages/DashboardOverviewPage';
@@ -11,6 +12,10 @@ import { TimelinePage } from './pages/TimelinePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 
 export function App() {
+  const [viewMode, setViewMode] = useState<'landing' | 'dashboard'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('view') === 'dashboard' ? 'dashboard' : 'landing';
+  });
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
 
   const getPageTitle = (tab: NavTab) => {
@@ -59,6 +64,10 @@ export function App() {
     }
   };
 
+  if (viewMode === 'landing') {
+    return <LandingPage onLaunchDemo={() => setViewMode('dashboard')} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex">
       {/* Navigation Sidebar */}
@@ -66,7 +75,7 @@ export function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header title={getPageTitle(activeTab)} />
+        <Header title={getPageTitle(activeTab)} onGoLanding={() => setViewMode('landing')} />
         <main className="flex-1 overflow-y-auto">
           {renderActivePage()}
         </main>

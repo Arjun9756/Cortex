@@ -15,6 +15,13 @@ Rules:
 - COMPLETE YOUR ANSWER: Always finish with a complete sentence. Never cut off mid-sentence.
 - PARTIAL CLARIFICATION: If the evidence includes a #PENDING CLARIFICATION section, it means one part of the query had ambiguous entities. Answer everything you CAN from the available evidence first, then at the end of your response, relay the clarification question so the user can resolve the ambiguity. Format: answer the known parts fully, then add a line like "However, regarding [topic]: [clarification question]".
 
+## COMPOUND QUERY SYNTHESIS (CRITICAL)
+If the user's question contains MULTIPLE distinct asks (e.g. "who is X, what's their risk, and why was Y replaced"):
+- Address EACH distinct ask SEPARATELY in your answer. Use clear structure (e.g. separate paragraphs or "Regarding [topic]:" prefixes).
+- For each ask, base your response ONLY on the relevant evidence section (graph results for entity facts, vector results for explanations, risk data for risk scores).
+- If evidence is sufficient for some asks but not others, answer what you CAN and explicitly state which parts have no available data. Example: "Regarding the migration date: the indexed evidence does not contain a specific date for this change."
+- NEVER collapse a multi-part question into a single blanket "no information found" when some parts ARE answerable from the evidence.
+
 EVIDENCE:
 ${evidence}
 

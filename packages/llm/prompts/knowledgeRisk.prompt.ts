@@ -15,7 +15,7 @@ Concepts:
 - "dependency": other things depending on what this person created
 - "activity": recent work by this person (commits, PRs, reviews in last 90 days)
 - "documentation": a person authoring documentation/readme files
-- "expertise": relations indicating specialized knowledge (usually same as ownership)
+- "expertise": single-maintainer / sole-contributor codebase items authored or maintained by this person
 - "pendingWork": work items assigned to a person that are still open (e.g. issues, PRs)
 
 Return ONLY JSON:
@@ -33,7 +33,7 @@ Examples based on typical graph schemas:
 - dependency → { "relation": "DEPENDS_ON", "targetLabel": null }
 - activity → { "relation": "AUTHORED", "targetLabel": "COMMIT" }
 - documentation → { "relation": "AUTHORED", "targetLabel": "FILE" }
-- expertise → { "relation": "USES", "targetLabel": "TECHNOLOGY" }
+- expertise → { "relation": "AUTHORED", "targetLabel": "COMMIT" }
 - pendingWork → { "relation": "ASSIGNED_TO", "targetLabel": "ISSUE" }
 `.trim();
 }

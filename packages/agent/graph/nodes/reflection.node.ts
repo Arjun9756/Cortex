@@ -23,7 +23,7 @@ export async function reflectionNode(state: AgentStateType): Promise<Partial<Age
         if (hasWhyIntent && !state.executedTools.includes('vector_search')) {
             console.log('[Reflection] Query has explanation/why intent but vector_search was not executed. Scheduling vector_search.');
             return {
-                pendingTools: ['vector_search'],
+                pendingTools: [{ name: 'vector_search', args: { query: state.vectorQuery || state.query } }],
                 needMoreSearch: true,
                 vectorQuery: state.vectorQuery || state.query,
                 iterationCount: state.iterationCount + 1,
@@ -35,7 +35,7 @@ export async function reflectionNode(state: AgentStateType): Promise<Partial<Age
         if (wantsSqlData && !state.executedTools.includes('sql_search')) {
             console.log('[Reflection] Query asks for raw payload/event ID. Scheduling sql_search...');
             return {
-                pendingTools: ['sql_search'],
+                pendingTools: [{ name: 'sql_search' }],
                 needMoreSearch: true,
                 iterationCount: state.iterationCount + 1,
             };
@@ -76,7 +76,7 @@ export async function reflectionNode(state: AgentStateType): Promise<Partial<Age
         const requestedTools = Array.isArray(decision?.tools)
             ? decision.tools.filter((tool: unknown): tool is string => typeof tool === 'string' && allowedTools.has(tool))
             : [];
-        const pendingTools = requestedTools.filter((tool: string) => !state.executedTools.includes(tool));
+        const pendingTools = requestedTools.filter((tool: string) => !state.executedTools.includes(tool)).map(tool => ({ name: tool }));
         return { pendingTools, needMoreSearch: pendingTools.length > 0, iterationCount: state.iterationCount + 1 };
     }
     catch (error: any) {

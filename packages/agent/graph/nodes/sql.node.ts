@@ -65,7 +65,7 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
     const startIso = new Date().toISOString()
     console.log(`[Timing] [sqlNode] Started at ${startIso}`)
 
-    const pendingTools = state.pendingTools.filter((tool) => tool !== 'sql_search');
+    const remainingPendingTools = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) !== 'sql_search');
     const executedTools = [...new Set([...state.executedTools, 'sql_search'])];
     try {
         const prompt = buildSqlPlannerPrompt(state.query, state.evidence);
@@ -99,10 +99,10 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
         }
 
         const results = await runSafeQuery(queryType, queryParams);
-        return { sqlResult: results, pendingTools, executedTools };
+        return { sqlResult: [...state.sqlResult, ...results], pendingTools: remainingPendingTools, executedTools };
     }
     catch (error: any) {
-        return { sqlResult: [], pendingTools, executedTools };
+        return { sqlResult: state.sqlResult, pendingTools: remainingPendingTools, executedTools };
     } finally {
         const elapsed = Date.now() - tStart
         console.log(`[Timing] [sqlNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`)

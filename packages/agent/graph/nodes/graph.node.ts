@@ -7,41 +7,91 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
     const startIso = new Date().toISOString()
     console.log(`[Timing] [graphNode] Started at ${startIso}`)
 
-    const pendingTools = state.pendingTools.filter((tool) => tool !== 'graph_search')
+    const remainingPendingTools = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) !== 'graph_search')
     const executedTools = [...new Set([...state.executedTools, 'graph_search'])]
+
+    const graphCalls = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) === 'graph_search')
+        .map(tool => typeof tool === 'string' ? { name: 'graph_search', args: { action: state.graphAction, target: state.graphTarget, relation: state.graphRelation, entities: state.entities } } : tool);
+
+    if (graphCalls.length === 0) {
+        graphCalls.push({
+            name: 'graph_search',
+            args: {
+                action: state.graphAction,
+                target: state.graphTarget,
+                relation: state.graphRelation,
+                entities: state.entities
+            }
+        });
+    }
+
+    const aggregatedGraphResults: any[] = [];
+    const allResolvedEntities: string[] = [...state.entities];
+
     try {
-        const action = GRAPH_ACTIONS.includes(state.graphAction as typeof GRAPH_ACTIONS[number]) ? state.graphAction as typeof GRAPH_ACTIONS[number] : 'describeEntity'
+        for (const call of graphCalls) {
+            const args = call.args || {};
+            const rawAction = args.action || state.graphAction || 'describeEntity';
+            const action = GRAPH_ACTIONS.includes(rawAction as typeof GRAPH_ACTIONS[number])
+                ? rawAction as typeof GRAPH_ACTIONS[number]
+                : 'describeEntity';
+            const target = typeof args.target === 'string' ? args.target : (state.graphTarget || '');
+            const relation = typeof args.relation === 'string' ? args.relation : (state.graphRelation || '');
 
-        // FIX 1: countByLabel bypasses entity resolution — it's an aggregate query
-        if (action === 'countByLabel') {
-            const searchTerm = state.entities[0] || ''
-            const result = await executeGraphAction('countByLabel', [searchTerm], state.graphTarget, state.graphRelation)
-            return { graphResult: result == null ? [] : [result], pendingTools, executedTools }
+            let callEntities: string[] = [];
+            if (Array.isArray(args.entities) && args.entities.length > 0) {
+                callEntities = args.entities.filter((e): e is string => typeof e === 'string' && Boolean(e.trim()));
+            } else if (state.entities.length > 0) {
+                callEntities = state.entities;
+            } else if (state.vectorResult.length > 0) {
+                callEntities = state.vectorResult.flatMap((result: any) => (result.entities ?? []).map((entity: any) => entity.name));
+            }
+
+            console.log(`[graphNode] Executing call: action="${action}", target="${target}", relation="${relation}", entities=${JSON.stringify(callEntities)}`);
+
+            if (action === 'countByLabel') {
+                const searchTerm = callEntities[0] || '';
+                const result = await executeGraphAction('countByLabel', [searchTerm], target, relation);
+                if (result != null) aggregatedGraphResults.push(result);
+                continue;
+            }
+
+            if (callEntities.length === 0) continue;
+
+            const resolutions = await Promise.all(callEntities.map((entity) => resolveGraphEntity(entity)));
+            const unresolved = resolutions.find((resolution) => !resolution.selected && resolution.candidates.length > 0);
+            if (unresolved) {
+                const options = formatClarificationOptions(unresolved.candidates);
+                return {
+                    clarificationQuestion: `I found multiple possible entities: ${options}. Which one do you mean?`,
+                    graphResult: state.graphResult,
+                    pendingTools: remainingPendingTools,
+                    executedTools
+                };
+            }
+
+            const resolvedNames = resolutions.map((resolution, index) => resolution.selected?.name ?? callEntities[index]).filter((name): name is string => Boolean(name));
+            resolvedNames.forEach(n => { if (!allResolvedEntities.includes(n)) allResolvedEntities.push(n); });
+
+            const result = await executeGraphAction(action, resolvedNames, target, relation);
+            const resArray = Array.isArray(result) ? result : (result == null ? [] : [result]);
+            aggregatedGraphResults.push(...resArray);
         }
 
-        const requestedEntities = state.entities.length > 0
-            ? state.entities
-            : state.vectorResult.flatMap((result: any) => (result.entities ?? []).map((entity: any) => entity.name))
-        if (requestedEntities.length === 0) return { graphResult: [], pendingTools, executedTools }
-
-        const resolutions = await Promise.all(requestedEntities.map((entity) => resolveGraphEntity(entity)))
-        const unresolved = resolutions.find((resolution) => !resolution.selected && resolution.candidates.length > 0)
-        if (unresolved) {
-            const options = formatClarificationOptions(unresolved.candidates)
-            return { clarificationQuestion: `I found multiple possible entities: ${options}. Which one do you mean?`, graphResult: [], pendingTools, executedTools }
-        }
-
-        const resolvedNames = resolutions.map((resolution, index) => resolution.selected?.name ?? requestedEntities[index]).filter((name): name is string => Boolean(name))
-        const result = await executeGraphAction(action, resolvedNames, state.graphTarget, state.graphRelation)
-        const graphResult = Array.isArray(result) ? result : (result == null ? [] : [result])
-        return { graphResult, pendingTools, executedTools, entities: resolvedNames }
+        const combinedGraphResults = [...state.graphResult, ...aggregatedGraphResults];
+        return {
+            graphResult: combinedGraphResults,
+            pendingTools: remainingPendingTools,
+            executedTools,
+            entities: allResolvedEntities
+        };
     }
     catch (error: any) {
-        console.log(`Error While Searching Graph ${error?.message}`)
-        return { graphResult: [], pendingTools, executedTools }
+        console.log(`Error While Searching Graph: ${error?.message}`);
+        return { graphResult: state.graphResult, pendingTools: remainingPendingTools, executedTools };
     } finally {
-        const elapsed = Date.now() - tStart
-        console.log(`[Timing] [graphNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`)
+        const elapsed = Date.now() - tStart;
+        console.log(`[Timing] [graphNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`);
     }
 }
 

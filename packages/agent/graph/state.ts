@@ -1,4 +1,10 @@
 import { Annotation } from "@langchain/langgraph";
+export interface ToolCall {
+    id?: string;
+    name: string;
+    args?: Record<string, any>;
+}
+
 export const AgentState = Annotation.Root({
     // User Query State
     query:Annotation<string>({
@@ -9,14 +15,14 @@ export const AgentState = Annotation.Root({
     }),
 
     // Future Plan Scheduler
-    plan:Annotation<string[]>({
+    plan:Annotation<(ToolCall | string)[]>({
         default:()=>[],
         reducer:(prev , next)=>{
             return next
         }
     }),
 
-    pendingTools: Annotation<string[]>({
+    pendingTools: Annotation<(ToolCall | string)[]>({
         default: () => [],
         reducer: (_, next) => next,
     }),

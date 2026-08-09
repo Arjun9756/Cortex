@@ -312,7 +312,7 @@ export async function calculateExpertise(
              WHERE size(connectedPeople) = 1 AND connectedPeople[0] = $name
              RETURN e.name as name,
                     labels(e)[0] as type,
-                    'Only ' + $name + ' uses this' as reason
+                    'Single contributor (' + $name + ') to this ' + toLower(labels(e)[0]) as reason
              LIMIT 10`,
             { name: personName }
         )

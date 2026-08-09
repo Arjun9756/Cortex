@@ -1,5 +1,5 @@
 import { describeEntity, type EntityCandidate, searchEntityCandidates } from './cypher/analysis.cypher.js'
-import { countNodes, countByLabel, dependencyAnalysis, expertiseAnalysis, impactAnalysis, listNodes, repositorySummary, shortestPath } from './cypher/analysis.cypher.js'
+import { countNodes, countByLabel, dependencyAnalysis, expertiseAnalysis, impactAnalysis, listNodes, listNodesMultiHop, repositorySummary, shortestPath } from './cypher/analysis.cypher.js'
 
 export const GRAPH_ACTIONS = [
     'describeEntity', 'countNodes', 'countByLabel', 'listNodes', 'shortestPath',
@@ -36,8 +36,20 @@ export async function executeGraphAction(action: GraphAction, entities: string[]
             }
             return describeEntity(primary)
         case 'countNodes': return countNodes(primary, target, 'AUTHORED', secondary)
-        case 'listNodes': return listNodes(primary, target, relation)
-        case 'shortestPath': return secondary ? shortestPath(primary, secondary) : null
+        case 'listNodes': {
+            const direct = await listNodes(primary, target, relation)
+            if (direct.count > 0 && target !== 'TECHNOLOGY') {
+                return direct
+            }
+            // Auto fallback / multi-hop check when 1-hop returns 0 items or for TECHNOLOGY targets
+            const multiHop = await listNodesMultiHop(primary, target, relation)
+            return multiHop.count > 0 ? multiHop : direct
+        }
+        case 'shortestPath':
+            if (!secondary || primary.trim().toLowerCase() === secondary.trim().toLowerCase()) {
+                return [{ nodes: [{ name: primary, type: 'ENTITY' }], relations: [], note: 'Start and end nodes are identical; no distinct path needed.' }];
+            }
+            return shortestPath(primary, secondary)
         case 'dependencyAnalysis': return dependencyAnalysis(primary)
         case 'impactAnalysis': return impactAnalysis(primary)
         case 'expertiseAnalysis': return expertiseAnalysis(primary)

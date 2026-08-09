@@ -40,9 +40,10 @@ function formatSingleRiskText(kr: any): string {
     return [
         `[KNOWLEDGE RISK] Person: ${kr.person}`,
         `Total Risk: ${totalPct}% (0–100 scale)`,
-        `Breakdown (each 0–100%): ownership=${breakdownPct.ownership}%, dependency=${breakdownPct.dependency}%, activity=${breakdownPct.activity}%, documentation=${breakdownPct.documentation}%, expertise=${breakdownPct.expertise}%, pendingWork=${breakdownPct.pendingWork}%`,
-        `Details: ownedItems=${kr.details?.ownedItems ?? 0}, criticalDependencies=${kr.details?.criticalDependencies ?? 0}, recentActivity=${kr.details?.recentActivity ?? 0}, documentationGaps=${kr.details?.documentationGaps ?? 0}, uniqueSkills=${kr.details?.uniqueSkills ?? 0}, assignedWork=${kr.details?.assignedWork ?? 0}`,
+        `Breakdown (each 0–100%): ownership=${breakdownPct.ownership}%, dependency=${breakdownPct.dependency}%, activity=${breakdownPct.activity}%, documentation=${breakdownPct.documentation}%, expertise=${breakdownPct.expertise}% (sole-maintained items score), pendingWork=${breakdownPct.pendingWork}%`,
+        `Details: ownedItems=${kr.details?.ownedItems ?? 0}, criticalDependencies=${kr.details?.criticalDependencies ?? 0}, recentActivity=${kr.details?.recentActivity ?? 0}, documentationGaps=${kr.details?.documentationGaps ?? 0}, soleMaintainedItems=${kr.details?.uniqueSkills ?? kr.details?.soleMaintainedItems ?? 0}, assignedWork=${kr.details?.assignedWork ?? 0}`,
         `Concrete Evidence: ${JSON.stringify(safeEvidence)}`,
+        `Note on Knowledge Risk "expertise": This metric counts sole-maintained / single-contributor codebase items (commits, PRs, issues, or files with only 1 author). It does NOT count technology node relationships. Technology node usage (e.g. USES -> TECHNOLOGY) is reported separately by graph_search.`,
     ].join('\n');
 }
 

@@ -18,7 +18,9 @@ export function routeNextTool(state: AgentStateType): 'vectorNode' | 'graphNode'
         if (!hasPartialEvidence) return 'clarifyNode';
         // Fall through — clarification will be included in evidence by evidenceNode
     }
-    const nextTool = state.pendingTools[0];
+    if (state.pendingTools.length === 0) return 'evidenceNode';
+    const first = state.pendingTools[0];
+    const nextTool = typeof first === 'string' ? first : first?.name;
     if (nextTool === 'vector_search') return 'vectorNode';
     if (nextTool === 'graph_search') return 'graphNode';
     if (nextTool === 'sql_search') return 'sqlNode';

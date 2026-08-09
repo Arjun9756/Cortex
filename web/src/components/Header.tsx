@@ -6,13 +6,15 @@ interface HeaderProps {
   subtitle?: string;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  onGoLanding?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   title,
   subtitle = 'Engineering Intelligence & Single Points of Knowledge',
   onRefresh,
-  isRefreshing = false
+  isRefreshing = false,
+  onGoLanding
 }) => {
   return (
     <header className="sticky top-0 z-20 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-8 py-4 flex items-center justify-between">
@@ -24,6 +26,15 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center space-x-4">
+        {onGoLanding && (
+          <button
+            onClick={onGoLanding}
+            className="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 text-xs font-mono text-indigo-300 transition-all cursor-pointer"
+          >
+            ← Back to Landing Page
+          </button>
+        )}
+
         {/* Workspace Pill */}
         <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium text-slate-300">
           <Database className="h-3.5 w-3.5 text-indigo-400" />

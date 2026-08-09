@@ -25,38 +25,54 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
     const startIso = new Date().toISOString()
     console.log(`[Timing] [vectorNode] Started at ${startIso}`)
 
-    const pendingTools = state.pendingTools.filter((tool) => tool !== 'vector_search')
+    const remainingPendingTools = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) !== 'vector_search')
     const executedTools = [...new Set([...state.executedTools, 'vector_search'])]
+
+    const vectorCalls = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) === 'vector_search')
+        .map(tool => typeof tool === 'string' ? { name: 'vector_search', args: { query: state.vectorQuery || state.query } } : tool);
+
+    if (vectorCalls.length === 0) {
+        vectorCalls.push({ name: 'vector_search', args: { query: state.vectorQuery || state.query } });
+    }
+
+    const aggregatedVectorResults: any[] = [];
+
     try {
-        const embedding = await generateEmbeddings(state.vectorQuery || state.query)
-        if (!embedding) {
-            return { vectorResult: [], pendingTools, executedTools }
+        for (const call of vectorCalls) {
+            const vQuery = typeof call.args?.query === 'string' && call.args.query.trim()
+                ? call.args.query.trim()
+                : (state.vectorQuery || state.query);
+
+            console.log(`[vectorNode] Executing vector search query: "${vQuery}"`);
+            const embedding = await generateEmbeddings(vQuery);
+            if (!embedding) continue;
+
+            const result = await searchSimilar(embedding) as QdrantSearchResult[];
+            const mappedResults = result?.map((r) => ({
+                summary: r.payload?.summary,
+                entities: r.payload?.entities,
+                relationships: r.payload?.relationships,
+                eventId: r.payload?.eventID ?? r.payload?.eventId,
+                provider: r.payload?.provider,
+                channel: r.payload?.channel,
+                timestamp: r.payload?.timestamp,
+                author: r.payload?.author,
+                repository: r.payload?.repository,
+                text: r.payload?.text,
+                issueKey: r.payload?.issueKey,
+                status: r.payload?.status,
+            })) ?? [];
+            aggregatedVectorResults.push(...mappedResults);
         }
 
-        const result = await searchSimilar(embedding) as QdrantSearchResult[]
-        const vectorResult = result?.map((r) => ({
-            summary: r.payload?.summary,
-            entities: r.payload?.entities,
-            relationships: r.payload?.relationships,
-            eventId: r.payload?.eventID ?? r.payload?.eventId,
-            provider: r.payload?.provider,
-            channel: r.payload?.channel,
-            timestamp: r.payload?.timestamp,
-            author: r.payload?.author,
-            repository: r.payload?.repository,
-            text: r.payload?.text,
-            issueKey: r.payload?.issueKey,
-            status: r.payload?.status,
-        }))
-
-        return { vectorResult, pendingTools, executedTools }
+        const combinedVectorResults = [...state.vectorResult, ...aggregatedVectorResults];
+        return { vectorResult: combinedVectorResults, pendingTools: remainingPendingTools, executedTools };
     }
     catch (error: any) {
-        return {
-            vectorResult: [], pendingTools, executedTools
-        }
+        console.log(`Error in vectorNode: ${error?.message}`);
+        return { vectorResult: state.vectorResult, pendingTools: remainingPendingTools, executedTools };
     } finally {
-        const elapsed = Date.now() - tStart
-        console.log(`[Timing] [vectorNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`)
+        const elapsed = Date.now() - tStart;
+        console.log(`[Timing] [vectorNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`);
     }
 }

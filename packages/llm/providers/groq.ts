@@ -45,12 +45,16 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
     const startIso = new Date().toISOString()
     console.log(`[Groq:Timing] Request to model (${modelToUse}) started at ${startIso}`)
 
+    const requestPayload: Record<string, any> = {
+        ...params,
+        model: modelToUse,
+    };
+    if (modelToUse.toLowerCase().includes('qwen') || modelToUse.toLowerCase().includes('deepseek')) {
+        requestPayload.reasoning_format = "parsed";
+    }
+
     try {
-        const response = await groq.chat.completions.create({
-            ...params,
-            model: modelToUse,
-            reasoning_format: "parsed"
-        } as any)
+        const response = await groq.chat.completions.create(requestPayload as any)
 
         const elapsed = Date.now() - tStart
         console.log(`[Groq:Timing] Request to model (${modelToUse}) completed in ${elapsed}ms (ended at ${new Date().toISOString()})`)
@@ -72,10 +76,14 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
             console.warn(`[Groq] Model (${modelToUse}) rate limited. Failing over to fallback model (${FALLBACK_MODEL})...`)
             const fbStart = Date.now()
             try {
-                const fallbackResponse = await groq.chat.completions.create({
+                const fbPayload: Record<string, any> = {
                     ...params,
                     model: FALLBACK_MODEL,
-                } as any)
+                };
+                if (FALLBACK_MODEL.toLowerCase().includes('qwen') || FALLBACK_MODEL.toLowerCase().includes('deepseek')) {
+                    fbPayload.reasoning_format = "parsed";
+                }
+                const fallbackResponse = await groq.chat.completions.create(fbPayload as any)
                 const fbElapsed = Date.now() - fbStart
                 console.log(`[Groq:Timing] Fallback request (${FALLBACK_MODEL}) completed in ${fbElapsed}ms (ended at ${new Date().toISOString()})`)
 

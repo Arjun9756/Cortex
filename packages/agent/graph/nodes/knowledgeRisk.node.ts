@@ -7,14 +7,22 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
     const startIso = new Date().toISOString()
     console.log(`[Timing] [knowledgeRiskNode] Started at ${startIso}`)
 
-    const pendingTools = state.pendingTools.filter((tool) => tool !== 'knowledge_risk')
+    const remainingPendingTools = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) !== 'knowledge_risk')
     const executedTools = [...new Set([...state.executedTools, 'knowledge_risk'])]
 
+    const krCalls = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) === 'knowledge_risk');
+    const personNamesSet = new Set<string>(state.entities);
+    for (const call of krCalls) {
+        if (typeof call !== 'string' && typeof call.args?.personName === 'string' && call.args.personName.trim()) {
+            personNamesSet.add(call.args.personName.trim());
+        }
+    }
+
     try {
-        const requestedEntities = state.entities.length > 0 ? state.entities : [];
+        const requestedEntities = Array.from(personNamesSet);
         if (requestedEntities.length === 0) {
-            console.log('[KnowledgeRisk] No person entity found in state.entities')
-            return { knowledgeRiskResult: null, pendingTools, executedTools }
+            console.log('[KnowledgeRisk] No person entity found in call args or state.entities');
+            return { knowledgeRiskResult: state.knowledgeRiskResult || null, pendingTools: remainingPendingTools, executedTools };
         }
 
         const riskResults = await Promise.all(requestedEntities.map(async (rawPersonName) => {
@@ -33,19 +41,18 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
             return await calculateKnowledgeRisk(resolvedName)
         }))
 
-        const knowledgeRiskResult = riskResults.length === 1 ? riskResults[0] : riskResults
-
+        const newKnowledgeRiskResult = riskResults.length === 1 ? riskResults[0] : riskResults
         return {
-            knowledgeRiskResult,
-            pendingTools,
+            knowledgeRiskResult: newKnowledgeRiskResult,
+            pendingTools: remainingPendingTools,
             executedTools
         }
     }
     catch (error: any) {
         console.error(`[KnowledgeRisk] Error in knowledgeRiskNode: ${error?.message}`)
         return {
-            knowledgeRiskResult: null,
-            pendingTools,
+            knowledgeRiskResult: state.knowledgeRiskResult || null,
+            pendingTools: remainingPendingTools,
             executedTools
         }
     } finally {

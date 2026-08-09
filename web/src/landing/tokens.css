@@ -1,0 +1,136 @@
+/* Cortex Design Tokens System - Strict Non-Negotiable Rules */
+:root {
+  --bg-landing: #0A0B0E;
+  --card-landing: #12141A;
+  --border-landing: rgba(255, 255, 255, 0.08);
+  --border-landing-hover: rgba(59, 130, 246, 0.3);
+  --text-primary: #F5F5F7;
+  --text-muted: #9497A6;
+  --accent-blue: #3B82F6;
+  --accent-blue-hover: #2563EB;
+  --accent-blue-glow: rgba(59, 130, 246, 0.25);
+  --radius-card: 12px;
+  --padding-card: 24px;
+}
+
+/* Unified Card Class */
+.cortex-card {
+  background-color: #12141A;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 24px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cortex-card:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+/* Unified Button Styles */
+.cortex-btn-primary {
+  background-color: #3B82F6;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px 24px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+.cortex-btn-primary:hover {
+  background-color: #2563EB;
+  box-shadow: 0 0 25px rgba(59, 130, 246, 0.5);
+}
+
+.cortex-btn-secondary {
+  background-color: #12141A;
+  color: #F5F5F7;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px 24px;
+  transition: all 0.2s ease;
+}
+
+.cortex-btn-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Unified Section Padding */
+.cortex-section {
+  padding-top: 96px;
+  padding-bottom: 96px;
+}
+
+@media (max-width: 768px) {
+  .cortex-section {
+    padding-top: 48px;
+    padding-bottom: 48px;
+  }
+}
+
+/* Physics-Based Scroll Reveal Animations */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-on-scroll.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger Delays for Children */
+.stagger-1 { transition-delay: 60ms; }
+.stagger-2 { transition-delay: 120ms; }
+.stagger-3 { transition-delay: 180ms; }
+.stagger-4 { transition-delay: 240ms; }
+
+/* Pulse Glow Keyframes */
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Float Node Keyframes */
+@keyframes floatNode {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float-node {
+  animation: floatNode 6s ease-in-out infinite;
+}
+
+/* Reduced Motion Fallbacks */
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .animate-pulse-glow,
+  .animate-float-node,
+  .animate-bounce {
+    animation: none !important;
+  }
+}
