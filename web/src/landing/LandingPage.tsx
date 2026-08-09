@@ -105,13 +105,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
                   <div className="text-center max-w-2xl mx-auto mb-10">
                     <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#0A0B0E] border border-white/10 text-[#3B82F6] text-xs font-mono mb-4">
                       <Sparkles className="w-3.5 h-3.5 text-[#3B82F6]" />
-                      <span>Direct Founder Setup</span>
+                      <span>Free Platform Setup</span>
                     </div>
                     <h2 className="text-3xl sm:text-4xl font-extrabold text-[#F5F5F7] font-mono">
                       Get Cortex Running On Your Cloud
                     </h2>
                     <p className="mt-3 text-sm sm:text-base text-[#9497A6]">
-                      Reach out and I'll personally set up Cortex on your team's infrastructure — free, on your own cloud.
+                      Reach out to get Cortex set up on your team's infrastructure — free, on your own cloud.
                     </p>
                   </div>
 

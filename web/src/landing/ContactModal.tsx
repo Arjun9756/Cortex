@@ -79,13 +79,13 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
             <div className="mb-6 text-left">
               <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-xl bg-[#0A0B0E] border border-white/10 text-[#3B82F6] text-xs font-mono mb-3">
                 <Sparkles className="w-3.5 h-3.5 text-[#3B82F6]" />
-                <span>Founder-Led Free Setup</span>
+                <span>Free Platform Setup</span>
               </div>
               <h3 className="text-2xl font-bold text-[#F5F5F7] font-mono">
                 Request Free Cortex Setup
               </h3>
               <p className="mt-2 text-xs sm:text-sm text-[#9497A6] leading-relaxed">
-                Reach out and Arjun will personally assist you in deploying Cortex on your free-tier Oracle, Neo4j &amp; Qdrant accounts — ₹0 cost.
+                Reach out to request assistance in deploying Cortex on your free-tier Oracle, Neo4j &amp; Qdrant accounts — ₹0 cost.
               </p>
             </div>
 
