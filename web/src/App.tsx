@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isDemoEnabled } from './config';
 import { LandingPage } from './landing/LandingPage';
 import { Sidebar, type NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -13,6 +14,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 
 export function App() {
   const [viewMode, setViewMode] = useState<'landing' | 'dashboard'>(() => {
+    if (!isDemoEnabled) return 'landing';
     const params = new URLSearchParams(window.location.search);
     return params.get('view') === 'dashboard' ? 'dashboard' : 'landing';
   });
@@ -64,8 +66,8 @@ export function App() {
     }
   };
 
-  if (viewMode === 'landing') {
-    return <LandingPage onLaunchDemo={() => setViewMode('dashboard')} />;
+  if (viewMode === 'landing' || !isDemoEnabled) {
+    return <LandingPage onLaunchDemo={isDemoEnabled ? () => setViewMode('dashboard') : undefined} />;
   }
 
   return (

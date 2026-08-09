@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Menu, X } from 'lucide-react';
+import { isDemoEnabled } from '../config';
 
 interface NavbarProps {
   onOpenContact: () => void;
@@ -87,13 +88,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
         {/* Right CTA Buttons */}
         <div className="hidden md:flex items-center space-x-3">
           {onLaunchDemo && (
-            <button
-              onClick={onLaunchDemo}
-              className="px-3.5 py-2 text-xs font-semibold font-mono text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Launch Live Demo</span>
-            </button>
+            isDemoEnabled ? (
+              <button
+                onClick={onLaunchDemo}
+                className="px-3.5 py-2 text-xs font-semibold font-mono text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Launch Live Demo</span>
+              </button>
+            ) : (
+              <button
+                disabled
+                title="Live Demo is disabled in this deployment environment"
+                className="px-3.5 py-2 text-xs font-semibold font-mono text-slate-500 bg-slate-800/40 border border-slate-700/50 rounded-xl cursor-not-allowed flex items-center space-x-1.5 opacity-60"
+              >
+                <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                <span>Demo Offline</span>
+              </button>
+            )
           )}
 
           <button
