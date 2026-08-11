@@ -5,7 +5,6 @@ import {
   Sparkles, 
   ChevronDown, 
   ChevronUp,
-  ChevronRight, 
   FileText, 
   Network, 
   ShieldAlert, 
@@ -24,8 +23,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileCode,
-  ArrowUpRight,
-  MessageSquare
+  ArrowUpRight
 } from 'lucide-react';
 
 interface ChatMessage {
