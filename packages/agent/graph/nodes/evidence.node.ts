@@ -77,7 +77,17 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
         const graphText = state.graphResult.map((item) => `[GRAPH] ${JSON.stringify(item)}`).join('\n')
 
         const sqlText = state.sqlResult.map((item: any) => {
-            return `[Event ID: ${item?.id}] [${item?.provider}] ${JSON.stringify(item?.payload)} (created: ${item?.created_at})`
+            if (item?.engineer) {
+                return `[Engineer: ${item.engineer}] [Provider: ${item.provider || 'all'}] Total Activity Events: ${item.event_count || item.count || 1}`;
+            }
+            if (item?.count) {
+                return `[Provider: ${item.provider}] Event Count: ${item.count}`;
+            }
+            const idStr = item?.id || item?.external_id || 'N/A';
+            const providerStr = item?.provider || 'N/A';
+            const createdStr = item?.created_at || 'N/A';
+            const payloadStr = item?.payload ? JSON.stringify(item.payload) : JSON.stringify(item);
+            return `[Event ID: ${idStr}] [${providerStr}] ${payloadStr} (created: ${createdStr})`;
         }).join('\n')
 
         const riskText = buildRiskText(state.knowledgeRiskResult)

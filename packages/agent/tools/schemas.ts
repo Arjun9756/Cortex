@@ -17,7 +17,7 @@ export const KnowledgeRiskSchema = z.object({
 });
 
 export const SqlSearchSchema = z.object({
-    queryType: z.enum(['recent_events', 'count_by_provider', 'events_by_author', 'event_by_id']),
+    queryType: z.enum(['recent_events', 'count_by_provider', 'events_by_author', 'event_by_id', 'active_engineers']),
     params: z.record(z.string(), z.any()).optional().default({}),
 });
 

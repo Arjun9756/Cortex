@@ -229,7 +229,11 @@ Rules:
         }
 
         // Safety Net 3: Ensure knowledge_risk is included when query explicitly asks risk
-        const hasRiskIntent = /\b(knowledge.?risk|departure risk|knowledge loss|bus factor|leaves? the|what.?if.+leaves?)\b/i.test(state.query);
+        // Expanded to catch: "what breaks if X leaves", "what fails if X quits",
+        // "X is gone", "departure of X", "losing X" — patterns that previously fell through.
+        const hasRiskIntent = /\b(knowledge.?risk|departure risk|knowledge loss|bus factor|leaves? the|what.{0,30}if.{0,30}leaves?|breaks?\s+if.+leaves?|fails?\s+if.+leaves?|stops?\s+if.+leaves?)\b/i.test(state.query)
+            || /(losing|loss of|departure of)\s+[A-Z][a-z]/i.test(state.query)
+            || /if.{0,40}(quit|leaves?|left|gone|fired|departed|resign)/i.test(state.query);
         if (hasRiskIntent && !pendingToolCalls.some(c => c.name === 'knowledge_risk')) {
             pendingToolCalls.push({ name: 'knowledge_risk', args: { personName: entities[0] || '' } });
             console.log('[Planner] Safety net: added knowledge_risk for risk intent');
@@ -242,11 +246,12 @@ Rules:
             console.log('[Planner] Safety net: added vector_search for ownership/domain-knowledge intent');
         }
 
-        // Safety Net 6: Ensure graph_search listNodes for technology usage queries
-        const hasTechnologyIntent = /\b(technolog(y|ies)|tech stack|tools|frameworks)\b/i.test(state.query);
+        // Safety Net 6: Ensure graph_search listNodes for technology/skill/expertise queries
+        // Expanded: also catches "skills", "expertise", "languages", "stack", "what does X know/use"
+        const hasTechnologyIntent = /\b(technolog(y|ies)|tech stack|tools|frameworks|skill|skills|expertise|languages?|what.{0,15}(know|use|familiar|proficient|good at|works with))\b/i.test(state.query);
         if (hasTechnologyIntent && entities.length > 0 && !pendingToolCalls.some(c => c.name === 'graph_search' && c.args?.action === 'listNodes')) {
             pendingToolCalls.push({ name: 'graph_search', args: { action: 'listNodes', entities: [entities[0]], relation: 'USES', target: 'TECHNOLOGY' } });
-            console.log('[Planner] Safety net: added graph_search listNodes for technology intent');
+            console.log('[Planner] Safety net: added graph_search listNodes for technology/skill intent');
         }
 
         // Deduplicate true duplicates (same tool + same arguments)

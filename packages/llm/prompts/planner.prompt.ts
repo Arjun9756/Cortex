@@ -65,6 +65,7 @@ Before selecting tools, you MUST:
   Result: graph_search(describeEntity) + knowledge_risk(...) + graph_search(listNodes)
 
 ### Global count queries:
+- "how many total engineers are there get all their email or contact" -> graph_search(entities: ["engineers"], action: "describeEntity") + sql_search(queryType: "active_engineers")
 - "how many total Priya are there" -> graph_search(entities: ["Priya"], action: "countByLabel", target: "PERSON")
 - "how many repositories exist" -> graph_search(entities: [""], action: "countByLabel", target: "REPOSITORY")
 NOTE: countNodes counts relationships OF a specific entity (e.g. Arjun's commits). countByLabel counts how many entities MATCH a name pattern globally (e.g. all Priyas).

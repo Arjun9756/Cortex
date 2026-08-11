@@ -16,6 +16,13 @@ export interface MatchedIntentPlan {
  * - Rewrote extractPersonName() with proper NER (capitalized-word primary, fallback to cleaned residual)
  * - Added keyword synonyms for broader phrasing coverage (quit, projects, contact, etc.)
  * - Added possessive name detection ("Arjun's")
+ *
+ * Hardened in Part C (Generalization Pass):
+ * - extractPersonName() Strategy 1 now captures up to 3 words before action verbs
+ *   (fixes: "Vikram Patel leaves" was returning only "Patel")
+ * - Knowledge Risk detection expanded with: breaks/fails/stops/changes + gone/left patterns
+ *   (fixes: "what breaks if X leaves" was NOT routing to knowledge_risk)
+ * - Possessive detection extended to 3-word names
  */
 export function routeQueryIntent(userQuery: string): MatchedIntentPlan | null {
     if (!userQuery || !userQuery.trim()) return null;
@@ -75,14 +82,21 @@ export function routeQueryIntent(userQuery: string): MatchedIntentPlan | null {
         }
     }
 
-    // 3. Check for Knowledge Risk / Departure (e.g. "what happens if Arjun leaves")
+    // 3. Check for Knowledge Risk / Departure (e.g. "what happens if Arjun leaves",
+    //    "what breaks if Vikram Patel leaves", "impact if X is gone")
     if (lower.includes('knowledge risk') || lower.includes('knwodlege') || /kn[ow]{1,2}[ledg]{1,5}e?\s*risk/i.test(lower)
         || lower.includes('leaves') || lower.includes('departure')
         || lower.includes('single point of failure') || lower.includes('bus factor')
         || lower.includes('quit') || lower.includes('left the') || lower.includes('leave')
         || lower.includes('gone from') || lower.includes('fired') || lower.includes('terminated')
-        || /what.{0,15}(happen|impact|effect|risk).*if/i.test(lower)
-        || /if.{0,30}(quit|leave|left|gone|fired|departed)/i.test(lower)) {
+        // Expanded: "what breaks/fails/stops/changes if X leaves"
+        || /what.{0,25}(happen|impact|effect|risk|break|fail|stop|change|occur).*if/i.test(lower)
+        // Expanded: "breaks if", "fails if" phrasing without "what"
+        || /(break|fail|stop|change)s?\s+if\s+\w/i.test(lower)
+        // "X goes / X gone / X left the team"
+        || /if.{0,40}(quit|leave|left|gone|fired|departed|resign)/i.test(lower)
+        // "departure of X", "losing X", "loss of X"
+        || /\b(losing|loss of|departure of)\s+[A-Z][a-z]/i.test(lower)) {
         const entityMatch = extractPersonName(userQuery);
         return {
             intentId: 'KNOWLEDGE_RISK_EVALUATION',
@@ -131,24 +145,34 @@ const STOP_WORDS = new Set([
  * Returns the best person name found, or null if no name detected.
  */
 function extractPersonName(query: string): string | null {
-    // Strategy 1: Explicit pattern before action verbs like "leaves", "quit", "departed"
-    const actionVerbMatch = query.match(/\b([a-zA-Z]+(?:\s+[a-zA-Z]+)?)\s+(?:leaves|leave|quit|left|departed|going|fired|terminated)\b/i);
+    // Strategy 1: Explicit pattern before action verbs like "leaves", "quit", "departed".
+    // Allows up to 3 words before the action verb to capture full names like "Vikram Patel"
+    // or even 3-part names like "Ana Rodriguez Lima".
+    // Fix: was /([a-zA-Z]+(?:\s+[a-zA-Z]+)?)/ which only captured 1-2 words.
+    const actionVerbMatch = query.match(/\b([A-Za-z]+(?:\s+[A-Za-z]+){0,2})\s+(?:leaves|leave|quit|left|departed|going|fired|terminated|resigned|gone)\b/i);
     if (actionVerbMatch?.[1]) {
         const candidate = actionVerbMatch[1].trim();
         const words = candidate.split(/\s+/);
-        // Ensure words aren't stop words
-        if (!words.some(w => STOP_WORDS.has(w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))) {
-            if (candidate.length >= 3 && !/^(there|is|if|what|when|how|why|who|the|this|that|all|any|each)$/i.test(candidate)) {
-                // Capitalize nicely if lowercase
-                return words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-            }
+        // Filter out any leading/trailing stop words from the candidate
+        const filteredWords = words.filter(w => !STOP_WORDS.has(w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()));
+        const cleaned = filteredWords.join(' ');
+        // Ensure words aren't entirely stop words and the result is a plausible name
+        if (cleaned.length >= 3 && !/^(there|is|if|what|when|how|why|who|the|this|that|all|any|each|breaks|fails|stops|happens|goes|occurs)$/i.test(cleaned)) {
+            // Capitalize nicely if lowercase
+            return filteredWords.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
         }
     }
 
-    // Strategy 2: Possessive name detection ("Arjun's" → "Arjun", "Sarah Chen's" → "Sarah Chen")
-    const possessiveMatch = query.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)'s?\b/);
-    if (possessiveMatch?.[1] && !STOP_WORDS.has(possessiveMatch[1])) {
-        return possessiveMatch[1];
+    // Strategy 2: Possessive name detection ("Arjun's" → "Arjun", "Sarah Chen's" → "Sarah Chen",
+    //              "Ana Rodriguez Lima's" → "Ana Rodriguez Lima")
+    // Extended to 3-word names to match Strategy 1 coverage.
+    const possessiveMatch = query.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})'s?\b/);
+    if (possessiveMatch?.[1]) {
+        const words = possessiveMatch[1].split(/\s+/);
+        const firstWord = words[0]!;
+        if (!STOP_WORDS.has(firstWord)) {
+            return possessiveMatch[1];
+        }
     }
 
     // Strategy 3+4: Capitalized word sequences (multi-word names first, then single)

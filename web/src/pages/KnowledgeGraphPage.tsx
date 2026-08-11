@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getGraphVisualization, type GraphNode, type GraphEdge } from '../lib/api';
-import { ForceGraph } from '../components/ForceGraph';
+import { ForceGraph, getNodeCategory } from '../components/ForceGraph';
 import { Network, Filter, RefreshCw, AlertTriangle, Layers } from 'lucide-react';
 
 export const KnowledgeGraphPage: React.FC = () => {
@@ -43,10 +43,10 @@ export const KnowledgeGraphPage: React.FC = () => {
 
   // Derive filter dropdown lists from available nodes
   const availableRepos = Array.from(
-    new Set(nodes.filter(n => n.label === 'REPOSITORY').map(n => n.name))
+    new Set(nodes.filter(n => getNodeCategory(n) === 'REPOSITORY').map(n => n.name))
   );
   const availablePeople = Array.from(
-    new Set(nodes.filter(n => n.label === 'PERSON').map(n => ({ id: n.externalId || n.id, name: n.name })))
+    new Set(nodes.filter(n => getNodeCategory(n) === 'PERSON').map(n => ({ id: n.externalId || n.id, name: n.name })))
   );
 
   return (

@@ -10,15 +10,30 @@ export type GraphAction = typeof GRAPH_ACTIONS[number]
 
 export async function resolveGraphEntity(name: string) {
     const candidates = await searchEntityCandidates(name)
-    const exact = candidates.filter((candidate: EntityCandidate) => candidate.name.toLowerCase() === name.toLowerCase())
-    if (exact.length === 1) {
-        return { selected: exact[0], candidates }
+    if (candidates.length === 0) {
+        return { selected: undefined, candidates: [] }
     }
-    // If only 1 candidate matches (e.g. "arjun" -> "Arjun Kumar"), auto-select it instead of asking clarification
+
+    const trimmedLower = name.trim().toLowerCase()
+    const exact = candidates.filter((candidate: EntityCandidate) => candidate.name.toLowerCase() === trimmedLower)
+
+    if (exact.length >= 1) {
+        // Prefer TECHNOLOGY, REPOSITORY, PERSON over FILE or COMMIT
+        const preferred = exact.find((c: EntityCandidate) => ['TECHNOLOGY', 'REPOSITORY', 'PERSON'].includes(c.type?.toUpperCase())) || exact[0];
+        return { selected: preferred, candidates };
+    }
+
     if (candidates.length === 1) {
         return { selected: candidates[0], candidates }
     }
-    return { selected: undefined, candidates }
+
+    // Heuristic fallback: Prefer non-FILE, non-COMMIT candidates over generic file paths
+    const nonFileCandidates = candidates.filter((c: EntityCandidate) => c.type?.toUpperCase() !== 'FILE' && c.type?.toUpperCase() !== 'COMMIT');
+    if (nonFileCandidates.length > 0) {
+        return { selected: nonFileCandidates[0], candidates };
+    }
+
+    return { selected: candidates[0], candidates }
 }
 
 export async function executeGraphAction(action: GraphAction, entities: string[], target = '', relation = '') {

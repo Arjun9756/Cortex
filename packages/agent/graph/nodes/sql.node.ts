@@ -36,12 +36,39 @@ export async function runSafeQuery(queryType: string, params: any) {
 
         case "events_by_author": {
             const limit = Math.min(params.limit ?? 10, 50);
+            const authorTerm = `%${params.author}%`;
             return await sql`
                 SELECT id, external_id, provider, event_type, payload, created_at 
                 FROM events 
-                WHERE payload->>'author' = ${params.author} 
-                   OR payload->>'user' = ${params.author}
+                WHERE payload->>'author' ILIKE ${authorTerm}
+                   OR payload->>'user' ILIKE ${authorTerm}
+                   OR payload->'sender'->>'login' ILIKE ${authorTerm}
+                   OR payload->'sender'->>'email' ILIKE ${authorTerm}
+                   OR payload->'pusher'->>'name' ILIKE ${authorTerm}
+                   OR payload->'user'->>'displayName' ILIKE ${authorTerm}
+                   OR payload->'issue'->'fields'->'reporter'->>'displayName' ILIKE ${authorTerm}
                 ORDER BY created_at DESC 
+                LIMIT ${limit}
+            `;
+        }
+
+        case "active_engineers": {
+            const limit = Math.min(params.limit ?? 20, 50);
+            return await sql`
+                SELECT 
+                    COALESCE(
+                        payload->'sender'->>'login', 
+                        payload->'pusher'->>'name', 
+                        payload->'user'->>'displayName',
+                        payload->'issue'->'fields'->'reporter'->>'displayName',
+                        payload->>'user',
+                        'Unknown'
+                    ) AS engineer,
+                    provider,
+                    COUNT(*) AS event_count
+                FROM events
+                GROUP BY engineer, provider
+                ORDER BY event_count DESC
                 LIMIT ${limit}
             `;
         }

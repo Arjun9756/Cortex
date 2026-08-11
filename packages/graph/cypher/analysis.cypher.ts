@@ -187,7 +187,35 @@ export async function searchEntityCandidates(searchTerm: string, limit = 5): Pro
 }
 
 
+export async function describeAllPeople() {
+    const session = driver.session()
+    try {
+        const result = await session.run(`
+            MATCH (p:PERSON)
+            OPTIONAL MATCH (p)-[relation]-(connected)
+            RETURN p.name AS name, labels(p)[0] AS type, properties(p) AS properties,
+                   p.email AS email, p.role AS role,
+                   collect(DISTINCT { relation: type(relation), connectedTo: connected.name, connectedType: labels(connected)[0] }) AS connections
+        `)
+        return result.records.map(record => ({
+            name: record.get('name'),
+            type: record.get('type') || 'PERSON',
+            email: record.get('email') || record.get('properties')?.email || null,
+            role: record.get('role') || record.get('properties')?.role || null,
+            properties: record.get('properties'),
+            connections: (record.get('connections') || []).filter((item: { connectedTo?: string }) => item.connectedTo),
+        }))
+    }
+    finally { await session.close() }
+}
+
 export async function describeEntity(entityName: string) {
+    // Expanded trigger: also catch 'developers', 'contributors', 'members', 'devs', 'users', 'team'
+    // to ensure listing all people works regardless of how users phrase the collective noun.
+    if (/^(engineers?|personnel|people|persons?|staff|all engineers?|all people|all personnel|developers?|contributors?|members?|team members?|devs?|users?|all devs?|all developers?|all members?|all contributors?|all users?|team)$/i.test(entityName.trim())) {
+        return await describeAllPeople()
+    }
+
     const session = driver.session()
     try {
         const result = await session.run(`
@@ -212,8 +240,12 @@ export async function describeEntity(entityName: string) {
  * Allowlist of node labels safe for Cypher interpolation.
  * Cypher does not support parameterized labels, so we validate against this
  * list before string interpolation to prevent injection.
+ *
+ * TECHNOLOGY and FILE added in Part C hardening:
+ * - Enables "how many technologies are there?" queries via countByLabel.
+ * - Enables file-level counting queries.
  */
-const ALLOWED_LABELS = ['PERSON', 'REPOSITORY', 'COMMIT', 'PULL_REQUEST', 'ISSUE'] as const
+const ALLOWED_LABELS = ['PERSON', 'REPOSITORY', 'COMMIT', 'PULL_REQUEST', 'ISSUE', 'TECHNOLOGY', 'FILE'] as const
 
 /**
  * Count how many nodes match a name pattern across a label (or the entire graph).
@@ -226,9 +258,29 @@ const ALLOWED_LABELS = ['PERSON', 'REPOSITORY', 'COMMIT', 'PULL_REQUEST', 'ISSUE
 export async function countByLabel(searchTerm: string, label: string) {
     const session = driver.session()
     try {
-        const normalizedLabel = label?.toUpperCase().trim() || ''
+        let normalizedLabel = label?.toUpperCase().trim() || ''
+        const trimmedSearch = (searchTerm || '').toLowerCase().trim()
+        const genericPersonWords = ['*', 'engineer', 'engineers', 'all', 'people', 'personnel', 'staff', 'team', 'members', 'dev', 'developer', 'developers']
+
+        if (!normalizedLabel && genericPersonWords.includes(trimmedSearch)) {
+            normalizedLabel = 'PERSON'
+        }
+
         if (normalizedLabel && !(ALLOWED_LABELS as readonly string[]).includes(normalizedLabel)) {
             return { searchTerm: searchTerm || '*', label: normalizedLabel || 'ANY', total: 0, error: `Unknown label: ${label}. Allowed: ${ALLOWED_LABELS.join(', ')}` }
+        }
+
+        if (normalizedLabel === 'PERSON' && (!trimmedSearch || genericPersonWords.includes(trimmedSearch))) {
+            const personResult = await session.run(`
+                MATCH (p:PERSON)
+                RETURN count(p) AS total,
+                       collect({ name: p.name, email: p.email, role: p.role, externalId: p.externalId }) AS people
+            `)
+            const record = personResult.records[0]
+            const total = neo4j.integer.toNumber(record?.get('total') ?? neo4j.int(0))
+            const people = record?.get('people') || []
+            const names = people.map((p: any) => p.name)
+            return { searchTerm: searchTerm || '*', label: 'PERSON', total, people, names }
         }
 
         let cypher: string

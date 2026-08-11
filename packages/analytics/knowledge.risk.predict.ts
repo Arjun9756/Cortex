@@ -30,6 +30,25 @@ export interface KnowledgeRiskScore {
     }
 }
 
+async function resolveCanonicalPersonName(session: any, rawName: string): Promise<string> {
+    try {
+        const res = await session.run(
+            `MATCH (p:PERSON)
+             WHERE toLower(p.name) = toLower($name)
+                OR (p.externalId IS NOT NULL AND toLower(p.externalId) = toLower($name))
+                OR (p.email IS NOT NULL AND toLower(p.email) = toLower($name))
+             RETURN p.name AS name LIMIT 1`,
+            { name: rawName }
+        );
+        if (res.records.length > 0 && res.records[0].get('name')) {
+            return res.records[0].get('name') as string;
+        }
+    } catch {
+        // Fallback
+    }
+    return rawName;
+}
+
 export async function calculateOwnership(
     personName: string,
     mapping: { relation: string | null; targetLabel: string | null },
@@ -46,13 +65,14 @@ export async function calculateOwnership(
 
     const session = driver.session()
     try {
+        const name = await resolveCanonicalPersonName(session, personName);
         const targetLabel = mapping.targetLabel || 'COMMIT'
 
         // Query 1: Get total count
         const countResult = await session.run(
             `MATCH (p:PERSON {name: $name})-[:${mapping.relation}]->(item:${targetLabel})
              RETURN count(item) as totalCount`,
-            { name: personName }
+            { name }
         )
         const personCount = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0
 
@@ -64,7 +84,7 @@ export async function calculateOwnership(
                     item.createdAt as createdAt
              ORDER BY item.createdAt DESC
              LIMIT 10`,
-            { name: personName }
+            { name }
         )
 
         const evidence = evidenceResult.records.map(record => {
@@ -115,11 +135,13 @@ export async function calculateDependency(
 
     const session = driver.session()
     try {
+        const name = await resolveCanonicalPersonName(session, personName);
+
         // Query 1: Get total count
         const countResult = await session.run(
             `MATCH (p:PERSON {name: $name})-[:AUTHORED]->(e)<-[:${mapping.relation}]-(dependent)
              RETURN count(DISTINCT dependent) as totalCount`,
-            { name: personName }
+            { name }
         )
         const count = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0
 
@@ -130,7 +152,7 @@ export async function calculateDependency(
                     labels(dependent)[0] as type,
                     e.name as dependsOn
              LIMIT 10`,
-            { name: personName }
+            { name }
         )
 
         const evidence = evidenceResult.records.map(record => ({
@@ -168,6 +190,7 @@ export async function calculateActivity(
 
     const session = driver.session()
     try {
+        const name = await resolveCanonicalPersonName(session, personName);
         const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000)
         const targetLabel = mapping.targetLabel ? `:${mapping.targetLabel}` : ''
 
@@ -176,7 +199,7 @@ export async function calculateActivity(
             `MATCH (p:PERSON {name: $name})-[:${mapping.relation}]->(e${targetLabel})
              WHERE e.createdAt >= $timestamp
              RETURN count(e) as totalCount`,
-            { name: personName, timestamp: thirtyDaysAgo }
+            { name, timestamp: thirtyDaysAgo }
         )
         const recentCount = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0
 
@@ -189,7 +212,7 @@ export async function calculateActivity(
                     e.createdAt as timestamp
              ORDER BY e.createdAt DESC
              LIMIT 10`,
-            { name: personName, timestamp: thirtyDaysAgo }
+            { name, timestamp: thirtyDaysAgo }
         )
 
         const evidence = evidenceResult.records.map(record => ({
@@ -228,6 +251,7 @@ export async function calculateDocumentation(
 
     const session = driver.session()
     try {
+        const name = await resolveCanonicalPersonName(session, personName);
         const targetLabel = mapping.targetLabel || 'FILE'
 
         // Query 1: Get total count
@@ -236,7 +260,7 @@ export async function calculateDocumentation(
              WHERE item.description IS NULL OR item.description = ''
                 OR NOT (item.name =~ '(?i).*readme.*|.*\\.md$')
              RETURN count(item) as totalCount`,
-            { name: personName }
+            { name }
         )
         const undocumentedCount = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0
 
@@ -252,7 +276,7 @@ export async function calculateDocumentation(
                         ELSE 'Missing README/docs'
                     END as issue
              LIMIT 10`,
-            { name: personName }
+            { name }
         )
 
         const evidence = evidenceResult.records.map(record => ({
@@ -290,6 +314,8 @@ export async function calculateExpertise(
 
     const session = driver.session()
     try {
+        const name = await resolveCanonicalPersonName(session, personName);
+
         // Fix 2: Aggregation-based approach avoids expensive per-entity NOT EXISTS correlated subqueries.
         // Collects all PERSON contributors to each entity, then filters to those where only $name contributed.
         const countResult = await session.run(
@@ -299,7 +325,7 @@ export async function calculateExpertise(
              WITH e, collect(DISTINCT connectedPerson.name) AS connectedPeople
              WHERE size(connectedPeople) = 1 AND connectedPeople[0] = $name
              RETURN count(e) AS totalCount`,
-            { name: personName }
+            { name }
         )
         const uniqueCount = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0
 
@@ -314,7 +340,7 @@ export async function calculateExpertise(
                     labels(e)[0] as type,
                     'Single contributor (' + $name + ') to this ' + toLower(labels(e)[0]) as reason
              LIMIT 10`,
-            { name: personName }
+            { name }
         )
 
         const evidence = evidenceResult.records.map(record => ({
@@ -352,24 +378,28 @@ export async function calculatePendingWork(
 
     const session = driver.session()
     try {
+        const name = await resolveCanonicalPersonName(session, personName);
         const targetLabel = mapping.targetLabel || 'ISSUE'
 
         // Query 1: Get total count
         const countResult = await session.run(
             `MATCH (p:PERSON {name: $name})<-[:${mapping.relation}]-(issue:${targetLabel})
              RETURN count(issue) as totalCount`,
-            { name: personName }
+            { name }
         )
         const count = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0
 
         // Query 2: Get evidence (top 10)
+        // Fix BUG 3: use resolved `name` (from resolveCanonicalPersonName) not raw `personName`.
+        // Previously this query used `personName` (the raw input), while countResult used the
+        // resolved `name`. This caused 0 evidence for lowercase/variant-cased inputs.
         const evidenceResult = await session.run(
             `MATCH (p:PERSON {name: $name})<-[:${mapping.relation}]-(issue:${targetLabel})
              RETURN issue.name as name,
                     labels(issue)[0] as type,
                     issue.status as status
              LIMIT 10`,
-            { name: personName }
+            { name }
         )
 
         const evidence = evidenceResult.records.map(record => {

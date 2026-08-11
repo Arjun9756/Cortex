@@ -15,6 +15,15 @@ intents:
       - "list repos for"
       - "codebases of"
       - "involved in which repos"
+      - "repos does work on"
+      - "what codebases"
+      - "which projects does"
+      - "what repositories is"
+      - "repos worked on"
+      - "repositories worked on"
+      - "projects worked on"
+      - "which repos is involved"
+      - "which projects is involved"
     executionPlan:
       tool: "graph_search"
       action: "listNodes"
@@ -35,6 +44,14 @@ intents:
       - "what is the email"
       - "designation of"
       - "contact details"
+      - "what is the role"
+      - "what is the designation"
+      - "job title of"
+      - "position of"
+      - "title of"
+      - "get email"
+      - "find email"
+      - "show email"
     executionPlan:
       tool: "graph_search"
       action: "describeEntity"
@@ -42,6 +59,7 @@ intents:
   - id: KNOWLEDGE_RISK_EVALUATION
     description: "User asks about knowledge risk score, departure risk, or impact if a person leaves, quits, or is fired"
     patterns:
+      # Classic phrasings
       - "knowledge risk"
       - "leaves the cortex"
       - "what happens if"
@@ -55,17 +73,93 @@ intents:
       - "what would happen if"
       - "risk if fired"
       - "departure impact"
+      # NEW: "what breaks if X leaves" phrasing (previously missing - root cause of Vikram Patel bug)
+      - "what breaks if"
+      - "what fails if"
+      - "what stops if"
+      - "what changes if"
+      - "breaks if leaves"
+      - "fails if leaves"
+      - "what breaks when"
+      - "damage if leaves"
+      # "losing X" phrasings
+      - "if we lose"
+      - "if we lost"
+      - "loss of knowledge"
+      # "gone" phrasings
+      - "leaves the team"
+      - "leaves the company"
+      - "what if resigns"
+      # Score-based ask
+      - "departure score"
+      - "risk of losing"
+      - "knowledge loss if"
     executionPlan:
       tool: "knowledge_risk"
 
   - id: GLOBAL_ENTITY_COUNT
-    description: "User asks how many total repositories or people exist in the system"
+    description: "User asks how many total repositories, people, technologies, or other entities exist in the system"
     patterns:
       - "how many total"
       - "how many repositories exist"
       - "total count of"
       - "list all"
       - "count all"
+      - "how many people"
+      - "how many engineers"
+      - "how many developers"
+      - "how many technologies"
+      - "how many repos are there"
+      - "total number of"
+      - "how many members"
+      - "how many contributors"
+      - "how many commits"
+      - "count of repositories"
+      - "number of engineers"
+      - "show all engineers"
+      - "show all repos"
+      - "list everyone"
     executionPlan:
       tool: "graph_search"
       action: "countByLabel"
+
+  - id: TECHNOLOGY_EXPERTISE_QUERY
+    description: "User asks what technologies, skills, or tools a person uses or is expert in"
+    patterns:
+      - "technologies does use"
+      - "what technologies"
+      - "technology stack of"
+      - "tech stack of"
+      - "what tools does"
+      - "frameworks does use"
+      - "skills of"
+      - "expertise of"
+      - "what does know"
+      - "what is good at"
+      - "what languages"
+      - "what does work with"
+      - "proficient in"
+      - "technical skills of"
+      - "what stack does"
+    executionPlan:
+      tool: "graph_search"
+      action: "listNodes"
+      target: "TECHNOLOGY"
+
+  - id: WHY_DECISION_QUERY
+    description: "User asks why a technical decision was made, why something was replaced, or for architectural reasoning"
+    patterns:
+      - "why did we"
+      - "why was replaced"
+      - "why was removed"
+      - "why was chosen"
+      - "reason for replacing"
+      - "reason we use"
+      - "why switched to"
+      - "why migrated to"
+      - "decision to use"
+      - "architectural decision"
+      - "why not use"
+      - "why did the team"
+    executionPlan:
+      tool: "vector_search"
