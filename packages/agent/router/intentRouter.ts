@@ -5,34 +5,31 @@ export interface MatchedIntentPlan {
     target?: string | undefined;
     entities?: string[] | undefined;
     personName?: string | undefined;
+    queryType?: string | undefined;
 }
 
 /**
  * Deterministic & Rule-based Intent Router.
  * Matches common user question patterns in ~0.1ms to guarantee 100% accurate tool choices
  * without incurring LLM latency or token costs.
- *
- * Hardened in Part B:
- * - Rewrote extractPersonName() with proper NER (capitalized-word primary, fallback to cleaned residual)
- * - Added keyword synonyms for broader phrasing coverage (quit, projects, contact, etc.)
- * - Added possessive name detection ("Arjun's")
- *
- * Hardened in Part C (Generalization Pass):
- * - extractPersonName() Strategy 1 now captures up to 3 words before action verbs
- *   (fixes: "Vikram Patel leaves" was returning only "Patel")
- * - Knowledge Risk detection expanded with: breaks/fails/stops/changes + gone/left patterns
- *   (fixes: "what breaks if X leaves" was NOT routing to knowledge_risk)
- * - Possessive detection extended to 3-word names
  */
 export function routeQueryIntent(userQuery: string): MatchedIntentPlan | null {
     if (!userQuery || !userQuery.trim()) return null;
 
     const lower = userQuery.toLowerCase().trim();
 
+    // 0. Check for Repository Risk / Bus Factor Query FIRST (e.g. "which repository has higher risk", "compare repo risks", "bus factor 1")
+    const isRepoMentioned = /\b(repo|repos|repository|repositories|codebase|project|projects)\b/i.test(lower);
+    const isRiskOrBusFactorMentioned = /\b(risk|risks|risky|bus factor|higher|highest|most risky|riskiest|vulnerable|spof|single point|health|score|scores)\b/i.test(lower);
+    if ((isRepoMentioned && isRiskOrBusFactorMentioned) || (isRiskOrBusFactorMentioned && !extractPersonName(userQuery))) {
+        return {
+            intentId: 'REPOSITORY_RISK_EVALUATION',
+            tool: 'sql_search',
+            queryType: 'repo_risk',
+        };
+    }
+
     // Compound / Open-Ended / Negation / Domain Knowledge Query Safety Guard:
-    // If query contains explanation, reasoning, negation ('not', "n't", 'no longer', 'except'),
-    // multiple sub-questions, or open domain/ownership questions ("who owns", "who maintains"),
-    // skip single-intent fast-path routing to let LLM Planner handle full multi-tool parallel planning.
     const questionWordCount = (lower.match(/\b(who|what|whats|where|when|why|how|which)\b/g) || []).length;
     const hasMultipleQuestions = questionWordCount > 1 || (lower.match(/\?/g) || []).length > 1;
     const hasOwnershipOrDomainKnowledge = /\b(who (knows|owns|worked?|working|built|created|maintains|migrated|uses|changed?)|owner|maintainer|author|creator|change date|date (he|she|they) (changed?|updated?))\b/i.test(lower);
@@ -82,21 +79,15 @@ export function routeQueryIntent(userQuery: string): MatchedIntentPlan | null {
         }
     }
 
-    // 3. Check for Knowledge Risk / Departure (e.g. "what happens if Arjun leaves",
+    // 3. Check for Knowledge Risk / Person Departure (e.g. "what happens if Arjun leaves",
     //    "what breaks if Vikram Patel leaves", "impact if X is gone")
-    if (lower.includes('knowledge risk') || lower.includes('knwodlege') || /kn[ow]{1,2}[ledg]{1,5}e?\s*risk/i.test(lower)
-        || lower.includes('leaves') || lower.includes('departure')
-        || lower.includes('single point of failure') || lower.includes('bus factor')
-        || lower.includes('quit') || lower.includes('left the') || lower.includes('leave')
-        || lower.includes('gone from') || lower.includes('fired') || lower.includes('terminated')
-        // Expanded: "what breaks/fails/stops/changes if X leaves"
-        || /what.{0,25}(happen|impact|effect|risk|break|fail|stop|change|occur).*if/i.test(lower)
-        // Expanded: "breaks if", "fails if" phrasing without "what"
-        || /(break|fail|stop|change)s?\s+if\s+\w/i.test(lower)
-        // "X goes / X gone / X left the team"
-        || /if.{0,40}(quit|leave|left|gone|fired|departed|resign)/i.test(lower)
-        // "departure of X", "losing X", "loss of X"
-        || /\b(losing|loss of|departure of)\s+[A-Z][a-z]/i.test(lower)) {
+    const hasPersonName = Boolean(extractPersonName(userQuery));
+    const isPersonDepartureMentioned = lower.includes('leaves') || lower.includes('departure') || lower.includes('quit')
+        || lower.includes('left the') || lower.includes('leave') || lower.includes('gone from')
+        || lower.includes('fired') || lower.includes('terminated') || lower.includes('resign');
+
+    if ((lower.includes('knowledge risk') || lower.includes('knwodlege') || /kn[ow]{1,2}[ledg]{1,5}e?\s*risk/i.test(lower) || isPersonDepartureMentioned)
+        && (hasPersonName || isPersonDepartureMentioned)) {
         const entityMatch = extractPersonName(userQuery);
         return {
             intentId: 'KNOWLEDGE_RISK_EVALUATION',

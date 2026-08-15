@@ -1,13 +1,6 @@
 import { AgentStateType } from "../state.js";
 import { toReadableTimestamp } from "../../../database/neo4j/neo4jUtils.js";
 
-/**
- * Normalize the knowledgeRiskResult for display before passing to the LLM.
- * - totalRiskPct  : 0-100  (totalRisk × 100)
- * - breakdownPct  : 0-100  (each 0-10 breakdown component × 10)
- *
- * This ensures the LLM is never shown mixed scales in the same evidence block.
- */
 function formatSingleRiskText(kr: any): string {
     if (!kr) return '';
 
@@ -56,9 +49,9 @@ function buildRiskText(kr: AgentStateType['knowledgeRiskResult']): string {
 }
 
 export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
-    const tStart = Date.now()
-    const startIso = new Date().toISOString()
-    console.log(`[Timing] [evidenceNode] Started at ${startIso}`)
+    const tStart = Date.now();
+    const startIso = new Date().toISOString();
+    console.log(`[Timing] [evidenceNode] Started at ${startIso}`);
 
     try {
         const vectorText = state.vectorResult.map((item) => {
@@ -72,11 +65,14 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
             if (item?.author) metaParts.push(`author: ${item.author}`)
 
             return `[${metaParts.join(' | ')}] Summary: ${item?.summary || ''}${item?.text ? ` | Text: "${item.text}"` : ''}`
-        }).join('\n')
+        }).join('\n');
 
-        const graphText = state.graphResult.map((item) => `[GRAPH] ${JSON.stringify(item)}`).join('\n')
+        const graphText = state.graphResult.map((item) => `[GRAPH] ${JSON.stringify(item)}`).join('\n');
 
         const sqlText = state.sqlResult.map((item: any) => {
+            if (item?.repo_name) {
+                return `[REPOSITORY RISK & METRIC] Repo Name: "${item.repo_name}" | Bus Factor: ${item.bus_factor} | Total Risk Score: ${item.risk_score}% | Primary Owner: ${item.primary_owner || 'Unknown'} | Contributors: ${item.contributor_count || 1}`;
+            }
             if (item?.engineer) {
                 return `[Engineer: ${item.engineer}] [Provider: ${item.provider || 'all'}] Total Activity Events: ${item.event_count || item.count || 1}`;
             }
@@ -88,15 +84,13 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
             const createdStr = item?.created_at || 'N/A';
             const payloadStr = item?.payload ? JSON.stringify(item.payload) : JSON.stringify(item);
             return `[Event ID: ${idStr}] [${providerStr}] ${payloadStr} (created: ${createdStr})`;
-        }).join('\n')
+        }).join('\n');
 
-        const riskText = buildRiskText(state.knowledgeRiskResult)
+        const riskText = buildRiskText(state.knowledgeRiskResult);
 
-        // FIX 3: Include pending clarification so the answer LLM can address
-        // the answerable parts and relay the disambiguation question for the rest
         const clarificationText = state.clarificationQuestion
             ? `\n#PENDING CLARIFICATION\n${state.clarificationQuestion}\nNote: One part of the query could not be resolved. Answer what you can from the evidence above, then include this clarification question for the remaining part.`
-            : ''
+            : '';
 
         const evidence = `
 #RELEVANT EVENTS
@@ -111,20 +105,48 @@ ${sqlText}
 #KNOWLEDGE RISK DATA
 ${riskText}
 ${clarificationText}
-        `.trim()
+        `.trim();
 
-        console.log("=== FINAL EVIDENCE STRING PASSED TO LLM ===");
-        console.log(evidence);
+        // Calculate Subgoal Coverage and Confidence Metrics
+        const coveredGoals: string[] = [];
+        const missingGoals: string[] = [];
 
-        // Clear clarificationQuestion after consuming it into evidence, so the
-        // reflectionNode conditional edge won't re-route to clarifyNode
-        return { evidence, clarificationQuestion: '' }
+        for (const subgoal of state.subgoals) {
+            let isCovered = false;
+            if (subgoal.targetSourcePreference.includes('graph') && state.graphResult.length > 0) isCovered = true;
+            if (subgoal.targetSourcePreference.includes('vector') && state.vectorResult.length > 0) isCovered = true;
+            if (subgoal.targetSourcePreference.includes('sql') && state.sqlResult.length > 0) isCovered = true;
+            if (subgoal.targetSourcePreference.includes('analytics') && state.knowledgeRiskResult) isCovered = true;
+
+            if (isCovered) {
+                coveredGoals.push(subgoal.id);
+            } else {
+                missingGoals.push(subgoal.id);
+            }
+        }
+
+        const totalGoalsCount = state.subgoals.length || 1;
+        const confidenceScore = state.subgoals.length > 0 ? (coveredGoals.length / totalGoalsCount) : 0.85;
+
+        console.log(`[evidenceNode] Evidence compiled. Goals covered: ${coveredGoals.length}/${totalGoalsCount}, Confidence: ${confidenceScore.toFixed(2)}`);
+
+        return {
+            evidence,
+            coveredGoals,
+            missingGoals,
+            evidenceConfidence: confidenceScore,
+            clarificationQuestion: '',
+            metrics: {
+                ...state.metrics,
+                evidenceConfidence: confidenceScore,
+            }
+        };
     }
     catch (error: any) {
-        console.log("Error in evidenceNode:", error?.message)
-        return { evidence: "Error in Cortex Server" }
+        console.log("Error in evidenceNode:", error?.message);
+        return { evidence: "Error in Cortex Server" };
     } finally {
-        const elapsed = Date.now() - tStart
-        console.log(`[Timing] [evidenceNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`)
+        const elapsed = Date.now() - tStart;
+        console.log(`[Timing] [evidenceNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`);
     }
 }

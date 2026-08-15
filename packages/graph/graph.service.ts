@@ -9,32 +9,49 @@ export const GRAPH_ACTIONS = [
 export type GraphAction = typeof GRAPH_ACTIONS[number]
 
 export async function resolveGraphEntity(name: string) {
-    const candidates = await searchEntityCandidates(name)
-    if (candidates.length === 0) {
-        return { selected: undefined, candidates: [] }
+    if (!name || typeof name !== 'string' || !name.trim()) {
+        return { selected: undefined, candidates: [] };
     }
 
-    const trimmedLower = name.trim().toLowerCase()
-    const exact = candidates.filter((candidate: EntityCandidate) => candidate.name.toLowerCase() === trimmedLower)
+    const candidates = await searchEntityCandidates(name.trim());
+    if (candidates.length === 0) {
+        return { selected: undefined, candidates: [] };
+    }
+
+    const trimmedLower = name.trim().toLowerCase();
+    
+    // Tier 1: Exact Name Match
+    const exact = candidates.filter((candidate: EntityCandidate) => candidate.name.toLowerCase() === trimmedLower);
 
     if (exact.length >= 1) {
         // Prefer TECHNOLOGY, REPOSITORY, PERSON over FILE or COMMIT
         const preferred = exact.find((c: EntityCandidate) => ['TECHNOLOGY', 'REPOSITORY', 'PERSON'].includes(c.type?.toUpperCase())) || exact[0];
-        return { selected: preferred, candidates };
+        return { selected: preferred, candidates, isExact: true };
     }
 
+    // Tier 2: Single Candidate Match
     if (candidates.length === 1) {
-        return { selected: candidates[0], candidates }
+        return { selected: candidates[0], candidates, isExact: false };
     }
 
-    // Heuristic fallback: Prefer non-FILE, non-COMMIT candidates over generic file paths
-    const nonFileCandidates = candidates.filter((c: EntityCandidate) => c.type?.toUpperCase() !== 'FILE' && c.type?.toUpperCase() !== 'COMMIT');
-    if (nonFileCandidates.length > 0) {
-        return { selected: nonFileCandidates[0], candidates };
+    // Tier 3: Heuristic Entity Type Preference (Filter out generic FILE and COMMIT nodes)
+    const nonFileCandidates = candidates.filter((c: EntityCandidate) => {
+        const t = c.type?.toUpperCase();
+        return t !== 'FILE' && t !== 'COMMIT';
+    });
+
+    if (nonFileCandidates.length === 1) {
+        return { selected: nonFileCandidates[0], candidates, isExact: false };
     }
 
-    return { selected: candidates[0], candidates }
+    const targetList = nonFileCandidates.length > 0 ? nonFileCandidates : candidates;
+
+    // Prefer PERSON or REPOSITORY or TECHNOLOGY
+    const bestMatch = targetList.find((c: EntityCandidate) => ['PERSON', 'REPOSITORY', 'TECHNOLOGY'].includes(c.type?.toUpperCase())) || targetList[0];
+
+    return { selected: bestMatch, candidates, isExact: false };
 }
+
 
 export async function executeGraphAction(action: GraphAction, entities: string[], target = '', relation = '') {
     const [primary, secondary] = entities

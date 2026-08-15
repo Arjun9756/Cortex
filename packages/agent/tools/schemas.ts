@@ -1,6 +1,15 @@
 import { z } from 'zod';
 import { GRAPH_ACTIONS } from '../../graph/graph.service.js';
 
+export interface ToolResultEnvelope<T = any> {
+    evidence: T[];
+    confidence: number;             // 0.0 - 1.0 rating of evidence relevance
+    sourceType: 'graph' | 'vector' | 'sql' | 'analytics' | 'cypher';
+    entitiesFound: string[];        // Extracted entity names found in evidence
+    queryExplanation: string;       // Human-readable summary of what the tool executed
+    hasMoreContext: boolean;        // True if pagination/truncation occurred
+}
+
 export const GraphSearchSchema = z.object({
     entities: z.array(z.string()).min(1, 'At least one entity name is required'),
     action: z.enum(GRAPH_ACTIONS).optional().default('describeEntity'),
@@ -17,7 +26,7 @@ export const KnowledgeRiskSchema = z.object({
 });
 
 export const SqlSearchSchema = z.object({
-    queryType: z.enum(['recent_events', 'count_by_provider', 'events_by_author', 'event_by_id', 'active_engineers']),
+    queryType: z.enum(['repo_risk', 'recent_events', 'count_by_provider', 'events_by_author', 'event_by_id', 'active_engineers']),
     params: z.record(z.string(), z.any()).optional().default({}),
 });
 
@@ -25,3 +34,4 @@ export type GraphSearchInput = z.infer<typeof GraphSearchSchema>;
 export type VectorSearchInput = z.infer<typeof VectorSearchSchema>;
 export type KnowledgeRiskInput = z.infer<typeof KnowledgeRiskSchema>;
 export type SqlSearchInput = z.infer<typeof SqlSearchSchema>;
+

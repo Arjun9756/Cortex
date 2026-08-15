@@ -119,12 +119,34 @@ export async function upsertEntity(
                 `, params);
             }
         } else {
-            result = await session.run(`
-                MERGE (e:${type} {name: $name})
-                ON CREATE SET e.createdAt = timestamp()${extraSetClause}
-                ON MATCH SET e.updatedAt = timestamp()${extraSetClause}
-                RETURN elementId(e) AS id
-            `, params)
+            // Case-insensitive lookup for TECHNOLOGY, REPOSITORY, and other entity types to prevent case-variant duplicates (e.g. "Redis" vs "redis")
+            const existingMatch = await session.run(`
+                MATCH (e:${type})
+                WHERE toLower(e.name) = toLower($name)
+                RETURN elementId(e) AS id, e.name AS existingName
+                LIMIT 1
+            `, { name });
+
+            if (existingMatch.records.length > 0) {
+                const matchedId = existingMatch.records[0].get('id');
+                const existingName = existingMatch.records[0].get('existingName');
+                // Prefer properly capitalized name (e.g. "Redis" over "redis")
+                const preferredName = (name !== name.toLowerCase() && existingName === existingName.toLowerCase()) ? name : existingName;
+                params.id = matchedId;
+                params.preferredName = preferredName;
+                result = await session.run(`
+                    MATCH (e:${type}) WHERE elementId(e) = $id
+                    SET e.name = $preferredName, e.updatedAt = timestamp()${extraSetClause}
+                    RETURN elementId(e) AS id
+                `, params);
+            } else {
+                result = await session.run(`
+                    MERGE (e:${type} {name: $name})
+                    ON CREATE SET e.createdAt = timestamp()${extraSetClause}
+                    ON MATCH SET e.updatedAt = timestamp()${extraSetClause}
+                    RETURN elementId(e) AS id
+                `, params);
+            }
         }
 
         return result.records[0]?.get("id")

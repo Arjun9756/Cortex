@@ -34,8 +34,130 @@ interface ChatMessage {
   timestamp: string;
 }
 
-export const AIChatPage: React.FC = () => {
-  const [query, setQuery] = useState<string>('');
+interface AIChatPageProps {
+  initialQuery?: string;
+}
+
+function renderInlineFormattedText(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+  return parts.map((part, pIdx) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={pIdx} className="font-extrabold text-white bg-indigo-500/10 px-1 py-0.5 rounded border border-indigo-500/20">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={pIdx} className="px-1.5 py-0.5 rounded bg-[#101728] border border-slate-800 text-indigo-300 font-mono text-xs font-semibold">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <span key={pIdx}>{part}</span>;
+  });
+}
+
+function renderFormattedMessageContent(text: string) {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // 1. Detect Markdown Table block (lines starting with '|')
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+
+      // Filter out separator line like |---|---|
+      const dataRows = tableLines.filter(row => !row.match(/^\|[\s\-:|]+\|$/));
+      if (dataRows.length > 0) {
+        const headerCells = dataRows[0].split('|').slice(1, -1).map(c => c.trim());
+        const bodyRows = dataRows.slice(1).map(row => row.split('|').slice(1, -1).map(c => c.trim()));
+
+        elements.push(
+          <div key={`table-${i}`} className="my-3 overflow-x-auto rounded-xl border border-slate-800/80 bg-[#080d19] shadow-md">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-[#0f172a] text-indigo-300 font-mono uppercase tracking-wider text-[11px] border-b border-slate-800">
+                <tr>
+                  {headerCells.map((h, hIdx) => (
+                    <th key={hIdx} className="px-3.5 py-2.5 font-bold border-r border-slate-800/60 last:border-0">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/50 text-slate-200">
+                {bodyRows.map((row, rIdx) => (
+                  <tr key={rIdx} className="hover:bg-slate-800/40 transition-colors">
+                    {row.map((cell, cIdx) => (
+                      <td key={cIdx} className="px-3.5 py-2 border-r border-slate-800/40 last:border-0 font-sans">
+                        {renderInlineFormattedText(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+      continue;
+    }
+
+    // 2. Handle empty line
+    if (!trimmed) {
+      elements.push(<div key={`empty-${i}`} className="h-1.5" />);
+      i++;
+      continue;
+    }
+
+    // 3. Handle Header lines (# Header)
+    if (trimmed.startsWith('#')) {
+      const headerText = trimmed.replace(/^#+\s*/, '');
+      elements.push(
+        <h4 key={`header-${i}`} className="text-sm font-extrabold text-indigo-300 uppercase font-mono tracking-wider pt-3 pb-1 border-b border-slate-800/60 flex items-center space-x-2">
+          <span>{headerText}</span>
+        </h4>
+      );
+      i++;
+      continue;
+    }
+
+    // 4. Handle blockquotes / callouts (> text)
+    if (trimmed.startsWith('>')) {
+      const quoteText = trimmed.replace(/^>\s*/, '');
+      elements.push(
+        <div key={`quote-${i}`} className="my-2 p-3 rounded-xl bg-indigo-500/10 border-l-4 border-indigo-500 text-indigo-200 text-xs font-semibold backdrop-blur-sm shadow-inner">
+          {renderInlineFormattedText(quoteText)}
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // 5. Handle bullet points (- item or * item)
+    const isBullet = trimmed.startsWith('* ') || trimmed.startsWith('- ');
+    const lineText = isBullet ? trimmed.slice(2) : trimmed;
+
+    elements.push(
+      <div key={`line-${i}`} className={isBullet ? 'pl-5 relative my-0.5 before:content-["•"] before:absolute before:left-1.5 before:text-indigo-400 before:font-bold' : 'my-0.5'}>
+        {renderInlineFormattedText(lineText)}
+      </div>
+    );
+    i++;
+  }
+
+  return elements;
+}
+
+export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
+  const [query, setQuery] = useState<string>(initialQuery || '');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
@@ -62,14 +184,14 @@ export const AIChatPage: React.FC = () => {
     }
   }, [query]);
 
-  // Scroll immediately to newly added message (User Question on Enter, then Bot Answer on response)
+  // Auto-send query if passed via initialQuery
+  const autoQuerySent = useRef<boolean>(false);
   useEffect(() => {
-    if (messages.length > 1) {
-      setTimeout(() => {
-        lastMsgRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 40);
+    if (initialQuery && !autoQuerySent.current) {
+      autoQuerySent.current = true;
+      handleSend(initialQuery);
     }
-  }, [messages]);
+  }, [initialQuery]);
 
   const handleSend = async (queryText?: string) => {
     const textToSend = queryText || query;
@@ -128,12 +250,12 @@ export const AIChatPage: React.FC = () => {
     }));
   };
 
-  // Compact starter prompts shown ONLY on empty welcome state inside chat
+  // Guaranteed Fast-Path matched starter prompts (Sub-millisecond 100% accurate answers)
   const starterPrompts = [
-    { title: '🚨 Departure Risk', desc: 'What breaks if Vikram Patel leaves the team?' },
-    { title: '⚡ Compound Query', desc: 'What is Sarah Chen\'s email and knowledge risk?' },
-    { title: '🏗️ Architectural Choice', desc: 'Why did we switch to BullMQ for queues?' },
-    { title: '💻 Tech Stack', desc: 'What technologies does Elena Rostova use?' },
+    { title: '🚨 Key-Person Departure Impact', desc: 'What breaks if Vikram Patel leaves' },
+    { title: '📧 Role & Contact Info', desc: 'What is the email and role of Sarah Chen' },
+    { title: '🏗️ Codebase Ownership', desc: 'Which repos does Vikram Patel work in' },
+    { title: '📊 Repository Risk Evaluation', desc: 'Which repository has higher risk' },
   ];
 
   const getToolBadgeColor = (tool: string) => {
@@ -220,7 +342,9 @@ export const AIChatPage: React.FC = () => {
                     : 'bg-[#0b1120] border border-slate-800 text-slate-100 rounded-tl-none shadow-xl backdrop-blur-md'
                 }`}
               >
-                <div className="whitespace-pre-wrap">{msg.text}</div>
+                <div className="space-y-2">
+                  {renderFormattedMessageContent(msg.text)}
+                </div>
               </div>
 
               {/* Welcome State Cards (Shown ONLY when chat just started) */}

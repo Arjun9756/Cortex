@@ -7,17 +7,16 @@ export const groq = new Groq({
 })
 
 export const PRIMARY_MODEL = 'openai/gpt-oss-120b'
-export const FALLBACK_MODEL = 'llama-3.3-70b-versatile'
+export const FALLBACK_MODEL = 'qwen/qwen3.6-27b'
+export const SAFETY_MODEL = 'llama-3.3-70b-versatile'
 
 /**
  * Strips internal chain-of-thought `<think>...</think>` tags (both closed and unclosed)
- * from reasoning models (e.g. Qwen / DeepSeek-R1).
+ * from reasoning models.
  */
 export function stripThinkingTags(text: string): string {
     if (!text) return text
-    // 1. Remove closed <think>...</think> blocks
     let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
-    // 2. Remove unclosed <think>... blocks if present
     if (cleaned.toLowerCase().includes('<think>')) {
         const closeIdx = cleaned.toLowerCase().indexOf('</think>')
         if (closeIdx !== -1) {
@@ -27,7 +26,6 @@ export function stripThinkingTags(text: string): string {
             cleaned = cleaned.replace(/<think>[\s\S]*/gi, '').trim()
         }
     }
-    // 3. Fallback: If output was completely consumed inside <think> due to max token cutoff, extract inner text cleanly
     if (!cleaned && text.toLowerCase().includes('<think>')) {
         const inner = text.replace(/<\/?think>/gi, '').trim()
         return inner
@@ -36,8 +34,8 @@ export function stripThinkingTags(text: string): string {
 }
 
 /**
- * Creates a chat completion with automatic fallback if the primary model is rate limited (429),
- * and automatically sanitizes reasoning <think> tags from output content.
+ * Creates a chat completion with model fallback cascade:
+ * GPT (`openai/gpt-oss-120b`) -> Qwen (`qwen/qwen3.6-27b`) -> Llama (`llama-3.3-70b-versatile`).
  */
 export async function createGroqChatCompletion(params: Record<string, any>, modelTo?: string) {
     const modelToUse = modelTo || params.model || PRIMARY_MODEL
@@ -49,6 +47,12 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
         ...params,
         model: modelToUse,
     };
+    if (params.tools) {
+        requestPayload.tools = params.tools;
+    }
+    if (params.reasoning_effort) {
+        requestPayload.reasoning_effort = params.reasoning_effort;
+    }
     if (modelToUse.toLowerCase().includes('qwen') || modelToUse.toLowerCase().includes('deepseek')) {
         requestPayload.reasoning_format = "parsed";
     }
@@ -68,12 +72,14 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
         console.log(`[Groq:Timing] Request to model (${modelToUse}) failed after ${elapsed}ms: ${error?.message}`)
 
         const isRateLimit = error?.status === 429 ||
+            error?.status === 413 ||
             error?.message?.includes('429') ||
+            error?.message?.includes('413') ||
             error?.message?.includes('rate_limit') ||
             error?.code === 'rate_limit_exceeded'
 
         if (isRateLimit && modelToUse !== FALLBACK_MODEL) {
-            console.warn(`[Groq] Model (${modelToUse}) rate limited. Failing over to fallback model (${FALLBACK_MODEL})...`)
+            console.warn(`[Groq] Model (${modelToUse}) rate limited/failed. Failing over to Qwen fallback model (${FALLBACK_MODEL})...`)
             const fbStart = Date.now()
             try {
                 const fbPayload: Record<string, any> = {
@@ -92,9 +98,18 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
                 }
                 return fallbackResponse
             } catch (fallbackError: any) {
-                const fbElapsed = Date.now() - fbStart
-                console.error(`[Groq:Timing] Fallback model (${FALLBACK_MODEL}) failed after ${fbElapsed}ms:`, fallbackError.message)
-                throw fallbackError
+                console.warn(`[Groq] Fallback Qwen model (${FALLBACK_MODEL}) failed. Failing over to safety model (${SAFETY_MODEL})...`)
+                try {
+                    const safetyPayload: Record<string, any> = { ...params, model: SAFETY_MODEL };
+                    const safetyResponse = await groq.chat.completions.create(safetyPayload as any);
+                    if (safetyResponse?.choices?.[0]?.message?.content) {
+                        safetyResponse.choices[0].message.content = stripThinkingTags(safetyResponse.choices[0].message.content);
+                    }
+                    return safetyResponse;
+                } catch (safetyErr: any) {
+                    console.error(`[Groq] Safety model (${SAFETY_MODEL}) also failed:`, safetyErr.message);
+                    throw fallbackError;
+                }
             }
         }
         throw error
@@ -126,7 +141,6 @@ export async function callLLMEntityExtract(prompt: string) {
             status: error?.status,
         });
 
-        // Rethrow so BullMQ worker can catch it and retry the job
         throw new Error(`Entity extraction failed: ${error?.message ?? "unknown error"}`);
     }
 }

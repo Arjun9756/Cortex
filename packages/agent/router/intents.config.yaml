@@ -56,6 +56,33 @@ intents:
       tool: "graph_search"
       action: "describeEntity"
 
+  - id: REPOSITORY_RISK_AND_METRICS_QUERY
+    description: "User asks about repository risk, highest/higher risk repo, repository comparison, bus factor, single point of failure, or repo health stats"
+    patterns:
+      - "which repo"
+      - "which repository"
+      - "higher risk"
+      - "highest risk"
+      - "most risky"
+      - "riskiest"
+      - "repo risk"
+      - "repository risk"
+      - "compare repo"
+      - "compare repository"
+      - "repo with bus factor"
+      - "repository with bus factor"
+      - "repos with bus factor"
+      - "bus factor 1"
+      - "single point of failure"
+      - "spof repo"
+      - "vulnerable repo"
+      - "risky repository"
+      - "codebase risk"
+      - "project risk"
+    executionPlan:
+      tool: "sql_search"
+      queryType: "repo_risk"
+
   - id: KNOWLEDGE_RISK_EVALUATION
     description: "User asks about knowledge risk score, departure risk, or impact if a person leaves, quits, or is fired"
     patterns:
@@ -64,8 +91,6 @@ intents:
       - "leaves the cortex"
       - "what happens if"
       - "departure risk"
-      - "single point of failure"
-      - "bus factor"
       - "if quit"
       - "if left"
       - "if leaves"

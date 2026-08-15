@@ -1,4 +1,4 @@
-import { AgentStateType } from "../state.js";
+import { AgentStateType, StructuredEvidence } from "../state.js";
 import { createGroqChatCompletion } from "../../../llm/providers/groq.js";
 import sql from '../../../../apps/api/config/postgres.js';
 import { buildSqlPlannerPrompt } from "../../../llm/prompts/sqlplanner.prompt.js";
@@ -82,6 +82,14 @@ export async function runSafeQuery(queryType: string, params: any) {
             `;
         }
 
+        case 'repo_risk': {
+            return await sql`
+                SELECT repo_name, bus_factor, risk_score, contributor_count, status 
+                FROM repo_metrics 
+                ORDER BY risk_score DESC
+            `;
+        }
+
         default:
             return [];
     }
@@ -94,27 +102,42 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
 
     const remainingPendingTools = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) !== 'sql_search');
     const executedTools = [...new Set([...state.executedTools, 'sql_search'])];
+    
     try {
-        const prompt = buildSqlPlannerPrompt(state.query, state.evidence);
-        const response = await createGroqChatCompletion({
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0,
-            response_format: { type: "json_object" }
-        });
+        const sqlCall = state.pendingTools.find((tool) => (typeof tool === 'string' ? tool : tool.name) === 'sql_search');
+        let queryType = typeof sqlCall !== 'string' ? sqlCall?.args?.queryType : undefined;
+        let queryParams = typeof sqlCall !== 'string' ? (sqlCall?.args?.params || sqlCall?.args || {}) : {};
 
-        let decision: any = {};
-        try {
-            decision = JSON.parse(response.choices[0]?.message?.content ?? '{"queryType":"none"}');
+        if (!queryType || queryType === 'none') {
+            const prompt = buildSqlPlannerPrompt(state.query, state.evidence);
+            const response = await createGroqChatCompletion({
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0,
+                response_format: { type: "json_object" }
+            });
+
+            let decision: any = {};
+            try {
+                decision = JSON.parse(response.choices[0]?.message?.content ?? '{"queryType":"repo_risk"}');
+            }
+            catch (error: any) {
+                console.log(`Error While SQL Node: ${error?.message}`);
+                decision = { queryType: "repo_risk" };
+            }
+
+            queryType = decision?.queryType;
+            queryParams = decision?.params ?? queryParams;
         }
-        catch (error: any) {
-            console.log(`Error While SQL Node: ${error?.message}`);
-            decision = { queryType: "none" };
+
+        if (!queryType || queryType === 'none') {
+            const isRepoOrRisk = /\b(repo|repos|repository|repositories|codebase|project|risk|bus factor|spof|single point|phati|vulnerable|higher|highest)\b/i.test(state.query);
+            if (isRepoOrRisk) {
+                queryType = 'repo_risk';
+            }
         }
 
-        let queryType = decision?.queryType;
-        let queryParams = decision?.params ?? {};
+        console.log(`[SQL Node] Executing safe query "${queryType}" with params:`, queryParams);
 
-        // Fallback: If LLM missed eventId parameter but vectorResult contains an eventId, auto-populate eventId
         const vectorEventId = state.vectorResult.find((item: any) => item?.eventId)?.eventId;
         if (vectorEventId && (queryType === 'event_by_id' || !queryParams.eventId)) {
             const wantsPayloadOrId = /\b(payload|raw|full event|event id|message id|event details)\b/i.test(state.query);
@@ -126,9 +149,35 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
         }
 
         const results = await runSafeQuery(queryType, queryParams);
-        return { sqlResult: [...state.sqlResult, ...results], pendingTools: remainingPendingTools, executedTools };
+
+        const newStructuredEvidence: StructuredEvidence[] = [];
+        if (results && results.length > 0) {
+            newStructuredEvidence.push({
+                id: `sql_${Date.now()}_${queryType}`,
+                sourceType: 'sql',
+                confidence: 0.95,
+                summary: `SQL query "${queryType}" returned ${results.length} record(s).`,
+                rawPayload: results,
+                entitiesFound: results.map((r: any) => r.repo_name || r.engineer).filter(Boolean),
+                queryExplanation: `Executed safe relational query "${queryType}" with params ${JSON.stringify(queryParams)}`,
+            });
+        }
+
+        const elapsed = Date.now() - tStart;
+        return {
+            sqlResult: [...state.sqlResult, ...results],
+            structuredEvidence: [...state.structuredEvidence, ...newStructuredEvidence],
+            pendingTools: remainingPendingTools,
+            executedTools,
+            metrics: {
+                ...state.metrics,
+                toolLatencies: { ...state.metrics?.toolLatencies, sqlNode: elapsed },
+                toolOrder: [...(state.metrics?.toolOrder || []), 'sqlNode'],
+            }
+        };
     }
     catch (error: any) {
+        console.error(`[SQL Node] Error in sqlNode: ${error?.message}`);
         return { sqlResult: state.sqlResult, pendingTools: remainingPendingTools, executedTools };
     } finally {
         const elapsed = Date.now() - tStart

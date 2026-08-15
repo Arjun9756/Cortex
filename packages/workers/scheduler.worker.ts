@@ -37,11 +37,15 @@ export function startMetricsScheduler() {
         name: "AllMetricsScheduler",
         timezone: "Asia/Kolkata"
     })
-    console.log('[Scheduler] Started — runs daily at 18:00 IST')
+    console.log('[Scheduler] Cron scheduled — runs daily at 18:00 IST')
+
+    // Immediate execution on server startup so metrics tables are never empty right after deployment
+    console.log('[Scheduler] Triggering immediate startup analytics calculation...')
+    runAnalyticsJob().catch(err => {
+        console.error('[Scheduler] Initial startup metrics calculation error:', err?.message ?? err)
+    })
 }
 
 export async function runMetricsNow() {
     await runAnalyticsJob()
 }
-
-runMetricsNow()

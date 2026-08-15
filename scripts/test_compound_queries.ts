@@ -76,7 +76,7 @@ async function callPlannerWithRetry(prompt: string, attempt = 1): Promise<any> {
             tool_choice: 'auto',
             parallel_tool_calls: true,
             max_completion_tokens: 8192,
-        }, 'qwen/qwen3.6-27b');
+        });
     } catch (err: any) {
         const isTransient = err.message?.includes('model output error') ||
             err.message?.includes('n is not defined') ||

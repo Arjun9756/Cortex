@@ -1,4 +1,4 @@
-import { AgentStateType } from "../state.js";
+import { AgentStateType, StructuredEvidence } from "../state.js";
 import { generateEmbeddings } from "../../../llm/providers/gemini.js";
 import { searchSimilar } from "../../../database/vector/qdrant.repository.js";
 
@@ -36,6 +36,7 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
     }
 
     const aggregatedVectorResults: any[] = [];
+    const newStructuredEvidence: StructuredEvidence[] = [];
 
     try {
         for (const call of vectorCalls) {
@@ -63,10 +64,34 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
                 status: r.payload?.status,
             })) ?? [];
             aggregatedVectorResults.push(...mappedResults);
+
+            if (mappedResults.length > 0) {
+                const extractedEntities = mappedResults.flatMap(r => (r.entities ?? []).map((e: any) => typeof e === 'string' ? e : e?.name)).filter(Boolean);
+                newStructuredEvidence.push({
+                    id: `vector_${Date.now()}`,
+                    sourceType: 'vector',
+                    confidence: 0.90,
+                    summary: `Vector semantic search for "${vQuery}" returned ${mappedResults.length} text snippet(s).`,
+                    rawPayload: mappedResults,
+                    entitiesFound: extractedEntities,
+                    queryExplanation: `Executed Qdrant vector embedding search for query "${vQuery}"`,
+                });
+            }
         }
 
         const combinedVectorResults = [...state.vectorResult, ...aggregatedVectorResults];
-        return { vectorResult: combinedVectorResults, pendingTools: remainingPendingTools, executedTools };
+        const elapsed = Date.now() - tStart;
+        return {
+            vectorResult: combinedVectorResults,
+            structuredEvidence: [...state.structuredEvidence, ...newStructuredEvidence],
+            pendingTools: remainingPendingTools,
+            executedTools,
+            metrics: {
+                ...state.metrics,
+                toolLatencies: { ...state.metrics?.toolLatencies, vectorNode: elapsed },
+                toolOrder: [...(state.metrics?.toolOrder || []), 'vectorNode'],
+            }
+        };
     }
     catch (error: any) {
         console.log(`Error in vectorNode: ${error?.message}`);

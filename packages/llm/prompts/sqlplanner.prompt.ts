@@ -13,6 +13,7 @@ Choose ONE query type that best answers the question:
 - "events_by_author": get events by a specific person's name (params: { author: string, limit: number })
 - "active_engineers": get a summary list of all active engineers/contributors and their activity counts across providers (params: { limit: number })
 - "event_by_id": get full raw payload for a specific event ID (if an exact event ID / message ID is in the question OR in the evidence collected so far) (params: { eventId: string })
+- "repo_risk": get repository bus factor metrics, single point of failure repos, and risk scores from repo_metrics (params: {})
 - "none": if raw event database lookup is not needed
 
 Return ONLY a JSON object: { "queryType": "string", "params": {} }

@@ -5,7 +5,6 @@ import { ArchitectureDiagram } from './ArchitectureDiagram';
 import { ProblemSection } from './ProblemSection';
 import { HowItWorks } from './HowItWorks';
 import { BentoFeatures } from './BentoFeatures';
-import { VerifiedCapabilities } from './VerifiedCapabilities';
 import { ByocSection } from './ByocSection';
 import { FaqSection } from './FaqSection';
 import { ContactModal } from './ContactModal';
@@ -66,7 +65,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0B0E] text-[#F5F5F7] font-sans selection:bg-[#3B82F6]/30 selection:text-white">
+    <div className="min-h-screen bg-[#06080e] text-slate-100 font-sans selection:bg-indigo-500/30 selection:text-white antialiased">
       {/* Sticky Header Nav */}
       <Navbar onOpenContact={() => setIsModalOpen(true)} onLaunchDemo={onLaunchDemo} />
 
@@ -86,9 +85,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
         {/* Bento Features Section */}
         <BentoFeatures />
 
-        {/* 6 Verified Capabilities Sections */}
-        <VerifiedCapabilities />
-
         {/* BYOC & Zero Cost Section */}
         <ByocSection onOpenContact={() => setIsModalOpen(true)} />
 
@@ -96,90 +92,90 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
         <FaqSection />
 
         {/* Inline Contact & Founder Onboarding Section */}
-        <section id="contact" className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/10">
+        <section id="contact" className="py-24 md:py-32 bg-[#06080e] relative overflow-hidden border-t border-slate-800/80">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="bg-[#12141A] border border-white/10 rounded-xl p-8 sm:p-12 shadow-2xl">
+            <div className="bg-[#090d16]/90 border border-slate-800/80 rounded-2xl p-8 sm:p-12 shadow-2xl shadow-indigo-950/30 backdrop-blur-xl">
               
               {!inlineSubmitted ? (
                 <div>
                   <div className="text-center max-w-2xl mx-auto mb-10">
-                    <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#0A0B0E] border border-white/10 text-[#3B82F6] text-xs font-mono mb-4">
-                      <Sparkles className="w-3.5 h-3.5 text-[#3B82F6]" />
-                      <span>Free Platform Setup</span>
+                    <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#0c111e] border border-slate-800/80 text-indigo-400 text-xs font-mono mb-4">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Enterprise Self-Hosted Onboarding</span>
                     </div>
-                    <h2 className="text-3xl sm:text-4xl font-extrabold text-[#F5F5F7] font-mono">
-                      Get Cortex Running On Your Cloud
+                    <h2 className="text-3xl sm:text-4xl font-extrabold text-white font-sans">
+                      Deploy Cortex on Your Infrastructure
                     </h2>
-                    <p className="mt-3 text-sm sm:text-base text-[#9497A6]">
-                      Reach out to get Cortex set up on your team's infrastructure — free, on your own cloud.
+                    <p className="mt-3 text-sm sm:text-base text-slate-400 font-normal">
+                      Get Cortex running on your team's AWS, GCP, or Docker infrastructure — 100% self-hosted &amp; private.
                     </p>
                   </div>
 
                   <form onSubmit={handleInlineSubmit} className="space-y-4 max-w-xl mx-auto">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-mono text-[#F5F5F7] mb-1">
-                          Full Name <span className="text-[#3B82F6]">*</span>
+                        <label className="block text-xs font-mono text-slate-300 mb-1">
+                          Full Name <span className="text-indigo-400">*</span>
                         </label>
                         <div className="relative">
-                          <User className="w-4 h-4 text-[#9497A6] absolute left-3.5 top-3.5" />
+                          <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                           <input
                             type="text"
                             required
                             placeholder="Alex Morgan"
                             value={inlineForm.name}
                             onChange={(e) => setInlineForm({ ...inlineForm, name: e.target.value })}
-                            className="w-full pl-10 pr-4 py-2.5 bg-[#0A0B0E] border border-white/10 rounded-xl text-[#F5F5F7] text-xs sm:text-sm focus:border-[#3B82F6] focus:outline-none transition-colors"
+                            className="w-full pl-10 pr-4 py-3 bg-[#060911] border border-slate-800/80 rounded-xl text-white text-xs sm:text-sm focus:border-indigo-500 focus:outline-none transition-colors"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-mono text-[#F5F5F7] mb-1">
-                          Work Email <span className="text-[#3B82F6]">*</span>
+                        <label className="block text-xs font-mono text-slate-300 mb-1">
+                          Work Email <span className="text-indigo-400">*</span>
                         </label>
                         <div className="relative">
-                          <Mail className="w-4 h-4 text-[#9497A6] absolute left-3.5 top-3.5" />
+                          <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                           <input
                             type="email"
                             required
                             placeholder="alex@company.com"
                             value={inlineForm.email}
                             onChange={(e) => setInlineForm({ ...inlineForm, email: e.target.value })}
-                            className="w-full pl-10 pr-4 py-2.5 bg-[#0A0B0E] border border-white/10 rounded-xl text-[#F5F5F7] text-xs sm:text-sm focus:border-[#3B82F6] focus:outline-none transition-colors"
+                            className="w-full pl-10 pr-4 py-3 bg-[#060911] border border-slate-800/80 rounded-xl text-white text-xs sm:text-sm focus:border-indigo-500 focus:outline-none transition-colors"
                           />
                         </div>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-mono text-[#F5F5F7] mb-1">
-                        Company / Team Name <span className="text-[#9497A6]">(Optional)</span>
+                      <label className="block text-xs font-mono text-slate-300 mb-1">
+                        Company / Team Name <span className="text-slate-500">(Optional)</span>
                       </label>
                       <div className="relative">
-                        <Building2 className="w-4 h-4 text-[#9497A6] absolute left-3.5 top-3.5" />
+                        <Building2 className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                         <input
                           type="text"
-                          placeholder="Stripe Payment Platform Team"
+                          placeholder="Stripe Infrastructure Team"
                           value={inlineForm.company}
                           onChange={(e) => setInlineForm({ ...inlineForm, company: e.target.value })}
-                          className="w-full pl-10 pr-4 py-2.5 bg-[#0A0B0E] border border-white/10 rounded-xl text-[#F5F5F7] text-xs sm:text-sm focus:border-[#3B82F6] focus:outline-none transition-colors"
+                          className="w-full pl-10 pr-4 py-3 bg-[#060911] border border-slate-800/80 rounded-xl text-white text-xs sm:text-sm focus:border-indigo-500 focus:outline-none transition-colors"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-mono text-[#F5F5F7] mb-1">
-                        Tell us about your team setup <span className="text-[#9497A6]">(GitHub / Slack / Jira)</span>
+                      <label className="block text-xs font-mono text-slate-300 mb-1">
+                        Tell us about your setup <span className="text-slate-500">(GitHub / Slack / Jira)</span>
                       </label>
                       <div className="relative">
-                        <MessageSquare className="w-4 h-4 text-[#9497A6] absolute left-3.5 top-3.5" />
+                        <MessageSquare className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                         <textarea
                           rows={3}
                           placeholder="Tell us what repos, Slack channels, or Jira projects you want to ingest..."
                           value={inlineForm.message}
                           onChange={(e) => setInlineForm({ ...inlineForm, message: e.target.value })}
-                          className="w-full pl-10 pr-4 py-2.5 bg-[#0A0B0E] border border-white/10 rounded-xl text-[#F5F5F7] text-xs sm:text-sm focus:border-[#3B82F6] focus:outline-none transition-colors resize-none"
+                          className="w-full pl-10 pr-4 py-3 bg-[#060911] border border-slate-800/80 rounded-xl text-white text-xs sm:text-sm focus:border-indigo-500 focus:outline-none transition-colors resize-none"
                         />
                       </div>
                     </div>
@@ -187,13 +183,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3.5 px-4 text-xs sm:text-sm font-mono font-bold text-white bg-[#3B82F6] hover:bg-blue-600 rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.35)] flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
+                      className="w-full py-4 px-4 text-xs sm:text-sm font-mono font-bold text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all shadow-xl shadow-indigo-600/30 flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 border border-indigo-400/20"
                     >
                       {isSubmitting ? (
                         <span>Sending Request...</span>
                       ) : (
                         <>
-                          <span>Submit Setup Request</span>
+                          <span>Submit Onboarding Request</span>
                           <Send className="w-4 h-4 text-white" />
                         </>
                       )}
@@ -202,14 +198,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
                 </div>
               ) : (
                 <div className="text-center py-8 space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-[#3B82F6]/20 border border-[#3B82F6]/50 text-[#3B82F6] flex items-center justify-center mx-auto shadow-[0_0_25px_rgba(59,130,246,0.3)]">
-                    <CheckCircle2 className="w-10 h-10 text-[#3B82F6]" />
+                  <div className="w-16 h-16 rounded-full bg-indigo-500/20 border border-indigo-500/50 text-indigo-400 flex items-center justify-center mx-auto shadow-xl shadow-indigo-500/30">
+                    <CheckCircle2 className="w-10 h-10 text-indigo-400" />
                   </div>
-                  <h3 className="text-2xl font-bold text-[#F5F5F7] font-mono">
+                  <h3 className="text-2xl font-bold text-white font-sans">
                     Request Received!
                   </h3>
-                  <p className="text-sm text-[#9497A6] leading-relaxed max-w-md mx-auto">
-                    Thanks <span className="text-[#F5F5F7] font-semibold">{inlineForm.name}</span> — I'll reach out directly to <span className="text-[#3B82F6] font-semibold">{inlineForm.email}</span> within 24 hours to guide you through setting up Cortex on your cloud infrastructure.
+                  <p className="text-sm text-slate-400 leading-relaxed max-w-md mx-auto">
+                    Thanks <span className="text-white font-semibold">{inlineForm.name}</span> — I'll reach out directly to <span className="text-indigo-400 font-semibold">{inlineForm.email}</span> within 24 hours to guide you through setting up Cortex on your cloud infrastructure.
                   </p>
                 </div>
               )}

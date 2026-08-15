@@ -1,4 +1,4 @@
-import { AgentStateType } from '../state.js'
+import { AgentStateType, StructuredEvidence } from '../state.js'
 import { executeGraphAction, GRAPH_ACTIONS, resolveGraphEntity } from '../../../graph/graph.service.js'
 import type { EntityCandidate } from '../../../graph/cypher/analysis.cypher.js'
 
@@ -26,6 +26,7 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
     }
 
     const aggregatedGraphResults: any[] = [];
+    const newStructuredEvidence: StructuredEvidence[] = [];
     const allResolvedEntities: string[] = [...state.entities];
 
     try {
@@ -52,7 +53,18 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
             if (action === 'countByLabel') {
                 const searchTerm = callEntities[0] || '';
                 const result = await executeGraphAction('countByLabel', [searchTerm], target, relation);
-                if (result != null) aggregatedGraphResults.push(result);
+                if (result != null) {
+                    aggregatedGraphResults.push(result);
+                    newStructuredEvidence.push({
+                        id: `graph_${Date.now()}_count`,
+                        sourceType: 'graph',
+                        confidence: 0.95,
+                        summary: `Graph countByLabel result: ${JSON.stringify(result)}`,
+                        rawPayload: result,
+                        entitiesFound: callEntities,
+                        queryExplanation: `Executed graph countByLabel for label="${target || 'ANY'}", search="${searchTerm}"`,
+                    });
+                }
                 continue;
             }
 
@@ -76,14 +88,33 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
             const result = await executeGraphAction(action, resolvedNames, target, relation);
             const resArray = Array.isArray(result) ? result : (result == null ? [] : [result]);
             aggregatedGraphResults.push(...resArray);
+
+            if (resArray.length > 0) {
+                newStructuredEvidence.push({
+                    id: `graph_${Date.now()}_${action}`,
+                    sourceType: 'graph',
+                    confidence: 0.95,
+                    summary: `Graph action "${action}" returned ${resArray.length} record(s).`,
+                    rawPayload: resArray,
+                    entitiesFound: resolvedNames,
+                    queryExplanation: `Executed graph action "${action}" on entities ${JSON.stringify(resolvedNames)} (target: "${target}", relation: "${relation}")`,
+                });
+            }
         }
 
         const combinedGraphResults = [...state.graphResult, ...aggregatedGraphResults];
+        const elapsed = Date.now() - tStart;
         return {
             graphResult: combinedGraphResults,
+            structuredEvidence: [...state.structuredEvidence, ...newStructuredEvidence],
             pendingTools: remainingPendingTools,
             executedTools,
-            entities: allResolvedEntities
+            entities: allResolvedEntities,
+            metrics: {
+                ...state.metrics,
+                toolLatencies: { ...state.metrics?.toolLatencies, graphNode: elapsed },
+                toolOrder: [...(state.metrics?.toolOrder || []), 'graphNode'],
+            }
         };
     }
     catch (error: any) {
@@ -97,14 +128,6 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
 
 /**
  * Formats a list of candidate entities for clarification prompts using distinguishing fields.
- * Priority order:
- *   1. Email (if email exists and differs between candidates) -> e.g. "Arjun Kumar (arjun@company.com)"
- *   2. Role (if role exists and differs between candidates) -> e.g. "Arjun Kumar (Software Engineer)"
- *   3. Last 6 characters of externalId -> e.g. "Arjun Kumar (ID: ...582544)"
- *   4. Fallback to candidate type -> e.g. "Arjun Kumar (PERSON)"
- *
- * Note: If ALL fields are identical across candidates, this represents true duplicate data at
- * ingestion time rather than a UI formatting issue.
  */
 export function formatClarificationOptions(candidates: EntityCandidate[]): string {
     const emails = candidates.map(c => c.email).filter((e): e is string => Boolean(e && e.trim()))

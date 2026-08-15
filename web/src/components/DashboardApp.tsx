@@ -16,13 +16,21 @@ interface DashboardAppProps {
 
 export const DashboardApp: React.FC<DashboardAppProps> = ({ onGoToLanding }) => {
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
+  const [chatInitialQuery, setChatInitialQuery] = useState<string | undefined>(undefined);
+
+  const handleNavigate = (tab: NavTab, initialQuery?: string) => {
+    if (tab === 'chat' && initialQuery) {
+      setChatInitialQuery(initialQuery);
+    }
+    setActiveTab(tab);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <DashboardOverviewPage onNavigate={setActiveTab} />;
+        return <DashboardOverviewPage onNavigate={handleNavigate} />;
       case 'chat':
-        return <AIChatPage />;
+        return <AIChatPage initialQuery={chatInitialQuery} />;
       case 'graph':
         return <KnowledgeGraphPage />;
       case 'people':
@@ -36,7 +44,7 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({ onGoToLanding }) => 
       case 'analytics':
         return <AnalyticsPage />;
       default:
-        return <DashboardOverviewPage onNavigate={setActiveTab} />;
+        return <DashboardOverviewPage onNavigate={handleNavigate} />;
     }
   };
 

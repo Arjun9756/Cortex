@@ -54,10 +54,55 @@ export interface TimelineEvent {
     created_at: string;
 }
 
+export interface HealthScoreInfo {
+    score: number;
+    grade: string;
+    statusText: string;
+    statusColor: string;
+    explanation: string;
+    breakdown: {
+        avgBusFactor: number;
+        avgKnowledgeRisk: number;
+        spofRepoCount: number;
+        totalRepos: number;
+    };
+}
+
+export interface ActivityTrendItem {
+    week: string;
+    count: number;
+    commits: number;
+    prs: number;
+}
+
+export interface RiskAlertItem {
+    id: string;
+    severity: 'critical' | 'warning' | 'info';
+    category: 'Bus Factor' | 'Knowledge Risk' | 'PR Risk' | 'Skill Dependency';
+    entityName: string;
+    entityType: 'repo' | 'person' | 'tech' | 'pr';
+    whyItMatters: string;
+    riskScore: number;
+}
+
+export interface DashboardStats {
+    repoCount: number;
+    peopleCount: number;
+    techCount: number;
+    avgBusFactor: number;
+    openHighRiskPrs: number;
+    totalRiskAlertsCount: number;
+}
+
 export interface DashboardOverviewResponse {
     workspace?: WorkspaceMetric;
+    healthScore?: HealthScoreInfo;
+    stats?: DashboardStats;
+    riskAlerts?: RiskAlertItem[];
+    activityTrend?: ActivityTrendItem[];
     repos: RepoMetric[];
     people: PersonMetric[];
+    technologies?: TechnologyMetric[];
 }
 
 export interface PeopleResponse {
