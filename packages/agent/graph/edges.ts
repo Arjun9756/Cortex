@@ -22,8 +22,10 @@ export function routeNextTool(state: AgentStateType): 'vectorNode' | 'graphNode'
     const first = state.pendingTools[0];
     const nextTool = typeof first === 'string' ? first : first?.name;
 
+    // Route ALL graph_* tools to graphNode
+    if (nextTool?.startsWith('graph_')) return 'graphNode';
+
     if (nextTool === 'vector_search') return 'vectorNode';
-    if (nextTool === 'graph_search') return 'graphNode';
     if (nextTool === 'sql_search') return 'sqlNode';
     if (nextTool === 'knowledge_risk') return 'knowledgeRiskNode';
     if (nextTool === 'cypher_fallback') return 'cypherFallbackNode';

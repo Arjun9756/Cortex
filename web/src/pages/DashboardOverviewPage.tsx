@@ -14,14 +14,14 @@ import {
   FolderGit2,
   AlertTriangle,
   RefreshCw,
-  Sparkles,
-  Search,
   Activity,
   ChevronRight,
-  Zap,
   ArrowUpDown,
   Cpu,
   CheckCircle2,
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -37,6 +37,23 @@ interface DashboardOverviewPageProps {
   onNavigate: (tab: NavTab, initialQuery?: string) => void;
 }
 
+/* ── Custom Dark Tooltip for Recharts ──────────────────────────── */
+const DarkTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-[#0c1225] border border-slate-700/80 rounded-xl px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur-lg">
+      <p className="text-[11px] font-bold text-slate-300 mb-1.5 uppercase tracking-wider">{label}</p>
+      {payload.map((entry: any, idx: number) => (
+        <div key={idx} className="flex items-center gap-2 text-xs">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+          <span className="text-slate-400">{entry.name}:</span>
+          <span className="font-bold text-white">{entry.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   onNavigate,
 }) => {
@@ -44,9 +61,6 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [loadTimeMs, setLoadTimeMs] = useState<number | null>(null);
-
-  // Search Bar State (Quick Ask)
-  const [quickQuery, setQuickQuery] = useState<string>('');
 
   // Team Overview Table Sort state
   const [sortField, setSortField] = useState<'risk' | 'commits' | 'name'>('risk');
@@ -71,17 +85,6 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   useEffect(() => {
     fetchOverview();
   }, []);
-
-  const handleQuickSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (quickQuery.trim()) {
-      onNavigate('chat', quickQuery.trim());
-    }
-  };
-
-  const handlePromptClick = (promptText: string) => {
-    onNavigate('chat', promptText);
-  };
 
   const handleAlertClick = (alert: RiskAlertItem) => {
     if (alert.entityType === 'person') {
@@ -198,50 +201,6 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
 
   return (
     <div className="p-6 md:p-8 space-y-8 bg-[#090d16] min-h-screen">
-      {/* ─── ROW 6: QUICK ASK BAR (Prominently pinned at top) ───────────────── */}
-      <div className="glass-card p-4 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-slate-900/90 via-indigo-950/40 to-slate-900/90 shadow-xl relative overflow-hidden">
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-        <form onSubmit={handleQuickSubmit} className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-4 top-3.5 h-4 w-4 text-indigo-400" />
-            <input
-              type="text"
-              value={quickQuery}
-              onChange={(e) => setQuickQuery(e.target.value)}
-              placeholder="Ask Cortex anything about your engineering org (e.g. 'What breaks if Dave R. leaves?')..."
-              className="w-full pl-11 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full sm:w-auto px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center space-x-2 shrink-0 cursor-pointer"
-          >
-            <Sparkles className="h-4 w-4 text-cyan-300" />
-            <span>Ask Cortex</span>
-          </button>
-        </form>
-
-        {/* Quick prompt suggestions */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-          <span className="font-semibold text-indigo-400 flex items-center gap-1">
-            <Zap className="h-3 w-3" /> Quick queries:
-          </span>
-          {[
-            'What breaks if Dave R. leaves?',
-            'Which repositories have bus factor = 1?',
-            'Show high risk PRs across the team',
-          ].map((promptText, i) => (
-            <button
-              key={i}
-              onClick={() => handlePromptClick(promptText)}
-              className="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all cursor-pointer font-mono"
-            >
-              {promptText}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* ─── ROW 1: HEADLINE HEALTH SCORE ───────────────────────────────────── */}
       <div className="glass-card p-6 md:p-8 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900/90 via-slate-950 to-indigo-950/30 shadow-2xl relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -324,6 +283,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           subtext={`${health.breakdown.spofRepoCount} bus factor = 1`}
           icon={<FolderGit2 className="h-5 w-5" />}
           accentColor="cyan"
+          trend={health.breakdown.spofRepoCount > 0 ? { value: `${health.breakdown.spofRepoCount} SPOF`, positive: false } : undefined}
           onClick={() => onNavigate('bus-factor')}
         />
         <StatCard
@@ -348,6 +308,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           subtext="Target: ≥ 2.0 per repo"
           icon={<ShieldAlert className="h-5 w-5" />}
           accentColor={stats.avgBusFactor <= 1.2 ? 'rose' : 'emerald'}
+          trend={{ value: stats.avgBusFactor <= 1.2 ? '⚠ Below Target' : '✓ Healthy', positive: stats.avgBusFactor > 1.2 }}
           onClick={() => onNavigate('bus-factor')}
         />
         <StatCard
@@ -356,6 +317,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           subtext="Items requiring action"
           icon={<AlertTriangle className="h-5 w-5" />}
           accentColor={stats.totalRiskAlertsCount > 0 ? 'rose' : 'emerald'}
+          trend={stats.totalRiskAlertsCount > 0 ? { value: `${stats.totalRiskAlertsCount} active`, positive: false } : { value: 'Clear', positive: true }}
         />
       </div>
 
@@ -452,26 +414,59 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           </div>
         </div>
 
-        <div className="h-64 w-full pt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={activityTrend} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-              <XAxis dataKey="week" stroke="#64748b" tick={{ fontSize: 11 }} />
-              <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#0f172a',
-                  borderColor: '#334155',
-                  borderRadius: '0.75rem',
-                  fontSize: '12px',
-                  color: '#f8fafc',
-                }}
-              />
-              <Bar dataKey="commits" name="Commits" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="prs" name="Pull Requests" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {activityTrend.length > 0 ? (
+          <>
+            {/* Summary mini stats row */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/60 text-center">
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">Total Commits</span>
+                <span className="text-lg font-extrabold text-indigo-400">
+                  {activityTrend.reduce((sum, w) => sum + (w.commits || 0), 0)}
+                </span>
+              </div>
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/60 text-center">
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">Total PRs</span>
+                <span className="text-lg font-extrabold text-cyan-400">
+                  {activityTrend.reduce((sum, w) => sum + (w.prs || 0), 0)}
+                </span>
+              </div>
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/60 text-center">
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">Trend</span>
+                {(() => {
+                  const last = activityTrend[activityTrend.length - 1]?.commits || 0;
+                  const prev = activityTrend.length > 1 ? activityTrend[activityTrend.length - 2]?.commits || 0 : 0;
+                  const trendUp = last >= prev;
+                  return (
+                    <span className={`text-lg font-extrabold flex items-center justify-center gap-1 ${trendUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {trendUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                      {prev > 0 ? Math.abs(Math.round(((last - prev) / prev) * 100)) : 0}%
+                    </span>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <div className="h-64 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={activityTrend} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="week" stroke="#64748b" tick={{ fontSize: 11 }} axisLine={{ stroke: '#1e293b' }} />
+                  <YAxis stroke="#64748b" tick={{ fontSize: 11 }} axisLine={{ stroke: '#1e293b' }} />
+                  <Tooltip content={<DarkTooltip />} cursor={{ fill: 'rgba(99, 102, 241, 0.08)' }} />
+                  <Bar dataKey="commits" name="Commits" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="prs" name="Pull Requests" fill="#06b6d4" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        ) : (
+          <div className="h-64 flex items-center justify-center text-slate-500 text-sm">
+            <div className="text-center space-y-2">
+              <BarChart3 className="h-10 w-10 mx-auto text-slate-600" />
+              <p>No activity trend data available yet.</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ─── ROW 5: TEAM OVERVIEW TABLE ─────────────────────────────────────── */}
@@ -526,37 +521,63 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {sortedPeople.map((person) => {
-                const reposList = Array.isArray(person.repos)
-                  ? person.repos.join(', ')
-                  : 'Core Services';
+                const personRepos = Array.isArray(person.repos)
+                  ? person.repos
+                  : [];
                 return (
                   <tr
                     key={person.external_id || person.person_name}
                     className="hover:bg-slate-900/60 transition-colors group cursor-pointer"
                     onClick={() => onNavigate('people')}
                   >
-                    <td className="py-3.5 px-4 font-semibold text-white flex items-center space-x-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-bold flex items-center justify-center text-xs shrink-0">
-                        {person.person_name?.[0] || 'U'}
+                    <td className="py-3.5 px-4 font-semibold text-white">
+                      <div className="flex items-center space-x-2.5">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-0.5 flex items-center justify-center font-bold text-white text-xs shrink-0">
+                          <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center">
+                            {person.person_name?.[0] || 'U'}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="block">{person.person_name}</span>
+                          <span className="text-[10px] text-slate-500 font-mono font-normal">ID: {person.external_id}</span>
+                        </div>
                       </div>
-                      <span>{person.person_name}</span>
                     </td>
 
-                    <td className="py-3.5 px-4 text-slate-400 max-w-xs truncate font-mono">
-                      {reposList}
+                    <td className="py-3.5 px-4">
+                      <div className="flex flex-wrap gap-1 max-w-xs">
+                        {personRepos.length > 0 ? personRepos.slice(0, 3).map((r, i) => (
+                          <span key={i} className="text-[10px] bg-slate-800/80 text-cyan-300 border border-slate-700/60 px-2 py-0.5 rounded-md font-mono">
+                            {r}
+                          </span>
+                        )) : (
+                          <span className="text-slate-500 text-[10px]">No repos</span>
+                        )}
+                        {personRepos.length > 3 && (
+                          <span className="text-[10px] text-slate-500">+{personRepos.length - 3}</span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="py-3.5 px-4">
                       <RiskGauge
                         score={person.risk_score}
                         size="sm"
-                        type="dot"
+                        type="bar"
                         showLabel
                       />
                     </td>
 
-                    <td className="py-3.5 px-4 font-mono font-semibold text-slate-200">
-                      {person.commit_count ?? 0}
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-white text-sm">{person.commit_count ?? 0}</span>
+                        <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-400"
+                            style={{ width: `${Math.min(100, ((person.commit_count ?? 0) / Math.max(...peopleList.map(p => p.commit_count ?? 1), 1)) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
@@ -565,9 +586,10 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                           e.stopPropagation();
                           onNavigate('people');
                         }}
-                        className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded-lg transition-all"
+                        className="px-3.5 py-1.5 bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white text-[11px] font-semibold rounded-lg transition-all flex items-center gap-1.5 ml-auto"
                       >
-                        Profile
+                        <span>Profile</span>
+                        <ChevronRight className="h-3 w-3" />
                       </button>
                     </td>
                   </tr>
@@ -577,6 +599,78 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           </table>
         </div>
       </div>
+
+      {/* ─── ROW 6: TECHNOLOGY DISTRIBUTION ────────────────────────────────── */}
+      {techList.length > 0 && (
+        <div className="glass-card p-6 space-y-4 border-slate-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                <Cpu className="h-5 w-5 text-purple-400" />
+                <span>Technology Stack Distribution</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Technology usage across repositories ranked by adoption.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate('technologies')}
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-purple-600 text-slate-200 hover:text-white text-xs font-medium rounded-lg transition-all flex items-center space-x-1.5 cursor-pointer"
+            >
+              <span>View All</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {techList.slice(0, 9).map((tech, idx) => {
+              const maxUsage = Math.max(...techList.map(t => t.usage_percent || 1), 1);
+              const pct = Math.round(((tech.usage_percent || 0) / maxUsage) * 100);
+              const name = tech.tech_name || tech.technology_name || 'Unknown';
+              const colors = [
+                'from-indigo-500 to-purple-500',
+                'from-cyan-500 to-blue-500',
+                'from-emerald-500 to-teal-500',
+                'from-amber-500 to-orange-500',
+                'from-rose-500 to-pink-500',
+                'from-violet-500 to-fuchsia-500',
+                'from-sky-500 to-indigo-500',
+                'from-lime-500 to-emerald-500',
+                'from-orange-500 to-red-500',
+              ];
+              return (
+                <div key={idx} className="p-3.5 bg-slate-950/50 rounded-xl border border-slate-800/60 space-y-2 group hover:border-slate-700 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-white">{name}</span>
+                    <div className="flex items-center gap-2 text-[10px] font-mono">
+                      {(tech.contributor_count ?? 0) > 0 && (
+                        <span className="text-slate-500">
+                          <Users className="h-3 w-3 inline mr-0.5" />{tech.contributor_count}
+                        </span>
+                      )}
+                      <span className="text-indigo-400 font-bold">{tech.usage_percent}%</span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-slate-800/80 h-2 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full bg-gradient-to-r ${colors[idx % colors.length]} transition-all duration-700`}
+                      style={{ width: `${Math.max(6, pct)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span>{tech.repo_count ?? 0} repos</span>
+                    {(tech.contributor_count ?? 0) === 1 && (
+                      <span className="text-rose-400 font-semibold flex items-center gap-0.5">
+                        <AlertTriangle className="h-2.5 w-2.5" /> Single Expert
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Footer Load Time benchmark indicator */}
       {loadTimeMs !== null && (

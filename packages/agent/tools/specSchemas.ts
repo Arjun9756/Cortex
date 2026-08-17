@@ -1,13 +1,9 @@
 import { z } from 'zod';
 
-export interface ToolResultEnvelope<T = any> {
-    evidence: T[];
-    confidence: number;             // 0.0 - 1.0 rating of evidence relevance
-    sourceType: 'graph' | 'vector' | 'sql' | 'analytics' | 'cypher';
-    entitiesFound: string[];        // Extracted entity names found in evidence
-    queryExplanation: string;       // Human-readable summary of what the tool executed
-    hasMoreContext: boolean;        // True if pagination/truncation occurred
-}
+/**
+ * Spec schemas for all LLM tools.
+ * Provides strict runtime validation and TypeScript typing for tool calls.
+ */
 
 // ─── Graph: Open-Ended Traversal Spec ────────────────────────────────
 export const GraphTraversalSpec = z.object({
@@ -132,29 +128,3 @@ export const KnowledgeRiskSpec = z.object({
 });
 
 export type KnowledgeRiskSpecType = z.infer<typeof KnowledgeRiskSpec>;
-
-// ─── Legacy Schemas (Backward Compatibility) ─────────────────────────
-export const GraphSearchSchema = z.object({
-    entities: z.array(z.string()).min(1, 'At least one entity name is required'),
-    action: z.string().optional().default('describeEntity'),
-    relation: z.string().optional().default(''),
-    target: z.string().optional().default(''),
-});
-
-export const VectorSearchSchema = z.object({
-    query: z.string().min(1, 'Query string is required'),
-});
-
-export const KnowledgeRiskLegacySchema = z.object({
-    personName: z.string().min(1, 'personName is required'),
-});
-
-export const SqlSearchSchema = z.object({
-    queryType: z.enum(['repos_by_bus_factor', 'repo_risk', 'recent_events', 'count_by_provider', 'events_by_author', 'event_by_id', 'active_engineers', 'unsupported']),
-    params: z.record(z.string(), z.any()).optional().default({}),
-});
-
-export type GraphSearchInput = z.infer<typeof GraphSearchSchema>;
-export type VectorSearchInput = z.infer<typeof VectorSearchSchema>;
-export type KnowledgeRiskInput = z.infer<typeof KnowledgeRiskLegacySchema>;
-export type SqlSearchInput = z.infer<typeof SqlSearchSchema>;

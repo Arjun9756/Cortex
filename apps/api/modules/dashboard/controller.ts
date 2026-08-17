@@ -6,7 +6,7 @@ import { Request, Response } from 'express';
 // ─── Existing endpoints ────────────────────────────────────────────
 
 export async function getTechnologiesHelper() {
-    let technologies = await sql`SELECT * FROM technology_metrics ORDER BY usage_percent DESC`;
+    let technologies: any[] = await sql`SELECT * FROM technology_metrics ORDER BY usage_percent DESC`;
 
     // Neo4j Fallback & Auto-Sync if Postgres technology_metrics table is empty
     if (!technologies || technologies.length === 0) {

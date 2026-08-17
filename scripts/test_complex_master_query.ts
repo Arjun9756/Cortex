@@ -10,6 +10,20 @@ async function runComplexMasterTest() {
     console.log(`📌 Master Query: "${complexQuery}"\n`);
 
     const result = await cortexAgent.invoke({ query: complexQuery }, { recursionLimit: 25 });
+    console.log('RAW_AGENT_STATE_BEGIN');
+    console.log(JSON.stringify({
+        query: complexQuery,
+        plan: result.plan,
+        subgoals: result.subgoals,
+        executedTools: result.executedTools,
+        evidence: result.structuredEvidence,
+        coveredGoals: result.coveredGoals,
+        missingGoals: result.missingGoals,
+        iterations: result.iterationCount,
+        metrics: result.metrics,
+        answer: result.answer,
+    }, null, 2));
+    console.log('RAW_AGENT_STATE_END');
 
     console.log('\n================================================================================');
     console.log('✅ COMPLEX QUERY TEST COMPLETE');

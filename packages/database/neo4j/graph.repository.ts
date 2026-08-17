@@ -65,7 +65,7 @@ export async function upsertEntity(
                     WHERE e.email IS NOT NULL AND e.email = $email
                     RETURN elementId(e) AS id LIMIT 1
                 `, params);
-                if (emailMatch.records.length > 0) {
+                if (emailMatch.records.length > 0 && emailMatch.records[0]) {
                     matchedId = emailMatch.records[0].get('id');
                 }
             }
@@ -78,7 +78,7 @@ export async function upsertEntity(
                     WHERE e.externalId IS NOT NULL AND e.externalId = $externalId
                     RETURN elementId(e) AS id LIMIT 1
                 `, params);
-                if (extMatch.records.length > 0) {
+                if (extMatch.records.length > 0 && extMatch.records[0]) {
                     matchedId = extMatch.records[0].get('id');
                 }
             }
@@ -90,7 +90,7 @@ export async function upsertEntity(
                     WHERE toLower(e.name) = toLower($name)
                     RETURN elementId(e) AS id LIMIT 1
                 `, params);
-                if (nameMatch.records.length > 0) {
+                if (nameMatch.records.length > 0 && nameMatch.records[0]) {
                     matchedId = nameMatch.records[0].get('id');
                 }
             }
@@ -127,7 +127,7 @@ export async function upsertEntity(
                 LIMIT 1
             `, { name });
 
-            if (existingMatch.records.length > 0) {
+            if (existingMatch.records.length > 0 && existingMatch.records[0]) {
                 const matchedId = existingMatch.records[0].get('id');
                 const existingName = existingMatch.records[0].get('existingName');
                 // Prefer properly capitalized name (e.g. "Redis" over "redis")
@@ -157,6 +157,14 @@ export async function upsertEntity(
     finally {
         await session.close()
     }
+}
+
+export async function upsertCanonicalPersonNode(person: { id: string; name: string; email?: string | undefined }) {
+    return await upsertEntity(person.name, 'PERSON', { email: person.email, externalId: person.id });
+}
+
+export async function upsertIdentityNode(identity: { provider: string; externalId: string; username: string; displayName: string; canonicalPersonId: string }) {
+    return await upsertEntity(identity.displayName || identity.username, 'PERSON', { externalId: identity.externalId, provider: identity.provider });
 }
 
 export async function upsertRelation(fromID: string, toID: string, type: string, evidence?: string) {

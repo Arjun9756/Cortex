@@ -56,6 +56,34 @@ intents:
       tool: "graph_search"
       action: "describeEntity"
 
+  - id: REPOSITORIES_BY_BUS_FACTOR
+    description: "User asks which repositories have bus factor X, bus factor 1, or are single point of failure / fragile repos"
+    patterns:
+      - "which repo has bus factor"
+      - "which repos have bus factor"
+      - "which repository has bus factor"
+      - "which repositories have bus factor"
+      - "repos with bus factor"
+      - "repositories with bus factor"
+      - "repos have bus factor"
+      - "repositories have bus factor"
+      - "bus factor = 1"
+      - "bus factor 1"
+      - "bus factor is 1"
+      - "bus factor of 1"
+      - "bus factor <= 1"
+      - "single point of failure repos"
+      - "single point of failure repository"
+      - "spof repos"
+      - "spof repository"
+      - "fragile repos"
+      - "fragile repositories"
+    executionPlan:
+      tool: "sql_search"
+      queryType: "repos_by_bus_factor"
+      params:
+        threshold: 1
+
   - id: REPOSITORY_RISK_AND_METRICS_QUERY
     description: "User asks about repository risk, highest/higher risk repo, repository comparison, bus factor, single point of failure, or repo health stats"
     patterns:
@@ -69,12 +97,6 @@ intents:
       - "repository risk"
       - "compare repo"
       - "compare repository"
-      - "repo with bus factor"
-      - "repository with bus factor"
-      - "repos with bus factor"
-      - "bus factor 1"
-      - "single point of failure"
-      - "spof repo"
       - "vulnerable repo"
       - "risky repository"
       - "codebase risk"

@@ -1,16 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { sendChatQuery, type ChatQueryResponse } from '../lib/api';
-import { 
-  Send, 
-  Sparkles, 
-  ChevronDown, 
+import { streamChatQuery, type ChatQueryResponse } from '../lib/api';
+import {
+  Send,
+  Sparkles,
+  ChevronDown,
   ChevronUp,
-  FileText, 
-  Network, 
-  ShieldAlert, 
-  Terminal, 
-  Bot, 
-  User, 
+  FileText,
+  Network,
+  ShieldAlert,
+  Terminal,
+  Bot,
+  User,
   RefreshCw,
   GitCommit,
   Layers,
@@ -39,20 +39,33 @@ interface AIChatPageProps {
 }
 
 function renderInlineFormattedText(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+  // Match bold, code, percentage values, and email-like patterns
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`|\b\d+\.?\d*%\b)/g);
   return parts.map((part, pIdx) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
-        <strong key={pIdx} className="font-extrabold text-white bg-indigo-500/10 px-1 py-0.5 rounded border border-indigo-500/20">
+        <strong key={pIdx} className="font-extrabold text-white bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-500/20">
           {part.slice(2, -2)}
         </strong>
       );
     }
     if (part.startsWith('`') && part.endsWith('`')) {
       return (
-        <code key={pIdx} className="px-1.5 py-0.5 rounded bg-[#101728] border border-slate-800 text-indigo-300 font-mono text-xs font-semibold">
+        <code key={pIdx} className="px-1.5 py-0.5 rounded-md bg-[#101728] border border-slate-800 text-indigo-300 font-mono text-xs font-semibold">
           {part.slice(1, -1)}
         </code>
+      );
+    }
+    // Auto-highlight percentage values
+    if (/^\d+\.?\d*%$/.test(part)) {
+      const numVal = parseFloat(part);
+      const colorClass = numVal >= 70 ? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+        : numVal >= 40 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+          : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+      return (
+        <span key={pIdx} className={`font-bold px-1.5 py-0.5 rounded-md border text-xs ${colorClass}`}>
+          {part}
+        </span>
       );
     }
     return <span key={pIdx}>{part}</span>;
@@ -83,23 +96,28 @@ function renderFormattedMessageContent(text: string) {
         const bodyRows = dataRows.slice(1).map(row => row.split('|').slice(1, -1).map(c => c.trim()));
 
         elements.push(
-          <div key={`table-${i}`} className="my-3 overflow-x-auto rounded-xl border border-slate-800/80 bg-[#080d19] shadow-md">
+          <div key={`table-${i}`} className="my-4 overflow-x-auto rounded-xl border border-slate-700/60 bg-[#070c18] shadow-xl">
             <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-[#0f172a] text-indigo-300 font-mono uppercase tracking-wider text-[11px] border-b border-slate-800">
+              <thead className="bg-gradient-to-r from-[#0f172a] to-[#131b2e] text-indigo-300 font-mono uppercase tracking-wider text-[10px] border-b-2 border-indigo-500/20">
                 <tr>
                   {headerCells.map((h, hIdx) => (
-                    <th key={hIdx} className="px-3.5 py-2.5 font-bold border-r border-slate-800/60 last:border-0">{h}</th>
+                    <th key={hIdx} className="px-4 py-3 font-bold border-r border-slate-800/40 last:border-0 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/50 text-slate-200">
+              <tbody className="text-slate-200">
                 {bodyRows.map((row, rIdx) => (
-                  <tr key={rIdx} className="hover:bg-slate-800/40 transition-colors">
-                    {row.map((cell, cIdx) => (
-                      <td key={cIdx} className="px-3.5 py-2 border-r border-slate-800/40 last:border-0 font-sans">
-                        {renderInlineFormattedText(cell)}
-                      </td>
-                    ))}
+                  <tr key={rIdx} className={`border-b border-slate-800/30 transition-colors hover:bg-indigo-500/5 ${rIdx % 2 === 0 ? 'bg-slate-950/30' : 'bg-slate-900/20'}`}>
+                    {row.map((cell, cIdx) => {
+                      // Check if cell is a percentage or number for special rendering
+                      const isPercent = /^\d+\.?\d*%$/.test(cell.replace(/[*`]/g, '').trim());
+                      const isNumber = /^\d+\.?\d*$/.test(cell.replace(/[*`]/g, '').trim());
+                      return (
+                        <td key={cIdx} className={`px-4 py-2.5 border-r border-slate-800/20 last:border-0 ${isPercent || isNumber ? 'font-mono font-semibold' : 'font-sans'}`}>
+                          {renderInlineFormattedText(cell)}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -110,46 +128,139 @@ function renderFormattedMessageContent(text: string) {
       continue;
     }
 
-    // 2. Handle empty line
-    if (!trimmed) {
-      elements.push(<div key={`empty-${i}`} className="h-1.5" />);
-      i++;
-      continue;
-    }
-
-    // 3. Handle Header lines (# Header)
-    if (trimmed.startsWith('#')) {
-      const headerText = trimmed.replace(/^#+\s*/, '');
+    // 2. Handle horizontal rule (--- or ___ or ***)
+    if (/^(-{3,}|_{3,}|\*{3,})$/.test(trimmed)) {
       elements.push(
-        <h4 key={`header-${i}`} className="text-sm font-extrabold text-indigo-300 uppercase font-mono tracking-wider pt-3 pb-1 border-b border-slate-800/60 flex items-center space-x-2">
-          <span>{headerText}</span>
-        </h4>
-      );
-      i++;
-      continue;
-    }
-
-    // 4. Handle blockquotes / callouts (> text)
-    if (trimmed.startsWith('>')) {
-      const quoteText = trimmed.replace(/^>\s*/, '');
-      elements.push(
-        <div key={`quote-${i}`} className="my-2 p-3 rounded-xl bg-indigo-500/10 border-l-4 border-indigo-500 text-indigo-200 text-xs font-semibold backdrop-blur-sm shadow-inner">
-          {renderInlineFormattedText(quoteText)}
+        <div key={`hr-${i}`} className="my-4 border-t border-slate-700/50 relative">
+          <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 px-3 bg-[#0b1120]">
+            <span className="text-slate-600 text-xs">• • •</span>
+          </div>
         </div>
       );
       i++;
       continue;
     }
 
-    // 5. Handle bullet points (- item or * item)
+    // 3. Handle empty line
+    if (!trimmed) {
+      elements.push(<div key={`empty-${i}`} className="h-2" />);
+      i++;
+      continue;
+    }
+
+    // 4. Handle Header lines (# Header, ## Subheader)
+    if (trimmed.startsWith('#')) {
+      const hashCount = (trimmed.match(/^#+/) || [''])[0].length;
+      const headerText = trimmed.replace(/^#+\s*/, '');
+
+      if (hashCount === 1) {
+        elements.push(
+          <h3 key={`header-${i}`} className="text-base font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300 uppercase font-mono tracking-wider pt-4 pb-2 border-b border-indigo-500/20 flex items-center space-x-2">
+            <span className="w-1 h-5 bg-indigo-500 rounded-full" />
+            <span>{headerText}</span>
+          </h3>
+        );
+      } else if (hashCount === 2) {
+        elements.push(
+          <h4 key={`header-${i}`} className="text-sm font-extrabold text-indigo-300 uppercase font-mono tracking-wider pt-3 pb-1.5 border-b border-slate-800/60 flex items-center space-x-2">
+            <span className="w-0.5 h-4 bg-indigo-500/60 rounded-full" />
+            <span>{headerText}</span>
+          </h4>
+        );
+      } else {
+        elements.push(
+          <h5 key={`header-${i}`} className="text-xs font-bold text-slate-300 uppercase tracking-wider pt-2 pb-1 flex items-center space-x-1.5">
+            <span className="text-indigo-400">›</span>
+            <span>{headerText}</span>
+          </h5>
+        );
+      }
+      i++;
+      continue;
+    }
+
+    // 5. Handle blockquotes / callouts (> text)
+    if (trimmed.startsWith('>')) {
+      // Collect multi-line blockquote
+      const quoteLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith('>')) {
+        quoteLines.push(lines[i].trim().replace(/^>\s*/, ''));
+        i++;
+      }
+      elements.push(
+        <div key={`quote-${i}`} className="my-3 p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/5 border-l-4 border-indigo-500 text-indigo-200 text-xs font-semibold backdrop-blur-sm shadow-inner space-y-1">
+          {quoteLines.map((ql, qi) => (
+            <div key={qi}>{renderInlineFormattedText(ql)}</div>
+          ))}
+        </div>
+      );
+      continue;
+    }
+
+    // 6. Handle numbered list items (1. item, 2. item)
+    const numberedMatch = trimmed.match(/^(\d+)\.\s+(.+)/);
+    if (numberedMatch) {
+      const num = numberedMatch[1];
+      const itemText = numberedMatch[2];
+      elements.push(
+        <div key={`numbered-${i}`} className="pl-2 my-1 flex items-start gap-3">
+          <span className="shrink-0 w-5 h-5 rounded-full bg-indigo-500/15 border border-indigo-500/25 text-indigo-300 text-[10px] font-bold flex items-center justify-center mt-0.5">
+            {num}
+          </span>
+          <div className="flex-1 text-slate-200">{renderInlineFormattedText(itemText)}</div>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // 7. Handle key: value pairs (like "Risk Score: 45%")
+    const kvMatch = trimmed.match(/^([A-Z][A-Za-z\s&]+):\s+(.+)/);
+    if (kvMatch && !trimmed.startsWith('*') && !trimmed.startsWith('-') && kvMatch[1].length < 40) {
+      const key = kvMatch[1].trim();
+      const val = kvMatch[2].trim();
+      elements.push(
+        <div key={`kv-${i}`} className="my-1 flex items-center gap-2 text-xs">
+          <span className="text-slate-400 font-medium whitespace-nowrap">{key}:</span>
+          <span className="font-semibold text-white">{renderInlineFormattedText(val)}</span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // 8. Handle bullet points (- item or * item)
     const isBullet = trimmed.startsWith('* ') || trimmed.startsWith('- ');
     const lineText = isBullet ? trimmed.slice(2) : trimmed;
 
-    elements.push(
-      <div key={`line-${i}`} className={isBullet ? 'pl-5 relative my-0.5 before:content-["•"] before:absolute before:left-1.5 before:text-indigo-400 before:font-bold' : 'my-0.5'}>
-        {renderInlineFormattedText(lineText)}
-      </div>
-    );
+    if (isBullet) {
+      // Check for sub-bullet key:value pattern  "- **Label:**  value"
+      const bulletKV = lineText.match(/^\*\*([^*]+)\*\*\s*[:–-]\s*(.*)/);
+      if (bulletKV) {
+        elements.push(
+          <div key={`bkv-${i}`} className="pl-4 my-1.5 flex items-start gap-2.5 group">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0 group-hover:bg-indigo-300 transition-colors" />
+            <div>
+              <span className="font-bold text-white">{bulletKV[1]}</span>
+              <span className="text-slate-300 ml-1.5">{renderInlineFormattedText(bulletKV[2])}</span>
+            </div>
+          </div>
+        );
+      } else {
+        elements.push(
+          <div key={`line-${i}`} className="pl-4 relative my-1 flex items-start gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400/70 mt-1.5 shrink-0" />
+            <span className="text-slate-200">{renderInlineFormattedText(lineText)}</span>
+          </div>
+        );
+      }
+    } else {
+      elements.push(
+        <div key={`line-${i}`} className="my-0.5">
+          {renderInlineFormattedText(lineText)}
+        </div>
+      );
+    }
     i++;
   }
 
@@ -209,23 +320,61 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
     if (!queryText) setQuery('');
     setLoading(true);
 
-    setLoadingStep('Evaluating Intent Router & Fast-Path Rules...');
+    setLoadingStep('Evaluating dynamic tool selection plan...');
     const stepTimer1 = setTimeout(() => setLoadingStep('Executing Multi-Tool Parallel Agent Graph...'), 1500);
     const stepTimer2 = setTimeout(() => setLoadingStep('Computing Knowledge Risk & Gathering Subgraph Evidence...'), 3500);
     const stepTimer3 = setTimeout(() => setLoadingStep('Synthesizing verified natural language response...'), 6000);
 
+    const botMsgId = `bot-${Date.now()}`;
+    let accumulatedText = '';
+
     try {
-      const response = await sendChatQuery(userMsg.text);
-
-      const botMsg: ChatMessage = {
-        id: `bot-${Date.now()}`,
-        sender: 'bot',
-        text: response.answer || 'No answer generated.',
-        response,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setMessages(prev => [...prev, botMsg]);
+      await streamChatQuery(
+        userMsg.text,
+        (chunkText) => {
+          accumulatedText += chunkText;
+          setMessages(prev => {
+            const exists = prev.some(m => m.id === botMsgId);
+            if (exists) {
+              return prev.map(m => m.id === botMsgId ? { ...m, text: accumulatedText } : m);
+            }
+            return [
+              ...prev,
+              {
+                id: botMsgId,
+                sender: 'bot',
+                text: accumulatedText,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              }
+            ];
+          });
+        },
+        (response) => {
+          setMessages(prev => {
+            const exists = prev.some(m => m.id === botMsgId);
+            const finalMsg: ChatMessage = {
+              id: botMsgId,
+              sender: 'bot',
+              text: response.answer || accumulatedText || 'No answer generated.',
+              response,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            };
+            if (exists) {
+              return prev.map(m => m.id === botMsgId ? finalMsg : m);
+            }
+            return [...prev, finalMsg];
+          });
+        },
+        (err) => {
+          const errorMsg: ChatMessage = {
+            id: `err-${Date.now()}`,
+            sender: 'bot',
+            text: `Sorry, an error occurred while processing your request: ${err.message || 'Server error'}. Ensure backend is running on port 3000.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+          setMessages(prev => [...prev, errorMsg]);
+        }
+      );
     } catch (err: any) {
       const errorMsg: ChatMessage = {
         id: `err-${Date.now()}`,
@@ -336,11 +485,10 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
 
               {/* Message Bubble */}
               <div
-                className={`p-5 rounded-2xl text-sm leading-relaxed ${
-                  isUser
+                className={`p-5 rounded-2xl text-sm leading-relaxed ${isUser
                     ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-tr-none shadow-lg shadow-indigo-600/20 border border-indigo-400/20'
                     : 'bg-[#0b1120] border border-slate-800 text-slate-100 rounded-tl-none shadow-xl backdrop-blur-md'
-                }`}
+                  }`}
               >
                 <div className="space-y-2">
                   {renderFormattedMessageContent(msg.text)}
@@ -381,11 +529,10 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                       {krList.length > 0 && (
                         <button
                           onClick={() => toggleTab(msg.id, 'risk')}
-                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${
-                            activeTab === 'risk'
+                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${activeTab === 'risk'
                               ? 'border-rose-500 text-rose-400 bg-rose-500/10'
                               : 'border-transparent text-slate-400 hover:text-slate-200'
-                          }`}
+                            }`}
                         >
                           <ShieldAlert className="h-3.5 w-3.5" />
                           <span>Knowledge Risk Model</span>
@@ -397,11 +544,10 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
 
                       <button
                         onClick={() => toggleTab(msg.id, 'chain')}
-                        className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${
-                          activeTab === 'chain'
+                        className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${activeTab === 'chain'
                             ? 'border-indigo-500 text-indigo-300 bg-indigo-500/10'
                             : 'border-transparent text-slate-400 hover:text-slate-200'
-                        }`}
+                          }`}
                       >
                         <Terminal className="h-3.5 w-3.5" />
                         <span>Execution Chain & Tools</span>
@@ -413,11 +559,10 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                       {res.sources && res.sources.length > 0 && (
                         <button
                           onClick={() => toggleTab(msg.id, 'sources')}
-                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${
-                            activeTab === 'sources'
+                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${activeTab === 'sources'
                               ? 'border-purple-500 text-purple-300 bg-purple-500/10'
                               : 'border-transparent text-slate-400 hover:text-slate-200'
-                          }`}
+                            }`}
                         >
                           <FileText className="h-3.5 w-3.5" />
                           <span>Vector Sources</span>
@@ -430,11 +575,10 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                       {res.graphContext && res.graphContext.length > 0 && (
                         <button
                           onClick={() => toggleTab(msg.id, 'graph')}
-                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${
-                            activeTab === 'graph'
+                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${activeTab === 'graph'
                               ? 'border-emerald-500 text-emerald-300 bg-emerald-500/10'
                               : 'border-transparent text-slate-400 hover:text-slate-200'
-                          }`}
+                            }`}
                         >
                           <Network className="h-3.5 w-3.5" />
                           <span>Neo4j Graph Context</span>
@@ -603,8 +747,10 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                               <div>
                                 <h4 className="font-bold text-white text-sm">Execution Telemetry & Routing Path</h4>
                                 <p className="text-xs text-slate-400">
-                                  {res.execution?.tools?.length === 1 
-                                    ? 'Fast-Path Rule Router Matched (~0.1ms Latency, 0 Token Cost)'
+                                  {res.execution?.tools?.length === 0
+                                    ? 'Direct LLM Knowledge Synthesis'
+                                    : res.execution?.tools?.length === 1
+                                    ? `LLM Agent Single-Tool Execution (${res.execution.tools[0]})`
                                     : 'LLM Agent Multi-Tool Decomposed Execution Chain'}
                                 </p>
                               </div>
@@ -623,7 +769,9 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                               </div>
                               <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-xs w-full">
                                 <span className="font-bold text-slate-400 uppercase text-[10px] block">Step 1: User Query Received</span>
-                                <span className="text-slate-200 font-mono">"{msg.text}"</span>
+                                <span className="text-slate-200 font-mono">
+                                  "{res.query || res.execution?.query || messages.slice(0, messages.findIndex(m => m.id === msg.id)).reverse().find(m => m.sender === 'user')?.text || 'Query'}"
+                                </span>
                               </div>
                             </div>
 

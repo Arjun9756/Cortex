@@ -51,7 +51,7 @@ User Question: "${userQuery}"
                 cypher,
                 isValid: false,
                 data: [],
-                error: validation.reason,
+                ...(validation.reason ? { error: validation.reason } : {}),
                 clarificationNeeded: (validation.unknownLabels?.length ?? 0) > 0 || (validation.unknownRelations?.length ?? 0) > 0
             };
         }

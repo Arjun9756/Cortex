@@ -111,12 +111,18 @@ ${clarificationText}
         const coveredGoals: string[] = [];
         const missingGoals: string[] = [];
 
+        // Allocate evidence once. "Some graph data exists" must not mark every
+        // graph subgoal complete: each ask needs its own returned evidence item.
+        const claimedEvidence = new Set<number>();
         for (const subgoal of state.subgoals) {
-            let isCovered = false;
-            if (subgoal.targetSourcePreference.includes('graph') && state.graphResult.length > 0) isCovered = true;
-            if (subgoal.targetSourcePreference.includes('vector') && state.vectorResult.length > 0) isCovered = true;
-            if (subgoal.targetSourcePreference.includes('sql') && state.sqlResult.length > 0) isCovered = true;
-            if (subgoal.targetSourcePreference.includes('analytics') && state.knowledgeRiskResult) isCovered = true;
+            const matchingEvidenceIndex = state.structuredEvidence.findIndex((item, index) => {
+                if (claimedEvidence.has(index)) return false;
+                if (item.subgoalId) return item.subgoalId === subgoal.id;
+                if (item.toolCallId) return item.toolCallId === subgoal.id;
+                return subgoal.targetSourcePreference.includes(item.sourceType === 'cypher' ? 'graph' : item.sourceType);
+            });
+            const isCovered = matchingEvidenceIndex >= 0;
+            if (isCovered) claimedEvidence.add(matchingEvidenceIndex);
 
             if (isCovered) {
                 coveredGoals.push(subgoal.id);
@@ -128,7 +134,7 @@ ${clarificationText}
         const totalGoalsCount = state.subgoals.length || 1;
         const confidenceScore = state.subgoals.length > 0 ? (coveredGoals.length / totalGoalsCount) : 0.85;
 
-        console.log(`[evidenceNode] Evidence compiled. Goals covered: ${coveredGoals.length}/${totalGoalsCount}, Confidence: ${confidenceScore.toFixed(2)}`);
+        console.log(`[evidenceNode] Evidence compiled. Goals covered: ${coveredGoals.length}/${totalGoalsCount}, missing=${JSON.stringify(missingGoals)}, Confidence: ${confidenceScore.toFixed(2)}`);
 
         return {
             evidence,

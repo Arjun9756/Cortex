@@ -6,9 +6,13 @@ export const groq = new Groq({
     maxRetries: 3,
 })
 
-export const PRIMARY_MODEL = 'openai/gpt-oss-120b'
-export const FALLBACK_MODEL = 'qwen/qwen3.6-27b'
-export const SAFETY_MODEL = 'llama-3.3-70b-versatile'
+export const PRIMARY_MODEL = 'openai/gpt-oss-20b'
+export const FALLBACK_MODEL = 'openai/gpt-oss-20b'
+export const SAFETY_MODEL = 'openai/gpt-oss-20b'
+export const ANSWER_MODEL = 'openai/gpt-oss-20b'
+export const DECOMPOSE_MODEL = 'openai/gpt-oss-20b'
+export const PLANNER_MODEL = 'openai/gpt-oss-20b'
+export const VERIFY_MODEL = 'openai/gpt-oss-20b'
 
 /**
  * Strips internal chain-of-thought `<think>...</think>` tags (both closed and unclosed)
@@ -35,7 +39,7 @@ export function stripThinkingTags(text: string): string {
 
 /**
  * Creates a chat completion with model fallback cascade:
- * GPT (`openai/gpt-oss-120b`) -> Qwen (`qwen/qwen3.6-27b`) -> Llama (`llama-3.3-70b-versatile`).
+ * Primary (`openai/gpt-oss-120b`) -> Fallback (`openai/gpt-oss-20b`).
  */
 export async function createGroqChatCompletion(params: Record<string, any>, modelTo?: string) {
     const modelToUse = modelTo || params.model || PRIMARY_MODEL
@@ -44,6 +48,7 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
     console.log(`[Groq:Timing] Request to model (${modelToUse}) started at ${startIso}`)
 
     const requestPayload: Record<string, any> = {
+        max_completion_tokens: params.max_completion_tokens || 2048,
         ...params,
         model: modelToUse,
     };
@@ -71,24 +76,25 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
         const elapsed = Date.now() - tStart
         console.log(`[Groq:Timing] Request to model (${modelToUse}) failed after ${elapsed}ms: ${error?.message}`)
 
-        const isRateLimit = error?.status === 429 ||
+        const shouldFailover = error?.status === 429 ||
             error?.status === 413 ||
+            error?.status === 404 ||
+            error?.status === 400 ||
             error?.message?.includes('429') ||
             error?.message?.includes('413') ||
+            error?.message?.includes('404') ||
+            error?.message?.includes('model') ||
             error?.message?.includes('rate_limit') ||
             error?.code === 'rate_limit_exceeded'
 
-        if (isRateLimit && modelToUse !== FALLBACK_MODEL) {
-            console.warn(`[Groq] Model (${modelToUse}) rate limited/failed. Failing over to Qwen fallback model (${FALLBACK_MODEL})...`)
+        if (shouldFailover && modelToUse !== FALLBACK_MODEL) {
+            console.warn(`[Groq] Model (${modelToUse}) unavailable/rate limited. Failing over to fallback model (${FALLBACK_MODEL})...`)
             const fbStart = Date.now()
             try {
                 const fbPayload: Record<string, any> = {
                     ...params,
                     model: FALLBACK_MODEL,
                 };
-                if (FALLBACK_MODEL.toLowerCase().includes('qwen') || FALLBACK_MODEL.toLowerCase().includes('deepseek')) {
-                    fbPayload.reasoning_format = "parsed";
-                }
                 const fallbackResponse = await groq.chat.completions.create(fbPayload as any)
                 const fbElapsed = Date.now() - fbStart
                 console.log(`[Groq:Timing] Fallback request (${FALLBACK_MODEL}) completed in ${fbElapsed}ms (ended at ${new Date().toISOString()})`)
@@ -98,18 +104,8 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
                 }
                 return fallbackResponse
             } catch (fallbackError: any) {
-                console.warn(`[Groq] Fallback Qwen model (${FALLBACK_MODEL}) failed. Failing over to safety model (${SAFETY_MODEL})...`)
-                try {
-                    const safetyPayload: Record<string, any> = { ...params, model: SAFETY_MODEL };
-                    const safetyResponse = await groq.chat.completions.create(safetyPayload as any);
-                    if (safetyResponse?.choices?.[0]?.message?.content) {
-                        safetyResponse.choices[0].message.content = stripThinkingTags(safetyResponse.choices[0].message.content);
-                    }
-                    return safetyResponse;
-                } catch (safetyErr: any) {
-                    console.error(`[Groq] Safety model (${SAFETY_MODEL}) also failed:`, safetyErr.message);
-                    throw fallbackError;
-                }
+                console.error(`[Groq] Fallback model (${FALLBACK_MODEL}) also failed:`, fallbackError.message);
+                throw fallbackError;
             }
         }
         throw error

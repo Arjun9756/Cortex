@@ -21,14 +21,17 @@ interface QdrantSearchResult {
 }
 
 export async function vectorNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
-    const tStart = Date.now()
-    const startIso = new Date().toISOString()
-    console.log(`[Timing] [vectorNode] Started at ${startIso}`)
+    const tStart = Date.now();
+    const startIso = new Date().toISOString();
+    console.log(`[Timing] [vectorNode] Started at ${startIso}`);
 
-    const remainingPendingTools = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) !== 'vector_search')
-    const executedTools = [...new Set([...state.executedTools, 'vector_search'])]
+    const remainingPendingTools = state.pendingTools.filter(
+        (tool) => (typeof tool === 'string' ? tool : tool.name) !== 'vector_search'
+    );
+    const executedTools = [...new Set([...state.executedTools, 'vector_search'])];
 
-    const vectorCalls = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) === 'vector_search')
+    const vectorCalls = state.pendingTools
+        .filter((tool) => (typeof tool === 'string' ? tool : tool.name) === 'vector_search')
         .map(tool => typeof tool === 'string' ? { name: 'vector_search', args: { query: state.vectorQuery || state.query } } : tool);
 
     if (vectorCalls.length === 0) {
@@ -39,17 +42,18 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
     const newStructuredEvidence: StructuredEvidence[] = [];
 
     try {
-        for (const call of vectorCalls) {
+        const results = await Promise.all(vectorCalls.map(async (call, callIdx) => {
             const vQuery = typeof call.args?.query === 'string' && call.args.query.trim()
                 ? call.args.query.trim()
                 : (state.vectorQuery || state.query);
+            const subgoalId = call.subgoalId || `subgoal_${callIdx + 1}`;
 
-            console.log(`[vectorNode] Executing vector search query: "${vQuery}"`);
+            console.log(`[vectorNode] Executing [${subgoalId}] vector search query: "${vQuery}"`);
             const embedding = await generateEmbeddings(vQuery);
-            if (!embedding) continue;
+            if (!embedding) return { results: [], evidence: [] };
 
-            const result = await searchSimilar(embedding) as QdrantSearchResult[];
-            const mappedResults = result?.map((r) => ({
+            const rawResult = await searchSimilar(embedding) as QdrantSearchResult[];
+            const mappedResults = rawResult?.map((r) => ({
                 summary: r.payload?.summary,
                 entities: r.payload?.entities,
                 relationships: r.payload?.relationships,
@@ -63,12 +67,17 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
                 issueKey: r.payload?.issueKey,
                 status: r.payload?.status,
             })) ?? [];
-            aggregatedVectorResults.push(...mappedResults);
 
+            const callEvidence: StructuredEvidence[] = [];
             if (mappedResults.length > 0) {
-                const extractedEntities = mappedResults.flatMap(r => (r.entities ?? []).map((e: any) => typeof e === 'string' ? e : e?.name)).filter(Boolean);
-                newStructuredEvidence.push({
-                    id: `vector_${Date.now()}`,
+                const extractedEntities = mappedResults
+                    .flatMap(r => (r.entities ?? []).map((e: any) => typeof e === 'string' ? e : e?.name))
+                    .filter(Boolean);
+
+                callEvidence.push({
+                    id: `vector_${call.id || Date.now()}_${callIdx}`,
+                    subgoalId,
+                    toolCallId: subgoalId,
                     sourceType: 'vector',
                     confidence: 0.90,
                     summary: `Vector semantic search for "${vQuery}" returned ${mappedResults.length} text snippet(s).`,
@@ -77,6 +86,13 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
                     queryExplanation: `Executed Qdrant vector embedding search for query "${vQuery}"`,
                 });
             }
+
+            return { results: mappedResults, evidence: callEvidence };
+        }));
+
+        for (const res of results) {
+            aggregatedVectorResults.push(...res.results);
+            newStructuredEvidence.push(...res.evidence);
         }
 
         const combinedVectorResults = [...state.vectorResult, ...aggregatedVectorResults];
@@ -94,7 +110,7 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
         };
     }
     catch (error: any) {
-        console.log(`Error in vectorNode: ${error?.message}`);
+        console.error(`Error in vectorNode: ${error?.message}`);
         return { vectorResult: state.vectorResult, pendingTools: remainingPendingTools, executedTools };
     } finally {
         const elapsed = Date.now() - tStart;

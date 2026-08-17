@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { handleChatQuery } from "./controller.js";
+import { handleChatQuery, handleChatQueryStream } from "./controller.js";
 
-export const chatRouter = Router()
-chatRouter.post('/query' , handleChatQuery)
+export const chatRouter = Router();
+chatRouter.post('/query', handleChatQuery);
+chatRouter.post('/stream', handleChatQueryStream);

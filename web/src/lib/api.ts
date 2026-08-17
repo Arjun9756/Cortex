@@ -226,6 +226,7 @@ export interface KnowledgeRiskScore {
 }
 
 export interface ChatExecutionDetails {
+    query?: string;
     tools: string[];
     graphAction?: string;
     graphEntities?: string[];
@@ -235,6 +236,7 @@ export interface ChatExecutionDetails {
 }
 
 export interface ChatQueryResponse {
+    query?: string;
     answer: string;
     needsClarification: boolean;
     clarificationQuestion?: string;
@@ -286,8 +288,29 @@ export async function getTechnologies(): Promise<TechnologiesResponse> {
     return fetchJson<TechnologiesResponse>('/api/dashboard/technologies');
 }
 
+export interface AnalyticsTrendsResponse {
+    status: boolean;
+    commitTrends: Array<{ label: string; commits: number; prs: number; issues?: number }>;
+    graphGrowth: Array<{ label: string; nodes: number; edges: number }>;
+    repoHealth: Array<{ name: string; score: number; busFactor: number; contributors: number; riskScore: number }>;
+    techUsage: Array<{ name: string; pct: number; contributors: number }>;
+    heatmap: Array<{ day: string; counts: number[] }>;
+    metadata: {
+        totalEvents: number;
+        totalNodes: number;
+        totalEdges: number;
+        trackedRepos: number;
+        trackedPeople: number;
+        trackingDurationLabel: string;
+    };
+}
+
 export async function getTimeline(): Promise<TimelineResponse> {
     return fetchJson<TimelineResponse>('/api/dashboard/timeline');
+}
+
+export async function getAnalyticsTrends(): Promise<AnalyticsTrendsResponse> {
+    return fetchJson<AnalyticsTrendsResponse>('/api/analytics/trends');
 }
 
 export async function getGraphVisualization(filters?: GraphFilters): Promise<GraphVisualizationResponse> {
@@ -306,6 +329,74 @@ export async function sendChatQuery(query: string): Promise<ChatQueryResponse> {
         method: 'POST',
         body: JSON.stringify({ query }),
     });
+}
+
+export async function streamChatQuery(
+    query: string,
+    onChunk: (chunkText: string) => void,
+    onDone: (response: ChatQueryResponse) => void,
+    onError: (err: any) => void
+): Promise<void> {
+    try {
+        const response = await fetch('/api/chat/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+            const fallback = await sendChatQuery(query);
+            onDone(fallback);
+            return;
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (line.startsWith('event: chunk')) {
+                    const dataLine = line.split('\n').find(l => l.startsWith('data: '));
+                    if (dataLine) {
+                        const { text } = JSON.parse(dataLine.slice(6));
+                        onChunk(text);
+                    }
+                } else if (line.startsWith('event: done')) {
+                    const dataLine = line.split('\n').find(l => l.startsWith('data: '));
+                    if (dataLine) {
+                        const finalPayload = JSON.parse(dataLine.slice(6));
+                        onDone(finalPayload);
+                    }
+                } else if (line.startsWith('event: error')) {
+                    const dataLine = line.split('\n').find(l => l.startsWith('data: '));
+                    if (dataLine) {
+                        const { error } = JSON.parse(dataLine.slice(6));
+                        onError(new Error(error));
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        // Fallback to non-streaming if stream endpoint encounters issues
+        try {
+            const fallback = await sendChatQuery(query);
+            onDone(fallback);
+        } catch (fallbackErr) {
+            onError(err);
+        }
+    }
 }
 
 export async function getFindings(): Promise<FindingsResponse> {

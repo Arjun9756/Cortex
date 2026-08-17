@@ -1,89 +1,134 @@
-import { AgentStateType } from "../state.js";
-import { createGroqChatCompletion } from "../../../llm/providers/groq.js";
-import { buildReflectionPrompt } from "../../../llm/prompts/reflectionplanner.prompt.js";
+import { AgentStateType, ToolCall } from "../state.js";
+import { createGroqChatCompletion, PRIMARY_MODEL, VERIFY_MODEL } from "../../../llm/providers/groq.js";
+import { getGraphSchema } from "../../../database/neo4j/schemaCache.js";
 
+/**
+ * Self-Verification and Reflection Node:
+ * Audits gathered evidence against every decomposed ask.
+ * If evidence is missing for a specific ask, plans a targeted recovery attempt.
+ * Retries are scoped per missing item and capped at 2 iterations.
+ */
 export async function reflectionNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
-    const passCount = state.iterationCount + 1
-    const tStart = Date.now()
-    const startIso = new Date().toISOString()
-    console.log(`[Timing] [reflectionNode] (Pass #${passCount}) Started at ${startIso}`)
+    const passCount = (state.iterationCount || 0) + 1;
+    const tStart = Date.now();
+    const startIso = new Date().toISOString();
+    console.log(`[Timing] [reflectionNode] (Self-Verification Pass #${passCount}) Started at ${startIso}`);
 
     try {
-        // If there are still pending tools queued up from the planner, continue executing them
-        if (state.pendingTools.length > 0) {
-            return { needMoreSearch: true, pendingTools: state.pendingTools, iterationCount: state.iterationCount + 1 };
+        // If there are already pending tools queued up, continue executing them
+        if (state.pendingTools && state.pendingTools.length > 0) {
+            return { needMoreSearch: true, pendingTools: state.pendingTools, iterationCount: passCount };
         }
 
+        // Fast Path: Full coverage with high confidence
+        const allCovered = state.subgoals.length > 0 &&
+            (!state.missingGoals || state.missingGoals.length === 0) &&
+            state.structuredEvidence.length >= state.subgoals.length;
+
+        if (allCovered) {
+            console.log(`[Self-Verify] All ${state.subgoals.length} decomposed ask(s) verified with high-confidence evidence. Proceeding directly to synthesis.`);
+            return {
+                needMoreSearch: false,
+                pendingTools: [],
+                iterationCount: passCount,
+            };
+        }
+
+        // Check if retry budget is exhausted
         if (state.iterationCount >= 2) {
-            return { needMoreSearch: false, iterationCount: state.iterationCount + 1 };
-        }
-
-        // Safety Net 1: If query has a "why"/explanation clause and vector_search hasn't run, schedule vector_search
-        const hasWhyIntent = /\b(why|reason|replaced|removed|kyu|kyun|kyon)\b/i.test(state.query);
-        if (hasWhyIntent && !state.executedTools.includes('vector_search')) {
-            console.log('[Reflection] Query has explanation/why intent but vector_search was not executed. Scheduling vector_search.');
-            return {
-                pendingTools: [{ name: 'vector_search', args: { query: state.vectorQuery || state.query } }],
-                needMoreSearch: true,
-                vectorQuery: state.vectorQuery || state.query,
-                iterationCount: state.iterationCount + 1,
-            };
-        }
-
-        // Safety Net 2: If query asks for event ID / raw payload / event details and sql_search hasn't run, schedule sql_search
-        const wantsSqlData = /\b(payload|raw|event id|message id|count by provider|recent events)\b/i.test(state.query);
-        if (wantsSqlData && !state.executedTools.includes('sql_search')) {
-            console.log('[Reflection] Query asks for raw payload/event ID. Scheduling sql_search...');
-            return {
-                pendingTools: [{ name: 'sql_search' }],
-                needMoreSearch: true,
-                iterationCount: state.iterationCount + 1,
-            };
-        }
-
-        const prompt = buildReflectionPrompt(state.query, state.evidence, state.executedTools);
-
-        const response = await createGroqChatCompletion({
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0,
-            response_format: { type: 'json_object' },
-        });
-
-        const reply = response?.choices[0]?.message?.content ?? '{}';
-        let decision: any = {};
-        try {
-            decision = JSON.parse(reply);
-        } catch (e) {
-            console.warn('[Reflection] JSON parse failed, defaulting to answer');
-        }
-
-        if (decision?.action === 'clarify' && typeof decision.question === 'string' && decision.question.trim()) {
-            // Guard: if evidence was already collected by tools, override clarify and proceed to answer
-            const hasSubstantialEvidence = Boolean(
-                state.knowledgeRiskResult ||
-                (state.graphResult && state.graphResult.length > 0) ||
-                (state.vectorResult && state.vectorResult.length > 0) ||
-                (state.sqlResult && state.sqlResult.length > 0)
-            );
-            if (hasSubstantialEvidence) {
-                console.log('[Reflection] Evidence is present — overriding LLM clarify decision and proceeding to answerNode');
-                return { pendingTools: [], needMoreSearch: false, iterationCount: state.iterationCount + 1 };
+            if (state.missingGoals && state.missingGoals.length > 0) {
+                console.warn(`[Self-Verify] Retry budget exhausted for asks: ${JSON.stringify(state.missingGoals)}. Verified as absent in indexed sources.`);
             }
-            return { clarificationQuestion: decision.question.trim(), iterationCount: state.iterationCount + 1 };
+            return {
+                needMoreSearch: false,
+                pendingTools: [],
+                iterationCount: passCount,
+            };
         }
 
-        const allowedTools = new Set(['vector_search', 'graph_search', 'sql_search', 'knowledge_risk']);
-        const requestedTools = Array.isArray(decision?.tools)
-            ? decision.tools.filter((tool: unknown): tool is string => typeof tool === 'string' && allowedTools.has(tool))
-            : [];
-        const pendingTools = requestedTools.filter((tool: string) => !state.executedTools.includes(tool)).map(tool => ({ name: tool }));
-        return { pendingTools, needMoreSearch: pendingTools.length > 0, iterationCount: state.iterationCount + 1 };
-    }
-    catch (error: any) {
-        console.log(`Error in Reflection Node: ${error?.message}`);
-        return { needMoreSearch: false, iterationCount: state.iterationCount + 1 };
+        // Targeted Recovery: for each missing subgoal, plan a fallback tool call
+        if (state.missingGoals && state.missingGoals.length > 0) {
+            console.log(`[Self-Verify] Detected ${state.missingGoals.length} unfulfilled ask(s): ${JSON.stringify(state.missingGoals)}. Initiating targeted recovery...`);
+
+            let schemaLabels: string[] = [];
+            try {
+                const schema = await getGraphSchema();
+                schemaLabels = schema.nodeLabels;
+            } catch {}
+
+            const retryCalls: ToolCall[] = [];
+
+            await Promise.all(state.missingGoals.map(async (goalId) => {
+                const goal = state.subgoals.find(g => g.id === goalId);
+                const askText = goal?.description || state.query;
+
+                const recoveryPrompt = `You are the Cortex self-verification recovery engine.
+An engineering query ask could not be answered with the initial retrieval pass.
+Plan ONE targeted fallback tool call with broader or adjusted parameters to find the data.
+
+Missing Ask: "${askText}"
+Available Graph Labels: [${schemaLabels.join(', ')}]
+
+AVAILABLE TOOLS:
+- "graph_describe_entity": {"entity": "<name>"}
+- "graph_count_by_label": {"label": "REPOSITORY"|"TECHNOLOGY"|"PERSON"}
+- "graph_list_nodes": {"entity": "<name>", "relation": "USES"|"WORKS_ON", "targetLabel": "TECHNOLOGY"|"REPOSITORY"}
+- "graph_repository_summary": {"repositoryName": "<repo>"|"ALL"}
+- "graph_traverse": {"startEntities": ["<name>"], "relations": ["AUTHORED", "DEPENDS_ON", "USES"], "depth": {"min": 1, "max": 3}, "direction": "both"}
+- "sql_search": {"queryType": "repos_by_bus_factor"|"repo_risk"|"recent_events", "params": {...}}
+- "knowledge_risk": {"personName": "<name>"|"ALL"}
+- "vector_search": {"query": "<broader semantic query>"}
+
+Return JSON format only:
+{"call": {"name": "tool_name", "args": {...}}}`;
+
+                try {
+                    const response = await createGroqChatCompletion({
+                        model: VERIFY_MODEL,
+                        temperature: 0,
+                        response_format: { type: 'json_object' },
+                        max_completion_tokens: 1024,
+                        messages: [
+                            { role: 'system', content: 'You are a targeted recovery planner. Output JSON only: {"call": {"name": "...", "args": {...}}}' },
+                            { role: 'user', content: recoveryPrompt }
+                        ],
+                    });
+
+                    const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+                    if (parsed.call && typeof parsed.call.name === 'string') {
+                        retryCalls.push({
+                            id: `retry_${goalId}_${passCount}_${retryCalls.length + 1}`,
+                            subgoalId: goalId,
+                            attempt: passCount,
+                            name: parsed.call.name,
+                            args: parsed.call.args || {},
+                        });
+                        console.log(`[Self-Verify] Targeted retry for [${goalId}]: ${parsed.call.name}(${JSON.stringify(parsed.call.args || {})})`);
+                    }
+                } catch (err: any) {
+                    console.error(`[Self-Verify] Recovery planning failed for ${goalId}: ${err?.message}`);
+                }
+            }));
+
+            if (retryCalls.length > 0) {
+                return {
+                    pendingTools: retryCalls,
+                    needMoreSearch: true,
+                    iterationCount: passCount,
+                };
+            }
+        }
+
+        return {
+            needMoreSearch: false,
+            pendingTools: [],
+            iterationCount: passCount,
+        };
+    } catch (error: any) {
+        console.error(`Error in reflectionNode: ${error?.message}`);
+        return { needMoreSearch: false, iterationCount: passCount };
     } finally {
-        const elapsed = Date.now() - tStart
-        console.log(`[Timing] [reflectionNode] (Pass #${passCount}) Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`)
+        const elapsed = Date.now() - tStart;
+        console.log(`[Timing] [reflectionNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`);
     }
 }

@@ -1,5 +1,5 @@
 import { AgentStateType } from "../state.js";
-import { createGroqChatCompletion, stripThinkingTags } from "../../../llm/providers/groq.js";
+import { createGroqChatCompletion, stripThinkingTags, ANSWER_MODEL } from "../../../llm/providers/groq.js";
 import { buildAnswerPrompt } from "../../../llm/prompts/answer.prompt.js";
 
 /**
@@ -23,7 +23,6 @@ function printExecutionHistoryTable(state: AgentStateType) {
     if (historyRows.length > 0) {
         console.table(historyRows);
     } else {
-        // Fallback row if structuredEvidence array was empty
         console.table([{
             "Step": 1,
             "Tool / Source": state.executedTools.join(", ").toUpperCase() || "LLM ONLY",
@@ -53,20 +52,19 @@ function printExecutionHistoryTable(state: AgentStateType) {
 export async function answerNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
     const tStart = Date.now();
     const startIso = new Date().toISOString();
-    console.log(`[Timing] [answerNode] Started at ${startIso} | Final Reflection Passes: ${state.iterationCount}`);
+    console.log(`[Timing] [answerNode] Started at ${startIso} | Passes: ${state.iterationCount}`);
 
     try {
-        const prompt = buildAnswerPrompt(state.query, state.evidence);
+        const decomposedAsks = state.subgoals.map(g => g.description);
+        const prompt = buildAnswerPrompt(state.query, state.evidence, decomposedAsks);
 
-        const hasLargeEvidence = Boolean(state.knowledgeRiskResult) ||
-            state.vectorResult.length > 3 ||
-            state.graphResult.length > 3;
-        const maxTokens = hasLargeEvidence ? 3072 : 2048;
+        const maxTokens = 4096;
 
         const response = await createGroqChatCompletion({
             messages: [{ role: "user", content: prompt }],
-            temperature: 0.3,
+            temperature: 0.2,
             max_completion_tokens: maxTokens,
+            model: ANSWER_MODEL,
         });
 
         const finishReason = response.choices[0]?.finish_reason;
@@ -83,14 +81,13 @@ export async function answerNode(state: AgentStateType): Promise<Partial<AgentSt
         console.log(`[Answer Node] finish_reason=${finishReason}, tokens_used=~${(rawContent.length / 4) | 0}`);
         console.log(`\nLast Answer:\n${answer}\n`);
 
-        // Print formal structured console.table history after answer
         printExecutionHistoryTable(state);
 
         return { answer };
     }
     catch (error: any) {
-        console.log(`Error While Generating Answer in AnswerNode: ${error?.message}`);
-        return { answer: "No answer generated." };
+        console.error(`Error While Generating Answer in AnswerNode: ${error?.message}`);
+        return { answer: "Unable to generate answer due to an internal error." };
     } finally {
         const elapsed = Date.now() - tStart;
         console.log(`[Timing] [answerNode] Finished in ${elapsed}ms (ended at ${new Date().toISOString()})`);

@@ -1,21 +1,69 @@
 import { AgentStateType, ToolCall, SubGoal } from "../state.js";
-import { createGroqChatCompletion } from "../../../llm/providers/groq.js";
-import { buildPlannerPrompt } from "../../../llm/prompts/planner.prompt.js";
-import { GRAPH_ACTIONS } from '../../../graph/graph.service.js';
+import { createGroqChatCompletion, PRIMARY_MODEL, FALLBACK_MODEL, DECOMPOSE_MODEL, PLANNER_MODEL } from "../../../llm/providers/groq.js";
 import { getGraphSchema } from '../../../database/neo4j/schemaCache.js';
-import { TOOL_DEFINITIONS } from '../../tools/toolDefinitions.js';
 
 export function deduplicateToolCalls(calls: ToolCall[]): ToolCall[] {
     const seen = new Set<string>();
     const result: ToolCall[] = [];
     for (const call of calls) {
-        const key = `${call.name}:${JSON.stringify(call.args || {})}`;
+        const key = `${call.subgoalId || ''}:${call.name}:${JSON.stringify(call.args || {})}`;
         if (!seen.has(key)) {
             seen.add(key);
             result.push(call);
         }
     }
     return result;
+}
+
+async function decomposeQuery(query: string): Promise<string[]> {
+    const response = await createGroqChatCompletion({
+        model: DECOMPOSE_MODEL,
+        temperature: 0,
+        max_completion_tokens: 2048,
+        response_format: { type: 'json_object' },
+        messages: [
+            {
+                role: 'system',
+                content: `You are a precision query decomposition engine for an engineering knowledge graph.
+Enumerate EVERY distinct, independently answerable sub-question or ask embedded in the user query as a JSON array of strings.
+Do NOT artificially cap the number of asks — if the query contains 1, 3, 6, or 10 distinct questions/clauses joined by "and", commas, or separate sentences, identify and output ALL of them.
+CRITICAL RULE: Never combine multiple entity types, targets, or resources (e.g. "repositories and technologies" or "Elena and Marcus") into a single ask — always split them into separate distinct asks (e.g. "How many total repositories are there?" and "How many total technologies are there?").
+Preserve exact entity names and specific conditions.
+Return JSON only: {"asks":["ask 1", "ask 2", ...]}`
+            },
+            { role: 'user', content: query },
+        ],
+    });
+    const raw = response.choices[0]?.message?.content ?? '{}';
+    const parsed = JSON.parse(raw);
+    const asks = Array.isArray(parsed?.asks)
+        ? parsed.asks.filter((ask: unknown): ask is string => typeof ask === 'string' && ask.trim().length > 0).map((ask: string) => ask.trim())
+        : [];
+    if (asks.length === 0) throw new Error('Decomposer returned empty asks array');
+    console.log(`[Planner] DECOMPOSED_ASKS_JSON (${asks.length} asks): ${JSON.stringify(asks)}`);
+    return asks;
+}
+
+/**
+ * Maps each tool name to the SubGoal type that best describes its purpose.
+ */
+function toolNameToSubgoalType(toolName: string): SubGoal['type'] {
+    if (toolName.startsWith('graph_')) return 'entity_lookup';
+    if (toolName === 'vector_search') return 'semantic_explanation';
+    if (toolName === 'sql_search') return 'metric_count';
+    if (toolName === 'knowledge_risk') return 'risk_analysis';
+    return 'entity_lookup';
+}
+
+/**
+ * Maps tool name to the source preference for subgoal tracking.
+ */
+function toolNameToSource(toolName: string): ('graph' | 'vector' | 'sql' | 'analytics') {
+    if (toolName.startsWith('graph_')) return 'graph';
+    if (toolName === 'vector_search') return 'vector';
+    if (toolName === 'sql_search') return 'sql';
+    if (toolName === 'knowledge_risk') return 'analytics';
+    return 'graph';
 }
 
 export async function plannerNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
@@ -25,219 +73,168 @@ export async function plannerNode(state: AgentStateType): Promise<Partial<AgentS
 
     let pendingToolCalls: ToolCall[] = [];
     const entitiesSet = new Set<string>();
-    let graphAction: string = 'describeEntity';
-    let graphTarget: string = '';
-    let graphRelation: string = '';
     let vectorQuery: string = '';
+    let decomposedAsks: string[] = [state.query];
 
     try {
-        console.log(`[Planner] Processing query with Adaptive LLM Native Tool Calling: "${state.query}"`);
+        console.log(`[Planner] Processing query: "${state.query}"`);
 
-        // Fetch live schema so the planner prompt reflects current graph labels/relations
+        // Fetch live schema
         let labels: string[] = [];
         let relations: string[] = [];
         try {
             const schema = await getGraphSchema();
             labels = schema.nodeLabels;
             relations = schema.relationshipTypes;
-            console.log(`[Planner] Schema injected: ${labels.length} labels, ${relations.length} relations`);
+            console.log(`[Planner] Live schema: ${labels.length} labels [${labels.join(', ')}], ${relations.length} relations`);
         } catch (schemaError: any) {
-            console.warn(`[Planner] Schema fetch failed, proceeding without constraints: ${schemaError?.message}`);
+            console.warn(`[Planner] Schema fetch warning: ${schemaError?.message}`);
         }
 
-        const prompt = buildPlannerPrompt(state.query, labels, relations);
-        const response = await createGroqChatCompletion({
-            messages: [
-                {
-                    role: 'system',
-                    content: `You are an agentic retrieval planner. Your MOST IMPORTANT job is compound query decomposition.
+        // 1. Decompose into distinct asks
+        try {
+            decomposedAsks = await decomposeQuery(state.query);
+        } catch (error: any) {
+            console.warn(`[Planner] Decomposer fallback: ${error?.message}`);
+            decomposedAsks = [state.query];
+        }
+        const asks = decomposedAsks;
 
-BEFORE selecting any tools, mentally enumerate every distinct ask/question in the user message.
-Then for EACH ask, independently decide which tool answers it and emit a tool call.
+        // 2. Plan tool calls for each ask independently
+        const schemaContext = (labels.length > 0)
+            ? `\nLIVE GRAPH LABELS: [${labels.join(', ')}]\nLIVE GRAPH RELATIONS: [${relations.join(', ')}]`
+            : '';
 
-Rules:
-- If the query has 1 ask, emit 1 tool call.
-- If the query has 2 asks, emit 2 tool calls.
-- If the query has 3+ asks, emit 3+ tool calls. There is NO LIMIT.
-- NEVER collapse multiple distinct asks into a single tool call.
-- NEVER stop after 1-2 tool calls if there are remaining asks.
-- Each tool call should target ONE specific ask from the query.`
-                },
-                { role: 'user', content: prompt }
-            ],
+        const systemPrompt = `You are the Cortex Retrieval Planner.
+Your job is to plan the exact retrieval tool calls needed to gather verified evidence for EVERY decomposed ask.
+
+${schemaContext}
+
+AVAILABLE TOOLS & RULES:
+1. "graph_count_by_label": {"label": "REPOSITORY"|"TECHNOLOGY"|"PERSON"|"COMMIT"} -> Use for counting total number of repositories, technologies, or people.
+2. "sql_search": {"queryType": "repos_by_bus_factor", "params": {"threshold": 1}} -> Use for repositories with bus factor <= 1, Single Point of Failure (SPOF) repos, or repo risk ranking.
+3. "knowledge_risk": {"personName": "<name>"|"ALL"} -> Use for questions about engineer departure/leaving, knowledge loss, what breaks if someone quits, sole maintainers, and successors.
+4. "graph_list_nodes": {"entity": "<name>", "relation": "USES"|"WORKS_ON", "targetLabel": "TECHNOLOGY"|"REPOSITORY"} -> Use for what technologies an engineer uses or which repos an engineer works on.
+5. "graph_describe_entity": {"entity": "<name>"} -> Use for entity profile, email, role, description.
+6. "vector_search": {"query": "<search query>"} -> Use for semantic/architectural rationale ("why was X replaced with Y and when?", decisions, Slack discussions, incident reasons).
+7. "graph_repository_summary": {"repositoryName": "<repo>"|"ALL"} -> Use for repository contributors and commit overview.
+8. "graph_dependency_analysis": {"entity": "<service>"} -> Use for service/repo dependency trees.
+9. "graph_impact_analysis": {"entity": "<service>"} -> Use for blast radius of changes.
+10. "graph_shortest_path": {"from": "<A>", "to": "<B>"} -> Use for shortest path/connections between 2 entities.
+11. "graph_expertise_analysis": {"entity": "<tech/topic>"} -> Use for who is the top expert / who knows the most about a topic.
+
+INSTRUCTIONS:
+- For EACH ask listed below, plan one or more tool calls that directly answer it.
+- Return JSON strictly in this format:
+{"calls": [
+  {"subgoalId": "subgoal_1", "name": "tool_name", "args": {...}},
+  {"subgoalId": "subgoal_2", "name": "tool_name", "args": {...}}
+]}
+- Ensure EVERY ask has its own corresponding tool call(s) with the correct "subgoalId".
+- Do not omit or merge asks.
+
+DECOMPOSED ASKS:
+${asks.map((ask, i) => `subgoal_${i + 1}: "${ask}"`).join('\n')}`;
+
+        const planningResponse = await createGroqChatCompletion({
+            model: PLANNER_MODEL,
             temperature: 0,
-            tools: TOOL_DEFINITIONS as any,
-            tool_choice: 'auto',
-            parallel_tool_calls: true,
-            max_completion_tokens: 8192,
+            response_format: { type: 'json_object' },
+            max_completion_tokens: 4096,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: state.query },
+            ],
         });
 
-        const message = response.choices[0]?.message;
-        const toolCalls = message?.tool_calls ?? [];
+        const message = planningResponse.choices[0]?.message;
+        let jsonPlan: any = {};
+        try {
+            jsonPlan = JSON.parse(message?.content || '{}');
+        } catch (error: any) {
+            console.error(`[Planner] Plan JSON parse failed: ${error?.message}`);
+        }
 
-        console.log(`[Planner] LLM returned ${toolCalls.length} tool call(s)`);
+        const rawCalls: any[] = Array.isArray(jsonPlan.calls) ? jsonPlan.calls : [];
+        console.log(`[Planner] Planned ${rawCalls.length} tool call(s) for ${asks.length} decomposed ask(s)`);
 
-        if (toolCalls.length === 0) {
+        if (rawCalls.length === 0) {
             const textContent = message?.content?.trim() ?? '';
-            // Clarification detection: plain text response containing a question
             if (textContent.includes('?') && textContent.length < 200) {
                 return { clarificationQuestion: textContent };
             }
-            
-            // Smart domain failsafe checks
-            const isRepoOrRiskQuery = /\b(repo|repos|repository|repositories|codebase|project|projects|bus factor|spof|single point|higher risk|highest risk|most risky|riskiest|vulnerable)\b/i.test(state.query);
-            if (isRepoOrRiskQuery) {
-                console.log(`[Planner] Domain failsafe triggered: query matches repository risk domain, invoking sql_search (repo_risk)`);
-                pendingToolCalls.push({ name: 'sql_search', args: { queryType: 'repo_risk' } });
-            } else {
-                // Check for global count/list intent before falling back to vector search
-                const hasGlobalCountOrListIntent = /\b(how many|total (number|count)|list (all|the)|name (all|them)|who are (all|the)|show all)\b/i.test(state.query);
-                if (hasGlobalCountOrListIntent) {
-                    graphAction = 'countByLabel';
-                    pendingToolCalls.push({ name: 'graph_search', args: { action: 'countByLabel' } });
-                } else {
-                    vectorQuery = state.query;
-                    pendingToolCalls.push({ name: 'vector_search', args: { query: vectorQuery } });
-                }
-            }
+            console.warn(`[Planner] No tool calls generated for query "${state.query}"`);
         } else {
-            let llmSetGraphAction = false;
+            for (let i = 0; i < rawCalls.length; i++) {
+                const callItem = rawCalls[i];
+                if (!callItem || typeof callItem.name !== 'string') continue;
 
-            for (const call of toolCalls) {
-                const toolName = call.function.name;
-                let args: any = {};
-                try {
-                    args = JSON.parse(call.function.arguments || '{}');
-                } catch (e) {
-                    console.warn(`[Planner] Failed to parse arguments for tool ${toolName}:`, e);
+                const toolName = callItem.name;
+                const args = (typeof callItem.args === 'object' && callItem.args !== null) ? callItem.args : {};
+                
+                // Match or assign subgoalId
+                let subgoalId = callItem.subgoalId;
+                if (!subgoalId || !asks.some((_, idx) => subgoalId === `subgoal_${idx + 1}`)) {
+                    subgoalId = `subgoal_${Math.min(i + 1, asks.length)}`;
                 }
 
-                console.log(`[Planner] Tool call: ${toolName}(${JSON.stringify(args)})`);
-                pendingToolCalls.push({ name: toolName, args });
+                console.log(`[Planner] Call [${subgoalId}] -> ${toolName}(${JSON.stringify(args)})`);
+                pendingToolCalls.push({
+                    id: `call_${subgoalId}_${pendingToolCalls.length + 1}`,
+                    subgoalId,
+                    name: toolName,
+                    args,
+                });
 
-                if (toolName === 'graph_search') {
-                    if (Array.isArray(args.entities)) {
-                        for (const e of args.entities) {
-                            if (typeof e === 'string' && e.trim().length > 0) {
-                                entitiesSet.add(e.trim());
-                            }
-                        }
-                    }
-                    if (args.action && GRAPH_ACTIONS.includes(args.action)) {
-                        graphAction = args.action;
-                        llmSetGraphAction = true;
-                    }
-                    if (typeof args.target === 'string' && args.target.trim()) {
-                        graphTarget = args.target.trim().toUpperCase();
-                    }
-                    if (typeof args.relation === 'string' && args.relation.trim()) {
-                        graphRelation = args.relation.trim().toUpperCase();
-                    }
-                } else if (toolName === 'vector_search') {
-                    if (typeof args.query === 'string' && args.query.trim()) {
-                        vectorQuery = args.query.trim();
-                    }
-                } else if (toolName === 'knowledge_risk') {
-                    if (typeof args.personName === 'string' && args.personName.trim()) {
-                        entitiesSet.add(args.personName.trim());
+                // Entity extraction for state tracking
+                if (typeof args.entity === 'string' && args.entity.trim()) {
+                    entitiesSet.add(args.entity.trim());
+                }
+                if (Array.isArray(args.startEntities)) {
+                    for (const e of args.startEntities) {
+                        if (typeof e === 'string' && e.trim()) entitiesSet.add(e.trim());
                     }
                 }
-            }
-
-            if (!llmSetGraphAction) {
-                const hasGlobalCountOrListIntent = /\b(how many|total (number|count)|list (all|the)|name (all|them)|who are (all|the)|show all)\b/i.test(state.query);
-                if (hasGlobalCountOrListIntent) {
-                    const hasCountCall = pendingToolCalls.some(c => c.name === 'graph_search' && c.args?.action === 'countByLabel');
-                    if (!hasCountCall) {
-                        graphAction = 'countByLabel';
-                        if (!graphTarget) {
-                            if (/\b(developer|developers|person|people|contributor|contributors|member|members|engineer|engineers|user|users)\b/i.test(state.query)) {
-                                graphTarget = 'PERSON';
-                            } else if (/\b(repository|repositories|repo|repos|codebase)\b/i.test(state.query)) {
-                                graphTarget = 'REPOSITORY';
-                            } else if (/\b(issue|issues|bug|bugs|ticket|tickets)\b/i.test(state.query)) {
-                                graphTarget = 'ISSUE';
-                            } else if (/\b(pull request|pull requests|pr|prs)\b/i.test(state.query)) {
-                                graphTarget = 'PULL_REQUEST';
-                            } else if (/\b(commit|commits)\b/i.test(state.query)) {
-                                graphTarget = 'COMMIT';
-                            }
-                        }
-                        pendingToolCalls.push({ name: 'graph_search', args: { action: 'countByLabel', target: graphTarget } });
-                        console.log(`[Planner] Safety net: forced countByLabel (target: ${graphTarget || 'ANY'}) for global count/list query`);
+                if (Array.isArray(args.entities)) {
+                    for (const e of args.entities) {
+                        if (typeof e === 'string' && e.trim()) entitiesSet.add(e.trim());
                     }
+                }
+                if (typeof args.from === 'string' && args.from.trim()) entitiesSet.add(args.from.trim());
+                if (typeof args.to === 'string' && args.to.trim()) entitiesSet.add(args.to.trim());
+                if (typeof args.personName === 'string' && args.personName.trim() && args.personName.toUpperCase() !== 'ALL') {
+                    entitiesSet.add(args.personName.trim());
+                }
+                if (typeof args.searchTerm === 'string' && args.searchTerm.trim()) entitiesSet.add(args.searchTerm.trim());
+                if (toolName === 'vector_search' && typeof args.query === 'string' && args.query.trim()) {
+                    vectorQuery = args.query.trim();
                 }
             }
         }
 
         const entities = Array.from(entitiesSet);
-
-        // Safety Net 1: Ensure vector_search is included for "why"/"explanation" clauses
-        const hasWhyIntent = /\b(why|reason|replaced|removed|kyu|kyun|kyon)\b/i.test(state.query);
-        if (hasWhyIntent && !pendingToolCalls.some(c => c.name === 'vector_search')) {
-            pendingToolCalls.push({ name: 'vector_search', args: { query: vectorQuery || state.query } });
-            console.log('[Planner] Safety net: added vector_search for why/explanation intent');
-        }
-
-        // Safety Net 2: Ensure graph_search is included when query explicitly asks for entity properties
-        const hasPropertyIntent = /\b(email|mail|role|title|designation|who is|who are|contact details|kya h|kya hai)\b/i.test(state.query);
-        if (hasPropertyIntent && !pendingToolCalls.some(c => c.name === 'graph_search')) {
-            pendingToolCalls.push({ name: 'graph_search', args: { action: 'describeEntity', entities } });
-            console.log('[Planner] Safety net: added graph_search for entity property intent');
-        }
-
-        // Safety Net 3: Ensure knowledge_risk is included when query explicitly asks about person departure risk
-        const hasPersonRiskIntent = /\b(risk|risks|knowledge.?risk|departure risk|knowledge loss|leaves? the|what.{0,30}if.{0,30}leaves?|breaks?\s+if.+leaves?|fails?\s+if.+leaves?|stops?\s+if.+leaves?)\b/i.test(state.query)
-            || /(losing|loss of|departure of)\s+[A-Z][a-z]/i.test(state.query)
-            || /if.{0,40}(quit|leaves?|left|gone|fired|departed|resign)/i.test(state.query);
-        if (hasPersonRiskIntent && entities.length > 0 && !pendingToolCalls.some(c => c.name === 'knowledge_risk')) {
-            pendingToolCalls.push({ name: 'knowledge_risk', args: { personName: entities[0] } });
-            console.log('[Planner] Safety net: added knowledge_risk for person departure risk');
-        }
-
-        // Safety Net 3B: Ensure sql_search (repo_risk) is included when query asks about repository risk or bus factor
-        const isRepoMentioned = /\b(repo|repos|repository|repositories|codebase|codebases|project|projects)\b/i.test(state.query);
-        const isRiskOrHealthMentioned = /\b(risk|risks|risky|bus factor|spof|single point|phati|phate|vulnerable|broken|higher|highest|most|least|score|scores|mamle|health|state)\b/i.test(state.query);
-        const hasRepoRiskIntent = (isRepoMentioned && isRiskOrHealthMentioned)
-            || /\b(bus factor|spof|single point|repo risk|repository risk|codebase risk|project risk|higher risk|highest risk|riskiest|vulnerable repo|phati|phate)\b/i.test(state.query);
-        if (hasRepoRiskIntent && !pendingToolCalls.some(c => c.name === 'sql_search')) {
-            pendingToolCalls.push({ name: 'sql_search', args: { queryType: 'repo_risk' } });
-            console.log('[Planner] Safety net: added sql_search (repo_risk) for repository risk intent');
-        }
-
-        // Safety Net 5: Ensure vector_search for ownership/domain knowledge
-        const hasOwnershipOrDomainKnowledgeIntent = /\b(who (knows|knwos|owns|worked?|working|built|created|maintains|migrated|uses)|owner|maintainer|author|creator)\b/i.test(state.query);
-        if (hasOwnershipOrDomainKnowledgeIntent && !pendingToolCalls.some(c => c.name === 'vector_search')) {
-            pendingToolCalls.push({ name: 'vector_search', args: { query: vectorQuery || state.query } });
-            console.log('[Planner] Safety net: added vector_search for ownership/domain-knowledge intent');
-        }
-
-        // Safety Net 6: Ensure graph_search listNodes for technology/skill/expertise queries
-        const hasTechnologyIntent = /\b(technolog(y|ies)|tech stack|tools|frameworks|skill|skills|expertise|languages?|what.{0,15}(know|use|familiar|proficient|good at|works with))\b/i.test(state.query);
-        if (hasTechnologyIntent && entities.length > 0 && !pendingToolCalls.some(c => c.name === 'graph_search' && c.args?.action === 'listNodes')) {
-            pendingToolCalls.push({ name: 'graph_search', args: { action: 'listNodes', entities: [entities[0]], relation: 'USES', target: 'TECHNOLOGY' } });
-            console.log('[Planner] Safety net: added graph_search listNodes for technology/skill intent');
-        }
-
-        // Deduplicate true duplicates
         pendingToolCalls = deduplicateToolCalls(pendingToolCalls);
 
-        const vectorCall = pendingToolCalls.find(c => c.name === 'vector_search');
-        if (vectorCall && !vectorQuery) {
-            vectorQuery = vectorCall.args?.query || state.query;
+        if (!vectorQuery) {
+            const vCall = pendingToolCalls.find(c => c.name === 'vector_search');
+            if (vCall) vectorQuery = vCall.args?.query || state.query;
         }
 
-        // Map pending tool calls to decomposed SubGoal structures
-        const subgoals: SubGoal[] = pendingToolCalls.map((call, idx) => ({
-            id: `subgoal_${idx + 1}`,
-            description: `${call.name} for ${JSON.stringify(call.args || {})}`,
-            type: call.name === 'graph_search' ? 'entity_lookup' : (call.name === 'vector_search' ? 'semantic_explanation' : (call.name === 'sql_search' ? 'metric_count' : 'risk_analysis')),
-            targetSourcePreference: [call.name.replace('_search', '') as any],
-            status: 'pending',
-            requiredEntities: entities,
-        }));
-
-        console.log(`[Planner] Final plan (${pendingToolCalls.length} call(s), ${subgoals.length} subgoals): ${JSON.stringify(pendingToolCalls)}, Entities: ${JSON.stringify(entities)}`);
+        // Construct SubGoal tracking array
+        const subgoals: SubGoal[] = asks.map((ask, idx) => {
+            const callsForAsk = pendingToolCalls.filter(call => call.subgoalId === `subgoal_${idx + 1}`);
+            return {
+                id: `subgoal_${idx + 1}`,
+                description: ask,
+                type: callsForAsk[0] ? toolNameToSubgoalType(callsForAsk[0].name) : 'semantic_explanation',
+                targetSourcePreference: callsForAsk.length > 0
+                    ? [...new Set(callsForAsk.map(call => toolNameToSource(call.name)))]
+                    : ['graph', 'vector', 'sql', 'analytics'],
+                status: 'pending',
+                requiredEntities: entities,
+                retries: 0,
+            };
+        });
 
         const elapsed = Date.now() - tStart;
         return {
@@ -246,10 +243,7 @@ Rules:
             subgoals,
             clarificationQuestion: '',
             entities,
-            graphAction,
-            graphTarget,
-            graphRelation,
-            vectorQuery,
+            vectorQuery: vectorQuery || state.query,
             metrics: {
                 ...state.metrics,
                 plannerLatencyMs: elapsed,
@@ -257,22 +251,20 @@ Rules:
         };
     } catch (error: any) {
         console.error(`[Planner] Error in plannerNode: ${error?.message}`);
-        const fallbackCall: ToolCall = { name: 'vector_search', args: { query: state.query } };
+        const failedSubgoals: SubGoal[] = decomposedAsks.map((description, index) => ({
+            id: `subgoal_${index + 1}`,
+            description,
+            type: 'semantic_explanation',
+            targetSourcePreference: [],
+            status: 'unreachable',
+            retries: 0,
+        }));
         return {
-            plan: [fallbackCall],
-            pendingTools: [fallbackCall],
-            subgoals: [{
-                id: 'subgoal_1',
-                description: `vector_search fallback`,
-                type: 'semantic_explanation',
-                targetSourcePreference: ['vector'],
-                status: 'pending',
-            }],
+            plan: [],
+            pendingTools: [],
+            subgoals: failedSubgoals,
             clarificationQuestion: '',
             entities: [],
-            graphAction: 'describeEntity',
-            graphTarget: '',
-            graphRelation: '',
             vectorQuery: state.query,
         };
     } finally {

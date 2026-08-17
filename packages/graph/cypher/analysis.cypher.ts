@@ -117,21 +117,48 @@ export async function expertiseAnalysis(entityName: string) {
     finally { await session.close() }
 }
 
-export async function repositorySummary(repositoryName: string) {
+export async function repositorySummary(repositoryName: string = '') {
     const session = driver.session()
     try {
         const result = await session.run(`
-            MATCH (repository:REPOSITORY) WHERE toLower(repository.name) = toLower($repositoryName)
+            MATCH (repository:REPOSITORY)
+            WHERE $repositoryName = '' OR $repositoryName = 'ALL' OR toLower(repository.name) = toLower($repositoryName)
+            OPTIONAL MATCH (p1:PERSON)-[:WORKS_ON|CONTRIBUTED_TO]->(repository)
             OPTIONAL MATCH (work)-[:PART_OF]-(repository)
-            OPTIONAL MATCH (person:PERSON)-[:AUTHORED]->(work)
+            OPTIONAL MATCH (p2:PERSON)-[:AUTHORED|CREATED]->(work)
+            WITH repository, count(DISTINCT work) AS workItems,
+                 collect(DISTINCT {name: p1.name, email: p1.email, role: p1.role, type: 'PERSON'}) +
+                 collect(DISTINCT {name: p2.name, email: p2.email, role: p2.role, type: 'PERSON'}) AS rawContributors,
+                 collect(DISTINCT {name: work.name, type: labels(work)[0]})[0..30] AS recentEntities
+            WITH repository, workItems, [c in rawContributors WHERE c.name IS NOT NULL] AS contributors, recentEntities
             RETURN repository.name AS repository,
-                count(DISTINCT work) AS workItems,
-                collect(DISTINCT {name: person.name, type: 'PERSON'})[0..20] AS contributors,
-                collect(DISTINCT {name: work.name, type: labels(work)[0]})[0..30] AS recentEntities
-        `, { repositoryName })
-        const record = result.records[0]
-        if (!record) return null
-        return { repository: record.get('repository'), workItems: neo4j.integer.toNumber(record.get('workItems')), contributors: record.get('contributors').filter((item: { name?: string }) => item.name), recentEntities: record.get('recentEntities').filter((item: { name?: string }) => item.name) }
+                workItems,
+                contributors[0..20] AS contributors,
+                recentEntities
+            ORDER BY repository.name
+        `, { repositoryName: repositoryName || '' })
+        if (result.records.length === 0) return null
+        if (result.records.length === 1 && repositoryName && repositoryName !== 'ALL') {
+            const record = result.records[0]
+            const rawContribs = record?.get('contributors') || []
+            const uniqueContribs = rawContribs.filter((c: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.name === c.name) === i)
+            return {
+                repository: record?.get('repository'),
+                workItems: neo4j.integer.toNumber(record?.get('workItems')),
+                contributors: uniqueContribs,
+                recentEntities: record?.get('recentEntities').filter((item: { name?: string }) => item.name)
+            }
+        }
+        return result.records.map((record) => {
+            const rawContribs = record.get('contributors') || []
+            const uniqueContribs = rawContribs.filter((c: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.name === c.name) === i)
+            return {
+                repository: record.get('repository'),
+                workItems: neo4j.integer.toNumber(record.get('workItems')),
+                contributors: uniqueContribs,
+                recentEntities: record.get('recentEntities').filter((item: { name?: string }) => item.name)
+            }
+        })
     }
     finally { await session.close() }
 }
@@ -210,11 +237,6 @@ export async function describeAllPeople() {
 }
 
 export async function describeEntity(entityName: string) {
-    // Expanded trigger: also catch 'developers', 'contributors', 'members', 'devs', 'users', 'team'
-    // to ensure listing all people works regardless of how users phrase the collective noun.
-    if (/^(engineers?|personnel|people|persons?|staff|all engineers?|all people|all personnel|developers?|contributors?|members?|team members?|devs?|users?|all devs?|all developers?|all members?|all contributors?|all users?|team)$/i.test(entityName.trim())) {
-        return await describeAllPeople()
-    }
 
     const session = driver.session()
     try {
@@ -237,15 +259,13 @@ export async function describeEntity(entityName: string) {
 // ─── Global Label Count ───────────────────────────────────────────────────────
 
 /**
- * Allowlist of node labels safe for Cypher interpolation.
- * Cypher does not support parameterized labels, so we validate against this
- * list before string interpolation to prevent injection.
- *
- * TECHNOLOGY and FILE added in Part C hardening:
- * - Enables "how many technologies are there?" queries via countByLabel.
- * - Enables file-level counting queries.
+/**
+ * Validation regex for node labels safe for Cypher interpolation.
+ * Cypher does not support parameterized labels, so we validate against
+ * alphanumeric/underscore identifiers to prevent injection while supporting
+ * any standard or custom schema labels (PERSON, REPOSITORY, TECHNOLOGY, TEAM, etc.).
  */
-const ALLOWED_LABELS = ['PERSON', 'REPOSITORY', 'COMMIT', 'PULL_REQUEST', 'ISSUE', 'TECHNOLOGY', 'FILE'] as const
+const SAFE_LABEL_REGEX = /^[A-Za-z0-9_]+$/;
 
 /**
  * Count how many nodes match a name pattern across a label (or the entire graph).
@@ -253,24 +273,19 @@ const ALLOWED_LABELS = ['PERSON', 'REPOSITORY', 'COMMIT', 'PULL_REQUEST', 'ISSUE
  * Examples:
  *   countByLabel("Priya", "PERSON")   → how many PERSON nodes contain "Priya"
  *   countByLabel("",      "REPOSITORY") → total REPOSITORY nodes
- *   countByLabel("Redis", "")         → any node whose name contains "Redis"
+ *   countByLabel("Kafka", "")         → any node whose name contains "Kafka"
  */
 export async function countByLabel(searchTerm: string, label: string) {
     const session = driver.session()
     try {
         let normalizedLabel = label?.toUpperCase().trim() || ''
         const trimmedSearch = (searchTerm || '').toLowerCase().trim()
-        const genericPersonWords = ['*', 'engineer', 'engineers', 'all', 'people', 'personnel', 'staff', 'team', 'members', 'dev', 'developer', 'developers']
 
-        if (!normalizedLabel && genericPersonWords.includes(trimmedSearch)) {
-            normalizedLabel = 'PERSON'
+        if (normalizedLabel && !SAFE_LABEL_REGEX.test(normalizedLabel)) {
+            return { searchTerm: searchTerm || '*', label: normalizedLabel || 'ANY', total: 0, error: `Invalid label identifier: ${label}. Label must be alphanumeric.` }
         }
 
-        if (normalizedLabel && !(ALLOWED_LABELS as readonly string[]).includes(normalizedLabel)) {
-            return { searchTerm: searchTerm || '*', label: normalizedLabel || 'ANY', total: 0, error: `Unknown label: ${label}. Allowed: ${ALLOWED_LABELS.join(', ')}` }
-        }
-
-        if (normalizedLabel === 'PERSON' && (!trimmedSearch || genericPersonWords.includes(trimmedSearch))) {
+        if (normalizedLabel === 'PERSON' && !trimmedSearch) {
             const personResult = await session.run(`
                 MATCH (p:PERSON)
                 RETURN count(p) AS total,

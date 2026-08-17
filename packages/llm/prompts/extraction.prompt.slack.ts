@@ -1,7 +1,7 @@
 import { ENTITY_TYPES, RELATION_TYPES } from "../../extraction/ontology.js";
 
 export function buildSlackExtractionPrompt(cleanEventText: string): string {
-    return `
+  return `
 You are an information extraction engine for a software engineering knowledge graph called Cortex.
 
 Your job is to read a Slack message (a channel discussion or thread reply) and extract structured entities and relationships ONLY if the message contains meaningful engineering signal — a decision, a technical discussion, an explanation, a problem/solution, or context about people, tools, or projects.

@@ -90,6 +90,16 @@ export async function runSafeQuery(queryType: string, params: any) {
             `;
         }
 
+        case 'repos_by_bus_factor': {
+            const threshold = Number(params?.threshold ?? params?.busFactor ?? 1);
+            return await sql`
+                SELECT repo_name, bus_factor, risk_score, contributor_count, status 
+                FROM repo_metrics 
+                WHERE bus_factor <= ${threshold}
+                ORDER BY bus_factor ASC, risk_score DESC
+            `;
+        }
+
         default:
             return [];
     }
@@ -104,9 +114,15 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
     const executedTools = [...new Set([...state.executedTools, 'sql_search'])];
     
     try {
-        const sqlCall = state.pendingTools.find((tool) => (typeof tool === 'string' ? tool : tool.name) === 'sql_search');
-        let queryType = typeof sqlCall !== 'string' ? sqlCall?.args?.queryType : undefined;
-        let queryParams = typeof sqlCall !== 'string' ? (sqlCall?.args?.params || sqlCall?.args || {}) : {};
+        const sqlCalls = state.pendingTools
+            .filter((tool): tool is Exclude<typeof tool, string> => typeof tool !== 'string' && tool.name === 'sql_search');
+        if (sqlCalls.length === 0) return { sqlResult: state.sqlResult, pendingTools: remainingPendingTools, executedTools };
+
+        // Each queued SQL call is independent. Executing only .find() here used to
+        // silently discard every later SQL ask while also clearing the entire queue.
+        const executeCall = async (sqlCall: typeof sqlCalls[number], index: number) => {
+        let queryType = sqlCall.args?.queryType;
+        let queryParams = sqlCall.args?.params || sqlCall.args || {};
 
         if (!queryType || queryType === 'none') {
             const prompt = buildSqlPlannerPrompt(state.query, state.evidence);
@@ -129,39 +145,45 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
             queryParams = decision?.params ?? queryParams;
         }
 
-        if (!queryType || queryType === 'none') {
-            const isRepoOrRisk = /\b(repo|repos|repository|repositories|codebase|project|risk|bus factor|spof|single point|phati|vulnerable|higher|highest)\b/i.test(state.query);
-            if (isRepoOrRisk) {
-                queryType = 'repo_risk';
-            }
+        // Handle unsupported or still-missing queryType gracefully (NO regex fallback)
+        if (!queryType || queryType === 'none' || queryType === 'unsupported') {
+            console.log(`[SQL Node] No matching queryType determined (got "${queryType || 'none'}"). The planner should specify queryType explicitly.`);
+            console.warn(`[SQL Node] DROPPED_UNSUPPORTED_SQL_CALL id=${sqlCall.id || index} queryType=${queryType || 'none'}`);
+            return { results: [], evidence: null };
         }
 
         console.log(`[SQL Node] Executing safe query "${queryType}" with params:`, queryParams);
 
-        const vectorEventId = state.vectorResult.find((item: any) => item?.eventId)?.eventId;
-        if (vectorEventId && (queryType === 'event_by_id' || !queryParams.eventId)) {
-            const wantsPayloadOrId = /\b(payload|raw|full event|event id|message id|event details)\b/i.test(state.query);
-            if (wantsPayloadOrId || queryType === 'event_by_id') {
-                queryType = 'event_by_id';
-                queryParams.eventId = queryParams.eventId || vectorEventId;
-                console.log(`[SQL Node] Querying event_by_id with eventId: ${queryParams.eventId}`);
+        // Enrich event_by_id with eventId from vector results (if available and not already set)
+        if (queryType === 'event_by_id' && !queryParams.eventId) {
+            const vectorEventId = state.vectorResult.find((item: any) => item?.eventId)?.eventId;
+            if (vectorEventId) {
+                queryParams.eventId = vectorEventId;
+                console.log(`[SQL Node] Enriched event_by_id with eventId from vector results: ${queryParams.eventId}`);
             }
         }
 
         const results = await runSafeQuery(queryType, queryParams);
 
-        const newStructuredEvidence: StructuredEvidence[] = [];
+        let evidence: StructuredEvidence | null = null;
         if (results && results.length > 0) {
-            newStructuredEvidence.push({
-                id: `sql_${Date.now()}_${queryType}`,
+            evidence = {
+                id: `sql_${sqlCall.id || index}_${queryType}`,
                 sourceType: 'sql',
                 confidence: 0.95,
                 summary: `SQL query "${queryType}" returned ${results.length} record(s).`,
                 rawPayload: results,
                 entitiesFound: results.map((r: any) => r.repo_name || r.engineer).filter(Boolean),
                 queryExplanation: `Executed safe relational query "${queryType}" with params ${JSON.stringify(queryParams)}`,
-            });
+                ...(sqlCall.subgoalId ? { toolCallId: sqlCall.subgoalId, subgoalId: sqlCall.subgoalId } : {}),
+            };
         }
+        return { results, evidence };
+        };
+
+        const callResults = await Promise.all(sqlCalls.map(executeCall));
+        const results = callResults.flatMap(result => result.results);
+        const newStructuredEvidence = callResults.flatMap(result => result.evidence ? [result.evidence] : []);
 
         const elapsed = Date.now() - tStart;
         return {

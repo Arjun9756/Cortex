@@ -119,62 +119,37 @@ export async function calculateKnowledgeRisk(personName: string): Promise<Knowle
 }
 
 /**
- * Get relation mappings from LLM.
- * Safe fallback guarantees ownership, activity, expertise, and documentation mappings
- * are never left null if relations exist in the graph.
+ * Get relation mappings dynamically from schema.
+ * Deterministic mapping guarantees ownership, activity, expertise, and documentation mappings
+ * are accurately derived from live Neo4j schema without extra LLM latency overhead.
  */
 async function getRelationMappings(nodeLabels: string[], relationships: string[]): Promise<RelationMapping> {
     const defaultMappings: RelationMapping = {
-        ownership: { relation: relationships.includes('AUTHORED') ? 'AUTHORED' : null, targetLabel: nodeLabels.includes('COMMIT') ? 'COMMIT' : null },
-        dependency: { relation: relationships.includes('USES') ? 'USES' : null, targetLabel: nodeLabels.includes('REPOSITORY') ? 'REPOSITORY' : null },
-        activity: { relation: relationships.includes('AUTHORED') ? 'AUTHORED' : null, targetLabel: nodeLabels.includes('COMMIT') ? 'COMMIT' : null },
-        documentation: { relation: relationships.includes('AUTHORED') ? 'AUTHORED' : null, targetLabel: nodeLabels.includes('FILE') ? 'FILE' : null },
-        expertise: { relation: relationships.includes('AUTHORED') ? 'AUTHORED' : null, targetLabel: nodeLabels.includes('COMMIT') ? 'COMMIT' : null },
-        pendingWork: { relation: relationships.includes('AUTHORED') ? 'AUTHORED' : null, targetLabel: nodeLabels.includes('ISSUE') ? 'ISSUE' : null },
+        ownership: {
+            relation: relationships.find(r => ['AUTHORED', 'COMMITTED', 'CREATED', 'WROTE'].includes(r.toUpperCase())) || (relationships.includes('AUTHORED') ? 'AUTHORED' : null),
+            targetLabel: nodeLabels.find(l => ['COMMIT', 'PULL_REQUEST', 'FILE', 'REPOSITORY'].includes(l.toUpperCase())) || (nodeLabels.includes('COMMIT') ? 'COMMIT' : null)
+        },
+        dependency: {
+            relation: relationships.find(r => ['DEPENDS_ON', 'USES', 'CALLS', 'REQUIRES'].includes(r.toUpperCase())) || (relationships.includes('USES') ? 'USES' : null),
+            targetLabel: nodeLabels.find(l => ['REPOSITORY', 'SERVICE', 'PACKAGE', 'TECHNOLOGY'].includes(l.toUpperCase())) || (nodeLabels.includes('REPOSITORY') ? 'REPOSITORY' : null)
+        },
+        activity: {
+            relation: relationships.find(r => ['AUTHORED', 'COMMITTED', 'WORKS_ON', 'ACTIVE_IN'].includes(r.toUpperCase())) || (relationships.includes('AUTHORED') ? 'AUTHORED' : null),
+            targetLabel: nodeLabels.find(l => ['COMMIT', 'PULL_REQUEST', 'ISSUE'].includes(l.toUpperCase())) || (nodeLabels.includes('COMMIT') ? 'COMMIT' : null)
+        },
+        documentation: {
+            relation: relationships.find(r => ['AUTHORED', 'CREATED', 'MAINTAINS'].includes(r.toUpperCase())) || (relationships.includes('AUTHORED') ? 'AUTHORED' : null),
+            targetLabel: nodeLabels.find(l => ['FILE', 'DOCUMENT', 'README', 'DOC'].includes(l.toUpperCase())) || (nodeLabels.includes('FILE') ? 'FILE' : null)
+        },
+        expertise: {
+            relation: relationships.find(r => ['AUTHORED', 'MAINTAINS', 'KNOWS', 'USES'].includes(r.toUpperCase())) || (relationships.includes('AUTHORED') ? 'AUTHORED' : null),
+            targetLabel: nodeLabels.find(l => ['COMMIT', 'REPOSITORY', 'TECHNOLOGY', 'FILE'].includes(l.toUpperCase())) || (nodeLabels.includes('COMMIT') ? 'COMMIT' : null)
+        },
+        pendingWork: {
+            relation: relationships.find(r => ['ASSIGNED_TO', 'AUTHORED', 'OPENED', 'REPORTED'].includes(r.toUpperCase())) || (relationships.includes('ASSIGNED_TO') ? 'ASSIGNED_TO' : (relationships.includes('AUTHORED') ? 'AUTHORED' : null)),
+            targetLabel: nodeLabels.find(l => ['ISSUE', 'TASK', 'TICKET', 'PULL_REQUEST'].includes(l.toUpperCase())) || (nodeLabels.includes('ISSUE') ? 'ISSUE' : null)
+        },
     };
 
-    const now = Date.now()
-    if (relationMappingCache && (now - relationMappingCacheAt) < RELATION_MAPPING_TTL) {
-        console.log('[Knowledge Risk] Using cached relation mappings')
-        return relationMappingCache
-    }
-
-    const prompt = buildKnowledgeRiskPrompt(nodeLabels, relationships)
-
-    try {
-        const response = await createGroqChatCompletion({
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0,
-            response_format: { type: "json_object" }
-        })
-
-        const content = response.choices[0]?.message?.content
-        if (!content) {
-            throw new Error('Empty response from LLM')
-        }
-
-        const parsed = JSON.parse(content) as RelationMapping;
-
-        relationMappingCache = {
-            ownership: (parsed.ownership?.relation) ? parsed.ownership : defaultMappings.ownership,
-            dependency: (parsed.dependency?.relation) ? parsed.dependency : defaultMappings.dependency,
-            activity: (parsed.activity?.relation) ? parsed.activity : defaultMappings.activity,
-            documentation: (parsed.documentation?.relation) ? parsed.documentation : defaultMappings.documentation,
-            expertise: (parsed.expertise?.relation) ? parsed.expertise : defaultMappings.expertise,
-            pendingWork: (parsed.pendingWork?.relation) ? parsed.pendingWork : defaultMappings.pendingWork,
-        };
-
-        relationMappingCacheAt = now
-        console.log('[Knowledge Risk] Relation mappings refreshed:', relationMappingCache)
-
-        return relationMappingCache
-
-    } catch (error: any) {
-        console.error('[Knowledge Risk] Failed to get relation mappings:', error.message)
-        if (relationMappingCache) {
-            console.warn('[Knowledge Risk] Using stale relation mapping cache as fallback')
-            return relationMappingCache
-        }
-        return defaultMappings;
-    }
+    return defaultMappings;
 }

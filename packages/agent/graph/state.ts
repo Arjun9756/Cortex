@@ -4,6 +4,10 @@ export interface ToolCall {
     id?: string;
     name: string;
     args?: Record<string, any>;
+    /** The decomposed user ask this call is intended to answer. */
+    subgoalId?: string;
+    /** Number of targeted recovery attempts already made for this ask. */
+    attempt?: number;
 }
 
 export interface SubGoal {
@@ -13,6 +17,7 @@ export interface SubGoal {
     targetSourcePreference: ('graph' | 'vector' | 'sql' | 'analytics')[];
     status: 'pending' | 'in_progress' | 'fulfilled' | 'unreachable';
     requiredEntities?: string[];
+    retries?: number;
 }
 
 export interface StructuredEvidence {
@@ -24,6 +29,8 @@ export interface StructuredEvidence {
     rawPayload: any;
     entitiesFound: string[];
     queryExplanation: string;
+    /** Links evidence to the exact decomposed ask rather than merely a tool category. */
+    toolCallId?: string;
 }
 
 export interface ObservabilityMetrics {
@@ -105,21 +112,6 @@ export const AgentState = Annotation.Root({
     resolvedEntities: Annotation<Record<string, { resolvedName: string; type: string; confidence: number }>>({
         default: () => ({}),
         reducer: (prev, next) => ({ ...prev, ...next }),
-    }),
-
-    graphAction: Annotation<string>({
-        default: () => 'describeEntity',
-        reducer: (_, next) => next,
-    }),
-
-    graphTarget: Annotation<string>({
-        default: () => '',
-        reducer: (_, next) => next,
-    }),
-
-    graphRelation: Annotation<string>({
-        default: () => '',
-        reducer: (_, next) => next,
     }),
 
     vectorQuery: Annotation<string>({

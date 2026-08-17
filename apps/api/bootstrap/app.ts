@@ -11,6 +11,7 @@ import { chatRouter } from '../modules/chat/router.js'
 import { jiraRouter } from '../modules/jira/router.js'
 import { graphRouter } from '../modules/graph/router.js'
 import { dashboardRouter } from '../modules/dashboard/router.js'
+import { analyticsRouter } from '../modules/analytics/router.js'
 
 const app = express()
 
@@ -52,5 +53,6 @@ app.use('/api/jira' , jiraRouter)
 app.use('/api/chat' , chatRouter)
 app.use('/api/graph' , graphRouter)
 app.use('/api/dashboard', dashboardRouter)
+app.use('/api/analytics', analyticsRouter)
 
 export default app

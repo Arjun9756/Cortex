@@ -1,7 +1,7 @@
 import { ENTITY_TYPES, RELATION_TYPES } from "../../extraction/ontology.js";
 
 export function buildGithubExtractionPrompt(cleanEventText: string): string {
-    return `
+  return `
 You are an information extraction engine for a software engineering knowledge graph called Cortex.
 
 Your job is to read an event (a GitHub commit, pull request, issue, or comment) and extract structured entities and relationships from it.
@@ -16,7 +16,7 @@ ${RELATION_TYPES.join(", ")}
 
 1. Only extract entities that are explicitly present or clearly implied in the text. Do NOT invent information.
 
-2. Every entity must have ONLY a "name" field (the real-world name — e.g. "Arjun", "cortex-repo", "redis"). Do NOT include an "id" field or any other extra field. Relationships must reference entities using this exact "name" value, with matching case.
+2. Every entity must have ONLY a "name" field (the real-world name — e.g. "Jane Doe", "backend-service", "database"). Do NOT include an "id" field or any other extra field. Relationships must reference entities using this exact "name" value, with matching case.
 
 3. If an entity fits one of the ENTITY TYPES above, use that exact type. Do not invent a new type unless truly nothing fits.
 
