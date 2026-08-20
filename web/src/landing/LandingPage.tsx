@@ -6,6 +6,7 @@ import { ProblemSection } from './ProblemSection';
 import { HowItWorks } from './HowItWorks';
 import { BentoFeatures } from './BentoFeatures';
 import { ByocSection } from './ByocSection';
+import { PricingSection } from './PricingSection';
 import { FaqSection } from './FaqSection';
 import { ContactModal } from './ContactModal';
 import { Footer } from './Footer';
@@ -87,6 +88,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
 
         {/* BYOC & Zero Cost Section */}
         <ByocSection onOpenContact={() => setIsModalOpen(true)} />
+
+        {/* Transparent One-Plan Pricing Section */}
+        <PricingSection onOpenContact={(plan) => {
+          if (plan) {
+            setInlineForm(prev => ({ ...prev, message: `Interested in Cortex ${plan}` }));
+          }
+          setIsModalOpen(true);
+        }} />
 
         {/* FAQ Accordion Section */}
         <FaqSection />

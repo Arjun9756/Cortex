@@ -75,6 +75,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
             Self-Hosted Setup
           </button>
           <button
+            onClick={() => scrollToSection('pricing')}
+            className="hover:text-white transition-colors cursor-pointer text-indigo-400 font-bold"
+          >
+            Pricing
+          </button>
+          <button
             onClick={() => scrollToSection('faq')}
             className="hover:text-white transition-colors cursor-pointer"
           >
@@ -142,6 +148,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
             className="block w-full text-left py-2 hover:text-white border-b border-slate-900"
           >
             Self-Hosted Setup
+          </button>
+          <button
+            onClick={() => scrollToSection('pricing')}
+            className="block w-full text-left py-2 hover:text-white border-b border-slate-900 text-indigo-400 font-bold"
+          >
+            Pricing
           </button>
           <button
             onClick={() => scrollToSection('faq')}
