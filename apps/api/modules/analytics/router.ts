@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { evaluatePullRequestRisk } from '../../../../packages/analytics/prRisk.service.js';
 import { generateOffboardingHandoff } from '../../../../packages/analytics/offboarding.service.js';
 import { executeTextToCypher } from '../../../../packages/graph/cypher/textToCypher.service.js';
+import { generateAndSaveDailyReport, aggregateDailyReportData, renderDailyReportHtml } from '../../../../packages/analytics/dailyReport.service.js';
 import sql from '../../config/postgres.js';
 import { driver } from '../../config/neo4j.js';
 import { getTechnologiesHelper } from '../dashboard/controller.js';
@@ -220,3 +221,87 @@ analyticsRouter.post('/cypher', async (req, res) => {
         return res.status(500).json({ status: false, error: error?.message });
     }
 });
+
+// GET /api/analytics/daily-report/latest - Returns or renders the latest daily HTML report
+analyticsRouter.get('/daily-report/latest', async (req, res) => {
+    try {
+        const format = (req.query.format as string) || (req.headers.accept?.includes('text/html') ? 'html' : 'json');
+
+        // Look for the latest report in PostgreSQL
+        let reportRow = null;
+        try {
+            const rows = await sql`
+                SELECT report_date, html_content, summary, created_at 
+                FROM daily_reports 
+                ORDER BY report_date DESC 
+                LIMIT 1
+            `;
+            if (rows && rows.length > 0) reportRow = rows[0];
+        } catch (e: any) {
+            console.warn('[Analytics:DailyReport] PostgreSQL query fallback:', e?.message);
+        }
+
+        // If no report in DB yet, generate on the fly
+        if (!reportRow) {
+            const data = await aggregateDailyReportData();
+            const html = renderDailyReportHtml(data);
+            if (format === 'html') {
+                res.setHeader('Content-Type', 'text/html; charset=utf-8');
+                return res.send(html);
+            }
+            return res.status(200).json({
+                status: true,
+                reportDate: data.reportDate,
+                summary: data,
+                html,
+            });
+        }
+
+        if (format === 'html') {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            return res.send(reportRow.html_content);
+        }
+
+        return res.status(200).json({
+            status: true,
+            reportDate: reportRow.report_date,
+            createdAt: reportRow.created_at,
+            summary: reportRow.summary,
+            html: reportRow.html_content,
+        });
+    } catch (error: any) {
+        return res.status(500).json({ status: false, error: error?.message });
+    }
+});
+
+// POST /api/analytics/daily-report/generate - Manually triggers a fresh 24h daily report generation
+analyticsRouter.post('/daily-report/generate', async (req, res) => {
+    try {
+        const result = await generateAndSaveDailyReport();
+        return res.status(200).json({
+            status: true,
+            message: `Daily report for ${result.reportDate} successfully generated and stored in PostgreSQL.`,
+            reportDate: result.reportDate,
+            summary: result.summary,
+        });
+    } catch (error: any) {
+        return res.status(500).json({ status: false, error: error?.message });
+    }
+});
+
+// GET /api/analytics/daily-report/history - Returns list of past generated daily reports
+analyticsRouter.get('/daily-report/history', async (req, res) => {
+    try {
+        const rows = await sql`
+            SELECT id, report_date, created_at, (summary->'workspace'->>'healthScore')::int AS health_score,
+                   (summary->'criticalRisks'->'busFactorOneRepos') AS bus_factor_repos
+            FROM daily_reports
+            ORDER BY report_date DESC
+            LIMIT 30
+        `;
+        return res.status(200).json({ status: true, data: rows || [] });
+    } catch (error: any) {
+        return res.status(500).json({ status: false, error: error?.message });
+    }
+});
+

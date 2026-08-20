@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cortex Daily Engineering Pulse — 2026-08-20</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #09090b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f4f4f5; }
+        .container { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+        .card { background-color: #121215; border: 1px solid #27272a; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .stat-grid { display: table; width: 100%; border-collapse: separate; border-spacing: 10px; margin-top: 10px; }
+        .stat-box { display: table-cell; width: 25%; background: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 14px; text-align: center; vertical-align: middle; }
+        .stat-val { font-size: 22px; font-weight: 800; color: #fafafa; margin-bottom: 4px; }
+        .stat-lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #71717a; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th { text-align: left; padding: 8px 14px; font-size: 11px; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px; border-bottom: 2px solid #27272a; }
+        .badge-health { display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #27272a;">
+            <div style="display: inline-flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="font-size: 24px;">🧠</span>
+                <span style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #ffffff;">CORTEX</span>
+                <span style="background: #312e81; color: #a5b4fc; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Executive Daily Pulse</span>
+            </div>
+            <div style="font-size: 13px; color: #a1a1aa;">
+                Engineering Digest for <strong>2026-08-20</strong> &bull; Generated at Thu, 20 Aug 2026 17:54:52 GMT
+            </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="card" style="border-top: 4px solid #6366f1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #f4f4f5;">📊 Workspace Health & Velocity</h3>
+                <span class="badge-health" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b;">
+                    Health: 69/100
+                </span>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-val" style="color: #60a5fa;">15</div>
+                    <div class="stat-lbl">Active Repos</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" style="color: #a78bfa;">17</div>
+                    <div class="stat-lbl">Contributors</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" style="color: #fbbf24;">17%</div>
+                    <div class="stat-lbl">Avg Departure Risk</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" style="color: #f87171;">10</div>
+                    <div class="stat-lbl">Bus Factor = 1 Repos</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Critical Bus Factor Risks -->
+        <div class="card">
+            <h3 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #ef4444; display: flex; align-items: center; gap: 6px;">
+                <span>⚠️</span> Single-Point-of-Failure Repositories (Bus Factor &le; 1)
+            </h3>
+            <p style="margin: 0 0 12px 0; font-size: 12px; color: #a1a1aa;">
+                Repositories where over 50% of the codebase is maintained by a single engineer.
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Repository</th>
+                        <th style="text-align: center;">Bus Factor</th>
+                        <th style="text-align: center;">Risk Score</th>
+                        <th style="text-align: right;">Contributors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; font-family: monospace; font-size: 13px; color: #38bdf8;">cortex-web</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center;">
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">BF = 0</span>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center; color: #fbbf24; font-weight: 600; font-size: 13px;">100%</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right; color: #a1a1aa; font-size: 13px;">1 dev</td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; font-family: monospace; font-size: 13px; color: #38bdf8;">notification-hub</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center;">
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">BF = 0</span>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center; color: #fbbf24; font-weight: 600; font-size: 13px;">100%</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right; color: #a1a1aa; font-size: 13px;">1 dev</td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; font-family: monospace; font-size: 13px; color: #38bdf8;">notification-service</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center;">
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">BF = 0</span>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center; color: #fbbf24; font-weight: 600; font-size: 13px;">100%</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right; color: #a1a1aa; font-size: 13px;">1 dev</td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; font-family: monospace; font-size: 13px; color: #38bdf8;">web-dashboard</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center;">
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">BF = 0</span>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center; color: #fbbf24; font-weight: 600; font-size: 13px;">100%</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right; color: #a1a1aa; font-size: 13px;">1 dev</td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; font-family: monospace; font-size: 13px; color: #38bdf8;">auth-gateway</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center;">
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">BF = 1</span>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center; color: #fbbf24; font-weight: 600; font-size: 13px;">80%</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right; color: #a1a1aa; font-size: 13px;">1 dev</td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; font-family: monospace; font-size: 13px; color: #38bdf8;">auth-service</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center;">
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">BF = 1</span>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center; color: #fbbf24; font-weight: 600; font-size: 13px;">80%</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right; color: #a1a1aa; font-size: 13px;">1 dev</td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; font-family: monospace; font-size: 13px; color: #38bdf8;">billing-engine</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center;">
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">BF = 1</span>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center; color: #fbbf24; font-weight: 600; font-size: 13px;">80%</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right; color: #a1a1aa; font-size: 13px;">1 dev</td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; font-family: monospace; font-size: 13px; color: #38bdf8;">billing-service</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center;">
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">BF = 1</span>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center; color: #fbbf24; font-weight: 600; font-size: 13px;">80%</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right; color: #a1a1aa; font-size: 13px;">1 dev</td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; font-family: monospace; font-size: 13px; color: #38bdf8;">checkout-service</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center;">
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">BF = 1</span>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center; color: #fbbf24; font-weight: 600; font-size: 13px;">80%</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right; color: #a1a1aa; font-size: 13px;">1 dev</td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; font-family: monospace; font-size: 13px; color: #38bdf8;">Cortex</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center;">
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">BF = 1</span>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: center; color: #fbbf24; font-weight: 600; font-size: 13px;">80%</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right; color: #a1a1aa; font-size: 13px;">1 dev</td>
+        </tr>
+    
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Departure Risk Concentration -->
+        <div class="card">
+            <h3 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #f59e0b; display: flex; align-items: center; gap: 6px;">
+                <span>⚡</span> Top Departure Knowledge Concentrations
+            </h3>
+            <p style="margin: 0 0 12px 0; font-size: 12px; color: #a1a1aa;">
+                Engineers with highest concentration of unshared domain knowledge and sole commits.
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Engineer</th>
+                        <th style="text-align: right;">Calculated Risk Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; color: #f4f4f5; font-weight: 600; font-size: 13px;">👤 Priya Sharma</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right;">
+                <span style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">19% Risk</span>
+            </td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; color: #f4f4f5; font-weight: 600; font-size: 13px;">👤 Sarah Chen</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right;">
+                <span style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">18% Risk</span>
+            </td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; color: #f4f4f5; font-weight: 600; font-size: 13px;">👤 Priya Sharma</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right;">
+                <span style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">18% Risk</span>
+            </td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; color: #f4f4f5; font-weight: 600; font-size: 13px;">👤 Rohan Verma</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right;">
+                <span style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">18% Risk</span>
+            </td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; color: #f4f4f5; font-weight: 600; font-size: 13px;">👤 Rohan Verma</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right;">
+                <span style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">18% Risk</span>
+            </td>
+        </tr>
+    
+        <tr>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; color: #f4f4f5; font-weight: 600; font-size: 13px;">👤 Sarah Chen</td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #27272a; text-align: right;">
+                <span style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px;">18% Risk</span>
+            </td>
+        </tr>
+    
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Technology Footprint -->
+        <div class="card">
+            <h3 style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #818cf8; display: flex; align-items: center; gap: 6px;">
+                <span>🛠️</span> Active Technology Footprint
+            </h3>
+            <p style="margin: 0 0 12px 0; font-size: 12px; color: #a1a1aa;">
+                Most widely utilized technologies across microservices and data pipelines.
+            </p>
+            <div style="line-height: 1.8;">
+                
+        <span style="display: inline-block; background: #18181b; border: 1px solid #27272a; border-radius: 6px; padding: 6px 12px; margin: 4px; font-size: 12px; color: #e4e4e7;">
+            <strong>Twilio</strong> <span style="color: #6366f1; margin-left: 4px;">(13%)</span>
+        </span>
+    
+        <span style="display: inline-block; background: #18181b; border: 1px solid #27272a; border-radius: 6px; padding: 6px 12px; margin: 4px; font-size: 12px; color: #e4e4e7;">
+            <strong>BullMQ</strong> <span style="color: #6366f1; margin-left: 4px;">(13%)</span>
+        </span>
+    
+        <span style="display: inline-block; background: #18181b; border: 1px solid #27272a; border-radius: 6px; padding: 6px 12px; margin: 4px; font-size: 12px; color: #e4e4e7;">
+            <strong>Stripe</strong> <span style="color: #6366f1; margin-left: 4px;">(13%)</span>
+        </span>
+    
+        <span style="display: inline-block; background: #18181b; border: 1px solid #27272a; border-radius: 6px; padding: 6px 12px; margin: 4px; font-size: 12px; color: #e4e4e7;">
+            <strong>Redis</strong> <span style="color: #6366f1; margin-left: 4px;">(13%)</span>
+        </span>
+    
+        <span style="display: inline-block; background: #18181b; border: 1px solid #27272a; border-radius: 6px; padding: 6px 12px; margin: 4px; font-size: 12px; color: #e4e4e7;">
+            <strong>OAuth2 PKCE</strong> <span style="color: #6366f1; margin-left: 4px;">(7%)</span>
+        </span>
+    
+        <span style="display: inline-block; background: #18181b; border: 1px solid #27272a; border-radius: 6px; padding: 6px 12px; margin: 4px; font-size: 12px; color: #e4e4e7;">
+            <strong>ForceGraph</strong> <span style="color: #6366f1; margin-left: 4px;">(7%)</span>
+        </span>
+    
+        <span style="display: inline-block; background: #18181b; border: 1px solid #27272a; border-radius: 6px; padding: 6px 12px; margin: 4px; font-size: 12px; color: #e4e4e7;">
+            <strong>Web Workers</strong> <span style="color: #6366f1; margin-left: 4px;">(7%)</span>
+        </span>
+    
+        <span style="display: inline-block; background: #18181b; border: 1px solid #27272a; border-radius: 6px; padding: 6px 12px; margin: 4px; font-size: 12px; color: #e4e4e7;">
+            <strong>D3</strong> <span style="color: #6366f1; margin-left: 4px;">(7%)</span>
+        </span>
+    
+            </div>
+        </div>
+
+        <!-- AI Executive Takeaways -->
+        <div class="card" style="background: linear-gradient(135deg, rgba(49, 46, 129, 0.3) 0%, rgba(18, 18, 21, 1) 100%); border-color: #4338ca;">
+            <h3 style="margin: 0 0 10px 0; font-size: 15px; font-weight: 700; color: #c7d2fe; display: flex; align-items: center; gap: 6px;">
+                <span>💡</span> AI Recommended Actions for Today
+            </h3>
+            <ul style="margin: 0; padding-left: 20px;">
+                
+        <li style="margin-bottom: 10px; color: #d4d4d8; font-size: 13px; line-height: 1.6;">
+            <strong>Distribute Critical Repository Ownership:</strong> <code>cortex-web</code> is currently operating with a Bus Factor of 1. Assign a designated co-owner to review upcoming PRs and cross-train team members.
+        </li>
+    
+        <li style="margin-bottom: 10px; color: #d4d4d8; font-size: 13px; line-height: 1.6;">
+            <strong>Knowledge Offboarding Preparedness:</strong> <strong>Priya Sharma</strong> holds the highest departure risk concentration. Schedule an architectural knowledge-transfer session to document sole-maintained submodules.
+        </li>
+    
+        <li style="margin-bottom: 10px; color: #d4d4d8; font-size: 13px; line-height: 1.6;">
+            <strong>Modernization & Migration Validation:</strong> Ensure all recent infrastructure migrations (such as Valkey driver replacements and Temporal sagas) have automated end-to-end integration tests in CI/CD pipelines.
+        </li>
+    
+        <li style="margin-bottom: 10px; color: #d4d4d8; font-size: 13px; line-height: 1.6;">
+            <strong>Overall System Health:</strong> Workspace health is currently at 69%. Prioritize documentation debt reduction and pair-programming across single-point-of-failure microservices.
+        </li>
+    
+            </ul>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #18181b; font-size: 11px; color: #52525b;">
+            <p style="margin: 0 0 4px 0;">This report is automatically compiled by the <strong>Cortex Agentic Knowledge Graph Engine</strong>.</p>
+            <p style="margin: 0;">&copy; 2026 Cortex Intelligence Platform. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

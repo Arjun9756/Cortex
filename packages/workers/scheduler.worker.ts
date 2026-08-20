@@ -3,6 +3,7 @@ import { calculateAllPersonMetrics } from '../analytics/personMetrics.service.js
 import { calculateAllRepoMetrics } from '../analytics/repoMetrics.service.js'
 import { calculateAllTechnologyMetrics } from '../analytics/technologyMetrics.js'
 import { calculateWorkspaceMetrics } from '../analytics/workspaceMetrics.service.js'
+import { generateAndSaveDailyReport } from '../analytics/dailyReport.service.js'
 
 export async function runAnalyticsJob(): Promise<void> {
     console.log('[Scheduler] Running analytics job...')
@@ -25,6 +26,13 @@ export async function runAnalyticsJob(): Promise<void> {
 
     // Calculate workspace summary metrics from the updated tables
     await calculateWorkspaceMetrics();
+
+    // Automatically compile and persist the Executive Daily HTML Report
+    try {
+        await generateAndSaveDailyReport();
+    } catch (reportErr: any) {
+        console.error('[Scheduler] Daily report generation error:', reportErr?.message ?? reportErr);
+    }
 
     const succeeded = results.filter(r => r.status === 'fulfilled').length
     console.log(`[Scheduler] Analytics job done — ${succeeded}/${results.length} succeeded`)
