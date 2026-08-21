@@ -11,6 +11,11 @@ export const FaqSection: React.FC = () => {
 
   const faqs: FaqItem[] = [
     {
+      question: 'Is Cortex really free, and will I be charged in the future?',
+      answer:
+        'Yes — Cortex is 100% free during early access. There are no license fees, subscription tiers, or credit card requirements. If a paid managed tier is introduced in the future, all existing teams will receive at least 14 days advance notice with zero automatic charges or forced lock-ins.',
+    },
+    {
       question: 'How does Cortex predict key-person departure loss risk?',
       answer:
         'Cortex computes a weighted 6-factor risk score (30% ownership concentration, 20% critical dependents, 15% activity staleness, 15% documentation gaps, 10% sole expertise, 10% pending work) by linking GitHub commits, PR co-authorship, and Jira ticket history in Neo4j.',

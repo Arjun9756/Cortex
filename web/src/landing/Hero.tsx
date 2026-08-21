@@ -66,7 +66,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenContact }) => {
               onClick={onOpenContact}
               className="w-full sm:w-auto px-8 py-4 text-sm font-bold font-mono text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all duration-200 shadow-xl shadow-indigo-600/30 flex items-center justify-center space-x-2 cursor-pointer transform hover:-translate-y-0.5 border border-indigo-400/20"
             >
-              <span>Get Enterprise Setup</span>
+              <span>Request Free Setup</span>
               <ArrowRight className="w-4 h-4 text-white" />
             </button>
 

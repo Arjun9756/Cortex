@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { isDemoEnabled } from './config';
 import { LandingPage } from './landing/LandingPage';
+import { PricingPage } from './pages/PricingPage';
 import { Sidebar, type NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { DashboardOverviewPage } from './pages/DashboardOverviewPage';
@@ -13,10 +14,12 @@ import { TimelinePage } from './pages/TimelinePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 
 export function App() {
-  const [viewMode, setViewMode] = useState<'landing' | 'dashboard'>(() => {
-    if (!isDemoEnabled) return 'landing';
+  const [viewMode, setViewMode] = useState<'landing' | 'dashboard' | 'pricing'>(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('view') === 'dashboard' ? 'dashboard' : 'landing';
+    const view = params.get('view');
+    if (view === 'pricing' || window.location.pathname === '/pricing') return 'pricing';
+    if (!isDemoEnabled) return 'landing';
+    return view === 'dashboard' ? 'dashboard' : 'landing';
   });
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
 
@@ -65,6 +68,10 @@ export function App() {
         return <DashboardOverviewPage onNavigate={setActiveTab} />;
     }
   };
+
+  if (viewMode === 'pricing') {
+    return <PricingPage onGoBack={() => setViewMode('landing')} onLaunchDemo={isDemoEnabled ? () => setViewMode('dashboard') : undefined} />;
+  }
 
   if (viewMode === 'landing' || !isDemoEnabled) {
     return <LandingPage onLaunchDemo={isDemoEnabled ? () => setViewMode('dashboard') : undefined} />;

@@ -104,7 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
             onClick={onOpenContact}
             className="px-4 py-2 text-xs font-bold font-mono text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl transition-all cursor-pointer"
           >
-            Get Enterprise Setup
+            Request Free Setup
           </button>
         </div>
 
@@ -166,7 +166,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
             onClick={onOpenContact}
             className="w-full mt-2 py-3 font-bold text-center text-white bg-indigo-600 rounded-xl flex items-center justify-center space-x-2"
           >
-            <span>Request Enterprise Setup</span>
+            <span>Request Free Setup</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

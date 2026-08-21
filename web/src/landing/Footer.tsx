@@ -53,7 +53,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenContact }) => {
               </li>
               <li>
                 <a href="#pricing" className="hover:text-white transition-colors text-indigo-400 font-semibold">
-                  Pricing &amp; Plans
+                  Pricing (Free BYOC)
                 </a>
               </li>
               <li>
