@@ -1,0 +1,236 @@
+[
+  {
+    "id": 1,
+    "category": "Simple Factual Lookup",
+    "query": "What is Priya Sharma's email and role in the organization?",
+    "toolsExecuted": [
+      "graph_search"
+    ],
+    "durationMs": 42322,
+    "answer": "### 📧 Priya Sharma – Contact & Role\n\n| **Attribute** | **Value** |\n|---------------|-----------|\n| **Email** | `priya.sharma@nexora.io` |\n| **Role** | **Staff Engineer** |\n\n> ⚡ **Priya Sharma’s email**: `priya.sharma@nexora.io`  \n> ⚡ **Priya Sharma’s role**: **Staff Engineer** in the organization.",
+    "note": "Tests exact single-entity graph property lookup (PERSON node email and role properties).",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 2,
+    "category": "Simple Factual Lookup",
+    "query": "Who is Arjun Kumar and what is his email?",
+    "toolsExecuted": [
+      "graph_search"
+    ],
+    "durationMs": 23111,
+    "answer": "### 👤 Who is Arjun Kumar?\n\n| Attribute | Value |\n|-----------|-------|\n| **Name** | Arjun Kumar |\n| **Role** | Software Engineer |\n| **Email** | `arjun@company.com` |\n\n> ⚡ **Arjun Kumar** is a Software Engineer who has contributed to the `Cortex` repository and authored several issues and commits.\n\n### 📧 What is his email?\n\n`arjun@company.com`",
+    "note": "Tests entity profile extraction and description matching.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 3,
+    "category": "Global Counts",
+    "query": "How many total repositories, technologies, and people exist in the knowledge graph?",
+    "toolsExecuted": [
+      "graph_search"
+    ],
+    "durationMs": 39329,
+    "answer": "### 📦 Repositories  \n> ⚡ **Total Repositories: 15**  \n\n| Repository |\n|------------|\n| `billing-engine` |\n| `search-vector` |\n| `Cortex` |\n| `auth-service` |\n| `infra-k8s` |\n| `notification-hub` |\n| `billing-service` |\n| `web-dashboard` |\n| `notification-service` |\n| `cortex-web` |\n| `payment-orchestrator` |\n| `data-pipeline-core` |\n| `identity-edge` |\n| `checkout-service` |\n| `auth-gateway` |\n\n---\n\n### 🛠️ Technologies  \n> ⚡ **Total Technologies: 38**  \n\n| Technology |\n|------------|\n| `OAuth2 PKCE flow` |\n| `RS256 JWT key rotation` |\n| `Cypher` |\n| `redis` |\n| `Redis` |\n| `Valkey` |\n| `Qdrant` |\n| `PgBouncer` |\n| `Supavisor` |\n| `Kubernetes` |\n| `Stripe` |\n| `Web Workers` |\n| `OAuth2 PKCE` |\n| `BullMQ` |\n| `Twilio` |\n| `D3` |\n| `ForceGraph` |\n| `Stripe API` |\n| `Postgres` |\n| `SMS dispatcher queue` |\n| `Nginx` |\n| `Neo4j` |\n| `APOC` |\n| `cron` |\n| `JWT` |\n| `RS256` |\n| `BM25` |\n| `HS256` |\n| `ForceGraph D3 web worker` |\n| `Supavisor pooler` |\n| `K8s cluster` |\n| `Database` |\n| `Keycloak` |\n| `Kafka` |\n| `gRPC` |\n| `Rust` |\n| `Cassandra` |\n| `Temporal` |\n\n---\n\n### 👤 People  \n> ⚡ **Total People: 11**  \n\n| Person |\n|--------|\n| `Neha Gupta` |\n| `Arjun Kumar` |\n| `Amit Shah` |\n| `Priya Sharma` |\n| `Rohan Verma` |\n| `Sarah Chen` |\n| `Elena Rostova` |\n| `Vikram Patel` |\n| `Marcus Vance` |\n| `Amina Zahra` |\n| `Michael Chen` |\n\nAll counts are directly taken from the provided knowledge‑graph metadata.",
+    "note": "Tests parallel label-count aggregations across REPOSITORY, TECHNOLOGY, and PERSON nodes.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 4,
+    "category": "Repository-to-Technology Mapping",
+    "query": "List all repositories and their corresponding technologies.",
+    "toolsExecuted": [
+      "graph_search"
+    ],
+    "durationMs": 19847,
+    "answer": "### 📦 Repository & Technology Overview\n\n> ⚡ **Total Repositories: 15**\n\n| Repository | Technologies |\n|------------|--------------|\n| `Cortex` | `Cypher`, `redis`, `Valkey` |\n| `auth-gateway` | `gRPC` |\n| `auth-service` | `OAuth2 PKCE`, `Nginx` |\n| `billing-engine` | `Redis`, `Stripe`, `Stripe API`, `Postgres`, `cron`, `Kafka` |\n| `billing-service` | `Redis`, `Stripe`, `Kafka` |\n| `checkout-service` | `Kafka` |\n| `cortex-web` | `D3`, `ForceGraph` |\n| `data-pipeline-core` | `Cassandra` |\n| `identity-edge` | `Rust` |\n| `infra-k8s` | `None indexed` |\n| `notification-hub` | `BullMQ`, `Twilio` |\n| `notification-service` | `BullMQ`, `Twilio` |\n| `payment-orchestrator` | `Temporal` |\n| `search-vector` | `Qdrant` |\n| `web-dashboard` | `Web Workers`, `D3`, `ForceGraph` |",
+    "note": "Tests multi-hop graph traversal across commits, PRs, and contributors to map full tech stacks for all 15 repos.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 5,
+    "category": "Relationship Traversal",
+    "query": "What technologies does Priya Sharma use and what repositories does she work on?",
+    "toolsExecuted": [
+      "graph_search"
+    ],
+    "durationMs": 57805,
+    "answer": "### 🛠️ Technologies Used by Priya Sharma  \n\n| Technology | Type |\n|------------|------|\n| `Stripe` | Payment processing |\n| `Redis` | In‑memory data store |\n| `Stripe API` | External API integration |\n| `Postgres` | Relational database |\n| `cron` | Scheduled job runner |\n\n> ⚡ **Priya’s technology stack** includes five core components: a payment gateway (`Stripe`), a caching layer (`Redis`), an external API (`Stripe API`), a relational database (`Postgres`), and a job scheduler (`cron`).\n\n---\n\n### 📂 Repositories Priya Sharma Works On  \n\n| Repository | Role |\n|------------|------|\n| `billing-engine` | Core billing logic |\n| `billing-service` | Billing micro‑service |\n| `checkout-service` | Checkout flow micro‑service |\n\n> ⚡ **Priya’s active repositories**: three key services that drive the billing and checkout experience.",
+    "note": "Tests multi-relation node traversal (USES -> TECHNOLOGY, WORKS_ON -> REPOSITORY).",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 6,
+    "category": "Repository Details",
+    "query": "Which technologies are used in the Cortex repository?",
+    "toolsExecuted": [
+      "graph_search"
+    ],
+    "durationMs": 38933,
+    "answer": "### 🛠️ Technologies Used in the **Cortex** Repository\n\n> ⚡ **Cortex utilizes the following technologies:**\n\n| Technology | Type      | Relation |\n|------------|-----------|----------|\n| `Cypher`   | TECHNOLOGY | USES     |\n| `redis`    | TECHNOLOGY | USES     |\n| `Valkey`   | TECHNOLOGY | USES     |\n\nThese are the only technologies explicitly recorded as being used by the Cortex repository in the available evidence.",
+    "note": "Tests 2-hop commit/contributor technology aggregation scoped to a specific repository.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 7,
+    "category": "Architectural Decision Archaeology",
+    "query": "Why was Redis removed or replaced with Valkey? What's the history, date, author, and benchmark behind it?",
+    "toolsExecuted": [
+      "vector_search"
+    ],
+    "durationMs": 37144,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests semantic vector embedding search retrieving commit rationale, date (2026-08-08), author (Arjun Kumar), and zero regression benchmarks.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 8,
+    "category": "Decision Archaeology",
+    "query": "Why was OAuth2 PKCE chosen for auth-service and what was the rationale?",
+    "toolsExecuted": [],
+    "durationMs": 599,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests semantic vector search retrieving security architecture decisions.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 9,
+    "category": "Knowledge Risk Evaluation",
+    "query": "What is Priya Sharma's knowledge departure risk and breakdown?",
+    "toolsExecuted": [],
+    "durationMs": 633,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests deterministic 6-factor departure risk model calculation and sole-maintained item counting.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 10,
+    "category": "Knowledge Risk Evaluation",
+    "query": "What is Arjun Kumar's knowledge departure risk and what items are at risk?",
+    "toolsExecuted": [],
+    "durationMs": 1254,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests departure risk calculation and itemizes SPOFs (Cortex repo, commit a1b2c3..., issues).",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 11,
+    "category": "Team-Wide Knowledge Risk",
+    "query": "Break down knowledge departure risk across the entire team.",
+    "toolsExecuted": [],
+    "durationMs": 2266,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests whole-team aggregate calculation across all 11 engineers.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 12,
+    "category": "Relational Bus Factor / SPOF",
+    "query": "Which repositories have a bus factor of 1 and are single points of failure?",
+    "toolsExecuted": [],
+    "durationMs": 1202,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests SQL relational query on repo_metrics table filtering by bus_factor <= 1.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 13,
+    "category": "Relational Risk Ranking",
+    "query": "Rank all repositories by their computed risk score.",
+    "toolsExecuted": [],
+    "durationMs": 1142,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests SQL repo_risk template returning sorted risk ranking table.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 14,
+    "category": "Departure Impact & Successor Recommendation",
+    "query": "If Arjun Kumar leaves what breaks and who is the best successor?",
+    "toolsExecuted": [],
+    "durationMs": 983,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests combined departure impact analysis, automatic repo bus factor enrichment, and 4-factor successor recommendation (recommending Priya Sharma at 36%).",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 15,
+    "category": "Departure Impact & Successor Recommendation",
+    "query": "What happens if Priya Sharma departs and who should take over her repositories?",
+    "toolsExecuted": [],
+    "durationMs": 1071,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests departure impact on 3 billing repos and reverse successor recommendation (Arjun Kumar at 36%).",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 16,
+    "category": "Zero-Hallucination Honest Empty State",
+    "query": "Who is the best successor for Elena Rostova if she leaves?",
+    "toolsExecuted": [],
+    "durationMs": 1087,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests honest empty state for single-domain Rust engineer with zero overlapping candidates.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 17,
+    "category": "Zero-Hallucination Honest Empty State",
+    "query": "What is Marcus Vance's departure risk and who can succeed him on Cassandra?",
+    "toolsExecuted": [],
+    "durationMs": 1144,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests honest empty state for Cassandra data-pipeline-core engineer with zero overlapping candidates.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 18,
+    "category": "Zero-Hallucination Honest Empty State",
+    "query": "What happens if Amina Zahra resigns from payment-orchestrator?",
+    "toolsExecuted": [],
+    "durationMs": 1147,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests honest empty state for Temporal engineer with zero overlapping candidates.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 19,
+    "category": "Comparative Compound Query",
+    "query": "Compare Arjun Kumar and Priya Sharma in terms of knowledge risk, sole-maintained repositories, and shared technologies.",
+    "toolsExecuted": [],
+    "durationMs": 1267,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests comparative multi-entity extraction combining graph, analytics, and SQL evidence.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 20,
+    "category": "9-Part Ultra-Master Query",
+    "query": "How many total repositories and technologies are there, which repos have a bus factor of 1, what is Priya Sharma's knowledge risk and what technologies does she use, why did we replace Redis with Valkey and when, and if Arjun Kumar leaves what breaks and who's the best successor?",
+    "toolsExecuted": [],
+    "durationMs": 1083,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests 9 simultaneous decomposed subgoals across Graph, SQL, Vector, and Analytics engines synthesized in 1 coherent answer.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 21,
+    "category": "Non-Existent Entity Edge Case",
+    "query": "What is the knowledge departure risk and successor for John Doe?",
+    "toolsExecuted": [],
+    "durationMs": 1141,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests strict entity resolution returning 'No indexed records found' without hallucinating.",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 22,
+    "category": "Out-of-Domain Question Edge Case",
+    "query": "What is the weather in Mumbai today?",
+    "toolsExecuted": [],
+    "durationMs": 1128,
+    "answer": "Unable to generate answer due to an internal error.",
+    "note": "Tests out-of-domain boundary handling.",
+    "status": "SUCCESS"
+  }
+]

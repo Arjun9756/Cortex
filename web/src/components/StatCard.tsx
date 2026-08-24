@@ -1,4 +1,5 @@
 import React from 'react';
+import { AnimatedNumber } from './AnimatedNumber';
 
 export interface StatCardProps {
   title: string;
@@ -70,7 +71,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             {title}
           </span>
           <div className="text-2xl font-black text-white tracking-tight flex items-baseline gap-2">
-            {value}
+            <AnimatedNumber value={value} />
             {trend && (
               <span
                 className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${

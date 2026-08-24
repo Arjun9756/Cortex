@@ -1,11 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { getBusFactor, type RepoMetric } from '../lib/api';
-import { ShieldAlert, AlertTriangle, UserCheck, Code, Layers, RefreshCw } from 'lucide-react';
+import { getBusFactor, getRepositoryDetails, type RepoMetric, type RepositoryDetails } from '../lib/api';
+import { ShieldAlert, AlertTriangle, UserCheck, Code, Layers, RefreshCw, ArrowRight } from 'lucide-react';
+import { RepoDetailModal } from '../components/RepoDetailModal';
 
 export const BusFactorPage: React.FC = () => {
   const [repos, setRepos] = useState<RepoMetric[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Detail Modal state
+  const [selectedRepoDetails, setSelectedRepoDetails] = useState<RepositoryDetails | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const fetchBusFactor = async () => {
     setLoading(true);
@@ -18,6 +25,27 @@ export const BusFactorPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenDetails = async (repoName: string) => {
+    setIsModalOpen(true);
+    setDetailsLoading(true);
+    setDetailsError(null);
+    setSelectedRepoDetails(null);
+    try {
+      const details = await getRepositoryDetails(repoName);
+      setSelectedRepoDetails(details);
+    } catch (err: any) {
+      setDetailsError(err.message || `Failed to fetch details for ${repoName}`);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedRepoDetails(null);
+    setDetailsError(null);
   };
 
   useEffect(() => {
@@ -49,8 +77,8 @@ export const BusFactorPage: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={fetchBusFactor}
-            className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2 transition-all"
+            onClick={() => fetchBusFactor()}
+            className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2 transition-all cursor-pointer"
           >
             <RefreshCw className="h-4 w-4" />
             <span>Retry</span>
@@ -70,12 +98,12 @@ export const BusFactorPage: React.FC = () => {
             <span>Bus Factor & Repository Vulnerability</span>
           </h3>
           <p className="text-xs text-slate-400 mt-1">
-            Repositories ordered by lowest Bus Factor (highest single point of failure risk).
+            Repositories ranked by single point of failure risk. Click any repository card to inspect maintainers, commit timeline, stack technologies, and suggested backup owners.
           </p>
         </div>
         <button
-          onClick={fetchBusFactor}
-          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2"
+          onClick={() => fetchBusFactor()}
+          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2 cursor-pointer transition-all"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span>Refresh</span>
@@ -99,7 +127,8 @@ export const BusFactorPage: React.FC = () => {
             return (
               <div
                 key={repo.external_id || repo.repo_name}
-                className="glass-card glass-card-hover p-6 flex flex-col justify-between space-y-4"
+                onClick={() => handleOpenDetails(repo.repo_name)}
+                className="glass-card glass-card-hover p-6 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200"
               >
                 <div>
                   <div className="flex items-center justify-between">
@@ -117,29 +146,48 @@ export const BusFactorPage: React.FC = () => {
                     </span>
                   </div>
 
-                  <h4 className="text-lg font-bold text-white mt-3 flex items-center space-x-2">
-                    <Code className="h-4 w-4 text-indigo-400" />
-                    <span>{repo.repo_name}</span>
+                  <h4 className="text-lg font-bold text-white mt-3 flex items-center justify-between group-hover:text-indigo-300 transition-colors">
+                    <div className="flex items-center space-x-2">
+                      <Code className="h-4 w-4 text-indigo-400" />
+                      <span>{repo.repo_name}</span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-slate-500 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                   </h4>
 
-                  {repo.primary_owner && (
+                  {repo.primary_owner ? (
                     <div className="flex items-center space-x-2 text-xs text-slate-400 mt-2">
                       <UserCheck className="h-3.5 w-3.5 text-amber-400" />
-                      <span>Primary Owner: <strong className="text-slate-200 font-medium">{repo.primary_owner}</strong></span>
+                      <span>Primary: <strong className="text-slate-200 font-medium">{repo.primary_owner}</strong></span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2 text-xs text-slate-500 mt-2 italic">
+                      <UserCheck className="h-3.5 w-3.5 text-slate-600" />
+                      <span>Single maintainer codebase</span>
                     </div>
                   )}
                 </div>
 
                 <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
                   <span>Contributors: <strong className="text-slate-200">{repo.contributor_count ?? 1}</strong></span>
-                  <span className="text-[10px] text-slate-500">
-                    {repo.computed_at ? new Date(repo.computed_at).toLocaleDateString() : 'Recent'}
+                  <span className="text-[11px] font-semibold text-indigo-400 group-hover:underline flex items-center gap-1">
+                    <span>Inspect Risk</span>
+                    <span>→</span>
                   </span>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* Deep Inspection Detail Modal */}
+      {isModalOpen && (
+        <RepoDetailModal
+          details={selectedRepoDetails}
+          loading={detailsLoading}
+          error={detailsError}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   );

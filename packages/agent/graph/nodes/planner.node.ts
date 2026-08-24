@@ -117,7 +117,7 @@ AVAILABLE TOOLS & RULES:
 4. "graph_list_nodes": {"entity": "<name>", "relation": "USES"|"WORKS_ON", "targetLabel": "TECHNOLOGY"|"REPOSITORY"} -> Use for what technologies an engineer uses or which repos an engineer works on.
 5. "graph_describe_entity": {"entity": "<name>"} -> Use for entity profile, email, role, description.
 6. "vector_search": {"query": "<search query>"} -> Use for semantic/architectural rationale ("why was X replaced with Y and when?", decisions, Slack discussions, incident reasons).
-7. "graph_repository_summary": {"repositoryName": "<repo>"|"ALL"} -> Use for repository contributors and commit overview.
+7. "graph_repository_summary": {"repositoryName": "<repo>"|"ALL"} -> Use for repository contributors, tech stack mapping, and repository-to-technology mappings ("every repo their corresponding technology", "what technologies are used in repo X?").
 8. "graph_dependency_analysis": {"entity": "<service>"} -> Use for service/repo dependency trees.
 9. "graph_impact_analysis": {"entity": "<service>"} -> Use for blast radius of changes.
 10. "graph_shortest_path": {"from": "<A>", "to": "<B>"} -> Use for shortest path/connections between 2 entities.
@@ -150,7 +150,9 @@ ${asks.map((ask, i) => `subgoal_${i + 1}: "${ask}"`).join('\n')}`;
         const message = planningResponse.choices[0]?.message;
         let jsonPlan: any = {};
         try {
-            jsonPlan = JSON.parse(message?.content || '{}');
+            const rawContent = message?.content || '{}';
+            const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+            jsonPlan = JSON.parse(jsonMatch ? jsonMatch[0] : rawContent);
         } catch (error: any) {
             console.error(`[Planner] Plan JSON parse failed: ${error?.message}`);
         }

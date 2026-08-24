@@ -4,7 +4,6 @@ import {
   MessageSquareCode, 
   Network, 
   Users, 
-  ShieldAlert, 
   Cpu, 
   History,
   BarChart3,
@@ -30,31 +29,48 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
   const sections: Array<{
     title: string;
-    items: Array<{ id: NavTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }>;
+    items: Array<{
+      id: NavTab;
+      label: string;
+      icon: React.ComponentType<{ className?: string }>;
+      badge?: string;
+      badgeVariant?: 'primary' | 'secondary' | 'live';
+      isSecondaryTool?: boolean;
+    }>;
   }> = [
     {
-      title: 'WORKSPACE',
+      title: 'CORE WORKSPACE',
       items: [
-        { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'chat', label: 'AI Chat', icon: MessageSquareCode, badge: 'Agentic' },
-        { id: 'graph', label: 'Knowledge Graph', icon: Network },
+        { id: 'overview', label: 'Executive Dashboard', icon: LayoutDashboard, badge: 'Live', badgeVariant: 'live' },
+        { id: 'graph', label: 'Knowledge Graph', icon: Network, badge: 'Neo4j', badgeVariant: 'primary' },
       ],
     },
     {
-      title: 'ENTITIES',
+      title: 'CODEBASE ENTITIES',
       items: [
-        { id: 'bus-factor', label: 'Repositories', icon: FolderGit2 },
-        { id: 'people', label: 'People', icon: Users },
-        { id: 'technologies', label: 'Technologies', icon: Cpu },
+        { id: 'bus-factor', label: 'Repositories & SPOF', icon: FolderGit2 },
+        { id: 'people', label: 'People & Departure', icon: Users },
+        { id: 'technologies', label: 'Technologies & Stack', icon: Cpu },
       ],
     },
     {
-      title: 'INTELLIGENCE',
+      title: 'RISK & INTELLIGENCE',
       items: [
-        { id: 'people', label: 'Knowledge Risk', icon: ShieldAlert },
-        { id: 'bus-factor', label: 'Bus Factor', icon: ShieldAlert },
-        { id: 'timeline', label: 'Timeline', icon: History },
-        { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+        { id: 'timeline', label: 'Activity Timeline', icon: History },
+        { id: 'analytics', label: 'Intelligence Metrics', icon: BarChart3 },
+      ],
+    },
+    {
+      title: 'AI COPILOT & TOOLS',
+      items: [
+        { 
+          id: 'chat', 
+          label: 'AI Knowledge Chat', 
+          icon: MessageSquareCode, 
+          badge: 'Agentic Tool', 
+          badgeVariant: 'secondary',
+          isSecondaryTool: true 
+        },
       ],
     },
   ];
@@ -73,6 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
             <h1 className="font-extrabold text-lg text-white tracking-tight flex items-center gap-1">
               Cortex
             </h1>
+            <p className="text-[10px] text-slate-400 font-mono">Engineering Intelligence</p>
           </div>
         </div>
       </div>
@@ -94,15 +111,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 group ${
                     isActive
                       ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm shadow-indigo-500/10'
+                      : item.isSecondaryTool
+                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 border border-slate-800/50 bg-slate-900/40'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <Icon className={`h-4 w-4 transition-colors ${isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                    <Icon className={`h-4 w-4 transition-colors ${
+                      isActive 
+                        ? 'text-indigo-400' 
+                        : item.isSecondaryTool
+                        ? 'text-indigo-400/70 group-hover:text-indigo-300'
+                        : 'text-slate-500 group-hover:text-slate-300'
+                    }`} />
                     <span>{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                      item.badgeVariant === 'live'
+                        ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                        : item.badgeVariant === 'secondary'
+                        ? 'bg-slate-800 text-slate-300 border-slate-700'
+                        : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                    }`}>
                       {item.badge}
                     </span>
                   )}

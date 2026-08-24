@@ -126,15 +126,20 @@ export async function repositorySummary(repositoryName: string = '') {
             OPTIONAL MATCH (p1:PERSON)-[:WORKS_ON|CONTRIBUTED_TO]->(repository)
             OPTIONAL MATCH (work)-[:PART_OF]-(repository)
             OPTIONAL MATCH (p2:PERSON)-[:AUTHORED|CREATED]->(work)
+            OPTIONAL MATCH (repository)<-[:PART_OF|FIXED_BY*1..2]-(work2)-[:USES|MENTIONED_IN|HAS_PROBLEM]->(t1:TECHNOLOGY)
+            OPTIONAL MATCH (repository)<-[:WORKS_ON|CONTRIBUTED_TO]-(p3:PERSON)-[:USES]->(t2:TECHNOLOGY)
             WITH repository, count(DISTINCT work) AS workItems,
                  collect(DISTINCT {name: p1.name, email: p1.email, role: p1.role, type: 'PERSON'}) +
                  collect(DISTINCT {name: p2.name, email: p2.email, role: p2.role, type: 'PERSON'}) AS rawContributors,
-                 collect(DISTINCT {name: work.name, type: labels(work)[0]})[0..30] AS recentEntities
-            WITH repository, workItems, [c in rawContributors WHERE c.name IS NOT NULL] AS contributors, recentEntities
+                 collect(DISTINCT {name: work.name, type: labels(work)[0]})[0..30] AS recentEntities,
+                 collect(DISTINCT t1.name) + collect(DISTINCT t2.name) AS rawTechs
+            WITH repository, workItems, [c in rawContributors WHERE c.name IS NOT NULL] AS contributors, recentEntities,
+                 [t in rawTechs WHERE t IS NOT NULL] AS technologies
             RETURN repository.name AS repository,
                 workItems,
                 contributors[0..20] AS contributors,
-                recentEntities
+                recentEntities,
+                technologies
             ORDER BY repository.name
         `, { repositoryName: repositoryName || '' })
         if (result.records.length === 0) return null
@@ -142,21 +147,27 @@ export async function repositorySummary(repositoryName: string = '') {
             const record = result.records[0]
             const rawContribs = record?.get('contributors') || []
             const uniqueContribs = rawContribs.filter((c: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.name === c.name) === i)
+            const rawTechs = record?.get('technologies') || []
+            const uniqueTechs = [...new Set(rawTechs.filter(Boolean))]
             return {
                 repository: record?.get('repository'),
                 workItems: neo4j.integer.toNumber(record?.get('workItems')),
                 contributors: uniqueContribs,
-                recentEntities: record?.get('recentEntities').filter((item: { name?: string }) => item.name)
+                recentEntities: record?.get('recentEntities').filter((item: { name?: string }) => item.name),
+                technologies: uniqueTechs
             }
         }
         return result.records.map((record) => {
             const rawContribs = record.get('contributors') || []
             const uniqueContribs = rawContribs.filter((c: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.name === c.name) === i)
+            const rawTechs = record.get('technologies') || []
+            const uniqueTechs = [...new Set(rawTechs.filter(Boolean))]
             return {
                 repository: record.get('repository'),
                 workItems: neo4j.integer.toNumber(record.get('workItems')),
                 contributors: uniqueContribs,
-                recentEntities: record.get('recentEntities').filter((item: { name?: string }) => item.name)
+                recentEntities: record.get('recentEntities').filter((item: { name?: string }) => item.name),
+                technologies: uniqueTechs
             }
         })
     }

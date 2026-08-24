@@ -1,5 +1,6 @@
 import React from 'react';
-import { Network, ShieldAlert, Zap, GitPullRequest, Sparkles, Database, CheckCircle2 } from 'lucide-react';
+import { Network, ShieldAlert, Zap, Sparkles, Database, CheckCircle2, Calculator } from 'lucide-react';
+import { TrustBadge } from './TrustBadge';
 
 export const BentoFeatures: React.FC = () => {
   return (
@@ -19,7 +20,7 @@ export const BentoFeatures: React.FC = () => {
             Engineered for Production Codebases.
           </h2>
           <p className="mt-4 text-base sm:text-lg text-slate-400 font-normal leading-relaxed">
-            Zero unbuilt promises. Cortex turns complex codebase history and developer commits into verified, actionable graph intelligence.
+            Zero unbuilt promises. Cortex turns complex codebase history and developer commits into verified, actionable graph intelligence with mathematical proof.
           </p>
         </div>
 
@@ -29,14 +30,17 @@ export const BentoFeatures: React.FC = () => {
           {/* Card 1: Knowledge Graph Ingestion */}
           <div className="bg-[#090d16]/90 border border-slate-800/80 hover:border-indigo-500/40 rounded-2xl p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-950/30 group flex flex-col justify-between backdrop-blur-xl">
             <div>
-              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
-                <Network className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Network className="w-6 h-6" />
+                </div>
+                <TrustBadge label="Multi-hop Cypher Graph Traversal" />
               </div>
               <h3 className="text-xl font-bold text-white font-sans mb-3">
                 Neo4j Knowledge Graph Ingestion
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Connects GitHub commits, Slack discussions, and Jira issues automatically. Ingests entities (Person, Service, Repository, Issue, PR, Technology) into an interconnected Neo4j graph.
+                Connects GitHub commits, Slack discussions, and Jira issues automatically. Ingests entities (Person, Service, Repository, Issue, PR, Technology) into an interconnected Neo4j graph with cross-platform identity resolution.
               </p>
             </div>
 
@@ -46,7 +50,7 @@ export const BentoFeatures: React.FC = () => {
                 <span>Neo4j Graph Schema:</span>
               </div>
               <p className="text-slate-400 leading-relaxed text-[11px]">
-                (Person)-[:AUTHORED]-&gt;(Commit)-[:MODIFIES]-&gt;(Service)-[:USES]-&gt;(Technology)
+                (Person)-[:AUTHORED]-&gt;(Commit)-[:PART_OF]-&gt;(Repository)-[:USES]-&gt;(Technology)
               </p>
             </div>
           </div>
@@ -54,8 +58,11 @@ export const BentoFeatures: React.FC = () => {
           {/* Card 2: 6-Factor Departure Risk Model */}
           <div className="bg-[#090d16]/90 border border-slate-800/80 hover:border-rose-500/40 rounded-2xl p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-rose-950/30 group flex flex-col justify-between backdrop-blur-xl">
             <div>
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
-                <ShieldAlert className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <TrustBadge label="Calculated from real graph data — not AI-generated" />
               </div>
               <h3 className="text-xl font-bold text-white font-sans mb-3">
                 6-Factor Departure Loss Risk Score
@@ -66,24 +73,30 @@ export const BentoFeatures: React.FC = () => {
             </div>
 
             <div className="mt-6 p-3.5 rounded-xl bg-[#060911] border border-rose-500/30 flex items-center justify-between font-mono text-xs">
-              <span className="text-slate-400">Vikram Patel Departure Risk:</span>
-              <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold uppercase">
-                76% CRITICAL RISK
-              </span>
+              <div className="flex items-center space-x-2">
+                <span className="text-slate-400">Vikram Patel Departure Risk:</span>
+                <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold uppercase text-[11px]">
+                  76% CRITICAL RISK
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-500 hidden sm:inline font-bold font-mono">Pure Math</span>
             </div>
           </div>
 
           {/* Card 3: ~0.1ms Fast-Path Intent Router */}
           <div className="bg-[#090d16]/90 border border-slate-800/80 hover:border-amber-500/40 rounded-2xl p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-950/30 group flex flex-col justify-between backdrop-blur-xl">
             <div>
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
-                <Zap className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Zap className="w-6 h-6" />
+                </div>
+                <TrustBadge label="Deterministic Fast-Path Rules" />
               </div>
               <h3 className="text-xl font-bold text-white font-sans mb-3">
                 ~0.1ms Fast-Path Intent Router
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Matches 80% of routine queries using high-speed fast-path rules in sub-milliseconds with zero token cost, seamlessly handing off compound queries to Qwen 3.6 27B parallel agent graphs.
+                Matches routine queries using high-speed fast-path rules in sub-milliseconds with zero token cost, seamlessly handing off complex multi-hop queries to parallel agent graph tools.
               </p>
             </div>
 
@@ -93,25 +106,28 @@ export const BentoFeatures: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 4: Self-Healing Documentation Generator */}
+          {/* Card 4: 4-Factor Successor Recommendation Engine */}
           <div className="bg-[#090d16]/90 border border-slate-800/80 hover:border-emerald-500/40 rounded-2xl p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-950/30 group flex flex-col justify-between backdrop-blur-xl">
             <div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
-                <GitPullRequest className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Calculator className="w-6 h-6" />
+                </div>
+                <TrustBadge label="Pure math, zero AI guessing" />
               </div>
               <h3 className="text-xl font-bold text-white font-sans mb-3">
-                Self-Healing Documentation PR Generator
+                Deterministic Successor Recommendation
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Directly closes 15% documentation risk gaps by drafting Markdown ADRs and README files for undocumented single-contributor services, offering 1-click GitHub Pull Request creation.
+                When key maintainers depart, Cortex calculates backup owners mathematically: 40% Tech Jaccard similarity, 25% Repository overlap, 20% Activity recency, and 15% Workload capacity.
               </p>
             </div>
 
-            <div className="mt-6 p-3.5 rounded-xl bg-[#060911] border border-slate-800/80 flex items-center justify-between font-mono text-xs">
-              <span className="text-slate-400">GitHub Integration:</span>
+            <div className="mt-6 p-3.5 rounded-xl bg-[#060911] border border-emerald-500/30 flex items-center justify-between font-mono text-xs">
+              <span className="text-slate-400">Formula Jaccard Match:</span>
               <span className="text-emerald-400 font-bold flex items-center space-x-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>1-Click Merge Ready</span>
+                <span>Zero Hallucination</span>
               </span>
             </div>
           </div>

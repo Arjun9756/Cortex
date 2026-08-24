@@ -476,3 +476,50 @@ export async function updateIntegrationSecrets(provider: string, secret: string)
         };
     }
 }
+
+export interface RepositoryDetails {
+    repoName: string;
+    busFactor: number;
+    riskScore: number;
+    status: string;
+    contributorCount: number;
+    primaryOwner: {
+        name: string;
+        email?: string;
+        role?: string;
+        commitCount: number;
+        ownershipPercentage: number;
+    } | null;
+    contributors: Array<{
+        name: string;
+        email?: string;
+        role?: string;
+        commitCount: number;
+    }>;
+    technologies: string[];
+    recentActivity: Array<{
+        title: string;
+        hash?: string;
+        externalId?: string;
+        type: string;
+        date: string;
+        author?: string;
+    }>;
+    riskExplanation: {
+        summary: string;
+        factors: string[];
+        isSPOF: boolean;
+    };
+    suggestedBackups: Array<{
+        name: string;
+        score: number;
+        sharedTechnologies: string[];
+        capacityScore: number;
+        rationale: string;
+    }>;
+}
+
+export async function getRepositoryDetails(repoName: string): Promise<RepositoryDetails> {
+    return await fetchJson<RepositoryDetails>(`/api/dashboard/repos/${encodeURIComponent(repoName)}/details`);
+}
+

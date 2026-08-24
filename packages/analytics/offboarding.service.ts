@@ -2,6 +2,7 @@ import { driver } from '../../apps/api/config/neo4j.js';
 import sql from '../../apps/api/config/postgres.js';
 import neo4j from 'neo4j-driver';
 import { calculateKnowledgeRisk } from './knowledge.service.js';
+import { calculateSuccessorCandidates } from './successor.service.js';
 import { createGroqChatCompletion } from '../llm/providers/groq.js';
 
 export interface OffboardingHandoffOutput {
@@ -88,27 +89,18 @@ export async function generateOffboardingHandoff(personName: string): Promise<Of
             console.warn(`[Offboarding] Knowledge risk calculation fallback: ${err?.message}`);
         }
 
-        // 5. Successor Candidates via Skill & Tech Jaccard Similarity Graph Traversal
-        const successorRes = await session.run(`
-            MATCH (target:PERSON) WHERE toLower(target.name) CONTAINS toLower($name)
-            MATCH (other:PERSON) WHERE NOT toLower(other.name) CONTAINS toLower($name)
-            MATCH (target)-[:AUTHORED|WORKS_ON]->()-[:USES|MENTIONED_IN]-(t:TECHNOLOGY)
-            MATCH (other)-[:AUTHORED|WORKS_ON]->()-[:USES|MENTIONED_IN]-(t)
-            RETURN other.name AS candidate, count(DISTINCT t) AS sharedTech
-            ORDER BY sharedTech DESC
-            LIMIT 5
-        `, { name: personName });
-
-        const targetTechCount = Math.max(1, ownedTechnologies.length);
-        const suggestedReplacementEngineers: OffboardingHandoffOutput['suggestedReplacementEngineers'] = successorRes.records.map(r => {
-            const sharedTech = neo4j.integer.toNumber(r.get('sharedTech'));
-            const similarityScore = Math.min(0.99, Math.round((sharedTech / targetTechCount) * 100) / 100);
-            return {
-                name: r.get('candidate'),
-                similarityScore,
-                sharedTechCount: sharedTech
-            };
-        });
+        // 5. Successor Candidates via 4-Factor Deterministic Scoring Model
+        let suggestedReplacementEngineers: OffboardingHandoffOutput['suggestedReplacementEngineers'] = [];
+        try {
+            const successorData = await calculateSuccessorCandidates(personName);
+            suggestedReplacementEngineers = successorData.candidates.map(c => ({
+                name: c.name,
+                similarityScore: Math.round((c.score / 100) * 100) / 100,
+                sharedTechCount: c.factors.sharedTechnologies.length
+            }));
+        } catch (succErr: any) {
+            console.warn(`[Offboarding] Successor calculation fallback: ${succErr?.message}`);
+        }
 
         // 6. Missing Documentation & Estimated Recovery Time Weeks
         const missingDocumentation = ownedRepositories

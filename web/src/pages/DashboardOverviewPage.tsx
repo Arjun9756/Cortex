@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
   getDashboardOverview,
+  getRepositoryDetails,
   type DashboardOverviewResponse,
   type RiskAlertItem,
+  type RepositoryDetails,
 } from '../lib/api';
 import type { NavTab } from '../components/Sidebar';
 import { StatCard } from '../components/StatCard';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 import { RiskGauge } from '../components/RiskGauge';
 import { EvidenceChip } from '../components/EvidenceChip';
+import { RepoDetailModal } from '../components/RepoDetailModal';
 import {
   ShieldAlert,
   Users,
@@ -35,6 +39,7 @@ import {
 
 interface DashboardOverviewPageProps {
   onNavigate: (tab: NavTab, initialQuery?: string) => void;
+  onSyncUpdated?: (syncedAt: Date) => void;
 }
 
 /* ── Custom Dark Tooltip for Recharts ──────────────────────────── */
@@ -56,41 +61,88 @@ const DarkTooltip = ({ active, payload, label }: any) => {
 
 export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   onNavigate,
+  onSyncUpdated,
 }) => {
   const [data, setData] = useState<DashboardOverviewResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [loadTimeMs, setLoadTimeMs] = useState<number | null>(null);
 
+  // Detail Modal state for Repositories
+  const [selectedRepoDetails, setSelectedRepoDetails] = useState<RepositoryDetails | null>(null);
+  const [repoLoading, setRepoLoading] = useState<boolean>(false);
+  const [repoError, setRepoError] = useState<string | null>(null);
+  const [isRepoModalOpen, setIsRepoModalOpen] = useState<boolean>(false);
+
   // Team Overview Table Sort state
   const [sortField, setSortField] = useState<'risk' | 'commits' | 'name'>('risk');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
-  const fetchOverview = async () => {
+  const fetchOverview = async (silent: boolean = false) => {
     const startTime = performance.now();
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const res = await getDashboardOverview();
       setData(res);
       const endTime = performance.now();
       setLoadTimeMs(Math.round(endTime - startTime));
+      if (onSyncUpdated) {
+        onSyncUpdated(new Date());
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch dashboard overview');
+      if (!silent) {
+        setError(err.message || 'Failed to fetch dashboard overview');
+      } else {
+        console.warn('[DashboardOverview] Periodic poll error:', err?.message);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const handleOpenRepoModal = async (repoName: string) => {
+    setIsRepoModalOpen(true);
+    setRepoLoading(true);
+    setRepoError(null);
+    setSelectedRepoDetails(null);
+    try {
+      const details = await getRepositoryDetails(repoName);
+      setSelectedRepoDetails(details);
+    } catch (err: any) {
+      setRepoError(err.message || `Failed to fetch repository details for ${repoName}`);
+    } finally {
+      setRepoLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOverview();
+    fetchOverview(false);
+
+    // Realtime Periodic Polling: poll overview every 30 seconds
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchOverview(true);
+      }
+    }, 30000);
+
+    // Refresh immediately when user returns/focuses the window
+    const handleFocus = () => {
+      fetchOverview(true);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const handleAlertClick = (alert: RiskAlertItem) => {
-    if (alert.entityType === 'person') {
+    if (alert.entityType === 'repo') {
+      handleOpenRepoModal(alert.entityName);
+    } else if (alert.entityType === 'person') {
       onNavigate('people');
-    } else if (alert.entityType === 'repo') {
-      onNavigate('bus-factor');
     } else if (alert.entityType === 'tech') {
       onNavigate('technologies');
     } else {
@@ -125,7 +177,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             </div>
           </div>
           <button
-            onClick={fetchOverview}
+            onClick={() => fetchOverview(false)}
             className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-xl flex items-center space-x-2 transition-all cursor-pointer"
           >
             <RefreshCw className="h-4 w-4" />
@@ -213,7 +265,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                 )}`}
               >
                 <span className="text-4xl font-black tracking-tight text-white">
-                  {health.score}
+                  <AnimatedNumber value={health.score} />
                 </span>
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
                   Grade {health.grade}
@@ -259,16 +311,21 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           <div className="flex flex-wrap lg:flex-col gap-2 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-800 pt-4 lg:pt-0 lg:pl-6 text-xs font-mono">
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-4">
               <span className="text-slate-400">Avg Bus Factor:</span>
-              <span className="font-bold text-cyan-400">{health.breakdown.avgBusFactor}</span>
+              <span className="font-bold text-cyan-400">
+                <AnimatedNumber value={health.breakdown.avgBusFactor} decimals={1} />
+              </span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-4">
               <span className="text-slate-400">Avg Knowledge Risk:</span>
-              <span className="font-bold text-amber-400">{health.breakdown.avgKnowledgeRisk}%</span>
+              <span className="font-bold text-amber-400">
+                <AnimatedNumber value={health.breakdown.avgKnowledgeRisk} suffix="%" />
+              </span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-4">
               <span className="text-slate-400">Single Pt of Failure Repos:</span>
-              <span className="font-bold text-rose-400">
-                {health.breakdown.spofRepoCount} / {health.breakdown.totalRepos}
+              <span className="font-bold text-rose-400 flex items-center gap-1">
+                <AnimatedNumber value={health.breakdown.spofRepoCount} />
+                <span>/ {health.breakdown.totalRepos}</span>
               </span>
             </div>
           </div>
@@ -677,6 +734,20 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
         <div className="text-center text-[11px] font-mono text-slate-400">
           Dashboard synthesized in <span className="text-emerald-400 font-bold">{loadTimeMs}ms</span> from PostgreSQL metrics cache.
         </div>
+      )}
+
+      {/* Deep Inspection Repo Detail Modal */}
+      {isRepoModalOpen && (
+        <RepoDetailModal
+          details={selectedRepoDetails}
+          loading={repoLoading}
+          error={repoError}
+          onClose={() => {
+            setIsRepoModalOpen(false);
+            setSelectedRepoDetails(null);
+            setRepoError(null);
+          }}
+        />
       )}
     </div>
   );

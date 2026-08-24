@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { isDemoEnabled } from './config';
 import { LandingPage } from './landing/LandingPage';
 import { PricingPage } from './pages/PricingPage';
 import { Sidebar, type NavTab } from './components/Sidebar';
@@ -18,10 +17,21 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view');
     if (view === 'pricing' || window.location.pathname === '/pricing') return 'pricing';
-    if (!isDemoEnabled) return 'landing';
-    return view === 'dashboard' ? 'dashboard' : 'landing';
+    if (view === 'landing' || window.location.pathname === '/landing') return 'landing';
+    // Single workspace dashboard-first default: always load Dashboard directly!
+    return 'dashboard';
   });
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    setRefreshKey(prev => prev + 1);
+    setLastSyncedAt(new Date());
+    setTimeout(() => setIsRefreshing(false), 800);
+  };
 
   const getPageTitle = (tab: NavTab) => {
     switch (tab) {
@@ -49,32 +59,44 @@ export function App() {
   const renderActivePage = () => {
     switch (activeTab) {
       case 'overview':
-        return <DashboardOverviewPage onNavigate={setActiveTab} />;
+        return (
+          <DashboardOverviewPage 
+            key={refreshKey}
+            onNavigate={setActiveTab} 
+            onSyncUpdated={(date) => setLastSyncedAt(date)}
+          />
+        );
       case 'chat':
         return <AIChatPage />;
       case 'graph':
-        return <KnowledgeGraphPage />;
+        return <KnowledgeGraphPage key={refreshKey} />;
       case 'people':
-        return <PeoplePage />;
+        return <PeoplePage key={refreshKey} />;
       case 'bus-factor':
-        return <BusFactorPage />;
+        return <BusFactorPage key={refreshKey} />;
       case 'technologies':
-        return <TechnologiesPage />;
+        return <TechnologiesPage key={refreshKey} />;
       case 'timeline':
-        return <TimelinePage />;
+        return <TimelinePage key={refreshKey} />;
       case 'analytics':
-        return <AnalyticsPage />;
+        return <AnalyticsPage key={refreshKey} />;
       default:
-        return <DashboardOverviewPage onNavigate={setActiveTab} />;
+        return (
+          <DashboardOverviewPage 
+            key={refreshKey}
+            onNavigate={setActiveTab} 
+            onSyncUpdated={(date) => setLastSyncedAt(date)}
+          />
+        );
     }
   };
 
   if (viewMode === 'pricing') {
-    return <PricingPage onGoBack={() => setViewMode('landing')} onLaunchDemo={isDemoEnabled ? () => setViewMode('dashboard') : undefined} />;
+    return <PricingPage onGoBack={() => setViewMode('landing')} onLaunchDemo={() => setViewMode('dashboard')} />;
   }
 
-  if (viewMode === 'landing' || !isDemoEnabled) {
-    return <LandingPage onLaunchDemo={isDemoEnabled ? () => setViewMode('dashboard') : undefined} />;
+  if (viewMode === 'landing') {
+    return <LandingPage onLaunchDemo={() => setViewMode('dashboard')} />;
   }
 
   return (
@@ -84,7 +106,13 @@ export function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header title={getPageTitle(activeTab)} onGoLanding={() => setViewMode('landing')} />
+        <Header 
+          title={getPageTitle(activeTab)} 
+          onGoLanding={() => setViewMode('landing')}
+          onRefresh={handleManualRefresh}
+          isRefreshing={isRefreshing}
+          lastSyncedAt={lastSyncedAt}
+        />
         <main className="flex-1 overflow-y-auto">
           {renderActivePage()}
         </main>

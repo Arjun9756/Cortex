@@ -9,6 +9,7 @@ export const KnowledgeGraphPage: React.FC = () => {
   const [nodeCount, setNodeCount] = useState<number>(0);
   const [edgeCount, setEdgeCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Filter query parameters
@@ -16,8 +17,9 @@ export const KnowledgeGraphPage: React.FC = () => {
   const [selectedPerson, setSelectedPerson] = useState<string>('');
   const [limit, setLimit] = useState<number>(100);
 
-  const fetchGraph = async () => {
-    setLoading(true);
+  const fetchGraph = async (silent: boolean = false) => {
+    if (!silent) setLoading(true);
+    else setIsRefreshing(true);
     setError(null);
     try {
       const res = await getGraphVisualization({
@@ -30,15 +32,39 @@ export const KnowledgeGraphPage: React.FC = () => {
       setNodeCount(res.nodeCount || 0);
       setEdgeCount(res.edgeCount || 0);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch Knowledge Graph visualization');
+      if (!silent) {
+        setError(err.message || 'Failed to fetch Knowledge Graph visualization');
+      } else {
+        console.warn('[KnowledgeGraph] Background poll error:', err?.message);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      else setIsRefreshing(false);
     }
   };
 
   // Re-fetch when filter options change
   useEffect(() => {
-    fetchGraph();
+    fetchGraph(false);
+  }, [selectedRepo, selectedPerson, limit]);
+
+  // Periodic auto-refresh every 45s when on Knowledge Graph page
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchGraph(true);
+      }
+    }, 45000);
+
+    const handleFocus = () => {
+      fetchGraph(true);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [selectedRepo, selectedPerson, limit]);
 
   // Derive filter dropdown lists from available nodes
@@ -59,19 +85,32 @@ export const KnowledgeGraphPage: React.FC = () => {
             <span>Interactive Knowledge Graph</span>
           </h3>
           <p className="text-xs text-slate-400 mt-1">
-            Explore Neo4j graph nodes and relationships: Engineers, Repositories, Technologies, Commits, PRs, and Issues.
+            Explore live Neo4j graph nodes and relationships: Engineers, Repositories, Technologies, Commits, PRs, and Issues.
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-400 font-medium">
+            <span className="relative flex h-2 w-2">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                isRefreshing ? 'bg-indigo-400' : 'bg-emerald-400'
+              }`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                isRefreshing ? 'bg-indigo-500' : 'bg-emerald-500'
+              }`}></span>
+            </span>
+            <span>{isRefreshing ? 'Syncing...' : 'Live Graph'}</span>
+          </div>
+
           <span className="text-xs text-slate-400 font-medium">
             Nodes: <strong className="text-white">{nodeCount}</strong> | Edges: <strong className="text-white">{edgeCount}</strong>
           </span>
           <button
-            onClick={fetchGraph}
-            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2"
+            onClick={() => fetchGraph(false)}
+            disabled={loading || isRefreshing}
+            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2 transition-all cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing || loading ? 'animate-spin text-indigo-400' : ''}`} />
             <span>Refresh</span>
           </button>
         </div>
@@ -147,8 +186,8 @@ export const KnowledgeGraphPage: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={fetchGraph}
-            className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2"
+            onClick={() => fetchGraph(false)}
+            className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2 cursor-pointer"
           >
             <RefreshCw className="h-4 w-4" />
             <span>Retry</span>

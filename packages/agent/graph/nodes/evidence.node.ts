@@ -30,12 +30,33 @@ function formatSingleRiskText(kr: any): string {
         pendingWork:   kr.evidence.pendingWork || [],
     } : {};
 
+    let successorLines: string[] = [];
+    if (kr.successors && Array.isArray(kr.successors) && kr.successors.length > 0) {
+        const topSucc = kr.successors[0];
+        successorLines.push(`[SUCCESSOR RECOMMENDATION] Best Recommended Successor: ${topSucc.name} (${topSucc.score}% composite match score)`);
+        for (const s of kr.successors) {
+            successorLines.push(`  - Candidate: ${s.name} | Composite Match Score: ${s.score}% (Breakdown: Shared Tech=${s.breakdown?.sharedTechScore ?? 0}%, Shared Repos=${s.breakdown?.sharedRepoScore ?? 0}%, Recent Activity=${s.breakdown?.recentActivityScore ?? 0}%, Workload Capacity=${s.breakdown?.workloadCapacityScore ?? 0}%) | Shared Techs: [${s.factors?.sharedTechnologies?.join(', ') || 'none'}] | Shared Repos: [${s.factors?.sharedRepositories?.join(', ') || 'none'}] | Activity: ${s.factors?.activityStatus || 'active'} | Existing Risk: ${s.factors?.existingKnowledgeRisk ?? 0}% | Rationale: ${s.rationale}`);
+        }
+    } else if (kr.hasSuccessor === false || (kr.successors && kr.successors.length === 0)) {
+        successorLines.push(`[SUCCESSOR RECOMMENDATION] No candidate with overlapping technologies or repositories was found in the knowledge graph for ${kr.person}.`);
+    }
+
+    let affectedRepoLines: string[] = [];
+    if (kr.affectedRepositories && Array.isArray(kr.affectedRepositories) && kr.affectedRepositories.length > 0) {
+        affectedRepoLines.push(`[AFFECTED REPOSITORIES & BUS FACTOR] Repositories affected if ${kr.person} departs:`);
+        for (const r of kr.affectedRepositories) {
+            affectedRepoLines.push(`  - Repository: "${r.repo_name}" | Bus Factor: ${r.bus_factor} (${r.bus_factor <= 1 ? 'Single Point of Failure / SPOF' : 'Normal'}) | Repository Risk Score: ${r.risk_score}% | Primary Owner: ${r.primary_owner || 'Unknown'} | Contributors: ${r.contributor_count || 1}`);
+        }
+    }
+
     return [
         `[KNOWLEDGE RISK] Person: ${kr.person}`,
         `Total Risk: ${totalPct}% (0–100 scale)`,
         `Breakdown (each 0–100%): ownership=${breakdownPct.ownership}%, dependency=${breakdownPct.dependency}%, activity=${breakdownPct.activity}%, documentation=${breakdownPct.documentation}%, expertise=${breakdownPct.expertise}% (sole-maintained items score), pendingWork=${breakdownPct.pendingWork}%`,
         `Details: ownedItems=${kr.details?.ownedItems ?? 0}, criticalDependencies=${kr.details?.criticalDependencies ?? 0}, recentActivity=${kr.details?.recentActivity ?? 0}, documentationGaps=${kr.details?.documentationGaps ?? 0}, soleMaintainedItems=${kr.details?.uniqueSkills ?? kr.details?.soleMaintainedItems ?? 0}, assignedWork=${kr.details?.assignedWork ?? 0}`,
         `Concrete Evidence: ${JSON.stringify(safeEvidence)}`,
+        ...affectedRepoLines,
+        ...successorLines,
         `Note on Knowledge Risk "expertise": This metric counts sole-maintained / single-contributor codebase items (commits, PRs, issues, or files with only 1 author). It does NOT count technology node relationships. Technology node usage (e.g. USES -> TECHNOLOGY) is reported separately by graph_search.`,
     ].join('\n');
 }
@@ -67,7 +88,13 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
             return `[${metaParts.join(' | ')}] Summary: ${item?.summary || ''}${item?.text ? ` | Text: "${item.text}"` : ''}`
         }).join('\n');
 
-        const graphText = state.graphResult.map((item) => `[GRAPH] ${JSON.stringify(item)}`).join('\n');
+        const graphText = state.graphResult.map((item) => {
+            if (item?.repository && Array.isArray(item?.technologies)) {
+                const contribNames = Array.isArray(item.contributors) ? item.contributors.map((c: any) => c.name).filter(Boolean).join(', ') : 'None';
+                return `[REPOSITORY TECH & CONTRIBUTORS] Repository: "${item.repository}" | Technologies: [${item.technologies.join(', ') || 'None indexed'}] | Work Items: ${item.workItems ?? 0} | Contributors: [${contribNames}]`;
+            }
+            return `[GRAPH] ${JSON.stringify(item)}`;
+        }).join('\n');
 
         const sqlText = state.sqlResult.map((item: any) => {
             if (item?.repo_name) {

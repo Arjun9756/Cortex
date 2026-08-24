@@ -15,7 +15,7 @@ export const TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'knowledge_risk',
-            description: 'Engineering Knowledge Loss & Departure Risk Calculator. Evaluates human single-point-of-failure dependencies and calculates a comprehensive 6-component risk breakdown: (1) Ownership concentration in repos, (2) Critical architecture dependencies, (3) Recent commit/PR activity, (4) Undocumented code gaps, (5) Unique siloed tech expertise, and (6) Assigned pending tickets/work. MANDATORY for ANY question asking about what happens if someone leaves/departs/resigns, backup maintainers upon departure, unowned components if an engineer leaves, or team-wide departure risk. Examples: "What happens if Priya leaves?", "If Priya Sharma leaves tomorrow, which repositories have no backup maintainer?", "Who is the most critical person to retain?", "Break down knowledge risk across the team". Pass personName="ALL" for whole-team analysis.',
+            description: 'Engineering Knowledge Loss, Departure Risk & Successor Recommendation Calculator. Evaluates human single-point-of-failure dependencies, departure impact, and calculates recommended successor candidates based on 4-factor scoring (shared technologies, shared repositories, recent activity, and current workload capacity). MANDATORY for ANY question asking about what happens if someone leaves/departs/resigns, what breaks if an engineer leaves, backup maintainers upon departure, unowned components if someone quits, replacement engineers, or who is the best successor for an engineer. Examples: "What happens if Priya leaves?", "If Arjun Kumar leaves what breaks and who\'s the best successor?", "Who is the best successor for Elena?", "If Priya Sharma leaves tomorrow, which repositories have no backup maintainer?", "Who is the most critical person to retain?", "Break down knowledge risk across the team". Pass personName="ALL" for whole-team analysis.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -127,7 +127,7 @@ export const TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'graph_repository_summary',
-            description: 'Get a comprehensive summary of one or all repositories, including contributors (with emails/roles), work item counts, and recent entities. Use for questions like: "Show me repos and who is responsible for each", "Who maintains checkout-service?", "List all repositories with their contributors", "Who are the contributors to billing-service?".',
+            description: 'Get a comprehensive summary of one or all repositories, including contributors (with emails/roles), work item counts, recent entities, and ALL TECHNOLOGIES used in/by each repository (technology stack per repository). Use for questions like: "every repo their corresponding technology", "what technologies are used in checkout-service?", "show tech stack for each repository", "Show me repos and who is responsible for each", "List all repositories with their contributors", "Who are the contributors to billing-service?".',
             parameters: {
                 type: 'object',
                 properties: {

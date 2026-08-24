@@ -5,6 +5,7 @@ import { ArchitectureDiagram } from './ArchitectureDiagram';
 import { ProblemSection } from './ProblemSection';
 import { HowItWorks } from './HowItWorks';
 import { BentoFeatures } from './BentoFeatures';
+import { WhyNotChatGptSection } from './WhyNotChatGptSection';
 import { ByocSection } from './ByocSection';
 import { PricingSection } from './PricingSection';
 import { FaqSection } from './FaqSection';
@@ -71,7 +72,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
       <Navbar onOpenContact={() => setIsModalOpen(true)} onLaunchDemo={onLaunchDemo} />
 
       <main>
-        {/* Hero Section */}
+        {/* Hero Section with Interactive Query Playground */}
         <Hero onOpenContact={() => setIsModalOpen(true)} />
 
         {/* Architecture Diagram Section */}
@@ -85,6 +86,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
 
         {/* Bento Features Section */}
         <BentoFeatures />
+
+        {/* "Why Not Just ChatGPT" Differentiator Section */}
+        <WhyNotChatGptSection />
 
         {/* BYOC & Zero Cost Section */}
         <ByocSection onOpenContact={() => setIsModalOpen(true)} />
