@@ -175,3 +175,12 @@ Cortex operates under a strict **"Calculator vs. Formatter"** architecture:
 ## Who Built This?
 
 I am the builder of the Cortex system — built without external funding, team, or formal mentors as a self-taught backend developer. Every feature included in Cortex (knowledge risk scoring, bus factor evaluation, successor recommendations) is designed, implemented, and verified with deterministic mathematical formulas grounded in real company data.
+
+---
+
+## License & Intellectual Property
+
+Copyright (c) 2026 Cortex. All rights reserved.
+
+This software and associated documentation files are proprietary and confidential. Unauthorized copying, modification, distribution, sublicensing, or commercial use of this software, in whole or in part, via any medium, is strictly prohibited without explicit prior written consent.
+
