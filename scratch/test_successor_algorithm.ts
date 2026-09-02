@@ -83,15 +83,16 @@ async function getPersonProfile(session: any, personName: string): Promise<Perso
                 ORDER BY computed_at DESC 
                 LIMIT 1
             `;
-            if (pm.length > 0) {
-                if (pm[0].risk_score != null) {
-                    knowledgeRisk = Number(pm[0].risk_score) / 100;
+            const pm0 = pm[0];
+            if (pm0) {
+                if (pm0.risk_score != null) {
+                    knowledgeRisk = Number(pm0.risk_score) / 100;
                 }
-                if (Array.isArray(pm[0].repos)) {
-                    pm[0].repos.forEach((r: string) => repositories.add(r.toLowerCase()));
+                if (Array.isArray(pm0.repos)) {
+                    pm0.repos.forEach((r: string) => repositories.add(r.toLowerCase()));
                 }
-                if (Array.isArray(pm[0].top_technologies)) {
-                    pm[0].top_technologies.forEach((t: any) => {
+                if (Array.isArray(pm0.top_technologies)) {
+                    pm0.top_technologies.forEach((t: any) => {
                         const tName = typeof t === 'string' ? t : (t.name || t.tech);
                         if (tName) technologies.add(tName.toLowerCase());
                     });
@@ -107,7 +108,8 @@ async function getPersonProfile(session: any, personName: string): Promise<Perso
                 const rm = await sql`
                     SELECT bus_factor FROM repo_metrics WHERE repo_name ILIKE ${repo} LIMIT 1
                 `;
-                if (rm.length > 0 && Number(rm[0].bus_factor) <= 1) {
+                const rm0 = rm[0];
+                if (rm0 && Number(rm0.bus_factor) <= 1) {
                     spofReposCount++;
                 }
             }

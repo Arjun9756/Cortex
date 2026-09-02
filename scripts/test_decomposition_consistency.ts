@@ -54,27 +54,8 @@ async function main() {
     for (let i = 1; i <= 3; i++) {
         console.log(`\n▶ [FULL PIPELINE RUN #${i}] Executing pipeline...`);
         const t0 = Date.now();
-        const res: any = await cortexAgent.invoke({
+        const res = await cortexAgent.invoke({
             query: QUERY,
-            messages: [],
-            pendingTools: [],
-            executedTools: [],
-            subgoals: [],
-            missingGoals: [],
-            iterationCount: 0,
-            structuredEvidence: [],
-            clarificationQuestion: null,
-            finalAnswer: null,
-            routerDecision: null,
-            guardrailStatus: null,
-            intent: 'KNOWLEDGE_RETRIEVAL',
-            entities: [],
-            sqlResults: null,
-            graphResults: null,
-            vectorResults: null,
-            knowledgeRiskResult: null,
-            vectorQuery: '',
-            needMoreSearch: false,
         });
         const elapsed = Date.now() - t0;
         console.log(`  ⏱️ Latency: ${elapsed}ms`);
@@ -82,7 +63,7 @@ async function main() {
         console.log(`  📋 Decomposed Subgoals:`, res.subgoals.map((s: any) => `[${s.id}] ${s.description}`));
         console.log(`  🛠️ Planned / Executed Tools:`, res.executedTools);
         
-        const ans = res.finalAnswer || '';
+        const ans = res.answer || '';
         const checks = {
             hasRepoCount: ans.toLowerCase().includes('total repositories') || ans.toLowerCase().includes('15'),
             hasTechCount: ans.toLowerCase().includes('total technologies') || ans.toLowerCase().includes('38'),

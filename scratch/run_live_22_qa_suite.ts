@@ -174,6 +174,7 @@ async function runLiveQASuite() {
 
     for (let i = 0; i < testCases.length; i++) {
         const tc = testCases[i];
+        if (!tc) continue;
         console.log(`\n────────────────────────────────────────────────────────────────────────────────`);
         console.log(`[Q${tc.id}/22] [${tc.category}]`);
         console.log(`Query: "${tc.query}"`);

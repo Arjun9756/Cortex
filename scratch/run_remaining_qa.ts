@@ -123,6 +123,7 @@ async function runRemaining() {
 
     for (let i = 0; i < remainingCases.length; i++) {
         const tc = remainingCases[i];
+        if (!tc) continue;
         console.log(`\n────────────────────────────────────────────────────────────────────────────────`);
         console.log(`[Q${tc.id}/22] [${tc.category}] Query: "${tc.query}"`);
         console.log(`────────────────────────────────────────────────────────────────────────────────`);

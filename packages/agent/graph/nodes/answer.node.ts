@@ -56,7 +56,15 @@ export async function answerNode(state: AgentStateType): Promise<Partial<AgentSt
 
     try {
         const decomposedAsks = state.subgoals.map(g => g.description);
-        const prompt = buildAnswerPrompt(state.query, state.evidence, decomposedAsks);
+
+        // Hard cap: evidence must stay under ~5000 tokens (≈20000 chars) to stay within free tier limits.
+        // Compact format from evidenceNode keeps aggregate queries well under this, but trim as a safety net.
+        const MAX_EVIDENCE_CHARS = 20000;
+        const safeEvidence = state.evidence.length > MAX_EVIDENCE_CHARS
+            ? state.evidence.slice(0, MAX_EVIDENCE_CHARS) + '\n\n[Evidence truncated to fit token limits — highest-priority data shown above.]'
+            : state.evidence;
+
+        const prompt = buildAnswerPrompt(state.query, safeEvidence, decomposedAsks);
 
         const maxTokens = 4096;
 

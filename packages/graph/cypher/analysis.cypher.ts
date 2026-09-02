@@ -1,5 +1,6 @@
 import { driver } from '../../../apps/api/config/neo4j.js'
 import neo4j from 'neo4j-driver'
+import { sanitizeNeo4jProperties } from '../../database/neo4j/neo4jUtils.js'
 
 export type EntityCandidate = {
     name: string
@@ -240,7 +241,7 @@ export async function describeAllPeople() {
             type: record.get('type') || 'PERSON',
             email: record.get('email') || record.get('properties')?.email || null,
             role: record.get('role') || record.get('properties')?.role || null,
-            properties: record.get('properties'),
+            properties: sanitizeNeo4jProperties(record.get('properties')),
             connections: (record.get('connections') || []).filter((item: { connectedTo?: string }) => item.connectedTo),
         }))
     }
@@ -260,7 +261,7 @@ export async function describeEntity(entityName: string) {
         const record = result.records[0]
         if (!record) return null
         return {
-            name: record.get('name'), type: record.get('type'), properties: record.get('properties'),
+            name: record.get('name'), type: record.get('type'), properties: sanitizeNeo4jProperties(record.get('properties')),
             connections: record.get('connections').filter((item: { connectedTo?: string }) => item.connectedTo),
         }
     }

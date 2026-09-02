@@ -16,8 +16,6 @@ async function runDiagnostic(query: string) {
         console.log(`OVERALL PIPELINE LATENCY: ${overallDuration}ms`);
         console.log(`FINAL REFLECTION ITERATIONS: ${result.iterationCount}`);
         console.log(`EXECUTED TOOLS: ${JSON.stringify(result.executedTools)}`);
-        console.log(`GRAPH ACTION: ${result.graphAction}`);
-        console.log(`GRAPH TARGET: ${result.graphTarget}`);
         console.log(`ENTITIES: ${JSON.stringify(result.entities)}`);
         console.log(`\n--- FINAL ANSWER ---`);
         console.log(result.answer);

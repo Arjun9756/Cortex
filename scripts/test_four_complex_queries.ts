@@ -41,7 +41,6 @@ async function runComplexDiagnostics() {
 
             console.log(`⏱️ Total Pipeline Duration: ${elapsed}ms`);
             console.log(`🔧 Executed Tools: ${JSON.stringify(result.executedTools)}`);
-            console.log(`🎯 Graph Action: ${result.graphAction || 'none'}`);
             console.log(`👥 Entities Resolved: ${JSON.stringify(result.entities || [])}`);
             console.log(`📊 Knowledge Risk Result:`, result.knowledgeRiskResult ? (Array.isArray(result.knowledgeRiskResult) ? `Array of ${result.knowledgeRiskResult.length} persons: ${result.knowledgeRiskResult.map((p: any) => p.person).join(', ')}` : result.knowledgeRiskResult.person) : 'null');
             console.log(`\n--- [FINAL ANSWER] ---`);

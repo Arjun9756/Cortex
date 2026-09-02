@@ -71,7 +71,6 @@ async function main() {
         console.log(`\nEXECUTION METADATA:`);
         console.log(JSON.stringify({
             tools: result.executedTools,
-            graphAction: result.graphAction,
             entities: result.entities,
             needsClarification: Boolean(result.clarificationQuestion),
             clarificationQuestion: result.clarificationQuestion || undefined,

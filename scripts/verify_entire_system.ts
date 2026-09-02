@@ -21,8 +21,8 @@ import { QdrantClient } from '@qdrant/js-client-rest';
 import env from '../apps/api/config/env.js';
 
 const qdrant = new QdrantClient({
-    url: env.QDRANT_CLUSTER_ENDPOINT,
-    apiKey: env.QDRANT_API_KEY,
+    url: env.QDRANT_CLUSTER_ENDPOINT || 'http://localhost:6333',
+    apiKey: env.QDRANT_API_KEY || '',
 });
 
 async function testPostgresEvents() {
@@ -122,11 +122,11 @@ async function testQdrantVectorDB() {
     console.log('\n⚡ 4. --- QDRANT VECTOR DB VERIFICATION ---');
     try {
         const collectionName = env.QDRANT_COLLECTION_NAME || 'cortex_events';
-        const info = await qdrant.getCollection(collectionName);
+        const info: any = await qdrant.getCollection(collectionName);
         console.log(`   Collection: ${collectionName}`);
         console.log(`   Status:     ${info.status}`);
         console.log(`   Points:     ${info.points_count ?? 0}`);
-        console.log(`   Vectors:    ${info.vectors_count ?? 0}`);
+        console.log(`   Vectors:    ${info.indexed_vectors_count ?? info.points_count ?? 0}`);
         console.log('   ✅ Qdrant cluster is active & reachable!');
     } catch (err: any) {
         console.log('   ⚠️ Qdrant status:', err?.message || err);

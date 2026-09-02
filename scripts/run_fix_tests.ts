@@ -17,8 +17,6 @@ async function testQuery(label: string, query: string) {
         console.log(`\nEXECUTION METADATA:`);
         console.log(JSON.stringify({
             tools: result.executedTools,
-            graphAction: result.graphAction,
-            graphTarget: result.graphTarget,
             entities: result.entities,
             needsClarification: Boolean(result.clarificationQuestion),
             clarificationQuestion: result.clarificationQuestion || undefined,

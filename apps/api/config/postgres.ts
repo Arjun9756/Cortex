@@ -7,18 +7,20 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+const pemPath = path.join(__dirname, '..', '..', '..', 'postgresql.pem')
+const hasPem = fs.existsSync(pemPath)
+
 const sql = postgres({
-    host:env.POSTGRES_HOST!,
-    port:Number(env.POSTGRES_PORT!),
-    password:env.POSTGRES_PASSWORD!,
-    database:env.POSTGRES_DATABASE!,
-    user:env.POSTGRES_USER!,
-    max:20,
-    connect_timeout:30,
-    ssl:{
-        rejectUnauthorized:true,
-        ca:fs.readFileSync(path.join(__dirname , '..' , '..' , '..' , 'postgresql.pem') , 'utf-8')
-    }
+    host: env.POSTGRES_HOST!,
+    port: Number(env.POSTGRES_PORT!),
+    password: env.POSTGRES_PASSWORD!,
+    database: env.POSTGRES_DATABASE!,
+    user: env.POSTGRES_USER!,
+    max: 20,
+    connect_timeout: 30,
+    ssl: hasPem
+        ? { rejectUnauthorized: true, ca: fs.readFileSync(pemPath, 'utf-8') }
+        : (env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false)
 })
 
 export default Object.freeze(sql)

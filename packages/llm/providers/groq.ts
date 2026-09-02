@@ -84,8 +84,8 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
 
             if (error?.status === 400 && (error?.message?.includes('json_validate_failed') || error?.code === 'json_validate_failed') && params.response_format) {
                 console.warn(`[Groq] JSON validation failed on ${modelToUse}. Retrying without strict json_object constraint...`);
-                const retryPayload = { ...params, model: modelToUse };
-                delete retryPayload?.response_format;
+                const retryPayload: Record<string, any> = { ...params, model: modelToUse };
+                delete retryPayload.response_format;
                 try {
                     const retryResponse = await groq.chat.completions.create(retryPayload as any);
                     if (retryResponse?.choices?.[0]?.message?.content) {
@@ -118,6 +118,19 @@ export async function createGroqChatCompletion(params: Record<string, any>, mode
     throw lastError;
 }
 
+function parseJsonSafely(raw: string) {
+    let text = raw.trim();
+    if (text.startsWith('```')) {
+        text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    }
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+        text = text.substring(start, end + 1);
+    }
+    return JSON.parse(text);
+}
+
 export async function callLLMEntityExtract(prompt: string) {
     try {
         const response = await createGroqChatCompletion({
@@ -126,7 +139,7 @@ export async function callLLMEntityExtract(prompt: string) {
                 { role: 'user', content: prompt }
             ],
             temperature: 0,
-            max_completion_tokens: 2000,
+            max_completion_tokens: 4096,
             response_format: { type: "json_object" }
         })
 
@@ -135,7 +148,7 @@ export async function callLLMEntityExtract(prompt: string) {
             throw new Error("Empty response from LLM")
         }
 
-        return JSON.parse(content)
+        return parseJsonSafely(content)
     }
     catch (error: any) {
         console.error("LLM extraction failed:", {

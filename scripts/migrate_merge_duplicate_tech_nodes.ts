@@ -54,6 +54,7 @@ async function migrateDuplicateNodes() {
           });
 
           const canonical = group[0];
+          if (!canonical) continue;
           const duplicates = group.slice(1);
 
           console.log(`  -> Canonical node selected: "${canonical.name}" (${canonical.id})`);

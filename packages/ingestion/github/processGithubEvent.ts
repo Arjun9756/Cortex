@@ -39,8 +39,11 @@ export async function processGithubEvent(eventID: string) {
         await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata)
 
         // 7.Process The Summary To Create Vector Embeddings For Semantic Search
+        const effectiveSummary = summary && summary.trim().length > 0 
+            ? summary.trim() 
+            : `GitHub ${normalizedPayload.eventType || 'event'} by ${normalizedPayload.author || 'unknown'} in repository ${normalizedPayload.repository || 'unknown'}: ${normalizedPayload.message || 'code change'}`
 
-        const vectorEmbedding: number[] | null | undefined = await generateEmbeddings(summary)
+        const vectorEmbedding: number[] | null | undefined = await generateEmbeddings(effectiveSummary)
 
         if (vectorEmbedding) {
             const allEntities = [...entities, ...newEntities.map((e: any) => { return { name: e.name, type: e.suggestedType } })]
@@ -48,7 +51,7 @@ export async function processGithubEvent(eventID: string) {
 
             await upsertVector(crypto.randomUUID(), vectorEmbedding, {
                 eventID,
-                summary,
+                summary: effectiveSummary,
                 entities: allEntities,
                 relationships: allRelations,
                 provider: "github",

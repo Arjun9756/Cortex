@@ -3,6 +3,7 @@ import env from '../config/env.js'
 import { cortexWorker } from '../../../packages/workers/ingest.worker.js'
 import { ensureCollection } from '../../../packages/database/vector/qdrant.repository.js'
 import { ensureIndexes } from '../../../packages/database/neo4j/graph.repository.js'
+import { ensurePostgresTables } from '../../../packages/database/postgres/schema.js'
 import { startMetricsScheduler } from '../../../packages/workers/scheduler.worker.js'
 
 async function startServer() {
@@ -11,6 +12,7 @@ async function startServer() {
             console.log("Cortex Queue Works Running")
         }
 
+        await ensurePostgresTables()
         await ensureCollection()
         await ensureIndexes()
 

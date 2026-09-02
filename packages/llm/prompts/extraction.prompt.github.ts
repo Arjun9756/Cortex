@@ -42,6 +42,8 @@ ${RELATION_TYPES.join(", ")}
 do NOT try to create a FILE entity for every file. Instead, mention the scale of the change in the summary (e.g., "a bulk change affecting 200 files"), and only extract files that seem architecturally 
 significant (e.g., config files, schema files, core modules) from the ones provided.
 
+12. Keep "evidence" strings concise (5-10 words maximum). Never copy entire code files, long commit logs, or large payloads into the evidence field.
+
 ## OUTPUT FORMAT (strict JSON):
 {
   "entities": [

@@ -38,14 +38,18 @@ export async function processJiraEvent(eventID: string) {
         await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata)
 
         // 7.Generate vector embedding
-        const vectorEmbedding: number[] | null | undefined = await generateEmbeddings(summary)
+        const effectiveSummary = summary && summary.trim().length > 0
+            ? summary.trim()
+            : `Jira issue ${normalizedPayload.issueKey || 'ticket'} reported by ${normalizedPayload.author || 'unknown'}: ${normalizedPayload.description || 'issue update'}`
+
+        const vectorEmbedding: number[] | null | undefined = await generateEmbeddings(effectiveSummary)
         if (vectorEmbedding) {
             const allEntities = [...entities, ...newEntities.map((e: any) => { return { name: e.name, type: e.suggestedType } })]
             const allRelations = [...relationships, ...newRelations.map((r: any) => { return { from: r.from, to: r.to, type: r.suggestedType } })]
 
             await upsertVector(crypto.randomUUID(), vectorEmbedding, {
                 eventID,
-                summary,
+                summary: effectiveSummary,
                 entities: allEntities,
                 relationships: allRelations,
                 provider: normalizedPayload.provider,
@@ -55,7 +59,7 @@ export async function processJiraEvent(eventID: string) {
                 status: normalizedPayload.status,
                 description: normalizedPayload.description
             })
-            console.log(`Event ${eventID} processed. Summary: ${summary}`)
+            console.log(`Event ${eventID} processed. Summary: ${effectiveSummary}`)
         }
     }
     catch (error: any) {

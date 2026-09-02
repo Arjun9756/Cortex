@@ -211,6 +211,16 @@ export async function calculateSuccessorCandidates(rawPersonName: string): Promi
             });
         }
 
+        // Filter out Slack user ID nodes (e.g. U222AMIT6, U111NEHA5) — these are duplicate
+        // person nodes created from Slack events before profile resolution. Real person names
+        // should always be preferred over raw Slack user IDs as successor candidates.
+        const SLACK_ID_PATTERN = /^U[A-Z0-9]{6,}$/i;
+        for (const [key, profile] of profileMap.entries()) {
+            if (SLACK_ID_PATTERN.test(profile.name.trim())) {
+                profileMap.delete(key);
+            }
+        }
+
         // Find target person
         const normalizedInput = rawPersonName.trim().toLowerCase();
         let targetProfile: InternalPersonProfile | null = null;
@@ -354,12 +364,12 @@ export async function calculateSuccessorCandidates(rawPersonName: string): Promi
         // Sort descending by score
         scoredCandidates.sort((a, b) => b.score - a.score);
 
-        const hasSuccessor = scoredCandidates.length > 0;
+        const top = scoredCandidates[0];
+        const hasSuccessor = Boolean(top && scoredCandidates.length > 0);
         let explanation = '';
 
-        if (hasSuccessor) {
-            const top = scoredCandidates[0];
-            explanation = `Recommended successor for ${resolvedTargetName} is ${top?.name} with a ${top.score}% match score. ${top.rationale}`;
+        if (top) {
+            explanation = `Recommended successor for ${resolvedTargetName} is ${top.name} with a ${top.score}% match score. ${top.rationale}`;
         } else {
             explanation = `No candidate with overlapping technologies or repositories was found in the knowledge graph for ${resolvedTargetName}.`;
         }

@@ -1,7 +1,10 @@
 import { AgentStateType } from "../state.js";
 import { toReadableTimestamp } from "../../../database/neo4j/neo4jUtils.js";
 
-function formatSingleRiskText(kr: any): string {
+/**
+ * Formats knowledge risk for a SINGLE person query (verbose — includes Concrete Evidence JSON).
+ */
+function formatSingleRiskText(kr: any, compact = false): string {
     if (!kr) return '';
 
     const totalPct = Math.round((kr.totalRisk ?? 0) * 100);
@@ -15,39 +18,68 @@ function formatSingleRiskText(kr: any): string {
         pendingWork:  Math.round((b.pendingWork  ?? 0) * 10),
     };
 
+    let successorLine = '';
+    if (kr.successors && Array.isArray(kr.successors) && kr.successors.length > 0) {
+        const topSucc = kr.successors[0];
+        if (compact) {
+            // Compact mode for aggregate: just top successor name + score
+            successorLine = `Successor: ${topSucc.name} (${topSucc.score}% match, shared techs: [${(topSucc.factors?.sharedTechnologies || []).slice(0, 3).join(', ') || 'none'}])`;
+        } else {
+            const lines: string[] = [];
+            lines.push(`[SUCCESSOR RECOMMENDATION] Best Recommended Successor: ${topSucc.name} (${topSucc.score}% composite match score)`);
+            for (const s of kr.successors) {
+                lines.push(`  - Candidate: ${s.name} | Score: ${s.score}% (Tech=${s.breakdown?.sharedTechScore ?? 0}%, Repos=${s.breakdown?.sharedRepoScore ?? 0}%, Activity=${s.breakdown?.recentActivityScore ?? 0}%, Capacity=${s.breakdown?.workloadCapacityScore ?? 0}%) | Shared Techs: [${s.factors?.sharedTechnologies?.join(', ') || 'none'}] | Shared Repos: [${s.factors?.sharedRepositories?.join(', ') || 'none'}] | Activity: ${s.factors?.activityStatus || 'active'} | Existing Risk: ${s.factors?.existingKnowledgeRisk ?? 0}% | Rationale: ${s.rationale}`);
+            }
+            successorLine = lines.join('\n');
+        }
+    } else if (kr.hasSuccessor === false || (kr.successors && kr.successors.length === 0)) {
+        successorLine = `[SUCCESSOR RECOMMENDATION] No candidate with overlapping technologies or repositories was found for ${kr.person}.`;
+    }
+
+    let affectedRepoSummary = '';
+    if (kr.affectedRepositories && Array.isArray(kr.affectedRepositories) && kr.affectedRepositories.length > 0) {
+        if (compact) {
+            // Compact mode: single line with repo list
+            const spofRepos = kr.affectedRepositories.filter((r: any) => r.bus_factor <= 1).map((r: any) => r.repo_name);
+            affectedRepoSummary = spofRepos.length > 0
+                ? `SPOF Repos: [${spofRepos.join(', ')}]`
+                : `Repos: [${kr.affectedRepositories.slice(0, 3).map((r: any) => r.repo_name).join(', ')}]`;
+        } else {
+            const lines: string[] = [`[AFFECTED REPOSITORIES & BUS FACTOR] Repositories affected if ${kr.person} departs:`];
+            for (const r of kr.affectedRepositories) {
+                lines.push(`  - Repository: "${r.repo_name}" | Bus Factor: ${r.bus_factor} (${r.bus_factor <= 1 ? 'SPOF' : 'Normal'}) | Risk: ${r.risk_score}% | Owner: ${r.primary_owner || 'Unknown'} | Contributors: ${r.contributor_count || 1}`);
+            }
+            affectedRepoSummary = lines.join('\n');
+        }
+    }
+
+    if (compact) {
+        // Compact single-line format for aggregate/team-wide queries
+        const parts = [
+            `[KNOWLEDGE RISK] ${kr.person}: ${totalPct}% total risk`,
+            `(ownership=${breakdownPct.ownership}%, expertise=${breakdownPct.expertise}%, activity=${breakdownPct.activity}%, dependency=${breakdownPct.dependency}%, docs=${breakdownPct.documentation}%, pending=${breakdownPct.pendingWork}%)`,
+            `ownedItems=${kr.details?.ownedItems ?? 0}, soleMaintained=${kr.details?.uniqueSkills ?? 0}, recentActivity=${kr.details?.recentActivity ?? 0}`,
+        ];
+        if (affectedRepoSummary) parts.push(affectedRepoSummary);
+        if (successorLine) parts.push(successorLine);
+        return parts.join(' | ');
+    }
+
+    // Verbose format for single-person queries
     const safeEvidence = kr.evidence ? {
-        ownership: (kr.evidence.ownership || []).map((e: { name: string; type: string; createdAt?: any }) => ({
+        ownership: (kr.evidence.ownership || []).slice(0, 5).map((e: { name: string; type: string; createdAt?: any }) => ({
             ...e,
             createdAt: e.createdAt ? toReadableTimestamp(e.createdAt) ?? e.createdAt : undefined
         })),
-        dependency:    kr.evidence.dependency || [],
-        activity: (kr.evidence.activity || []).map((e: { name: string; type: string; timestamp?: any }) => ({
+        dependency:    (kr.evidence.dependency || []).slice(0, 5),
+        activity: (kr.evidence.activity || []).slice(0, 5).map((e: { name: string; type: string; timestamp?: any }) => ({
             ...e,
             timestamp: e.timestamp ? toReadableTimestamp(e.timestamp) ?? e.timestamp : null
         })),
-        documentation: kr.evidence.documentation || [],
-        expertise:     kr.evidence.expertise || [],
-        pendingWork:   kr.evidence.pendingWork || [],
+        documentation: (kr.evidence.documentation || []).slice(0, 5),
+        expertise:     (kr.evidence.expertise || []).slice(0, 5),
+        pendingWork:   (kr.evidence.pendingWork || []).slice(0, 5),
     } : {};
-
-    let successorLines: string[] = [];
-    if (kr.successors && Array.isArray(kr.successors) && kr.successors.length > 0) {
-        const topSucc = kr.successors[0];
-        successorLines.push(`[SUCCESSOR RECOMMENDATION] Best Recommended Successor: ${topSucc.name} (${topSucc.score}% composite match score)`);
-        for (const s of kr.successors) {
-            successorLines.push(`  - Candidate: ${s.name} | Composite Match Score: ${s.score}% (Breakdown: Shared Tech=${s.breakdown?.sharedTechScore ?? 0}%, Shared Repos=${s.breakdown?.sharedRepoScore ?? 0}%, Recent Activity=${s.breakdown?.recentActivityScore ?? 0}%, Workload Capacity=${s.breakdown?.workloadCapacityScore ?? 0}%) | Shared Techs: [${s.factors?.sharedTechnologies?.join(', ') || 'none'}] | Shared Repos: [${s.factors?.sharedRepositories?.join(', ') || 'none'}] | Activity: ${s.factors?.activityStatus || 'active'} | Existing Risk: ${s.factors?.existingKnowledgeRisk ?? 0}% | Rationale: ${s.rationale}`);
-        }
-    } else if (kr.hasSuccessor === false || (kr.successors && kr.successors.length === 0)) {
-        successorLines.push(`[SUCCESSOR RECOMMENDATION] No candidate with overlapping technologies or repositories was found in the knowledge graph for ${kr.person}.`);
-    }
-
-    let affectedRepoLines: string[] = [];
-    if (kr.affectedRepositories && Array.isArray(kr.affectedRepositories) && kr.affectedRepositories.length > 0) {
-        affectedRepoLines.push(`[AFFECTED REPOSITORIES & BUS FACTOR] Repositories affected if ${kr.person} departs:`);
-        for (const r of kr.affectedRepositories) {
-            affectedRepoLines.push(`  - Repository: "${r.repo_name}" | Bus Factor: ${r.bus_factor} (${r.bus_factor <= 1 ? 'Single Point of Failure / SPOF' : 'Normal'}) | Repository Risk Score: ${r.risk_score}% | Primary Owner: ${r.primary_owner || 'Unknown'} | Contributors: ${r.contributor_count || 1}`);
-        }
-    }
 
     return [
         `[KNOWLEDGE RISK] Person: ${kr.person}`,
@@ -55,18 +87,49 @@ function formatSingleRiskText(kr: any): string {
         `Breakdown (each 0–100%): ownership=${breakdownPct.ownership}%, dependency=${breakdownPct.dependency}%, activity=${breakdownPct.activity}%, documentation=${breakdownPct.documentation}%, expertise=${breakdownPct.expertise}% (sole-maintained items score), pendingWork=${breakdownPct.pendingWork}%`,
         `Details: ownedItems=${kr.details?.ownedItems ?? 0}, criticalDependencies=${kr.details?.criticalDependencies ?? 0}, recentActivity=${kr.details?.recentActivity ?? 0}, documentationGaps=${kr.details?.documentationGaps ?? 0}, soleMaintainedItems=${kr.details?.uniqueSkills ?? kr.details?.soleMaintainedItems ?? 0}, assignedWork=${kr.details?.assignedWork ?? 0}`,
         `Concrete Evidence: ${JSON.stringify(safeEvidence)}`,
-        ...affectedRepoLines,
-        ...successorLines,
-        `Note on Knowledge Risk "expertise": This metric counts sole-maintained / single-contributor codebase items (commits, PRs, issues, or files with only 1 author). It does NOT count technology node relationships. Technology node usage (e.g. USES -> TECHNOLOGY) is reported separately by graph_search.`,
-    ].join('\n');
+        affectedRepoSummary,
+        successorLine,
+        `Note: "expertise" counts sole-maintained items (commits/PRs/issues with only 1 author), NOT technology node count.`,
+    ].filter(Boolean).join('\n');
 }
 
+/**
+ * Builds the full risk text block for evidence.
+ *
+ * Strategy for aggregate (team-wide) queries:
+ *   - Sort all persons by totalRisk DESC
+ *   - Top 3 (highest risk): medium-detail compact format (all 6 factors + SPOF repos + successor)
+ *   - Remaining persons: name + total risk % ONLY (1 line each)
+ *   This provides full insight where it matters and stays well within free-tier token limits.
+ *
+ * For single-person queries: verbose format with full Concrete Evidence JSON.
+ */
 function buildRiskText(kr: AgentStateType['knowledgeRiskResult']): string {
     if (!kr) return '';
     if (Array.isArray(kr)) {
-        return kr.map(item => formatSingleRiskText(item)).join('\n\n');
+        const sorted = [...kr]
+            .filter(item => item != null)
+            .sort((a, b) => (b.totalRisk ?? 0) - (a.totalRisk ?? 0));
+
+        const TOP_DETAIL_COUNT = 3;
+        const topPersons = sorted.slice(0, TOP_DETAIL_COUNT);
+        const restPersons = sorted.slice(TOP_DETAIL_COUNT);
+
+        const topText = topPersons.map(item => formatSingleRiskText(item, true)).join('\n');
+
+        const restText = restPersons.length > 0
+            ? '\n[REMAINING TEAM MEMBERS — Summary only]\n' +
+              restPersons.map(item => {
+                  const pct = Math.round((item.totalRisk ?? 0) * 100);
+                  const spofRepos = (item.affectedRepositories || []).filter((r: any) => r.bus_factor <= 1).map((r: any) => r.repo_name);
+                  const spofNote = spofRepos.length > 0 ? ` | SPOF Repos: [${spofRepos.join(', ')}]` : '';
+                  return `  - ${item.person}: ${pct}% total risk${spofNote}`;
+              }).join('\n')
+            : '';
+
+        return topText + restText;
     }
-    return formatSingleRiskText(kr);
+    return formatSingleRiskText(kr, false);
 }
 
 export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {

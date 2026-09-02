@@ -20,10 +20,7 @@ export async function handleChatQuery(req: Request, res: Response) {
             execution: {
                 query: result.query || query,
                 tools: result.executedTools,
-                graphAction: result.executedTools.includes('graph_search') ? result.graphAction : undefined,
                 graphEntities: result.executedTools.includes('graph_search') ? result.entities : undefined,
-                graphTarget: result.graphTarget || undefined,
-                graphRelation: result.graphRelation || undefined,
                 vectorQuery: result.vectorQuery || undefined,
             },
             sources: result.vectorResult,
@@ -77,10 +74,7 @@ export async function handleChatQueryStream(req: Request, res: Response) {
             execution: {
                 query: result.query || query,
                 tools: result.executedTools,
-                graphAction: result.executedTools.includes('graph_search') ? result.graphAction : undefined,
                 graphEntities: result.executedTools.includes('graph_search') ? result.entities : undefined,
-                graphTarget: result.graphTarget || undefined,
-                graphRelation: result.graphRelation || undefined,
                 vectorQuery: result.vectorQuery || undefined,
             },
             sources: result.vectorResult,

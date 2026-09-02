@@ -37,14 +37,18 @@ export async function processSlackEvent(eventID: string) {
         await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata)
 
         // 7. Process The Summary To Create Vector Embeddings For Semantic Search
-        const vectorEmbedding: number[] | null | undefined = await generateEmbeddings(summary)
+        const effectiveSummary = summary && summary.trim().length > 0
+            ? summary.trim()
+            : `Slack message in #${normalizedPayload.channel || 'general'} by ${normalizedPayload.author || 'unknown'}: ${normalizedPayload.text || 'discussion'}`
+
+        const vectorEmbedding: number[] | null | undefined = await generateEmbeddings(effectiveSummary)
         if (vectorEmbedding) {
             const allEntities = [...entities, ...newEntities.map((e: any) => { return { name: e.name, type: e.suggestedType } })]
             const allRelations = [...relationships, ...newRelations.map((r: any) => { return { from: r.from, to: r.to, type: r.suggestedType } })]
 
             await upsertVector(crypto.randomUUID(), vectorEmbedding, {
                 eventID,
-                summary,
+                summary: effectiveSummary,
                 entities: allEntities,
                 relationships: allRelations,
                 provider: 'slack',
@@ -55,7 +59,7 @@ export async function processSlackEvent(eventID: string) {
                 eventType:normalizedPayload.eventType
             })
         }
-        console.log(`Event ${eventID} processed. Summary: ${summary}`)
+        console.log(`Event ${eventID} processed. Summary: ${effectiveSummary}`)
     }
     catch (error: any) {
         console.log(`Error While Processing Slack Event`)

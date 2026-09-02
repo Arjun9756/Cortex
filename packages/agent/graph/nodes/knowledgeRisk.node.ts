@@ -55,13 +55,14 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
         return null;
     }
 
-    // Helper: fetch all PERSON node names from graph
+    // Helper: fetch all PERSON node names from graph (excludes Slack user ID nodes)
     async function getAllPersonNames(): Promise<string[]> {
         const session = driver.session();
         try {
             const result = await session.run(`
                 MATCH (p:PERSON)
                 WHERE p.name IS NOT NULL
+                  AND NOT p.name =~ '^U[A-Z0-9]{6,}$'
                 RETURN DISTINCT p.name AS name
                 ORDER BY p.name
             `);
@@ -82,7 +83,7 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
 
         try {
             const rows = await sql`
-                SELECT repo_name, bus_factor, risk_score, contributor_count, status
+                SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
                 FROM repo_metrics
                 WHERE lower(repo_name) = ANY(${uniqueRepos.map(r => r.toLowerCase())})
                    OR repo_name ILIKE ANY(${uniqueRepos.map(r => `%${r}%`)})
@@ -92,7 +93,8 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
                     repo_name: row.repo_name,
                     bus_factor: Number(row.bus_factor ?? 1),
                     risk_score: Number(row.risk_score ?? 80),
-                    primary_owner: ownerFallback,
+                    // Prefer stored primary_owner from DB; fall back to ownerFallback only if null
+                    primary_owner: row.primary_owner || ownerFallback,
                     contributor_count: Number(row.contributor_count ?? 1),
                     status: row.status || 'active',
                     isSPOF: Number(row.bus_factor ?? 1) <= 1

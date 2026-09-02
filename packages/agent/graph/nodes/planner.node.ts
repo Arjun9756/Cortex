@@ -1,5 +1,5 @@
 import { AgentStateType, ToolCall, SubGoal } from "../state.js";
-import { createGroqChatCompletion, PRIMARY_MODEL, FALLBACK_MODEL, DECOMPOSE_MODEL, PLANNER_MODEL } from "../../../llm/providers/groq.js";
+import { createGroqChatCompletion, DECOMPOSE_MODEL, PLANNER_MODEL } from "../../../llm/providers/groq.js";
 import { getGraphSchema } from '../../../database/neo4j/schemaCache.js';
 
 export function deduplicateToolCalls(calls: ToolCall[]): ToolCall[] {

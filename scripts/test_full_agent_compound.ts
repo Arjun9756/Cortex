@@ -33,29 +33,10 @@ async function main() {
         try {
             const result = await cortexAgent.invoke({
                 query: item.query,
-                plan: [],
-                pendingTools: [],
-                executedTools: [],
-                entities: [],
-                graphAction: '',
-                graphTarget: '',
-                graphRelation: '',
-                vectorQuery: '',
-                vectorResult: [],
-                graphResult: [],
-                evidence: '',
-                needMoreSearch: false,
-                iterationCount: 0,
-                answer: '',
-                sqlResult: [],
-                webQuery: '',
-                WebQueryResult: [],
-                knowledgeRiskResult: null
             });
 
             console.log(`\n[EXECUTED TOOLS]:`, JSON.stringify(result.executedTools));
             console.log(`[ENTITIES DETECTED]:`, JSON.stringify(result.entities));
-            console.log(`[GRAPH ACTION / TARGET]:`, `${result.graphAction || 'none'} / ${result.graphTarget || 'none'}`);
             console.log(`[VECTOR QUERY]:`, `"${result.vectorQuery}"`);
             console.log(`\n[FINAL SYNTHESIZED ANSWER]:\n${result.answer}`);
         } catch (err: any) {

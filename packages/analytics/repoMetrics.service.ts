@@ -51,29 +51,33 @@ export async function calculateAllRepoMetrics() {
                 const contributorCount = contributorsResult.records[0]?.get("count")?.toNumber() ?? 0;
 
                 // Bug #5 fix: only run bus factor Cypher if AUTHORED exists in schema
-                const busFactor = (hasAuthored && hasPartOf)
-                    ? await calculateBusFactor(session, repoName)
-                    : 0
+                const { busFactor, primaryOwner } = (hasAuthored && hasPartOf)
+                    ? await calculateBusFactorAndOwner(session, repoName)
+                    : { busFactor: 0, primaryOwner: null };
 
-                const riskScore = Math.max(0, 100 - busFactor * 20);
+                // busFactor=0 means no commits indexed yet → treat as fragile (80%)
+                // busFactor>=1 → risk = max(0, 100 - busFactor * 20)
+                const riskScore = busFactor === 0 ? 80 : Math.max(0, 100 - busFactor * 20);
 
                 await sql`
                     INSERT INTO repo_metrics
-                        (external_id, repo_name, bus_factor, risk_score, contributor_count, status, computed_at)
+                        (external_id, repo_name, bus_factor, risk_score, contributor_count, primary_owner, status, computed_at)
                     VALUES
                         (${externalId}, ${repoName}, ${busFactor}, ${riskScore}, ${contributorCount},
-                         ${riskScore > 80 ? 'fragile' : riskScore > 50 ? 'concentrated' : 'healthy'}, now())
+                         ${primaryOwner ?? null},
+                         ${riskScore >= 80 ? 'fragile' : riskScore > 50 ? 'concentrated' : 'healthy'}, now())
                     ON CONFLICT (external_id)
                     DO UPDATE SET
                         repo_name        = EXCLUDED.repo_name,
                         bus_factor       = EXCLUDED.bus_factor,
                         risk_score       = EXCLUDED.risk_score,
                         contributor_count= EXCLUDED.contributor_count,
+                        primary_owner    = EXCLUDED.primary_owner,
                         status           = EXCLUDED.status,
                         computed_at      = EXCLUDED.computed_at
                 `;
 
-                console.log(`[RepoMetrics] ${repoName} (${externalId}): busFactor=${busFactor}, risk=${riskScore}`);
+                console.log(`[RepoMetrics] ${repoName} (${externalId}): busFactor=${busFactor}, risk=${riskScore}, owner=${primaryOwner ?? 'none'}`);
             } catch (repoError: any) {
                 console.error(`[RepoMetrics] Failed for ${repoName}: ${repoError?.message}`);
                 // Continue to next repo — don't let one failure abort the whole batch
@@ -89,31 +93,42 @@ export async function calculateAllRepoMetrics() {
 }
 
 /**
- * Calculates the bus factor: minimum number of contributors covering >=50% of commits.
+ * Calculates the bus factor (minimum contributors covering >=50% of commits)
+ * and identifies the primary owner (top committer by commit count).
  * Uses AUTHORED and PART_OF relations — callers must verify these exist in schema first.
  */
-async function calculateBusFactor(session: any, repoName: string): Promise<number> {
+async function calculateBusFactorAndOwner(session: any, repoName: string): Promise<{ busFactor: number; primaryOwner: string | null }> {
     try {
         const result = await session.run(
             `MATCH (p:PERSON)-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r {name: $repoName})
+             WHERE p.name IS NOT NULL
              RETURN p.name AS person, count(c) AS commits
              ORDER BY commits DESC`,
             { repoName }
         );
 
-        const commits = result.records.map((r: any) => r.get("commits")?.toNumber() ?? 0);
-        const total = commits.reduce((a: number, b: number) => a + b, 0);
-        if (total === 0) return 0;
+        if (result.records.length === 0) return { busFactor: 0, primaryOwner: null };
+
+        const rows = result.records.map((r: any) => ({
+            person: r.get("person") as string,
+            commits: r.get("commits")?.toNumber() ?? 0,
+        }));
+
+        // Primary owner = top committer (first record, already sorted DESC)
+        const primaryOwner = rows[0]?.person ?? null;
+
+        const total = rows.reduce((a: number, b: { commits: number }) => a + b.commits, 0);
+        if (total === 0) return { busFactor: 0, primaryOwner };
 
         let covered = 0, count = 0;
-        for (const c of commits) {
-            covered += c;
+        for (const row of rows) {
+            covered += row.commits;
             count++;
             if (covered / total >= 0.5) break;
         }
-        return count;
+        return { busFactor: count, primaryOwner };
     } catch (error: any) {
-        console.error(`[RepoMetrics] calculateBusFactor failed for ${repoName}: ${error?.message}`)
-        return 0
+        console.error(`[RepoMetrics] calculateBusFactorAndOwner failed for ${repoName}: ${error?.message}`);
+        return { busFactor: 0, primaryOwner: null };
     }
 }
