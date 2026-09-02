@@ -17,9 +17,9 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view');
     if (view === 'pricing' || window.location.pathname === '/pricing') return 'pricing';
-    if (view === 'landing' || window.location.pathname === '/landing') return 'landing';
-    // Single workspace dashboard-first default: always load Dashboard directly!
-    return 'dashboard';
+    if (view === 'dashboard' || window.location.pathname === '/dashboard') return 'dashboard';
+    // Default to Landing Page
+    return 'landing';
   });
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(new Date());
