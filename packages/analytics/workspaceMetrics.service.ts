@@ -18,6 +18,8 @@ export async function calculateWorkspaceMetrics() {
         const openIssues = eventStats?.issues ?? 0;
         const openPrs = eventStats?.prs ?? 0;
 
+        // Ensure workspace_metrics stays at a single row (avoid unbounded growth)
+        await sql`DELETE FROM workspace_metrics`;
         await sql`
             INSERT INTO workspace_metrics
                 (knowledge_risk_avg, bus_factor_avg, repo_count, contributor_count, open_issues_count, open_prs_count, computed_at)

@@ -8,12 +8,24 @@ export async function pushGithubEventToDatabase(payload:IParsedGithubEvent){
     try{
         const uniqueID = snowflake.nextID().toString()
         console.log("unique id" , uniqueID)
-        const [result] = await sql `INSERT INTO events(id , provider , event_type , external_id , payload) VALUES (${uniqueID} , ${'github'} , ${payload.event_type} , ${payload.deliveryID} , ${sql.json(payload.rawBody)}) RETURNING id , created_at`
+
+        // Idempotency guard: skip duplicate webhook deliveries (same provider + delivery ID)
+        const result = await sql `
+            INSERT INTO events(id , provider , event_type , external_id , payload) 
+            VALUES (${uniqueID} , ${'github'} , ${payload.event_type} , ${payload.deliveryID} , ${sql.json(payload.rawBody)}) 
+            ON CONFLICT (provider, external_id) DO NOTHING
+            RETURNING id , created_at
+        `
+
+        if (result.length === 0) {
+            console.log(`[GitHub] Duplicate webhook delivery ${payload.deliveryID} — skipping`)
+            return {status:true , message:"Duplicate event skipped"}
+        }
         
         await cortexQueue.add(JOBS.GITHUB_EVENT , {id:uniqueID} , {
             attempts:3,
             removeOnComplete:true,
-            removeOnFail:true,
+            removeOnFail:false, // Keep failed jobs for investigation instead of silent discard
             backoff:{
                 type:"exponential",
                 delay:2000

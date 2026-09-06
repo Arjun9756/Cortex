@@ -31,7 +31,8 @@ export type CleanGithubEvent = {
 }
 
 function normalizePush(payload: any): CleanGithubEvent {
-  const allModifiedFiles = payload.commits.flatMap((c: any) => c.modified ?? [])
+  const commits = Array.isArray(payload.commits) ? payload.commits : [];
+  const allModifiedFiles = commits.flatMap((c: any) => c.modified ?? [])
   const relevantFiles = filterRelevantFiles(allModifiedFiles)
 
   // GitHub push: pusher.email may exist; fall back to head_commit.author.email
@@ -41,13 +42,13 @@ function normalizePush(payload: any): CleanGithubEvent {
   return {
     provider: "github",
     eventType: "push",
-    repository: payload.repository.name,
-    branch: payload.ref.replace("refs/heads/", ""),
-    author: payload.pusher.name,
+    repository: payload.repository?.name ?? 'unknown',
+    branch: (payload.ref ?? '').replace("refs/heads/", ""),
+    author: payload.pusher?.name ?? payload.sender?.login ?? 'unknown',
     authorEmail,
     authorRole: null,
     timestamp: payload.head_commit?.timestamp ?? new Date().toISOString(),
-    commits: payload.commits.map((c: any) => ({
+    commits: commits.map((c: any) => ({
       id: c.id,
       message: c.message,
       filesChanged: c.modified,
@@ -58,47 +59,50 @@ function normalizePush(payload: any): CleanGithubEvent {
 }
 
 function normalizePullRequest(payload: any): CleanGithubEvent {
+  const pr = payload.pull_request ?? {};
   return {
     provider: "github",
     eventType: "pull_request",
     action: payload.action, // opened, closed, merged, etc.
-    repository: payload.repository.name,
-    author: payload.pull_request.user.login,
-    authorEmail: payload.pull_request.user?.email ?? payload.sender?.email ?? null,
+    repository: payload.repository?.name ?? 'unknown',
+    author: pr.user?.login ?? payload.sender?.login ?? 'unknown',
+    authorEmail: pr.user?.email ?? payload.sender?.email ?? null,
     authorRole: null,
-    timestamp: payload.pull_request.created_at,
-    title: payload.pull_request.title,
-    body: payload.pull_request.body,
-    merged: payload.pull_request.merged,
+    timestamp: pr.created_at ?? new Date().toISOString(),
+    title: pr.title ?? '',
+    body: pr.body ?? '',
+    merged: pr.merged ?? false,
   };
 }
 
 function normalizeIssue(payload: any): CleanGithubEvent {
+  const issue = payload.issue ?? {};
   return {
     provider: "github",
     eventType: "issues",
     action: payload.action, // opened, closed, labeled, etc.
-    repository: payload.repository.name,
-    author: payload.issue.user.login,
-    authorEmail: payload.issue.user?.email ?? payload.sender?.email ?? null,
+    repository: payload.repository?.name ?? 'unknown',
+    author: issue.user?.login ?? payload.sender?.login ?? 'unknown',
+    authorEmail: issue.user?.email ?? payload.sender?.email ?? null,
     authorRole: null,
-    timestamp: payload.issue.created_at,
-    title: payload.issue.title,
-    body: payload.issue.body,
+    timestamp: issue.created_at ?? new Date().toISOString(),
+    title: issue.title ?? '',
+    body: issue.body ?? '',
   };
 }
 
 function normalizeIssueComment(payload: any): CleanGithubEvent {
+  const comment = payload.comment ?? {};
   return {
     provider: "github",
     eventType: "issue_comment",
-    repository: payload.repository.name,
-    author: payload.comment.user.login,
-    authorEmail: payload.comment.user?.email ?? payload.sender?.email ?? null,
+    repository: payload.repository?.name ?? 'unknown',
+    author: comment.user?.login ?? payload.sender?.login ?? 'unknown',
+    authorEmail: comment.user?.email ?? payload.sender?.email ?? null,
     authorRole: null,
-    timestamp: payload.comment.created_at,
-    body: payload.comment.body,
-    relatedIssue: payload.issue.title,
+    timestamp: comment.created_at ?? new Date().toISOString(),
+    body: comment.body ?? '',
+    relatedIssue: payload.issue?.title ?? '',
   };
 }
 

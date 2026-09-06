@@ -217,7 +217,7 @@ export async function getDashboardOverview(req: Request, res: Response) {
             peopleCount: people.length,
             techCount: technologies.length,
             avgBusFactor: Number(avgBusFactor.toFixed(1)),
-            openHighRiskPrs: Math.max(1, spofRepos.length),
+            openHighRiskPrs: spofRepos.length,
             totalRiskAlertsCount: riskAlerts.length
         };
 

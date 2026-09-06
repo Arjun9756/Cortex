@@ -22,6 +22,7 @@ export async function ensurePostgresTables(): Promise<void> {
         `;
         await sql`CREATE INDEX IF NOT EXISTS events_provider_idx ON events(provider)`;
         await sql`CREATE INDEX IF NOT EXISTS events_created_at_idx ON events(created_at DESC)`;
+        await sql`CREATE UNIQUE INDEX IF NOT EXISTS events_provider_external_id_uniq ON events(provider, external_id)`;
 
         // 2. Person Metrics Table (Per-person calculated risk & skills)
         await sql`

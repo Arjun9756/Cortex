@@ -17,26 +17,27 @@ export interface ICleanEvent {
 }
 
 function normalizeIssueEvent(payload: any, eventType: string): ICleanEvent {
-    const issue = payload.issue
+    const issue = payload.issue ?? {};
+    const fields = issue.fields ?? {};
 
     // Prefer reporter email; fall back to assignee email
     const authorEmail: string | null =
-        issue.fields?.reporter?.emailAddress ??
-        issue.fields?.assignee?.emailAddress ??
+        fields.reporter?.emailAddress ??
+        fields.assignee?.emailAddress ??
         null
 
     return {
         provider: "jira",
         eventType: eventType === "jira:issue_created" ? "issue_created" : "issue_updated",
-        issueKey: issue.key,
-        issueType: issue.fields?.issuetype?.name,
-        summary: issue?.fields?.summary,
-        status: issue?.fields?.status?.name,
-        author: issue.fields?.reporter?.displayName ?? issue.fields?.assignee?.displayName ?? "Unknown",
+        issueKey: issue.key ?? 'UNKNOWN',
+        issueType: fields.issuetype?.name ?? 'Unknown',
+        summary: fields.summary ?? '',
+        status: fields.status?.name ?? false,
+        author: fields.reporter?.displayName ?? fields.assignee?.displayName ?? "Unknown",
         authorEmail,
         authorRole: null,
         timestamp: payload.timestamp ?? new Date().toISOString(),
-        description: issue.fields?.description,
+        description: fields.description,
     }
 }
 

@@ -13,7 +13,10 @@ export async function ensureIndexes(): Promise<void> {
         await session.run(`CREATE INDEX entity_person_externalid IF NOT EXISTS FOR (n:PERSON) ON (n.externalId)`)
         await session.run(`CREATE INDEX entity_repo_externalid IF NOT EXISTS FOR (n:REPOSITORY) ON (n.externalId)`)
         await session.run(`CREATE INDEX entity_person_name IF NOT EXISTS FOR (n:PERSON) ON (n.name)`)
-        console.log('[Graph] Neo4j indexes ensured (PERSON: name, email, externalId; REPOSITORY: externalId)')
+        await session.run(`CREATE INDEX entity_repo_name IF NOT EXISTS FOR (n:REPOSITORY) ON (n.name)`)
+        await session.run(`CREATE INDEX entity_tech_name IF NOT EXISTS FOR (n:TECHNOLOGY) ON (n.name)`)
+        await session.run(`CREATE INDEX entity_commit_createdat IF NOT EXISTS FOR (n:COMMIT) ON (n.createdAt)`)
+        console.log('[Graph] Neo4j indexes ensured (PERSON: name, email, externalId; REPOSITORY: name, externalId; TECHNOLOGY: name; COMMIT: createdAt)')
     } catch (error: any) {
         console.error('[Graph] Failed to ensure indexes:', error.message)
     } finally {

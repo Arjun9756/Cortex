@@ -8,6 +8,7 @@ import {
 import { GraphBackground } from './GraphBackground';
 import { InteractiveQueryDemo } from './InteractiveQueryDemo';
 import { TrustBadge } from './TrustBadge';
+import { VideoShowcase } from './VideoShowcase';
 
 interface HeroProps {
   onOpenContact: () => void;
@@ -88,6 +89,16 @@ export const Hero: React.FC<HeroProps> = ({ onOpenContact }) => {
           </div>
         </div>
 
+        {/* Product Video Showcase (Apple/Linear Style Custom Player) */}
+        <div className="mt-14 max-w-5xl mx-auto">
+          <VideoShowcase
+            src="/Cortex.mp4"
+            poster="/cortex-video-poster.jpg"
+            title="Cortex Product Walkthrough"
+            subtitle="Autonomous Neural Knowledge Graph • Ingesting GitHub, Jira & Slack with deterministic accuracy"
+          />
+        </div>
+        
         {/* Interactive Query Playground (Proves Answers Come With Proof) */}
         <div className="mt-16 max-w-5xl mx-auto">
           <InteractiveQueryDemo />

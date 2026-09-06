@@ -25,7 +25,11 @@ export async function runAnalyticsJob(): Promise<void> {
     }
 
     // Calculate workspace summary metrics from the updated tables
-    await calculateWorkspaceMetrics();
+    try {
+        await calculateWorkspaceMetrics();
+    } catch (wsErr: any) {
+        console.error('[Scheduler] Workspace metrics error:', wsErr?.message ?? wsErr);
+    }
 
     // Automatically compile and persist the Executive Daily HTML Report
     try {
