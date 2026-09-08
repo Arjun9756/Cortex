@@ -5,9 +5,13 @@ import { ensureCollection } from '../../../packages/database/vector/qdrant.repos
 import { ensureIndexes } from '../../../packages/database/neo4j/graph.repository.js'
 import { ensurePostgresTables } from '../../../packages/database/postgres/schema.js'
 import { startMetricsScheduler } from '../../../packages/workers/scheduler.worker.js'
+import { verifyLicenseOnStartup } from '../../../packages/license/index.js'
 
 async function startServer() {
     try {
+        // Enforce license verification before initializing any subsystem
+        await verifyLicenseOnStartup()
+
         if (cortexWorker.isRunning()) {
             console.log("Cortex Queue Works Running")
         }

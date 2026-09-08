@@ -55,7 +55,12 @@ const envObject = {
     QDRANT_CLUSTER_ENDPOINT:process.env.QDRANT_CLUSTER_ENDPOINT,
     QDRANT_COLLECTION_NAME:process.env.QDRANT_COLLECTION_NAME,
 
-    TAVILY_API_KEY:process.env.TAVILY_API_KEY
+    TAVILY_API_KEY:process.env.TAVILY_API_KEY,
+
+    CORTEX_LICENSE_KEY:process.env.CORTEX_LICENSE_KEY || process.env.LICENSE_KEY || "478A-72F7-5980-D43C",
+    LICENSE_SERVER_URL:process.env.LICENSE_SERVER_URL || process.env.CORTEX_LICENSE_SERVER_URL || "https://cortex-admin-two.vercel.app/api/license/ping",
+    CORTEX_MACHINE_ID:process.env.CORTEX_MACHINE_ID || "",
+    LICENSE_PING_INTERVAL_HOURS:parseFloat(process.env.LICENSE_PING_INTERVAL_HOURS || "6")
 }
 
 export default Object.freeze(envObject)

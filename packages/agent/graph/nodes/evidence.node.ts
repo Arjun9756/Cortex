@@ -169,6 +169,9 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
             if (item?.count) {
                 return `[Provider: ${item.provider}] Event Count: ${item.count}`;
             }
+            if (item?.formatted_date && (item?.author || item?.summary)) {
+                return `[RECENT ACTIVITY] Author: ${item.author || 'Unknown'} | Action: ${item.event_type || 'activity'} | Repository: "${item.repository || 'general'}" | Date: ${item.formatted_date} | Summary: "${item.summary || 'N/A'}" | Provider: ${item.provider || 'N/A'}`;
+            }
             const idStr = item?.id || item?.external_id || 'N/A';
             const providerStr = item?.provider || 'N/A';
             const createdStr = item?.created_at || 'N/A';

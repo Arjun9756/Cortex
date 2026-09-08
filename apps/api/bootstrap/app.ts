@@ -12,6 +12,7 @@ import { jiraRouter } from '../modules/jira/router.js'
 import { graphRouter } from '../modules/graph/router.js'
 import { dashboardRouter } from '../modules/dashboard/router.js'
 import { analyticsRouter } from '../modules/analytics/router.js'
+import { licenseGuard, getLicenseState } from '../../../packages/license/index.js'
 
 const app = express()
 
@@ -46,6 +47,15 @@ app.get('/' , (req,res)=>{
         message:"Cortex Server is Running on Port " + env.PORT
     })
 })
+
+// License status endpoint
+app.get('/api/license/status', (req, res) => {
+    const status = getLicenseState();
+    return res.status(status.isValid ? 200 : 403).json(status);
+})
+
+// Guard all subsequent /api routes
+app.use('/api', licenseGuard)
 
 app.use('/api/github' , githubRouter)
 app.use('/api/slack' , slackRouter)

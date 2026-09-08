@@ -358,4 +358,40 @@ export const TOOL_DEFINITIONS = [
             },
         },
     },
+
+    // ─── Recent Engineering Activity & Timeline ──────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'recent_activity',
+            description: 'Query recent engineering activities, latest commits, pull requests, issues, and messages across ANY engineer/person, repository, or workspace. Returns events ordered by timestamp (most recent first) with exact human-readable dates, times, author, event type, repository name, and commit/PR/issue summary. MANDATORY for ANY question asking what an engineer/person recently did, latest work of someone, when someone last made changes, what commits or PRs a person authored recently, or latest activities in a repo or workspace. Examples: "What did Rohan Verma do recently and on what date?", "rohan ne latest kya kra h abhi", "Show recent commits by Priya", "What was Elena\'s recent PR and when?", "Show latest activity in checkout-service", "What are the recent changes across the team?".',
+            parameters: {
+                type: 'object',
+                properties: {
+                    author: {
+                        type: 'string',
+                        description: 'Name, email, or username of the person/engineer (e.g. "Rohan Verma", "Priya Sharma", "Elena", "Arjun"). Optional if querying repository or team-wide.',
+                    },
+                    repository: {
+                        type: 'string',
+                        description: 'Optional repository name to filter activities (e.g. "checkout-service", "payment-service").',
+                    },
+                    eventType: {
+                        type: 'string',
+                        enum: ['commit', 'pull_request', 'issue', 'message', 'all'],
+                        description: 'Optional event type filter. Defaults to "all".',
+                    },
+                    provider: {
+                        type: 'string',
+                        enum: ['github', 'jira', 'slack', 'all'],
+                        description: 'Optional provider platform filter.',
+                    },
+                    limit: {
+                        type: 'number',
+                        description: 'Maximum number of recent events to retrieve (default 5).',
+                    },
+                },
+            },
+        },
+    },
 ];

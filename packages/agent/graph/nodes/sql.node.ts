@@ -3,8 +3,136 @@ import { createGroqChatCompletion } from "../../../llm/providers/groq.js";
 import sql from '../../../../apps/api/config/postgres.js';
 import { buildSqlPlannerPrompt } from "../../../llm/prompts/sqlplanner.prompt.js";
 
+function formatTimestamp12h(date: Date): string {
+    if (isNaN(date.getTime())) return 'Unknown Date';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const strHours = String(hours).padStart(2, '0');
+
+    return `${day} ${month} ${year}, ${strHours}:${minutes}:${seconds} ${ampm}`;
+}
+
 export async function runSafeQuery(queryType: string, params: any) {
     switch (queryType) {
+        case "recent_activity": {
+            const limit = Math.min(Number(params.limit ?? 5), 50);
+            const author = (params.author || params.person || params.personName || params.user || '').trim();
+            const repository = (params.repository || params.repo || '').trim();
+            const provider = params.provider && params.provider !== 'all' ? String(params.provider).trim() : null;
+            const eventType = (params.eventType || params.event_type) && params.eventType !== 'all' ? String(params.eventType).trim() : null;
+
+            let rows: any[] = [];
+            if (author) {
+                // Split author words to support partial matching and typos (e.g. "rohan vermna" -> "rohan", "verma")
+                const tokens = author.split(/\s+/).filter((t: string) => t.length > 2);
+                const terms = Array.from(new Set([author, ...tokens]));
+                const patterns = terms.map((t: string) => `%${t}%`);
+
+                rows = await sql`
+                    SELECT id, external_id, provider, event_type, payload, created_at 
+                    FROM events 
+                    WHERE (
+                        payload->>'author' ILIKE ANY(${patterns})
+                        OR payload->>'user' ILIKE ANY(${patterns})
+                        OR payload->'sender'->>'login' ILIKE ANY(${patterns})
+                        OR payload->'sender'->>'name' ILIKE ANY(${patterns})
+                        OR payload->'sender'->>'email' ILIKE ANY(${patterns})
+                        OR payload->'pusher'->>'name' ILIKE ANY(${patterns})
+                        OR payload->'pusher'->>'email' ILIKE ANY(${patterns})
+                        OR payload->'head_commit'->'author'->>'name' ILIKE ANY(${patterns})
+                        OR payload->'head_commit'->'author'->>'email' ILIKE ANY(${patterns})
+                        OR payload->'pull_request'->'user'->>'login' ILIKE ANY(${patterns})
+                        OR payload->'user'->>'displayName' ILIKE ANY(${patterns})
+                        OR payload->'user'->>'name' ILIKE ANY(${patterns})
+                        OR payload->'issue'->'fields'->'reporter'->>'displayName' ILIKE ANY(${patterns})
+                        OR payload->'issue'->'fields'->'creator'->>'displayName' ILIKE ANY(${patterns})
+                        OR payload->'issue'->'user'->>'login' ILIKE ANY(${patterns})
+                    )
+                    ${repository ? sql`AND (payload->'repository'->>'name' ILIKE ${'%' + repository + '%'} OR payload->>'repository' ILIKE ${'%' + repository + '%'})` : sql``}
+                    ${provider ? sql`AND provider = ${provider}` : sql``}
+                    ${eventType ? sql`AND event_type = ${eventType}` : sql``}
+                    ORDER BY created_at DESC 
+                    LIMIT ${limit}
+                `;
+            } else if (repository) {
+                const repoPattern = `%${repository}%`;
+                rows = await sql`
+                    SELECT id, external_id, provider, event_type, payload, created_at 
+                    FROM events 
+                    WHERE (payload->'repository'->>'name' ILIKE ${repoPattern} OR payload->>'repository' ILIKE ${repoPattern})
+                    ${provider ? sql`AND provider = ${provider}` : sql``}
+                    ${eventType ? sql`AND event_type = ${eventType}` : sql``}
+                    ORDER BY created_at DESC 
+                    LIMIT ${limit}
+                `;
+            } else {
+                rows = await sql`
+                    SELECT id, external_id, provider, event_type, payload, created_at 
+                    FROM events 
+                    WHERE 1=1
+                    ${provider ? sql`AND provider = ${provider}` : sql``}
+                    ${eventType ? sql`AND event_type = ${eventType}` : sql``}
+                    ORDER BY created_at DESC 
+                    LIMIT ${limit}
+                `;
+            }
+
+            return rows.map((r: any) => {
+                const payload = r.payload || {};
+                const authorName =
+                    payload.author ||
+                    payload.sender?.login ||
+                    payload.pusher?.name ||
+                    payload.head_commit?.author?.name ||
+                    payload.pull_request?.user?.login ||
+                    payload.user?.displayName ||
+                    payload.user?.name ||
+                    payload.issue?.fields?.reporter?.displayName ||
+                    payload.issue?.user?.login ||
+                    payload.user ||
+                    'Unknown';
+
+                const repoName =
+                    payload.repository?.name ||
+                    payload.repository ||
+                    payload.repo ||
+                    'general';
+
+                const summary =
+                    payload.head_commit?.message ||
+                    payload.comment?.body ||
+                    payload.pull_request?.title ||
+                    payload.issue?.fields?.summary ||
+                    payload.issue?.title ||
+                    payload.text ||
+                    payload.message ||
+                    (r.event_type ? `${r.event_type} action` : 'activity');
+
+                const d = new Date(r.created_at);
+                const formattedDate = formatTimestamp12h(d);
+
+                return {
+                    id: r.id,
+                    external_id: r.external_id,
+                    provider: r.provider,
+                    event_type: r.event_type || 'activity',
+                    author: authorName,
+                    repository: repoName,
+                    summary: typeof summary === 'string' ? summary.replace(/\r?\n/g, ' ').trim() : String(summary),
+                    created_at: r.created_at,
+                    formatted_date: formattedDate,
+                };
+            });
+        }
         case "recent_events": {
             const limit = Math.min(params.limit ?? 10, 50);
             if (params.provider) {
@@ -110,19 +238,26 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
     const startIso = new Date().toISOString()
     console.log(`[Timing] [sqlNode] Started at ${startIso}`)
 
-    const remainingPendingTools = state.pendingTools.filter((tool) => (typeof tool === 'string' ? tool : tool.name) !== 'sql_search');
-    const executedTools = [...new Set([...state.executedTools, 'sql_search'])];
+    const remainingPendingTools = state.pendingTools.filter((tool) => {
+        const name = typeof tool === 'string' ? tool : tool.name;
+        return name !== 'sql_search' && name !== 'recent_activity';
+    });
+    const executedTools = [...new Set([...state.executedTools, 'sql_search', 'recent_activity'])];
     
     try {
         const sqlCalls = state.pendingTools
-            .filter((tool): tool is Exclude<typeof tool, string> => typeof tool !== 'string' && tool.name === 'sql_search');
+            .filter((tool): tool is Exclude<typeof tool, string> => typeof tool !== 'string' && (tool.name === 'sql_search' || tool.name === 'recent_activity'));
         if (sqlCalls.length === 0) return { sqlResult: state.sqlResult, pendingTools: remainingPendingTools, executedTools };
 
-        // Each queued SQL call is independent. Executing only .find() here used to
-        // silently discard every later SQL ask while also clearing the entire queue.
+        // Each queued SQL call is independent.
         const executeCall = async (sqlCall: typeof sqlCalls[number], index: number) => {
-        let queryType = sqlCall.args?.queryType;
-        let queryParams = sqlCall.args?.params || sqlCall.args || {};
+        const isRecentActivity = sqlCall.name === 'recent_activity';
+        let queryType = isRecentActivity ? 'recent_activity' : sqlCall.args?.queryType;
+        let queryParams = sqlCall.args?.params || (isRecentActivity ? sqlCall.args : {}) || {};
+
+        if (isRecentActivity && !queryParams.author && (sqlCall.args?.person || sqlCall.args?.personName || sqlCall.args?.user)) {
+            queryParams.author = sqlCall.args.person || sqlCall.args.personName || sqlCall.args.user;
+        }
 
         if (!queryType || queryType === 'none') {
             const prompt = buildSqlPlannerPrompt(state.query, state.evidence);
@@ -145,7 +280,7 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
             queryParams = decision?.params ?? queryParams;
         }
 
-        // Handle unsupported or still-missing queryType gracefully (NO regex fallback)
+        // Handle unsupported or still-missing queryType gracefully
         if (!queryType || queryType === 'none' || queryType === 'unsupported') {
             console.log(`[SQL Node] No matching queryType determined (got "${queryType || 'none'}"). The planner should specify queryType explicitly.`);
             console.warn(`[SQL Node] DROPPED_UNSUPPORTED_SQL_CALL id=${sqlCall.id || index} queryType=${queryType || 'none'}`);
@@ -173,7 +308,7 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
                 confidence: 0.95,
                 summary: `SQL query "${queryType}" returned ${results.length} record(s).`,
                 rawPayload: results,
-                entitiesFound: results.map((r: any) => r.repo_name || r.engineer).filter(Boolean),
+                entitiesFound: results.map((r: any) => r.repo_name || r.engineer || r.author || r.repository).filter(Boolean),
                 queryExplanation: `Executed safe relational query "${queryType}" with params ${JSON.stringify(queryParams)}`,
                 ...(sqlCall.subgoalId ? { toolCallId: sqlCall.subgoalId, subgoalId: sqlCall.subgoalId } : {}),
             };

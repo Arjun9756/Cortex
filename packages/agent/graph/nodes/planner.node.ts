@@ -28,7 +28,7 @@ async function decomposeQuery(query: string): Promise<string[]> {
 Enumerate EVERY distinct, independently answerable sub-question or ask embedded in the user query as a JSON array of strings.
 Do NOT artificially cap the number of asks — if the query contains 1, 3, 6, or 10 distinct questions/clauses joined by "and", commas, or separate sentences, identify and output ALL of them.
 CRITICAL RULE: Never combine multiple entity types, targets, or resources (e.g. "repositories and technologies" or "Elena and Marcus") into a single ask — always split them into separate distinct asks (e.g. "How many total repositories are there?" and "How many total technologies are there?").
-Preserve exact entity names and specific conditions.
+Preserve exact entity names and specific conditions. For queries in Hindi/Hinglish (e.g. "rohan ne latest kya kra h abhi date ke sath"), translate or preserve the core ask accurately (e.g. "What did Rohan Verma do recently and on what date?").
 Return JSON only: {"asks":["ask 1", "ask 2", ...]}`
             },
             { role: 'user', content: query },
@@ -50,7 +50,7 @@ Return JSON only: {"asks":["ask 1", "ask 2", ...]}`
 function toolNameToSubgoalType(toolName: string): SubGoal['type'] {
     if (toolName.startsWith('graph_')) return 'entity_lookup';
     if (toolName === 'vector_search') return 'semantic_explanation';
-    if (toolName === 'sql_search') return 'metric_count';
+    if (toolName === 'sql_search' || toolName === 'recent_activity') return 'metric_count';
     if (toolName === 'knowledge_risk') return 'risk_analysis';
     return 'entity_lookup';
 }
@@ -61,7 +61,7 @@ function toolNameToSubgoalType(toolName: string): SubGoal['type'] {
 function toolNameToSource(toolName: string): ('graph' | 'vector' | 'sql' | 'analytics') {
     if (toolName.startsWith('graph_')) return 'graph';
     if (toolName === 'vector_search') return 'vector';
-    if (toolName === 'sql_search') return 'sql';
+    if (toolName === 'sql_search' || toolName === 'recent_activity') return 'sql';
     if (toolName === 'knowledge_risk') return 'analytics';
     return 'graph';
 }
@@ -122,6 +122,7 @@ AVAILABLE TOOLS & RULES:
 9. "graph_impact_analysis": {"entity": "<service>"} -> Use for blast radius of changes.
 10. "graph_shortest_path": {"from": "<A>", "to": "<B>"} -> Use for shortest path/connections between 2 entities.
 11. "graph_expertise_analysis": {"entity": "<tech/topic>"} -> Use for who is the top expert / who knows the most about a topic.
+12. "recent_activity": {"author": "<name>", "repository": "<repo>", "limit": 5} -> MANDATORY for ANY question asking what an engineer/person recently did, latest commits/PRs/issues by a person, when someone made changes, or recent repository/team activity (e.g. "What did Rohan Verma do recently and on what date?", "rohan ne latest kya kra", "Show recent commits by Priya", "latest activity in checkout-service").
 
 INSTRUCTIONS:
 - For EACH ask listed below, plan one or more tool calls that directly answer it.

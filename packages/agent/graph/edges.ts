@@ -18,7 +18,7 @@ export function routeNextTool(state: AgentStateType): 'vectorNode' | 'graphNode'
     }
 
     if (state.pendingTools.length === 0) return 'evidenceNode';
-    
+
     const first = state.pendingTools[0];
     const nextTool = typeof first === 'string' ? first : first?.name;
 
@@ -26,7 +26,7 @@ export function routeNextTool(state: AgentStateType): 'vectorNode' | 'graphNode'
     if (nextTool?.startsWith('graph_')) return 'graphNode';
 
     if (nextTool === 'vector_search') return 'vectorNode';
-    if (nextTool === 'sql_search') return 'sqlNode';
+    if (nextTool === 'sql_search' || nextTool === 'recent_activity') return 'sqlNode';
     if (nextTool === 'knowledge_risk') return 'knowledgeRiskNode';
     if (nextTool === 'cypher_fallback') return 'cypherFallbackNode';
 
