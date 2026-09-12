@@ -29,10 +29,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
   });
   const [inlineSubmitted, setInlineSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inlineError, setInlineError] = useState<string | null>(null);
 
   const handleInlineSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setInlineError(null);
 
     try {
       const response = await fetch('https://api.web3forms.com/submit', {
@@ -56,11 +58,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
       if (result.success) {
         setInlineSubmitted(true);
       } else {
-        setInlineSubmitted(true);
+        setInlineError(result.message || 'Unable to submit request. Please try again.');
       }
-    } catch (error) {
-      console.warn('[Web3Forms] Error submitting inline form:', error);
-      setInlineSubmitted(true);
+    } catch (error: any) {
+      console.error('[Web3Forms] Error submitting inline form:', error);
+      setInlineError(error?.message || 'Network error occurred while submitting request. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -123,6 +125,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
                       Get Cortex running on your team's AWS, GCP, or Docker infrastructure — 100% self-hosted &amp; private.
                     </p>
                   </div>
+
+                  {inlineError && (
+                    <div className="mb-6 max-w-xl mx-auto p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+                      <span>{inlineError}</span>
+                      <button type="button" onClick={() => setInlineError(null)} className="text-slate-400 hover:text-white cursor-pointer ml-2">
+                        ✕
+                      </button>
+                    </div>
+                  )}
 
                   <form onSubmit={handleInlineSubmit} className="space-y-4 max-w-xl mx-auto">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

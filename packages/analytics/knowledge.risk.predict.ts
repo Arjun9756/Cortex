@@ -66,11 +66,12 @@ export async function calculateOwnership(
     const session = driver.session()
     try {
         const name = await resolveCanonicalPersonName(session, personName);
-        const targetLabel = mapping.targetLabel || 'COMMIT'
+        const targetLabel = (mapping.targetLabel && mapping.targetLabel !== 'REPOSITORY') ? mapping.targetLabel : 'COMMIT'
+        const relation = mapping.relation || 'AUTHORED'
 
         // Query 1: Get total count
         const countResult = await session.run(
-            `MATCH (p:PERSON {name: $name})-[:${mapping.relation}]->(item:${targetLabel})
+            `MATCH (p:PERSON {name: $name})-[:${relation}]->(item:${targetLabel})
              RETURN count(item) as totalCount`,
             { name }
         )
@@ -78,7 +79,7 @@ export async function calculateOwnership(
 
         // Query 2: Get evidence (top 10 items)
         const evidenceResult = await session.run(
-            `MATCH (p:PERSON {name: $name})-[:${mapping.relation}]->(item:${targetLabel})
+            `MATCH (p:PERSON {name: $name})-[:${relation}]->(item:${targetLabel})
              RETURN item.name as name,
                     labels(item)[0] as type,
                     item.createdAt as createdAt
@@ -100,15 +101,22 @@ export async function calculateOwnership(
             return item
         })
 
-        // Query 3: Get total items in graph
-        const totalResult = await session.run(
-            `MATCH (item:${targetLabel}) RETURN count(item) AS count`
+        // Query 3: Per-repository ownership calculation taking the MAXIMUM ownership share across all repos contributed to
+        const ownershipResult = await session.run(
+            `MATCH (p:PERSON {name: $name})-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)
+             WITH r, count(c) AS personRepoCommits
+             MATCH (c2:COMMIT)-[:PART_OF]->(r)
+             WITH r, personRepoCommits, count(c2) AS totalRepoCommits
+             RETURN max(toFloat(personRepoCommits) / toFloat(totalRepoCommits)) AS maxRepoOwnership`,
+            { name }
         )
-        const totalCount = totalResult.records[0]?.get('count')?.toNumber() ?? 1
+        const rawMaxOwnership = ownershipResult.records[0]?.get('maxRepoOwnership')
+        const maxRepoOwnership = (rawMaxOwnership !== null && rawMaxOwnership !== undefined)
+            ? (typeof rawMaxOwnership === 'number' ? rawMaxOwnership : (rawMaxOwnership.toNumber ? rawMaxOwnership.toNumber() : Number(rawMaxOwnership)))
+            : 0
+        const ratio = Math.min(1, Math.max(0, isNaN(maxRepoOwnership) ? 0 : maxRepoOwnership))
 
-        const ratio = totalCount > 0 ? personCount / totalCount : 0
-
-        console.log(`[Ownership] ${personCount}/${totalCount} = ${ratio}`)
+        console.log(`[Ownership] ${name} maxRepoOwnership = ${ratio} (personCount: ${personCount})`)
 
         return { score: ratio, count: personCount, evidence }
     } catch (error: any) {
@@ -381,20 +389,22 @@ export async function calculatePendingWork(
         const name = await resolveCanonicalPersonName(session, personName);
         const targetLabel = mapping.targetLabel || 'ISSUE'
 
-        // Query 1: Get total count
+        // Query 1: Get total count (exclude completed/closed work)
         const countResult = await session.run(
             `MATCH (p:PERSON {name: $name})<-[:${mapping.relation}]-(issue:${targetLabel})
+             WHERE issue.status IS NULL OR NOT toLower(issue.status) IN ['closed', 'done', 'resolved', 'completed']
              RETURN count(issue) as totalCount`,
             { name }
         )
         const count = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0
 
-        // Query 2: Get evidence (top 10)
+        // Query 2: Get evidence (top 10) (exclude completed/closed work)
         // Fix BUG 3: use resolved `name` (from resolveCanonicalPersonName) not raw `personName`.
         // Previously this query used `personName` (the raw input), while countResult used the
         // resolved `name`. This caused 0 evidence for lowercase/variant-cased inputs.
         const evidenceResult = await session.run(
             `MATCH (p:PERSON {name: $name})<-[:${mapping.relation}]-(issue:${targetLabel})
+             WHERE issue.status IS NULL OR NOT toLower(issue.status) IN ['closed', 'done', 'resolved', 'completed']
              RETURN issue.name as name,
                     labels(issue)[0] as type,
                     issue.status as status

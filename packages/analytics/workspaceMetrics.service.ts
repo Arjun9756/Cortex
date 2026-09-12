@@ -6,14 +6,25 @@ export async function calculateWorkspaceMetrics() {
         const [repoStats] = await sql`SELECT count(*)::int AS count, avg(bus_factor)::numeric AS avg_bf FROM repo_metrics`;
         const [eventStats] = await sql`
             SELECT 
-                count(*) FILTER (WHERE event_type ILIKE '%issue%')::int AS issues,
-                count(*) FILTER (WHERE event_type ILIKE '%pull_request%' OR event_type ILIKE '%pr%')::int AS prs
+                count(*) FILTER (
+                    WHERE event_type ILIKE '%issue%' 
+                      AND (
+                          payload->'issue'->>'state' = 'open' 
+                          OR payload->>'state' = 'open'
+                          OR (payload->'issue'->'fields'->'status'->'statusCategory'->>'key' IS NOT NULL 
+                              AND payload->'issue'->'fields'->'status'->'statusCategory'->>'key' != 'done')
+                      )
+                )::int AS issues,
+                count(*) FILTER (
+                    WHERE (event_type ILIKE '%pull_request%' OR event_type ILIKE '%pr%')
+                      AND (payload->'pull_request'->>'state' = 'open' OR payload->>'state' = 'open')
+                )::int AS prs
             FROM events
         `;
 
         const totalPeople = personStats?.count ?? 0;
         const totalRepos = repoStats?.count ?? 0;
-        const avgRisk = personStats?.avg_risk ?? 47;
+        const avgRisk = personStats?.avg_risk ?? 0;
         const avgBusFactor = repoStats?.avg_bf ?? 1.0;
         const openIssues = eventStats?.issues ?? 0;
         const openPrs = eventStats?.prs ?? 0;

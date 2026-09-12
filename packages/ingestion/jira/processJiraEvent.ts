@@ -34,8 +34,23 @@ export async function processJiraEvent(eventID: string) {
             role: null, // Jira role not available from issue webhook payload
         }]
 
-        // 6. Save to Graph Database (with enriched PERSON metadata)
-        await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata)
+        // Build entity metadata for Jira issue status
+        const entityMetadata: Array<{ name: string; properties: Record<string, any> }> = []
+        if (normalizedPayload.issueKey) {
+            entityMetadata.push({
+                name: normalizedPayload.issueKey,
+                properties: { status: normalizedPayload.status || 'open' }
+            })
+        }
+        if (normalizedPayload.summary) {
+            entityMetadata.push({
+                name: normalizedPayload.summary,
+                properties: { status: normalizedPayload.status || 'open' }
+            })
+        }
+
+        // 6. Save to Graph Database (with enriched PERSON and ENTITY metadata)
+        await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata, entityMetadata)
 
         // 7.Generate vector embedding
         const effectiveSummary = summary && summary.trim().length > 0

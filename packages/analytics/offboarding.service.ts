@@ -61,6 +61,7 @@ export async function generateOffboardingHandoff(personName: string): Promise<Of
         const issuesRes = await session.run(`
             MATCH (p:PERSON)-[:ASSIGNED_TO|AUTHORED]-(i:ISSUE)
             WHERE toLower(p.name) CONTAINS toLower($name)
+              AND (i.status IS NULL OR NOT toLower(i.status) IN ['closed', 'done', 'resolved', 'completed'])
             RETURN DISTINCT i.name AS title, i.externalId AS externalId
             LIMIT 10
         `, { name: personName });
@@ -72,6 +73,7 @@ export async function generateOffboardingHandoff(personName: string): Promise<Of
         const prsRes = await session.run(`
             MATCH (p:PERSON)-[:AUTHORED]-(pr:PULL_REQUEST)
             WHERE toLower(p.name) CONTAINS toLower($name)
+              AND (pr.status IS NULL OR NOT toLower(pr.status) IN ['merged', 'closed'])
             RETURN DISTINCT pr.name AS title, pr.externalId AS externalId
             LIMIT 10
         `, { name: personName });

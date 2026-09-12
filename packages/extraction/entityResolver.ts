@@ -53,7 +53,7 @@ export async function resolveEntity(
     for (const entity of allEntities) {
         try {
             let extras: Record<string, any> | undefined = undefined
-            if (entity.type === 'PERSON' && extraPropertiesMap) {
+            if (extraPropertiesMap) {
                 extras = extraPropertiesMap[entity.name]
                 if (!extras) {
                     const lowerName = entity.name.toLowerCase()
@@ -64,7 +64,7 @@ export async function resolveEntity(
                     )
                     if (foundKey) {
                         extras = extraPropertiesMap[foundKey]
-                    } else if (Object.keys(extraPropertiesMap).length === 1) {
+                    } else if (entity.type === 'PERSON' && Object.keys(extraPropertiesMap).length === 1) {
                         extras = Object.values(extraPropertiesMap)[0]
                     }
                 }

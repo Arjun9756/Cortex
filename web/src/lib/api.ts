@@ -245,6 +245,16 @@ export interface ChatQueryResponse {
     graphContext: any[];
     sqlContext: any[];
     knowledgeRiskResult?: KnowledgeRiskScore;
+    structuredEvidence?: Array<{
+        id: string;
+        subgoalId?: string;
+        sourceType: 'graph' | 'vector' | 'sql' | 'analytics' | 'cypher';
+        confidence: number;
+        summary: string;
+        rawPayload?: any;
+        entitiesFound?: string[];
+        queryExplanation?: string;
+    }>;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -255,20 +265,20 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
         const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
-                ...(options?.headers || {}),
+                ...options?.headers,
             },
             ...options,
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+            const errorBody = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorBody}`);
         }
 
         return await response.json();
-    } catch (err: any) {
-        console.error(`[API Client Error] ${endpoint}:`, err);
-        throw new Error(err.message || 'Network error');
+    } catch (error) {
+        console.error(`[API Client Error] ${endpoint}:`, error);
+        throw error;
     }
 }
 
@@ -335,17 +345,25 @@ export async function streamChatQuery(
     query: string,
     onChunk: (chunkText: string) => void,
     onDone: (response: ChatQueryResponse) => void,
-    onError: (err: any) => void
+    onError: (err: any) => void,
+    onStatus?: (stepText: string) => void
 ): Promise<void> {
     try {
-        const response = await fetch('/api/chat/stream', {
+        const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query }),
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            let errorText = `HTTP error! status: ${response.status}`;
+            try {
+                const errData = await response.json();
+                if (errData.error) errorText = errData.error;
+            } catch {
+                // ignore
+            }
+            throw new Error(errorText);
         }
 
         const reader = response.body?.getReader();
@@ -367,23 +385,45 @@ export async function streamChatQuery(
             buffer = lines.pop() || '';
 
             for (const line of lines) {
-                if (line.startsWith('event: chunk')) {
+                if (line.startsWith('event: status')) {
+                    const dataLine = line.split('\n').find(l => l.startsWith('data: '));
+                    if (dataLine && onStatus) {
+                        try {
+                            const { step } = JSON.parse(dataLine.slice(6));
+                            if (step) onStatus(step);
+                        } catch {
+                            // ignore status parse error
+                        }
+                    }
+                } else if (line.startsWith('event: chunk')) {
                     const dataLine = line.split('\n').find(l => l.startsWith('data: '));
                     if (dataLine) {
-                        const { text } = JSON.parse(dataLine.slice(6));
-                        onChunk(text);
+                        try {
+                            const { text } = JSON.parse(dataLine.slice(6));
+                            if (text) onChunk(text);
+                        } catch {
+                            // ignore
+                        }
                     }
                 } else if (line.startsWith('event: done')) {
                     const dataLine = line.split('\n').find(l => l.startsWith('data: '));
                     if (dataLine) {
-                        const finalPayload = JSON.parse(dataLine.slice(6));
-                        onDone(finalPayload);
+                        try {
+                            const finalPayload = JSON.parse(dataLine.slice(6));
+                            onDone(finalPayload);
+                        } catch (parseErr) {
+                            onError(parseErr);
+                        }
                     }
                 } else if (line.startsWith('event: error')) {
                     const dataLine = line.split('\n').find(l => l.startsWith('data: '));
                     if (dataLine) {
-                        const { error } = JSON.parse(dataLine.slice(6));
-                        onError(new Error(error));
+                        try {
+                            const { error } = JSON.parse(dataLine.slice(6));
+                            onError(new Error(error));
+                        } catch {
+                            onError(new Error('Unknown streaming error'));
+                        }
                     }
                 }
             }
@@ -393,8 +433,8 @@ export async function streamChatQuery(
         try {
             const fallback = await sendChatQuery(query);
             onDone(fallback);
-        } catch (fallbackErr) {
-            onError(err);
+        } catch (fallbackErr: any) {
+            onError(fallbackErr?.message ? fallbackErr : err);
         }
     }
 }

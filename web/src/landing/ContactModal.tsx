@@ -16,12 +16,14 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
 
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
       const response = await fetch('https://api.web3forms.com/submit', {
@@ -45,11 +47,11 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
       if (result.success) {
         setSubmitted(true);
       } else {
-        setSubmitted(true);
+        setSubmitError(result.message || 'Unable to submit your request. Please try again.');
       }
-    } catch (error) {
-      console.warn('[Web3Forms] Error submitting form:', error);
-      setSubmitted(true);
+    } catch (error: any) {
+      console.error('[Web3Forms] Error submitting form:', error);
+      setSubmitError(error?.message || 'Network error occurred while submitting. Please check your internet connection and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -57,6 +59,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
 
   const handleReset = () => {
     setSubmitted(false);
+    setSubmitError(null);
     setFormData({ name: '', email: '', company: '', message: '' });
     onClose();
   };
@@ -90,6 +93,14 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
             </div>
 
             {/* Form */}
+            {submitError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+                <span>{submitError}</span>
+                <button type="button" onClick={() => setSubmitError(null)} className="text-slate-400 hover:text-white cursor-pointer ml-2">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4 text-left">
               {/* Name */}
               <div>

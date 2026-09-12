@@ -216,7 +216,9 @@ $$\begin{aligned}
 + &(0.10 \times \text{PendingWork})
 \end{aligned}$$
 
-- **Ownership ($w=0.30$):** Commits and PRs authored by person / Total graph commits.
+- **Ownership ($w=0.30$):** Per-repository ownership calculation taking the maximum ownership share across all repositories contributed to by this person:
+  $$\text{Ownership} = \max_{r \in \text{Repos}} \left(\frac{\text{PersonCommits}(r)}{\text{TotalCommits}(r)}\right)$$
+  This guarantees that sole maintainers of repositories receive a 1.0 (100%) ownership score rather than artificially suppressed scores diluted by unrelated repositories in the enterprise graph.
 - **Dependency ($w=0.20$):** Number of external services and modules depending on code authored by this person.
 - **Activity ($w=0.15$):** Volume of contributions authored within the recent rolling window.
 - **Documentation ($w=0.15$):** Ratio of documentation and specification files authored versus code.
@@ -239,6 +241,10 @@ $$\text{Successor Score} = (0.40 \times \text{TechSimilarity}) + (0.25 \times \t
 - **Bus Factor:** The minimum number of distinct engineers who together account for $> 50\%$ of a repository's total commit volume.
 - **Risk Mapping:**
   $$\text{RepoRiskScore} = \begin{cases} 80 & \text{if } \text{BusFactor} = 0 \text{ (unindexed)} \\ \max(0, 100 - (\text{BusFactor} \times 20)) & \text{if } \text{BusFactor} \ge 1 \end{cases}$$
+
+### 5.4 Workspace Metrics & Activity Trend Integrity
+- **Open Inventory State Filtering:** Open issues and open PRs counted in `workspace_metrics` strictly inspect payload state properties (`payload->'issue'->>'state' = 'open'` and `payload->'pull_request'->>'state' = 'open'`). Closed or merged records are excluded, and fallback values strictly resolve to `0` with zero fabricated constants.
+- **Commit & PR Trend Counting:** Standardized across the Executive Dashboard Overview and Analytics pages to a 12-week lookback window and `MMM D` weekly bucket labels. Commit counts extract actual commits from push payload arrays (`COALESCE(jsonb_array_length(payload->'commits'), 1)`) rather than raw webhook delivery rows. PR counts use distinct PR IDs (`COUNT(DISTINCT payload->'pull_request'->>'id')`) so that multi-event PR lifecycles (opened, synchronize, closed) are counted exactly once.
 
 ---
 

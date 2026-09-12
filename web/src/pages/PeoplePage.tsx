@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { getPeople, simulateDeparture as simulateDepartureApi, type PersonMetric, type DepartureSimulation } from '../lib/api';
 import { Users, AlertTriangle, RefreshCw, GitCommit, FolderGit2, ShieldAlert, Award, UserMinus, X, Loader2, AlertCircle, Cpu } from 'lucide-react';
 
-export const PeoplePage: React.FC = () => {
+interface PeoplePageProps {
+  onSyncUpdated?: (date: Date) => void;
+}
+
+export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
   const [people, setPeople] = useState<PersonMetric[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +22,9 @@ export const PeoplePage: React.FC = () => {
     try {
       const data = await getPeople();
       setPeople(data.people || []);
+      if (onSyncUpdated) {
+        onSyncUpdated(new Date());
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch people metrics');
     } finally {
@@ -44,6 +51,16 @@ export const PeoplePage: React.FC = () => {
     setSimulation(null);
     setSimError(null);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (simulation || simError)) {
+        closeSimulation();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [simulation, simError]);
 
   useEffect(() => {
     fetchPeople();
@@ -235,7 +252,7 @@ export const PeoplePage: React.FC = () => {
                 <button
                   onClick={() => handleSimulateDeparture(person)}
                   disabled={isSimulating}
-                  className="w-full py-2.5 bg-gradient-to-r from-rose-600/20 to-amber-600/20 hover:from-rose-600/30 hover:to-amber-600/30 border border-rose-500/30 hover:border-rose-500/50 text-xs font-semibold text-rose-200 hover:text-white rounded-xl transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 bg-gradient-to-r from-rose-600/20 to-amber-600/20 hover:from-rose-600/30 hover:to-amber-600/30 border border-rose-500/30 hover:border-rose-500/50 text-xs font-semibold text-rose-200 hover:text-white rounded-xl transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isSimulating ? (
                     <>

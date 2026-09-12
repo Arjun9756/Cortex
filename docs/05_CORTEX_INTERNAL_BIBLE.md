@@ -316,6 +316,22 @@ cron.schedule('0 18 * * *', ...)  // Executes daily at 18:00 IST
 5. `generateAndSaveDailyReport()` — Generates and persists the executive HTML report
 *Note: This pipeline also executes immediately on server startup to ensure metrics tables are populated.*
 
+### 5.6 Metrics Calculation & Data Integrity Guarantees
+- **Person Ownership Score (`packages/analytics/knowledge.risk.predict.ts`):** Computes per-repository maximum ownership:
+  ```cypher
+  MATCH (p:PERSON {name: $name})-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)
+  WITH r, count(c) AS personRepoCommits
+  MATCH (c2:COMMIT)-[:PART_OF]->(r)
+  WITH r, personRepoCommits, count(c2) AS totalRepoCommits
+  RETURN max(toFloat(personRepoCommits) / toFloat(totalRepoCommits)) AS maxRepoOwnership
+  ```
+  Prevents dilution from unrelated repositories in the company graph; single-repo sole maintainers correctly receive `1.0` (100%) ownership share.
+- **Open Inventory Filtering (`packages/analytics/workspaceMetrics.service.ts`):** Filters open issues and PRs by JSON payload state (`payload->'issue'->>'state' = 'open'` and `payload->'pull_request'->>'state' = 'open'`). Closed or merged records are excluded. Fallback values are strictly `0` (zero fabricated fallbacks).
+- **Activity & Commit Trends (`apps/api/modules/analytics/` & `apps/api/modules/dashboard/`):**
+  - Commit counts sum actual commits from push payload arrays (`COALESCE(jsonb_array_length(payload->'commits'), 1)`).
+  - PR counts evaluate distinct PR IDs (`COUNT(DISTINCT payload->'pull_request'->>'id')`).
+  - Standardized across Overview and Analytics to a 12-week window with consistent `MMM D` labeling.
+
 ---
 
 ## 6. LLM Extraction Layer

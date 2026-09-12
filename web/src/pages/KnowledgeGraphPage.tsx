@@ -3,7 +3,11 @@ import { getGraphVisualization, type GraphNode, type GraphEdge } from '../lib/ap
 import { ForceGraph, getNodeCategory } from '../components/ForceGraph';
 import { Network, Filter, RefreshCw, AlertTriangle, Layers } from 'lucide-react';
 
-export const KnowledgeGraphPage: React.FC = () => {
+interface KnowledgeGraphPageProps {
+  onSyncUpdated?: (date: Date) => void;
+}
+
+export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUpdated }) => {
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [nodeCount, setNodeCount] = useState<number>(0);
@@ -31,6 +35,9 @@ export const KnowledgeGraphPage: React.FC = () => {
       setEdges(res.edges || []);
       setNodeCount(res.nodeCount || 0);
       setEdgeCount(res.edgeCount || 0);
+      if (onSyncUpdated) {
+        onSyncUpdated(new Date());
+      }
     } catch (err: any) {
       if (!silent) {
         setError(err.message || 'Failed to fetch Knowledge Graph visualization');

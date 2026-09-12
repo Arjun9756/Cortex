@@ -185,10 +185,16 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
               <p className="text-xs text-rose-300">{loadError}</p>
               <button onClick={fetchStatus} className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-200">Retry</button>
             </div>
-          ) : loading || !currentIntegration ? (
+          ) : loading ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-3">
               <RefreshCw className="h-6 w-6 text-indigo-400 animate-spin" />
               <p className="text-xs text-slate-400">Loading integration status...</p>
+            </div>
+          ) : !currentIntegration ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-3 text-center">
+              <AlertCircle className="h-6 w-6 text-slate-500" />
+              <p className="text-xs text-slate-400">No integration status available for {activeTab}.</p>
+              <button onClick={fetchStatus} className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-200">Retry</button>
             </div>
           ) : (
             <div className="space-y-5">
@@ -207,7 +213,9 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
                 <div className="flex items-center space-x-3">
                   <div className="text-right">
                     <span className="text-xs text-slate-400 block">Events Ingested</span>
-                    <span className="text-xs font-bold text-indigo-300">{currentIntegration.eventCount} total</span>
+                    <span className="text-xs font-bold text-indigo-300">
+                      {currentIntegration.eventCount > 0 ? `${currentIntegration.eventCount} total` : '0 (Waiting for webhooks)'}
+                    </span>
                   </div>
 
                   <span

@@ -6,7 +6,7 @@ export interface ICleanEvent {
     issueKey: string,
     issueType: string,
     summary: string,
-    status: boolean,
+    status: string,
     author: string,
     /** Reporter's or assignee's email from the Jira issue payload. */
     authorEmail: string | null,
@@ -32,7 +32,7 @@ function normalizeIssueEvent(payload: any, eventType: string): ICleanEvent {
         issueKey: issue.key ?? 'UNKNOWN',
         issueType: fields.issuetype?.name ?? 'Unknown',
         summary: fields.summary ?? '',
-        status: fields.status?.name ?? false,
+        status: fields.status?.name ?? 'open',
         author: fields.reporter?.displayName ?? fields.assignee?.displayName ?? "Unknown",
         authorEmail,
         authorRole: null,

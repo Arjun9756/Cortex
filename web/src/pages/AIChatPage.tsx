@@ -23,8 +23,24 @@ import {
   CheckCircle2,
   AlertCircle,
   FileCode,
-  ArrowUpRight
+  ArrowUpRight,
+  Copy,
+  Check,
+  ExternalLink,
+  AlertTriangle,
+  Download,
+  CornerDownLeft,
+  Square,
+  ShieldCheck,
+  Hash
 } from 'lucide-react';
+
+interface AgentStep {
+  step: string;
+  timestamp: string;
+  node?: string;
+  done: boolean;
+}
 
 interface ChatMessage {
   id: string;
@@ -32,15 +48,73 @@ interface ChatMessage {
   text: string;
   response?: ChatQueryResponse;
   timestamp: string;
+  isStreaming?: boolean;
+  agentSteps?: AgentStep[];
+  error?: {
+    message: string;
+    retryQuery?: string;
+  };
 }
 
 interface AIChatPageProps {
   initialQuery?: string;
+  onSyncUpdated?: (date: Date) => void;
 }
 
+const STORAGE_KEY = 'cortex_chat_history_v2';
+
+const INITIAL_WELCOME_MESSAGE: ChatMessage = {
+  id: 'welcome',
+  sender: 'bot',
+  text: 'Hello! I am Cortex, your enterprise engineering knowledge intelligence assistant. I am grounded directly in your Neo4j knowledge graph, Git commit history, Slack channels, and Jira issues.\n\nAsk me about key-person departure risks, bus factor SPOFs, repository owners, technology expertise, or architectural decisions.',
+  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+};
+
+// Subcomponent: Syntax-Highlighted Code Block with Copy Button
+const CodeBlock: React.FC<{ code: string; language?: string }> = ({ code, language = 'text' }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-3 rounded-xl border border-slate-800 bg-[#080d1a] overflow-hidden shadow-xl">
+      <div className="flex items-center justify-between px-4 py-2 bg-[#0d1527] border-b border-slate-800 text-xs font-mono text-slate-400">
+        <span className="flex items-center space-x-2 text-indigo-300">
+          <Terminal className="h-3.5 w-3.5" />
+          <span className="uppercase text-[11px] font-semibold">{language}</span>
+        </span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center space-x-1.5 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 px-2 py-1 rounded transition-colors text-[11px] cursor-pointer"
+          title="Copy code to clipboard"
+        >
+          {copied ? (
+            <>
+              <Check className="h-3 w-3 text-emerald-400" />
+              <span className="text-emerald-400 font-sans font-medium">Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="h-3 w-3" />
+              <span className="font-sans font-medium">Copy Code</span>
+            </>
+          )}
+        </button>
+      </div>
+      <pre className="p-4 overflow-x-auto text-xs font-mono text-slate-200 leading-relaxed scrollbar-thin scrollbar-thumb-slate-800">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+};
+
 function renderInlineFormattedText(text: string) {
-  // Match bold, code, percentage values, and email-like patterns
-  const parts = text.split(/(\*\*.*?\*\*|`.*?`|\b\d+\.?\d*%\b)/g);
+  // Match bold, code, percentage values, links, and email-like patterns
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`|\[.*?\]\(.*?\)|\b\d+\.?\d*%\b)/g);
   return parts.map((part, pIdx) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
@@ -54,6 +128,22 @@ function renderInlineFormattedText(text: string) {
         <code key={pIdx} className="px-1.5 py-0.5 rounded-md bg-[#101728] border border-slate-800 text-indigo-300 font-mono text-xs font-semibold">
           {part.slice(1, -1)}
         </code>
+      );
+    }
+    // Markdown link: [label](url)
+    const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
+    if (linkMatch) {
+      return (
+        <a
+          key={pIdx}
+          href={linkMatch[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 inline-flex items-center gap-0.5 font-medium transition-colors"
+        >
+          <span>{linkMatch[1]}</span>
+          <ExternalLink className="h-2.5 w-2.5 inline shrink-0" />
+        </a>
       );
     }
     // Auto-highlight percentage values
@@ -72,7 +162,7 @@ function renderInlineFormattedText(text: string) {
   });
 }
 
-function renderFormattedMessageContent(text: string) {
+function renderFormattedMessageContent(text: string, isStreaming?: boolean) {
   const lines = text.split('\n');
   const elements: React.ReactNode[] = [];
   let i = 0;
@@ -81,7 +171,25 @@ function renderFormattedMessageContent(text: string) {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // 1. Detect Markdown Table block (lines starting with '|')
+    // 1. Detect Code Block (```lang ... ```)
+    if (trimmed.startsWith('```')) {
+      const lang = trimmed.slice(3).trim() || 'code';
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length && lines[i].trim().startsWith('```')) {
+        i++; // skip closing ```
+      }
+      elements.push(
+        <CodeBlock key={`code-${i}`} code={codeLines.join('\n')} language={lang} />
+      );
+      continue;
+    }
+
+    // 2. Detect Markdown Table block (lines starting with '|')
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
       const tableLines: string[] = [];
       while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
@@ -89,7 +197,6 @@ function renderFormattedMessageContent(text: string) {
         i++;
       }
 
-      // Filter out separator line like |---|---|
       const dataRows = tableLines.filter(row => !row.match(/^\|[\s\-:|]+\|$/));
       if (dataRows.length > 0) {
         const headerCells = dataRows[0].split('|').slice(1, -1).map(c => c.trim());
@@ -109,7 +216,6 @@ function renderFormattedMessageContent(text: string) {
                 {bodyRows.map((row, rIdx) => (
                   <tr key={rIdx} className={`border-b border-slate-800/30 transition-colors hover:bg-indigo-500/5 ${rIdx % 2 === 0 ? 'bg-slate-950/30' : 'bg-slate-900/20'}`}>
                     {row.map((cell, cIdx) => {
-                      // Check if cell is a percentage or number for special rendering
                       const isPercent = /^\d+\.?\d*%$/.test(cell.replace(/[*`]/g, '').trim());
                       const isNumber = /^\d+\.?\d*$/.test(cell.replace(/[*`]/g, '').trim());
                       return (
@@ -128,7 +234,7 @@ function renderFormattedMessageContent(text: string) {
       continue;
     }
 
-    // 2. Handle horizontal rule (--- or ___ or ***)
+    // 3. Handle horizontal rule (--- or ___ or ***)
     if (/^(-{3,}|_{3,}|\*{3,})$/.test(trimmed)) {
       elements.push(
         <div key={`hr-${i}`} className="my-4 border-t border-slate-700/50 relative">
@@ -141,14 +247,14 @@ function renderFormattedMessageContent(text: string) {
       continue;
     }
 
-    // 3. Handle empty line
+    // 4. Handle empty line
     if (!trimmed) {
       elements.push(<div key={`empty-${i}`} className="h-2" />);
       i++;
       continue;
     }
 
-    // 4. Handle Header lines (# Header, ## Subheader)
+    // 5. Handle Header lines (# Header, ## Subheader)
     if (trimmed.startsWith('#')) {
       const hashCount = (trimmed.match(/^#+/) || [''])[0].length;
       const headerText = trimmed.replace(/^#+\s*/, '');
@@ -179,9 +285,8 @@ function renderFormattedMessageContent(text: string) {
       continue;
     }
 
-    // 5. Handle blockquotes / callouts (> text)
+    // 6. Handle blockquotes / callouts (> text)
     if (trimmed.startsWith('>')) {
-      // Collect multi-line blockquote
       const quoteLines: string[] = [];
       while (i < lines.length && lines[i].trim().startsWith('>')) {
         quoteLines.push(lines[i].trim().replace(/^>\s*/, ''));
@@ -197,7 +302,7 @@ function renderFormattedMessageContent(text: string) {
       continue;
     }
 
-    // 6. Handle numbered list items (1. item, 2. item)
+    // 7. Handle numbered list items (1. item, 2. item)
     const numberedMatch = trimmed.match(/^(\d+)\.\s+(.+)/);
     if (numberedMatch) {
       const num = numberedMatch[1];
@@ -214,7 +319,7 @@ function renderFormattedMessageContent(text: string) {
       continue;
     }
 
-    // 7. Handle key: value pairs (like "Risk Score: 45%")
+    // 8. Handle key: value pairs (like "Risk Score: 45%")
     const kvMatch = trimmed.match(/^([A-Z][A-Za-z\s&]+):\s+(.+)/);
     if (kvMatch && !trimmed.startsWith('*') && !trimmed.startsWith('-') && kvMatch[1].length < 40) {
       const key = kvMatch[1].trim();
@@ -229,12 +334,11 @@ function renderFormattedMessageContent(text: string) {
       continue;
     }
 
-    // 8. Handle bullet points (- item or * item)
+    // 9. Handle bullet points (- item or * item)
     const isBullet = trimmed.startsWith('* ') || trimmed.startsWith('- ');
     const lineText = isBullet ? trimmed.slice(2) : trimmed;
 
     if (isBullet) {
-      // Check for sub-bullet key:value pattern  "- **Label:**  value"
       const bulletKV = lineText.match(/^\*\*([^*]+)\*\*\s*[:–-]\s*(.*)/);
       if (bulletKV) {
         elements.push(
@@ -264,36 +368,77 @@ function renderFormattedMessageContent(text: string) {
     i++;
   }
 
+  // If currently streaming, append glowing typing cursor at the end
+  if (isStreaming) {
+    elements.push(
+      <span
+        key="streaming-cursor"
+        className="inline-block w-2 h-4 ml-1.5 bg-indigo-400 animate-pulse rounded-sm align-middle shadow-md shadow-indigo-500/50"
+      />
+    );
+  }
+
   return elements;
 }
 
-export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
+export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpdated }) => {
   const [query, setQuery] = useState<string>(initialQuery || '');
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      sender: 'bot',
-      text: 'Hello! I am Cortex, your engineering knowledge intelligence assistant. Ask me about departure risk impact, knowledge loss scores, commit histories, tech stack expertise, or architectural decisions.',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached chat history:', e);
+    }
+    return [INITIAL_WELCOME_MESSAGE];
+  });
+
   const [loading, setLoading] = useState<boolean>(false);
-  const [loadingStep, setLoadingStep] = useState<string>('');
+  const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
+  const [currentSteps, setCurrentSteps] = useState<AgentStep[]>([]);
+  const [expandedReasoning, setExpandedReasoning] = useState<Record<string, boolean>>({});
   const [expandedDetails, setExpandedDetails] = useState<Record<string, 'risk' | 'chain' | 'sources' | 'graph' | null>>({});
+  const [copiedTranscript, setCopiedTranscript] = useState<boolean>(false);
 
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const lastMsgRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Auto-resize textarea height dynamically based on content (compact 44px up to 120px max)
+  // Sync with localStorage
+  useEffect(() => {
+    try {
+      const cleanMessages = messages.map(m => ({ ...m, isStreaming: false }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanMessages));
+    } catch (e) {
+      console.warn('Failed to store chat messages:', e);
+    }
+  }, [messages]);
+
+  // Dynamic textarea height resizing
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       const calculatedH = textareaRef.current.scrollHeight;
-      const targetH = Math.min(Math.max(calculatedH, 44), 120);
+      const targetH = Math.min(Math.max(calculatedH, 48), 160);
       textareaRef.current.style.height = `${targetH}px`;
+      textareaRef.current.style.overflowY = calculatedH > 160 ? 'auto' : 'hidden';
     }
   }, [query]);
+
+  // Smooth auto-scroll during streaming
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages, currentSteps, loading]);
 
   // Auto-send query if passed via initialQuery
   const autoQuerySent = useRef<boolean>(false);
@@ -320,23 +465,27 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
     if (!queryText) setQuery('');
     setLoading(true);
 
-    setLoadingStep('Evaluating dynamic tool selection plan...');
-    const stepTimer1 = setTimeout(() => setLoadingStep('Executing Multi-Tool Parallel Agent Graph...'), 1500);
-    const stepTimer2 = setTimeout(() => setLoadingStep('Computing Knowledge Risk & Gathering Subgraph Evidence...'), 3500);
-    const stepTimer3 = setTimeout(() => setLoadingStep('Synthesizing verified natural language response...'), 6000);
+    const initialStep: AgentStep = {
+      step: 'Evaluating dynamic tool selection & decomposed goal plan...',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      done: false,
+    };
+    setCurrentSteps([initialStep]);
 
     const botMsgId = `bot-${Date.now()}`;
+    setStreamingMsgId(botMsgId);
     let accumulatedText = '';
 
     try {
       await streamChatQuery(
         userMsg.text,
+        // onChunk: token-by-token streaming
         (chunkText) => {
           accumulatedText += chunkText;
           setMessages(prev => {
             const exists = prev.some(m => m.id === botMsgId);
             if (exists) {
-              return prev.map(m => m.id === botMsgId ? { ...m, text: accumulatedText } : m);
+              return prev.map(m => m.id === botMsgId ? { ...m, text: accumulatedText, isStreaming: true } : m);
             }
             return [
               ...prev,
@@ -344,12 +493,17 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                 id: botMsgId,
                 sender: 'bot',
                 text: accumulatedText,
+                isStreaming: true,
+                agentSteps: currentSteps,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               }
             ];
           });
         },
+        // onDone: stream finished with final telemetry payload
         (response) => {
+          if (onSyncUpdated) onSyncUpdated(new Date());
+
           setMessages(prev => {
             const exists = prev.some(m => m.id === botMsgId);
             const finalMsg: ChatMessage = {
@@ -357,6 +511,8 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
               sender: 'bot',
               text: response.answer || accumulatedText || 'No answer generated.',
               response,
+              isStreaming: false,
+              agentSteps: currentSteps.map(s => ({ ...s, done: true })),
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
             if (exists) {
@@ -364,32 +520,90 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
             }
             return [...prev, finalMsg];
           });
+          setStreamingMsgId(null);
+          setLoading(false);
         },
+        // onError: graceful failure handling with Retry
         (err) => {
           const errorMsg: ChatMessage = {
             id: `err-${Date.now()}`,
             sender: 'bot',
-            text: `Sorry, an error occurred while processing your request: ${err.message || 'Server error'}. Ensure backend is running on port 3000.`,
+            text: '',
+            error: {
+              message: err?.message || 'Intelligence agent execution encountered an unexpected error. Verify that the backend server is reachable on port 3000.',
+              retryQuery: userMsg.text,
+            },
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
-          setMessages(prev => [...prev, errorMsg]);
+          setMessages(prev => [...prev.filter(m => m.id !== botMsgId), errorMsg]);
+          setStreamingMsgId(null);
+          setLoading(false);
+        },
+        // onStatus: real-time LangGraph multi-step progress
+        (stepText) => {
+          setCurrentSteps(prev => {
+            const updated = prev.map(s => ({ ...s, done: true }));
+            return [
+              ...updated,
+              {
+                step: stepText,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                done: false,
+              }
+            ];
+          });
         }
       );
     } catch (err: any) {
       const errorMsg: ChatMessage = {
         id: `err-${Date.now()}`,
         sender: 'bot',
-        text: `Sorry, an error occurred while processing your request: ${err.message || 'Server error'}. Ensure backend is running on port 3000.`,
+        text: '',
+        error: {
+          message: err?.message || 'Intelligence agent execution encountered an unexpected error. Verify that the backend server is reachable on port 3000.',
+          retryQuery: userMsg.text,
+        },
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-      setMessages(prev => [...prev, errorMsg]);
-    } finally {
-      clearTimeout(stepTimer1);
-      clearTimeout(stepTimer2);
-      clearTimeout(stepTimer3);
+      setMessages(prev => [...prev.filter(m => m.id !== botMsgId), errorMsg]);
+      setStreamingMsgId(null);
       setLoading(false);
-      setLoadingStep('');
     }
+  };
+
+  const handleClearChat = () => {
+    setMessages([INITIAL_WELCOME_MESSAGE]);
+    localStorage.removeItem(STORAGE_KEY);
+    setCurrentSteps([]);
+    setExpandedDetails({});
+  };
+
+  const handleExportTranscript = () => {
+    const mdContent = messages.map(m => {
+      const role = m.sender === 'user' ? '### 👤 User' : '### 🤖 Cortex Assistant';
+      const body = m.error ? `**Error:** ${m.error.message}` : m.text;
+      return `${role} (${m.timestamp})\n\n${body}\n\n---\n`;
+    }).join('\n');
+
+    const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cortex-intelligence-transcript-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyTranscript = () => {
+    const textTranscript = messages.map(m => {
+      const role = m.sender === 'user' ? 'User' : 'Cortex Assistant';
+      const body = m.error ? `[Error: ${m.error.message}]` : m.text;
+      return `[${m.timestamp}] ${role}:\n${body}\n`;
+    }).join('\n---\n\n');
+
+    navigator.clipboard.writeText(textTranscript);
+    setCopiedTranscript(true);
+    setTimeout(() => setCopiedTranscript(false), 2000);
   };
 
   const toggleTab = (msgId: string, tab: 'risk' | 'chain' | 'sources' | 'graph') => {
@@ -399,12 +613,39 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
     }));
   };
 
-  // Guaranteed Fast-Path matched starter prompts (Sub-millisecond 100% accurate answers)
+  const toggleReasoning = (msgId: string) => {
+    setExpandedReasoning(prev => ({
+      ...prev,
+      [msgId]: !prev[msgId],
+    }));
+  };
+
+  // Enterprise starter prompts organized by knowledge pillar
   const starterPrompts = [
-    { title: '🚨 Key-Person Departure Impact', desc: 'What breaks if Vikram Patel leaves' },
-    { title: '📧 Role & Contact Info', desc: 'What is the email and role of Sarah Chen' },
-    { title: '🏗️ Codebase Ownership', desc: 'Which repos does Vikram Patel work in' },
-    { title: '📊 Repository Risk Evaluation', desc: 'Which repository has higher risk' },
+    {
+      category: '🚨 Departure & Key-Person Risk',
+      title: 'Departure Simulation: Vikram Patel',
+      desc: 'What breaks if Vikram Patel leaves',
+      badge: 'High Impact',
+    },
+    {
+      category: '🛡️ Bus Factor & SPOFs',
+      title: 'Identify Single Points of Failure',
+      desc: 'Which repository has higher risk',
+      badge: 'Audit',
+    },
+    {
+      category: '🏗️ Architecture & Ownership',
+      title: 'Codebase Ownership & Stack',
+      desc: 'Which repos does Vikram Patel work in',
+      badge: 'Ownership',
+    },
+    {
+      category: '👥 People & Team Verification',
+      title: 'Maintainer Profile & Verified Role',
+      desc: 'What is the email and role of Sarah Chen',
+      badge: 'Identity',
+    },
   ];
 
   const getToolBadgeColor = (tool: string) => {
@@ -434,26 +675,56 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
 
   return (
     <div className="relative flex flex-col h-[calc(100vh-65px)] bg-[#060a12] font-sans antialiased text-slate-100">
-      {/* Absolute Fixed Clear Chat Button at Top Right */}
-      <button
-        onClick={() => setMessages([messages[0]])}
-        className="absolute top-3.5 right-6 z-30 text-xs text-slate-400 hover:text-white bg-[#090f1d]/90 hover:bg-slate-800 border border-slate-800/80 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all shadow-lg backdrop-blur-md"
-      >
-        <RefreshCw className="h-3.5 w-3.5" />
-        <span>Clear Chat</span>
-      </button>
+      {/* Top Action Utility Bar */}
+      <div className="absolute top-3.5 right-6 z-30 flex items-center space-x-2">
+        <button
+          onClick={handleExportTranscript}
+          className="text-xs text-slate-400 hover:text-white bg-[#090f1d]/90 hover:bg-slate-800 border border-slate-800/80 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all shadow-md backdrop-blur-md cursor-pointer"
+          title="Download full chat session transcript as Markdown"
+        >
+          <Download className="h-3.5 w-3.5 text-indigo-400" />
+          <span className="hidden sm:inline">Export .md</span>
+        </button>
 
-      {/* Main Full-Height Messages Feed */}
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 md:p-10 pt-12 space-y-6">
+        <button
+          onClick={handleCopyTranscript}
+          className="text-xs text-slate-400 hover:text-white bg-[#090f1d]/90 hover:bg-slate-800 border border-slate-800/80 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all shadow-md backdrop-blur-md cursor-pointer"
+          title="Copy session transcript to clipboard"
+        >
+          {copiedTranscript ? (
+            <>
+              <Check className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="text-emerald-400 font-medium">Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Copy Text</span>
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={handleClearChat}
+          className="text-xs text-slate-400 hover:text-rose-300 bg-[#090f1d]/90 hover:bg-rose-950/40 border border-slate-800/80 hover:border-rose-500/40 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all shadow-md backdrop-blur-md cursor-pointer"
+          title="Clear all messages in this conversation"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          <span>Clear</span>
+        </button>
+      </div>
+
+      {/* Main Messages Feed */}
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-8 md:p-10 pt-12 space-y-6">
         {messages.map((msg, index) => {
           const isUser = msg.sender === 'user';
           const isLastMsg = index === messages.length - 1;
           const res = msg.response;
           const krRaw = res?.knowledgeRiskResult;
           const krList = Array.isArray(krRaw) ? krRaw : (krRaw ? [krRaw] : []);
-
-          // Evidence panel is CLOSED BY DEFAULT (null) until user explicitly clicks a tab
           const activeTab = expandedDetails[msg.id] || null;
+          const reasoningOpen = expandedReasoning[msg.id] !== undefined ? expandedReasoning[msg.id] : (msg.isStreaming || false);
+          const hasReasoningSteps = (msg.agentSteps && msg.agentSteps.length > 0);
 
           return (
             <div
@@ -461,7 +732,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
               ref={isLastMsg ? lastMsgRef : null}
               className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-4xl ${isUser ? 'ml-auto' : 'mr-auto'} w-full scroll-mt-6`}
             >
-              {/* Message Sender Tag */}
+              {/* Message Header Tag */}
               <div className="flex items-center space-x-2 text-xs text-slate-400 mb-1.5 px-1">
                 {isUser ? (
                   <>
@@ -476,41 +747,179 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                       <Bot className="h-3 w-3" />
                     </div>
                     <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">
-                      Cortex Assistant
+                      Cortex Intelligence Agent
                     </span>
+                    {msg.isStreaming && (
+                      <span className="flex items-center space-x-1.5 text-[10px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/30 animate-pulse">
+                        <RefreshCw className="h-2.5 w-2.5 animate-spin text-indigo-400" />
+                        <span>streaming answer</span>
+                      </span>
+                    )}
                   </>
                 )}
                 <span className="text-[10px] text-slate-500">• {msg.timestamp}</span>
               </div>
 
-              {/* Message Bubble */}
-              <div
-                className={`p-5 rounded-2xl text-sm leading-relaxed ${isUser
-                    ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-tr-none shadow-lg shadow-indigo-600/20 border border-indigo-400/20'
-                    : 'bg-[#0b1120] border border-slate-800 text-slate-100 rounded-tl-none shadow-xl backdrop-blur-md'
-                  }`}
-              >
-                <div className="space-y-2">
-                  {renderFormattedMessageContent(msg.text)}
+              {/* Collapsible Agent Reasoning Steps (Bot Messages) */}
+              {!isUser && hasReasoningSteps && (
+                <div className="mb-2 w-full max-w-2xl">
+                  <button
+                    onClick={() => toggleReasoning(msg.id)}
+                    className="flex items-center space-x-2 text-xs text-indigo-400 hover:text-indigo-300 bg-[#090f1d] hover:bg-slate-900 border border-indigo-500/20 px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm"
+                  >
+                    <Terminal className="h-3.5 w-3.5" />
+                    <span>Agent Reasoning Trace ({msg.agentSteps?.length} steps)</span>
+                    {msg.isStreaming && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />}
+                    {reasoningOpen ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
+                  </button>
+
+                  {reasoningOpen && (
+                    <div className="mt-2 p-3.5 bg-[#090f1d] border border-indigo-500/20 rounded-xl space-y-2 text-xs animate-in fade-in duration-200">
+                      {msg.agentSteps?.map((step, sIdx) => (
+                        <div key={sIdx} className="flex items-center space-x-2.5 text-slate-300">
+                          {step.done ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          ) : (
+                            <RefreshCw className="h-3.5 w-3.5 text-indigo-400 animate-spin shrink-0" />
+                          )}
+                          <span className={`font-mono text-xs ${step.done ? 'text-slate-300' : 'text-indigo-200 font-semibold'}`}>
+                            {step.step}
+                          </span>
+                          <span className="text-[10px] text-slate-500 ml-auto font-mono">{step.timestamp}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Message Bubble or Error Card */}
+              {msg.error ? (
+                <div className="w-full bg-[#18090f] border border-rose-500/40 rounded-2xl p-5 shadow-2xl space-y-4 animate-in fade-in duration-300">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                        <AlertTriangle className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-white">Agent Execution Error</h4>
+                        <p className="text-xs text-rose-300/90 mt-0.5">{msg.error.message}</p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase">
+                      Failed
+                    </span>
+                  </div>
+
+                  {msg.error.retryQuery && (
+                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-rose-500/20">
+                      <button
+                        onClick={() => handleSend(msg.error!.retryQuery!)}
+                        className="px-3.5 py-1.5 rounded-lg bg-rose-500/25 hover:bg-rose-500/35 border border-rose-500/40 text-xs font-semibold text-rose-100 flex items-center space-x-1.5 transition-all shadow-sm cursor-pointer"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        <span>Retry Question</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setQuery(msg.error!.retryQuery!);
+                          textareaRef.current?.focus();
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-300 flex items-center space-x-1.5 transition-all cursor-pointer"
+                      >
+                        <CornerDownLeft className="h-3.5 w-3.5" />
+                        <span>Edit in Input</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div
+                  className={`p-5 rounded-2xl text-sm leading-relaxed ${isUser
+                      ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-tr-none shadow-lg shadow-indigo-600/20 border border-indigo-400/20'
+                      : 'bg-[#0b1120] border border-slate-800 text-slate-100 rounded-tl-none shadow-xl backdrop-blur-md'
+                    }`}
+                >
+                  <div className="space-y-2">
+                    {msg.text && msg.text.trim() ? (
+                      renderFormattedMessageContent(msg.text, msg.isStreaming)
+                    ) : (
+                      <div className="flex items-center space-x-3 text-indigo-300 text-xs py-1">
+                        <RefreshCw className="h-4 w-4 text-indigo-400 animate-spin" />
+                        <span>Synthesizing verified response from graph evidence...</span>
+                        <span className="flex space-x-1.5 ml-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Grounded Source Citations Pill Bar (Bot Messages with grounded sources) */}
+              {!isUser && res && ((res.sources && res.sources.length > 0) || (res.structuredEvidence && res.structuredEvidence.length > 0)) && (
+                <div className="mt-3 w-full bg-[#080d1a] border border-slate-800/80 rounded-xl p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-xs font-semibold text-slate-300">
+                      <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                      <span>Grounded Knowledge Sources & Evidence</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {res.sources?.length || res.structuredEvidence?.length || 0} Grounded Artifacts
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {res.sources?.slice(0, 4).map((src: any, sIdx: number) => {
+                      const provider = src.provider?.toLowerCase() || 'github';
+                      return (
+                        <div
+                          key={sIdx}
+                          onClick={() => toggleTab(msg.id, 'sources')}
+                          className="flex items-center space-x-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/40 px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer group"
+                        >
+                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${
+                            provider === 'github' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                            : provider === 'slack' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                            : 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                          }`}>
+                            {provider}
+                          </span>
+                          <span className="text-slate-300 group-hover:text-white font-mono text-[11px] truncate max-w-[200px]">
+                            {src.eventId || src.repository || src.channel ? `#${src.channel || src.repository || src.eventId}` : (src.summary || 'Citation')}
+                          </span>
+                          <ExternalLink className="h-3 w-3 text-slate-500 group-hover:text-indigo-400" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Welcome State Cards (Shown ONLY when chat just started) */}
               {!isUser && msg.id === 'welcome' && messages.length === 1 && (
-                <div className="mt-6 w-full max-w-3xl space-y-3 animate-in fade-in duration-500">
+                <div className="mt-6 w-full max-w-3xl space-y-4 animate-in fade-in duration-500">
                   <div className="flex items-center space-x-2 text-xs text-slate-400 font-semibold uppercase tracking-wider">
                     <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-                    <span>Try these sample queries to explore:</span>
+                    <span>Suggested Starter Intelligence Prompts:</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {starterPrompts.map((p, pIdx) => (
                       <button
                         key={pIdx}
                         onClick={() => handleSend(p.desc)}
-                        className="p-4 bg-[#090f1d] hover:bg-[#0e172c] border border-slate-800/80 hover:border-indigo-500/40 rounded-xl text-left transition-all duration-200 group flex items-start justify-between shadow-sm"
+                        className="p-4 bg-[#090f1d] hover:bg-[#0e172c] border border-slate-800/80 hover:border-indigo-500/40 rounded-xl text-left transition-all duration-200 group flex items-start justify-between shadow-sm cursor-pointer"
                       >
-                        <div className="space-y-1">
-                          <span className="text-xs font-bold text-slate-200 group-hover:text-indigo-300 block">{p.title}</span>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-bold text-slate-200 group-hover:text-indigo-300 block">{p.title}</span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                              {p.badge}
+                            </span>
+                          </div>
                           <span className="text-xs text-slate-400 block font-mono">"{p.desc}"</span>
                         </div>
                         <ArrowUpRight className="h-4 w-4 text-slate-500 group-hover:text-indigo-400 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shrink-0 ml-2" />
@@ -529,7 +938,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                       {krList.length > 0 && (
                         <button
                           onClick={() => toggleTab(msg.id, 'risk')}
-                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${activeTab === 'risk'
+                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all cursor-pointer ${activeTab === 'risk'
                               ? 'border-rose-500 text-rose-400 bg-rose-500/10'
                               : 'border-transparent text-slate-400 hover:text-slate-200'
                             }`}
@@ -544,7 +953,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
 
                       <button
                         onClick={() => toggleTab(msg.id, 'chain')}
-                        className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${activeTab === 'chain'
+                        className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all cursor-pointer ${activeTab === 'chain'
                             ? 'border-indigo-500 text-indigo-300 bg-indigo-500/10'
                             : 'border-transparent text-slate-400 hover:text-slate-200'
                           }`}
@@ -559,7 +968,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                       {res.sources && res.sources.length > 0 && (
                         <button
                           onClick={() => toggleTab(msg.id, 'sources')}
-                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${activeTab === 'sources'
+                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all cursor-pointer ${activeTab === 'sources'
                               ? 'border-purple-500 text-purple-300 bg-purple-500/10'
                               : 'border-transparent text-slate-400 hover:text-slate-200'
                             }`}
@@ -575,7 +984,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                       {res.graphContext && res.graphContext.length > 0 && (
                         <button
                           onClick={() => toggleTab(msg.id, 'graph')}
-                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all ${activeTab === 'graph'
+                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all cursor-pointer ${activeTab === 'graph'
                               ? 'border-emerald-500 text-emerald-300 bg-emerald-500/10'
                               : 'border-transparent text-slate-400 hover:text-slate-200'
                             }`}
@@ -587,12 +996,12 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                     </div>
 
                     <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 font-mono px-3 shrink-0">
-                      <span className="hidden sm:inline">{activeTab ? 'Click to collapse' : 'Click to view evidence'}</span>
+                      <span className="hidden sm:inline">{activeTab ? 'Click to collapse' : 'Click to inspect telemetry'}</span>
                       {activeTab ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-indigo-400" />}
                     </div>
                   </div>
 
-                  {/* Tab Body Contents (ONLY rendered when activeTab is open) */}
+                  {/* Tab Body Contents */}
                   {activeTab && (
                     <div className="p-6 border-t border-slate-800/60 animate-in fade-in duration-200">
                       {/* TAB 1: Animated Knowledge Loss Risk Gauges & Breakdown */}
@@ -606,7 +1015,6 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                             const totalPct = Math.round((kr.totalRisk ?? 0) * 100);
                             const severity = getSeverityBadge(totalPct);
 
-                            // Circular SVG Gauge math
                             const radius = 42;
                             const circumference = 2 * Math.PI * radius;
                             const strokeDashoffset = circumference - (totalPct / 100) * circumference;
@@ -616,7 +1024,6 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                                 key={krIdx}
                                 className="bg-[#0b1222] border border-slate-800/80 rounded-xl p-6 space-y-6 shadow-xl"
                               >
-                                {/* Top Profile & Circular Gauge Header */}
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-slate-800/80">
                                   <div className="flex items-center space-x-4">
                                     <div className="relative">
@@ -678,7 +1085,6 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                                   </div>
                                 </div>
 
-                                {/* 6 Weighted Risk Factor Progress Bars */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   {[
                                     { label: 'Ownership Concentration', val: Math.round((b.ownership ?? 0) * 10), weight: '30%', icon: GitCommit, desc: `${details.ownedItems ?? 0} codebase commits/files owned` },
@@ -708,7 +1114,6 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                                   ))}
                                 </div>
 
-                                {/* Concrete Work & Single Contributor Items */}
                                 {evidence.expertise && evidence.expertise.length > 0 && (
                                   <div className="pt-3 space-y-3">
                                     <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
@@ -760,7 +1165,6 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                             </span>
                           </div>
 
-                          {/* Interactive Execution Flow Sequence */}
                           <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-800">
                             {/* Step 1: Query Input */}
                             <div className="relative flex items-start space-x-4">
@@ -789,7 +1193,10 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                                         {tool}
                                       </span>
                                     </div>
-                                    <span className="text-[10px] text-slate-500 font-mono">Status: SUCCESS (200)</span>
+                                    <span className="text-[10px] text-emerald-400 font-mono flex items-center space-x-1">
+                                      <Check className="h-3 w-3" />
+                                      <span>COMPLETED</span>
+                                    </span>
                                   </div>
 
                                   {tool === 'graph_search' && (
@@ -816,7 +1223,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                               </div>
                               <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-xs w-full">
                                 <span className="font-bold text-slate-400 uppercase text-[10px] block">Final Step: Answer Synthesized</span>
-                                <span className="text-slate-300">Evidence assembled and passed to reasoning LLM for natural language response.</span>
+                                <span className="text-slate-300">Grounded evidence consolidated from graph and vector collections and synthesized into enterprise report.</span>
                               </div>
                             </div>
                           </div>
@@ -848,6 +1255,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
                                   <div className="flex items-center space-x-2 text-[10px] text-slate-500 font-mono pt-1">
                                     <span>Event ID: {src.eventId}</span>
                                     {src.channel && <span>• Channel: #{src.channel}</span>}
+                                    {src.repository && <span>• Repo: {src.repository}</span>}
                                   </div>
                                 )}
                               </div>
@@ -878,69 +1286,120 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery }) => {
           );
         })}
 
-        {/* Active Agent Loading Animation State */}
-        {loading && (
-          <div className="flex flex-col items-start max-w-2xl mr-auto space-y-3 animate-in fade-in duration-300">
-            <div className="flex items-center space-x-2 text-xs text-indigo-400 font-semibold">
-              <div className="p-1 rounded-full bg-indigo-500/20 border border-indigo-500/40">
+        {/* Loading / Agent Active Progress Indicator (shown whenever waiting for first tokens) */}
+        {loading && (!streamingMsgId || !messages.some(m => m.id === streamingMsgId && m.text && m.text.trim().length > 0)) && (
+          <div className="flex flex-col items-start max-w-2xl mr-auto space-y-3 animate-in fade-in duration-300 w-full">
+            <div className="flex items-center space-x-2 text-xs text-indigo-400 font-semibold px-1">
+              <div className="p-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
                 <Bot className="h-4 w-4 animate-bounce" />
               </div>
-              <span>Cortex Multi-Tool Agent Execution Active</span>
+              <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">
+                Cortex Intelligence Agent
+              </span>
+              <span className="flex items-center space-x-1.5 text-[11px] text-indigo-400 font-mono bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/30">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                </span>
+                <span>Reasoning across knowledge graph...</span>
+              </span>
             </div>
 
-            <div className="bg-[#0b1120] p-4 rounded-2xl rounded-tl-none flex items-center space-x-3 text-xs text-slate-300 border border-indigo-500/30 shadow-xl">
-              <RefreshCw className="h-4 w-4 text-indigo-400 animate-spin" />
-              <span className="font-medium text-slate-200">{loadingStep || 'Processing multi-tool agent graph...'}</span>
+            <div className="bg-[#0b1120] p-5 rounded-2xl rounded-tl-none space-y-3.5 text-xs text-slate-300 border border-indigo-500/30 shadow-2xl backdrop-blur-md w-full">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+                <div className="flex items-center space-x-2 text-xs font-semibold text-indigo-300">
+                  <Sparkles className="h-4 w-4 text-indigo-400 animate-spin" style={{ animationDuration: '4s' }} />
+                  <span>Multi-Agent LangGraph Pipeline Active</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {currentSteps.map((step, sIdx) => (
+                  <div key={sIdx} className="flex items-center space-x-2.5">
+                    {step.done ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 text-indigo-400 animate-spin shrink-0" />
+                    )}
+                    <span className={`font-mono ${step.done ? 'text-slate-400' : 'text-indigo-200 font-semibold'}`}>
+                      {step.step}
+                    </span>
+                    <span className="text-[10px] text-slate-500 ml-auto font-mono">{step.timestamp}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 space-y-2 border-t border-slate-800/60">
+                <div className="h-3 bg-gradient-to-r from-indigo-500/20 via-purple-500/10 to-indigo-500/20 rounded-full animate-pulse w-3/4" />
+                <div className="h-3 bg-gradient-to-r from-indigo-500/15 via-purple-500/10 to-indigo-500/15 rounded-full animate-pulse w-5/6" style={{ animationDelay: '200ms' }} />
+                <div className="h-3 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 rounded-full animate-pulse w-1/2" style={{ animationDelay: '400ms' }} />
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Docked Clean Input Bar */}
+      {/* Docked Multi-Line Input Bar */}
       <div className="p-4 bg-[#060a12] border-t border-slate-800/80 shadow-2xl">
         <form
           onSubmit={e => {
             e.preventDefault();
             handleSend();
           }}
-          className="max-w-4xl mx-auto flex items-end space-x-3"
+          className="max-w-4xl mx-auto flex flex-col space-y-2"
         >
-          <div className="relative flex-1">
-            <textarea
-              ref={textareaRef}
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="Ask anything (e.g. 'what breaks if Vikram Patel leaves', 'what is Sarah Chen\'s email and knowledge risk')..."
-              disabled={loading}
-              rows={1}
-              style={{ height: '44px', maxHeight: '120px' }}
-              className="w-full bg-[#0b1120] border border-slate-800/90 focus:border-indigo-500/80 rounded-xl pl-4 pr-14 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner resize-none overflow-y-auto leading-relaxed scrollbar-thin scrollbar-thumb-slate-800"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 text-xs font-medium bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+          <div className="flex items-end space-x-3">
+            <div className="relative flex-1">
+              <textarea
+                ref={textareaRef}
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder="Write a message..."
+                disabled={loading}
+                rows={1}
+                style={{ height: '48px', minHeight: '48px', maxHeight: '160px' }}
+                className={`w-full bg-[#0b1120] border border-slate-800/90 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/50 rounded-xl pl-4 ${query ? 'pr-16' : 'pr-4'} py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner resize-none leading-relaxed overflow-hidden scrollbar-thin scrollbar-thumb-slate-800`}
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="absolute right-3 top-3 text-slate-500 hover:text-slate-300 text-xs font-medium bg-slate-900/80 hover:bg-slate-800 px-2 py-0.5 rounded border border-slate-800 transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
 
-          <button
-            type="submit"
-            disabled={!query.trim() || loading}
-            className="px-6 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/25 disabled:opacity-50 transition-all flex items-center space-x-2 shrink-0 h-[44px]"
-          >
-            <Send className="h-4 w-4" />
-            <span>Send Query</span>
-          </button>
+            <button
+              type="submit"
+              disabled={!query.trim() || loading}
+              className="px-6 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/25 disabled:opacity-50 transition-all flex items-center space-x-2 shrink-0 h-[48px] cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin text-indigo-200" />
+                  <span>Reasoning...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  <span>Send</span>
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>

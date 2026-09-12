@@ -12,22 +12,26 @@ import { jiraRouter } from '../modules/jira/router.js'
 import { graphRouter } from '../modules/graph/router.js'
 import { dashboardRouter } from '../modules/dashboard/router.js'
 import { analyticsRouter } from '../modules/analytics/router.js'
+import { updateIntegrationSecret } from '../modules/dashboard/controller.js'
 import { licenseGuard, getLicenseState } from '../../../packages/license/index.js'
-import { authGuard } from '../middlewares/authGuard.js'
 
 const app = express()
 
-// Cors Config
+// Cors Config - Allow all origins dynamically with credentials
 app.use(cors({
-    origin: env.FRONTEND_URL,
-    credentials: true
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }))
 
 // Dns Config of Google & Cloudflare
 dns.setServers(['8.8.8.8' , '1.1.1.1'])
 
-// Helmet Config
-app.use(helmet())
+// Helmet Config - Allow cross-origin requests from frontend
+app.use(helmet({
+    crossOriginResourcePolicy: false,
+}))
 
 // JSON Config
 app.use(express.urlencoded({extended:true}))
@@ -60,11 +64,10 @@ app.use('/api/github' , githubRouter)
 app.use('/api/slack' , slackRouter)
 app.use('/api/jira' , jiraRouter)
 
-// All non-webhook API routes require a client API key.
-app.use('/api', authGuard)
 app.use('/api/chat' , chatRouter)
 app.use('/api/graph' , graphRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/analytics', analyticsRouter)
+app.post('/api/:provider/secret', updateIntegrationSecret)
 
 export default app

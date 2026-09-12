@@ -8,6 +8,8 @@ import {
     getFindings,
     simulateDeparture,
     getRepoDetails,
+    getIntegrationsStatus,
+    updateIntegrationSecret,
 } from "./controller.js";
 
 export const dashboardRouter = Router()
@@ -20,3 +22,5 @@ dashboardRouter.get("/technologies", getTechnologiesPage);
 dashboardRouter.get("/timeline", getTimeline);
 dashboardRouter.get("/findings", getFindings);
 dashboardRouter.get("/people/:externalId/simulate-departure", simulateDeparture);
+dashboardRouter.get("/integrations/status", getIntegrationsStatus);
+dashboardRouter.post("/:provider/secret", updateIntegrationSecret);

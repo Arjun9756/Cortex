@@ -26,6 +26,7 @@ import {
   TrendingUp,
   TrendingDown,
   BarChart3,
+  Database,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -194,16 +195,53 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   const riskAlerts = data.riskAlerts || [];
   const activityTrend = data.activityTrend || [];
 
+  // Honest Cold-Start Empty State when no repositories or team members are indexed yet
+  if (reposList.length === 0 && peopleList.length === 0 && techList.length === 0) {
+    return (
+      <div className="p-8 space-y-6 bg-[#090d16] min-h-screen">
+        <div className="glass-card p-16 text-center space-y-4 max-w-2xl mx-auto my-12 border-slate-800">
+          <div className="h-16 w-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400">
+            <Database className="h-8 w-8" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold text-white tracking-tight">No Workspace Data Ingested Yet</h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+              Cortex has not indexed any repositories, commits, or contributors in this workspace. Connect GitHub, Slack, or Jira webhooks to begin indexing your codebase and computing live Bus Factor and Knowledge Risk scores.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => fetchOverview(false)}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white rounded-xl flex items-center space-x-2 transition-all cursor-pointer"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Check for New Events</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Dynamic calculation without fabricated fallbacks
+  const avgBusFactor = reposList.length > 0 ? (reposList.reduce((a, r) => a + Number(r.bus_factor ?? 1), 0) / reposList.length) : 0;
+  const avgKnowledgeRisk = peopleList.length > 0 ? Math.round(peopleList.reduce((a, p) => a + Number(p.risk_score ?? 0), 0) / peopleList.length) : 0;
+  const spofRepoCount = reposList.filter((r) => Number(r.bus_factor) <= 1).length;
+  const spofPct = reposList.length > 0 ? (spofRepoCount / reposList.length) * 100 : 0;
+  const busFactorPenalty = Math.max(0, 100 - avgBusFactor * 25);
+  const compositeRisk = Math.round(0.35 * avgKnowledgeRisk + 0.35 * spofPct + 0.30 * busFactorPenalty);
+  const calculatedHealthScore = Math.max(0, Math.min(100, 100 - compositeRisk));
+
   const health = data.healthScore || {
-    score: 80,
-    grade: 'B',
-    statusText: 'Operational Health',
-    statusColor: 'emerald',
-    explanation: 'Based on ownership concentration across repositories.',
+    score: calculatedHealthScore,
+    grade: calculatedHealthScore >= 85 ? 'A' : calculatedHealthScore >= 70 ? 'B' : calculatedHealthScore >= 50 ? 'C' : 'D',
+    statusText: calculatedHealthScore >= 85 ? 'Optimal Health' : calculatedHealthScore >= 70 ? 'Moderate Operational Health' : calculatedHealthScore >= 50 ? 'Elevated Risk Concentration' : 'Critical Action Required',
+    statusColor: calculatedHealthScore >= 85 ? 'emerald' : calculatedHealthScore >= 70 ? 'indigo' : calculatedHealthScore >= 50 ? 'amber' : 'rose',
+    explanation: `Calculated from ${reposList.length} repositories and ${peopleList.length} contributors.`,
     breakdown: {
-      avgBusFactor: reposList.length > 0 ? (reposList.reduce((a, r) => a + Number(r.bus_factor ?? 1), 0) / reposList.length) : 1,
-      avgKnowledgeRisk: peopleList.length > 0 ? Math.round(peopleList.reduce((a, p) => a + Number(p.risk_score ?? 0), 0) / peopleList.length) : 0,
-      spofRepoCount: reposList.filter((r) => Number(r.bus_factor) <= 1).length,
+      avgBusFactor,
+      avgKnowledgeRisk,
+      spofRepoCount,
       totalRepos: reposList.length,
     },
   };
@@ -354,7 +392,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
         <StatCard
           title="Technologies"
           value={stats.techCount}
-          subtext={`${data.technologies?.filter((t) => (t.contributor_count ?? 1) === 1).length || 0} single-expert stack`}
+          subtext={`${data.technologies?.filter((t) => (t.contributor_count ?? 0) === 1).length || 0} single-expert stack`}
           icon={<Cpu className="h-5 w-5" />}
           accentColor="purple"
           onClick={() => onNavigate('technologies')}
@@ -402,49 +440,63 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           </div>
         ) : (
           <div className="space-y-3">
-            {riskAlerts.map((alert) => (
-              <div
-                key={alert.id}
-                className="p-4 rounded-xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group"
-              >
-                <div className="flex items-start space-x-3.5">
-                  <span
-                    className={`mt-0.5 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider shrink-0 border ${
-                      alert.severity === 'critical'
-                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                        : alert.severity === 'warning'
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                        : 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+            {riskAlerts.map((alert) => {
+              const isCritical = alert.severity === 'critical';
+              const isWarning = alert.severity === 'warning';
+              return (
+                <div
+                  key={alert.id}
+                  className={`p-4 rounded-xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group ${
+                    isCritical
+                      ? 'bg-gradient-to-r from-rose-950/30 via-slate-900/90 to-slate-900 border-rose-500/30 hover:border-rose-500/60 border-l-4 border-l-rose-500 shadow-md shadow-rose-950/20'
+                      : isWarning
+                      ? 'bg-gradient-to-r from-amber-950/20 via-slate-900/90 to-slate-900 border-amber-500/30 hover:border-amber-500/50 border-l-4 border-l-amber-500'
+                      : 'bg-slate-900/80 hover:bg-slate-900 border-slate-800 hover:border-slate-700 border-l-4 border-l-sky-500'
+                  }`}
+                >
+                  <div className="flex items-start space-x-3.5">
+                    <span
+                      className={`mt-0.5 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider shrink-0 border ${
+                        isCritical
+                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                          : isWarning
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          : 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                      }`}
+                    >
+                      {alert.severity}
+                    </span>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2 flex-wrap">
+                        <EvidenceChip
+                          label={alert.entityName}
+                          type={alert.entityType}
+                          severity={alert.severity}
+                          category={alert.category}
+                          onClick={() => handleAlertClick(alert)}
+                        />
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed font-mono">
+                        {alert.whyItMatters}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleAlertClick(alert)}
+                    className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center space-x-1.5 shrink-0 self-end md:self-center cursor-pointer ${
+                      isCritical
+                        ? 'bg-rose-500/20 hover:bg-rose-600 text-rose-200 hover:text-white border border-rose-500/40'
+                        : 'bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white'
                     }`}
                   >
-                    {alert.severity}
-                  </span>
-
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2 flex-wrap">
-                      <EvidenceChip
-                        label={alert.entityName}
-                        type={alert.entityType}
-                        severity={alert.severity}
-                        category={alert.category}
-                        onClick={() => handleAlertClick(alert)}
-                      />
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed font-mono">
-                      {alert.whyItMatters}
-                    </p>
-                  </div>
+                    <span>View details</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => handleAlertClick(alert)}
-                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white text-xs font-medium rounded-lg transition-all flex items-center space-x-1.5 shrink-0 self-end md:self-center cursor-pointer"
-                >
-                  <span>View details</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

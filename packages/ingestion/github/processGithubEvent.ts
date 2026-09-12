@@ -35,8 +35,26 @@ export async function processGithubEvent(eventID: string) {
             role: null, // GitHub does not expose role via webhooks
         }]
 
-        //6. Save Onto Graph Database (with enriched PERSON metadata)
-        await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata)
+        // Build entity metadata (issue / PR status)
+        const entityMetadata: Array<{ name: string; properties: Record<string, any> }> = []
+        if (normalizedPayload.eventType === 'issues' && normalizedPayload.title) {
+            entityMetadata.push({
+                name: normalizedPayload.title,
+                properties: {
+                    status: normalizedPayload.action === 'closed' ? 'closed' : 'open'
+                }
+            })
+        } else if (normalizedPayload.eventType === 'pull_request' && normalizedPayload.title) {
+            entityMetadata.push({
+                name: normalizedPayload.title,
+                properties: {
+                    status: normalizedPayload.merged ? 'merged' : (normalizedPayload.action === 'closed' ? 'closed' : 'open')
+                }
+            })
+        }
+
+        // 6. Save Onto Graph Database (with enriched PERSON and ENTITY metadata)
+        await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata, entityMetadata)
 
         // 7.Process The Summary To Create Vector Embeddings For Semantic Search
         const effectiveSummary = summary && summary.trim().length > 0 

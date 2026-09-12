@@ -67,19 +67,53 @@ export function App() {
           />
         );
       case 'chat':
-        return <AIChatPage />;
+        return (
+          <AIChatPage 
+            onSyncUpdated={(date) => setLastSyncedAt(date)}
+          />
+        );
       case 'graph':
-        return <KnowledgeGraphPage key={refreshKey} />;
+        return (
+          <KnowledgeGraphPage 
+            key={refreshKey} 
+            onSyncUpdated={(date) => setLastSyncedAt(date)}
+          />
+        );
       case 'people':
-        return <PeoplePage key={refreshKey} />;
+        return (
+          <PeoplePage 
+            key={refreshKey} 
+            onSyncUpdated={(date) => setLastSyncedAt(date)}
+          />
+        );
       case 'bus-factor':
-        return <BusFactorPage key={refreshKey} />;
+        return (
+          <BusFactorPage 
+            key={refreshKey} 
+            onSyncUpdated={(date) => setLastSyncedAt(date)}
+          />
+        );
       case 'technologies':
-        return <TechnologiesPage key={refreshKey} />;
+        return (
+          <TechnologiesPage 
+            key={refreshKey} 
+            onSyncUpdated={(date) => setLastSyncedAt(date)}
+          />
+        );
       case 'timeline':
-        return <TimelinePage key={refreshKey} />;
+        return (
+          <TimelinePage 
+            key={refreshKey} 
+            onSyncUpdated={(date) => setLastSyncedAt(date)}
+          />
+        );
       case 'analytics':
-        return <AnalyticsPage key={refreshKey} />;
+        return (
+          <AnalyticsPage 
+            key={refreshKey} 
+            onSyncUpdated={(date) => setLastSyncedAt(date)}
+          />
+        );
       default:
         return (
           <DashboardOverviewPage 

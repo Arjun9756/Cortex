@@ -7,6 +7,11 @@ export interface PersonMetadata {
     role?: string | null
 }
 
+export interface EntityMetadata {
+    name: string
+    properties: Record<string, any>
+}
+
 /**
  * Saves LLM-extracted entities + relationships to the Neo4j graph.
  *
@@ -17,13 +22,15 @@ export interface PersonMetadata {
  * @param personMetadata  Optional list of { name, email, role } for PERSON nodes.
  *                        Built from normalized webhook payload's author fields.
  *                        Only non-null values are written — never overwrites good data with null.
+ * @param entityMetadata  Optional list of { name, properties } for non-PERSON entities (e.g. ISSUE/PR status).
  */
 export async function saveExtractionToGraph(
     entities:{name:string , type:string}[],
     newEntities:{name:string , suggestedType:string}[],
     relation:{from:string , to:string , type:string , evidence:string}[],
     newRelations:{from:string , to:string , suggestedType:string , evidence?:string}[],
-    personMetadata?: PersonMetadata[]
+    personMetadata?: PersonMetadata[],
+    entityMetadata?: EntityMetadata[]
 ) {
     // Build extraPropertiesMap from personMetadata — only include non-null values
     const extraPropertiesMap: Record<string, Record<string, any>> = {}
@@ -34,6 +41,17 @@ export async function saveExtractionToGraph(
             if (person.role != null) extras.role = person.role
             if (Object.keys(extras).length > 0) {
                 extraPropertiesMap[person.name] = extras
+            }
+        }
+    }
+
+    if (entityMetadata) {
+        for (const em of entityMetadata) {
+            if (em.name && em.properties) {
+                extraPropertiesMap[em.name] = {
+                    ...(extraPropertiesMap[em.name] || {}),
+                    ...em.properties
+                }
             }
         }
     }

@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { getTimeline, type TimelineEvent } from '../lib/api';
 import { History, GitCommit, MessageSquare, AlertCircle, Rocket, AlertTriangle, RefreshCw, Clock } from 'lucide-react';
 
-export const TimelinePage: React.FC = () => {
+interface TimelinePageProps {
+  onSyncUpdated?: (date: Date) => void;
+}
+
+export const TimelinePage: React.FC<TimelinePageProps> = ({ onSyncUpdated }) => {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -13,6 +17,9 @@ export const TimelinePage: React.FC = () => {
     try {
       const data = await getTimeline();
       setEvents(data.events || []);
+      if (onSyncUpdated) {
+        onSyncUpdated(new Date());
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch timeline events');
     } finally {
@@ -79,7 +86,7 @@ export const TimelinePage: React.FC = () => {
           </div>
           <button
             onClick={fetchTimeline}
-            className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2"
+            className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2 cursor-pointer transition-all"
           >
             <RefreshCw className="h-4 w-4" />
             <span>Retry</span>
@@ -103,7 +110,7 @@ export const TimelinePage: React.FC = () => {
         </div>
         <button
           onClick={fetchTimeline}
-          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2"
+          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2 cursor-pointer transition-all"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span>Refresh</span>

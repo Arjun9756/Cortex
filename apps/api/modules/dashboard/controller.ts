@@ -23,8 +23,8 @@ export async function getTechnologiesHelper() {
                 technologies = neoTechRes.records.map((rec: any) => ({
                     tech_name: rec.get('tech_name'),
                     usage_percent: Math.round(100 / neoTechRes.records.length),
-                    contributor_count: rec.get('contributor_count')?.toNumber() || 1,
-                    top_experts: [{ name: 'Lead Specialist' }]
+                    contributor_count: rec.get('contributor_count')?.toNumber() || 0,
+                    top_experts: []
                 }));
             }
         } catch (cyErr: any) {
@@ -45,7 +45,7 @@ export async function getTechnologiesHelper() {
             uniqueTechs.push({
                 ...t,
                 tech_name: name,
-                contributor_count: Number(t.contributor_count ?? 1)
+                contributor_count: Number(t.contributor_count ?? 0)
             });
         }
     }
@@ -64,11 +64,11 @@ export async function getDashboardOverview(req: Request, res: Response) {
         const spofRepos = repos.filter((r: any) => Number(r.bus_factor) <= 1);
         const spofPct = totalRepos > 0 ? (spofRepos.length / totalRepos) * 100 : 0;
 
-        const sumBusFactor = repos.reduce((acc: number, r: any) => acc + Number(r.bus_factor ?? 1), 0);
-        const avgBusFactor = totalRepos > 0 ? sumBusFactor / totalRepos : (Number(workspace?.bus_factor_avg) || 1);
+        const sumBusFactor = repos.reduce((acc: number, r: any) => acc + Number(r.bus_factor ?? 0), 0);
+        const avgBusFactor = totalRepos > 0 ? sumBusFactor / totalRepos : (Number(workspace?.bus_factor_avg) || 0);
 
         const sumKnowledgeRisk = people.reduce((acc: number, p: any) => acc + Number(p.risk_score ?? 0), 0);
-        const avgKnowledgeRisk = people.length > 0 ? sumKnowledgeRisk / people.length : (Number(workspace?.knowledge_risk_avg) || 45);
+        const avgKnowledgeRisk = people.length > 0 ? sumKnowledgeRisk / people.length : (Number(workspace?.knowledge_risk_avg) || 0);
 
         // Weighted Risk Penalty Calculation: 35% Knowledge Risk, 35% SPOF Repos %, 30% Low Bus Factor Penalty
         const busFactorPenalty = Math.max(0, 100 - avgBusFactor * 25);
@@ -92,7 +92,7 @@ export async function getDashboardOverview(req: Request, res: Response) {
             statusColor = 'indigo';
         }
 
-        const healthScore = {
+        const healthScore = totalRepos === 0 && people.length === 0 ? null : {
             score: healthScoreValue,
             grade,
             statusText,
@@ -113,40 +113,51 @@ export async function getDashboardOverview(req: Request, res: Response) {
                 SELECT 
                     date_trunc('week', created_at) AS week_start,
                     count(*)::int AS count,
-                    count(*) FILTER (WHERE event_type ILIKE '%commit%' OR event_type ILIKE '%push%')::int AS commits,
-                    count(*) FILTER (WHERE event_type ILIKE '%pull%' OR event_type ILIKE '%pr%')::int AS prs
+                    COALESCE(SUM(
+                        CASE 
+                            WHEN (event_type ILIKE '%commit%' OR event_type ILIKE '%push%') THEN 
+                                COALESCE(
+                                    CASE 
+                                        WHEN jsonb_typeof(payload->'commits') = 'array' THEN jsonb_array_length(payload->'commits') 
+                                        ELSE 1 
+                                    END, 
+                                    1
+                                )
+                            ELSE 0 
+                        END
+                    ), 0)::int AS commits,
+                    COUNT(DISTINCT 
+                        CASE 
+                            WHEN (event_type ILIKE '%pull%' OR event_type ILIKE '%pr%') THEN 
+                                COALESCE(payload->'pull_request'->>'id', payload->>'pr_id', id) 
+                        END
+                    )::int AS prs
                 FROM events
-                WHERE created_at >= NOW() - INTERVAL '8 weeks'
+                WHERE created_at >= NOW() - INTERVAL '12 weeks'
                 GROUP BY 1
                 ORDER BY week_start ASC
             `;
 
             if (rawWeekly && rawWeekly.length > 0) {
-                activityTrend = rawWeekly.map((row: any, idx: number) => {
+                rawWeekly.forEach((row: any, idx: number) => {
                     const d = new Date(row.week_start);
-                    const label = `W${idx + 1} (${d.getMonth() + 1}/${d.getDate()})`;
-                    return {
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const label = `${monthNames[d.getMonth()]} ${d.getDate()}`;
+                    activityTrend.push({
                         week: label,
                         count: Number(row.count || 0),
                         commits: Number(row.commits || 0),
                         prs: Number(row.prs || 0)
-                    };
+                    });
                 });
             }
         } catch (actErr: any) {
             console.warn('[DashboardOverview] Activity trend fetch warning:', actErr?.message);
         }
 
-        // Fallback or fill activity trend if data is minimal
-        if (activityTrend.length === 0) {
-            const totalEventsRes = await sql`SELECT count(*)::int as count FROM events`;
-            const totalEv = totalEventsRes[0]?.count || 12;
-            activityTrend = [
-                { week: 'W1 (4 wks ago)', count: Math.round(totalEv * 0.15), commits: Math.round(totalEv * 0.1), prs: Math.round(totalEv * 0.05) },
-                { week: 'W2 (3 wks ago)', count: Math.round(totalEv * 0.25), commits: Math.round(totalEv * 0.18), prs: Math.round(totalEv * 0.07) },
-                { week: 'W3 (2 wks ago)', count: Math.round(totalEv * 0.30), commits: Math.round(totalEv * 0.22), prs: Math.round(totalEv * 0.08) },
-                { week: 'W4 (Current)', count: Math.round(totalEv * 0.30), commits: Math.round(totalEv * 0.20), prs: Math.round(totalEv * 0.10) },
-            ];
+        // If no weekly activity trend data exists in database, keep empty
+        if (!activityTrend) {
+            activityTrend = [];
         }
 
         // 3. Risk Alerts (Top 3-5 Urgent Action Items)
@@ -189,9 +200,9 @@ export async function getDashboardOverview(req: Request, res: Response) {
         }
 
         // Technologies with 1 expert
-        const singleExpertTechs = technologies.filter((t: any) => Number(t.contributor_count ?? 1) <= 1);
+        const singleExpertTechs = technologies.filter((t: any) => Number(t.contributor_count ?? 0) === 1);
         for (const t of singleExpertTechs) {
-            const experts = Array.isArray(t.top_experts) && t.top_experts.length > 0 ? t.top_experts[0].name : '1 developer';
+            const expertName = Array.isArray(t.top_experts) && t.top_experts.length > 0 ? t.top_experts[0].name : null;
             const techName = t.tech_name || t.technology_name || 'Tech';
             riskAlerts.push({
                 id: `tech-${techName}`,
@@ -199,7 +210,9 @@ export async function getDashboardOverview(req: Request, res: Response) {
                 category: 'Skill Dependency',
                 entityName: techName,
                 entityType: 'tech',
-                whyItMatters: `Only 1 documented expert (${experts}) maintaining ${techName} across the codebase.`,
+                whyItMatters: expertName
+                    ? `Only 1 documented expert (${expertName}) maintaining ${techName} across the codebase.`
+                    : `Only 1 documented contributor maintaining ${techName} across the codebase.`,
                 riskScore: 65
             });
         }
@@ -211,7 +224,7 @@ export async function getDashboardOverview(req: Request, res: Response) {
         const topRiskAlerts = riskAlerts.slice(0, 5);
 
         // 4. Stats Summary
-        const openPrsCount = workspace?.open_prs_count ?? 3;
+        const openPrsCount = workspace?.open_prs_count ?? 0;
         const stats = {
             repoCount: totalRepos,
             peopleCount: people.length,
@@ -552,9 +565,13 @@ export async function getRepoDetails(req: Request, res: Response) {
         }));
 
         // 5. Compute Risk Explanation
-        const busFactor = metric?.bus_factor ?? (contributors.length <= 1 ? 1 : contributors.length);
-        const riskScore = metric?.risk_score ?? Math.max(0, 100 - busFactor * 20);
-        const isSPOF = busFactor <= 1;
+        const busFactor = metric?.bus_factor !== undefined && metric?.bus_factor !== null
+            ? Number(metric.bus_factor)
+            : (contributors.length > 0 ? contributors.length : 0);
+        const riskScore = metric?.risk_score !== undefined && metric?.risk_score !== null
+            ? Number(metric.risk_score)
+            : Math.max(0, 100 - busFactor * 20);
+        const isSPOF = busFactor === 1;
 
         const factors: string[] = [];
         if (isSPOF) {
@@ -596,7 +613,7 @@ export async function getRepoDetails(req: Request, res: Response) {
             busFactor,
             riskScore,
             status: metric?.status || (isSPOF ? 'fragile' : 'healthy'),
-            contributorCount: contributors.length || metric?.contributor_count || 1,
+            contributorCount: contributors.length || metric?.contributor_count || 0,
             primaryOwner,
             contributors,
             technologies,
@@ -618,4 +635,66 @@ export async function getRepoDetails(req: Request, res: Response) {
     } finally {
         await session.close();
     }
+}
+
+export async function getIntegrationsStatus(req: Request, res: Response) {
+    try {
+        const counts = await sql`
+            SELECT provider, count(*)::int as count 
+            FROM events 
+            GROUP BY provider
+        `;
+        const countMap: Record<string, number> = {};
+        for (const row of counts) {
+            if (row.provider) {
+                countMap[row.provider.toLowerCase()] = Number(row.count) || 0;
+            }
+        }
+
+        const githubConfigured = Boolean(process.env.GITHUB_SECRET && process.env.GITHUB_SECRET !== 'default_secret');
+        const slackConfigured = Boolean(process.env.SLACK_SECRET && process.env.SLACK_SECRET !== 'default_secret');
+        const jiraConfigured = Boolean(process.env.JIRA_SECRET && process.env.JIRA_SECRET !== 'default_secret');
+
+        return res.json({
+            status: true,
+            integrations: {
+                github: {
+                    name: 'GitHub',
+                    isConfigured: githubConfigured,
+                    webhookUrl: '/api/github/webhook',
+                    signatureHeader: 'X-Hub-Signature-256',
+                    eventCount: countMap['github'] || 0,
+                    secretMasked: githubConfigured ? '••••••••' : undefined
+                },
+                slack: {
+                    name: 'Slack',
+                    isConfigured: slackConfigured,
+                    webhookUrl: '/api/slack/webhook',
+                    signatureHeader: 'X-Slack-Signature',
+                    eventCount: countMap['slack'] || 0,
+                    secretMasked: slackConfigured ? '••••••••' : undefined
+                },
+                jira: {
+                    name: 'Jira',
+                    isConfigured: jiraConfigured,
+                    webhookUrl: '/api/jira/webhook',
+                    signatureHeader: 'X-Hub-Signature',
+                    eventCount: countMap['jira'] || 0,
+                    secretMasked: jiraConfigured ? '••••••••' : undefined
+                }
+            }
+        });
+    } catch (err: any) {
+        console.error('[getIntegrationsStatus] Error:', err);
+        return res.status(500).json({ status: false, error: 'Failed to fetch integrations status', message: err?.message });
+    }
+}
+
+export async function updateIntegrationSecret(req: Request, res: Response) {
+    const { provider } = req.params;
+    const providerKey = typeof provider === 'string' ? provider.toUpperCase() : (Array.isArray(provider) && provider[0] ? String(provider[0]).toUpperCase() : 'PROVIDER');
+    return res.status(501).json({
+        status: false,
+        error: `Dynamic secret updating is not supported by runtime. Please set ${providerKey}_SECRET in your server .env file.`
+    });
 }

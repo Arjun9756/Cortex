@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { getTechnologies, type TechnologyMetric } from '../lib/api';
 import { Cpu, AlertTriangle, RefreshCw, FolderGit2, Users } from 'lucide-react';
 
-export const TechnologiesPage: React.FC = () => {
+interface TechnologiesPageProps {
+  onSyncUpdated?: (date: Date) => void;
+}
+
+export const TechnologiesPage: React.FC<TechnologiesPageProps> = ({ onSyncUpdated }) => {
   const [technologies, setTechnologies] = useState<TechnologyMetric[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -13,6 +17,9 @@ export const TechnologiesPage: React.FC = () => {
     try {
       const data = await getTechnologies();
       setTechnologies(data.technologies || []);
+      if (onSyncUpdated) {
+        onSyncUpdated(new Date());
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch technologies');
     } finally {
@@ -50,7 +57,7 @@ export const TechnologiesPage: React.FC = () => {
           </div>
           <button
             onClick={fetchTech}
-            className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2"
+            className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2 cursor-pointer transition-all"
           >
             <RefreshCw className="h-4 w-4" />
             <span>Retry</span>
@@ -74,7 +81,7 @@ export const TechnologiesPage: React.FC = () => {
         </div>
         <button
           onClick={fetchTech}
-          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2"
+          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2 cursor-pointer transition-all"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span>Refresh</span>
@@ -117,11 +124,11 @@ export const TechnologiesPage: React.FC = () => {
                 <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
                   <div className="flex items-center space-x-1">
                     <FolderGit2 className="h-3.5 w-3.5 text-cyan-400" />
-                    <span>{tech.repo_count ?? 1} Repos</span>
+                    <span>{tech.repo_count ?? 0} {tech.repo_count === 1 ? 'Repo' : 'Repos'}</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <Users className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>{tech.contributor_count ?? 1} Contributors</span>
+                    <span>{tech.contributor_count ?? 0} {tech.contributor_count === 1 ? 'Contributor' : 'Contributors'}</span>
                   </div>
                 </div>
               </div>

@@ -3,7 +3,11 @@ import { getBusFactor, getRepositoryDetails, type RepoMetric, type RepositoryDet
 import { ShieldAlert, AlertTriangle, UserCheck, Code, Layers, RefreshCw, ArrowRight } from 'lucide-react';
 import { RepoDetailModal } from '../components/RepoDetailModal';
 
-export const BusFactorPage: React.FC = () => {
+interface BusFactorPageProps {
+  onSyncUpdated?: (date: Date) => void;
+}
+
+export const BusFactorPage: React.FC<BusFactorPageProps> = ({ onSyncUpdated }) => {
   const [repos, setRepos] = useState<RepoMetric[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +24,9 @@ export const BusFactorPage: React.FC = () => {
     try {
       const data = await getBusFactor();
       setRepos(data.repos || []);
+      if (onSyncUpdated) {
+        onSyncUpdated(new Date());
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch Bus Factor data');
     } finally {
@@ -127,13 +134,22 @@ export const BusFactorPage: React.FC = () => {
             return (
               <div
                 key={repo.external_id || repo.repo_name}
+                role="button"
+                tabIndex={0}
+                aria-label={`Inspect repository details for ${repo.repo_name}`}
                 onClick={() => handleOpenDetails(repo.repo_name)}
-                className="glass-card glass-card-hover p-6 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleOpenDetails(repo.repo_name);
+                  }
+                }}
+                className="glass-card glass-card-hover p-6 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus:outline-none"
               >
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                      Bus Factor: <strong className="text-white">{repo.bus_factor ?? 1}</strong>
+                      Bus Factor: <strong className="text-white">{repo.bus_factor !== undefined && repo.bus_factor !== null ? repo.bus_factor : 'N/A'}</strong>
                     </span>
                     <span
                       className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
@@ -168,7 +184,7 @@ export const BusFactorPage: React.FC = () => {
                 </div>
 
                 <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                  <span>Contributors: <strong className="text-slate-200">{repo.contributor_count ?? 1}</strong></span>
+                  <span>Contributors: <strong className="text-slate-200">{repo.contributor_count ?? 0}</strong></span>
                   <span className="text-[11px] font-semibold text-indigo-400 group-hover:underline flex items-center gap-1">
                     <span>Inspect Risk</span>
                     <span>→</span>
