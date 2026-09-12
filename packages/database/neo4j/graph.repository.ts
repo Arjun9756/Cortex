@@ -1,6 +1,16 @@
 import { driver } from '../../../apps/api/config/neo4j.js'
 import neo4j from 'neo4j-driver'
 
+const ALLOWED_RELATIONS = new Set([
+    'USES', 'HAS_PROBLEM', 'FIXED_BY', 'REPLACED_BY', 'DEPENDS_ON',
+    'WORKS_ON', 'CREATED', 'MENTIONED_IN', 'ASSIGNED_TO', 'PART_OF', 'AUTHORED'
+])
+
+const ALLOWED_ENTITY_TYPES = new Set([
+    'PERSON', 'TECHNOLOGY', 'REPOSITORY', 'ISSUE', 'PULL_REQUEST',
+    'COMMIT', 'TEAM', 'FILE', 'ORGANIZATION'
+])
+
 /**
  * Ensures indexes exist for fast property-based entity lookups.
  * Safe to call on every boot — uses IF NOT EXISTS.
@@ -40,6 +50,10 @@ export async function upsertEntity(
 ): Promise<string | undefined> {
     const session = driver.session()
     try {
+        const normalizedType = type.toUpperCase()
+        if (!ALLOWED_ENTITY_TYPES.has(normalizedType)) {
+            throw new Error(`Invalid entity type: ${type}`)
+        }
         // Build dynamic SET clauses for non-null extra properties
         const setParts: string[] = []
         const params: Record<string, any> = { name }
@@ -57,7 +71,7 @@ export async function upsertEntity(
         const extraSetClause = setParts.length > 0 ? `, ${setParts.join(', ')}` : ''
 
         let result;
-        if (type === 'PERSON') {
+        if (normalizedType === 'PERSON') {
             let matchedId: string | null = null;
 
             // Step 1: Match by Email if present
@@ -124,7 +138,7 @@ export async function upsertEntity(
         } else {
             // Case-insensitive lookup for TECHNOLOGY, REPOSITORY, and other entity types to prevent case-variant duplicates (e.g. "Redis" vs "redis")
             const existingMatch = await session.run(`
-                MATCH (e:${type})
+                MATCH (e:${normalizedType})
                 WHERE toLower(e.name) = toLower($name)
                 RETURN elementId(e) AS id, e.name AS existingName
                 LIMIT 1
@@ -138,13 +152,13 @@ export async function upsertEntity(
                 params.id = matchedId;
                 params.preferredName = preferredName;
                 result = await session.run(`
-                    MATCH (e:${type}) WHERE elementId(e) = $id
+                    MATCH (e:${normalizedType}) WHERE elementId(e) = $id
                     SET e.name = $preferredName, e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
                 `, params);
             } else {
                 result = await session.run(`
-                    MERGE (e:${type} {name: $name})
+                    MERGE (e:${normalizedType} {name: $name})
                     ON CREATE SET e.createdAt = timestamp()${extraSetClause}
                     ON MATCH SET e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
@@ -174,10 +188,15 @@ export async function upsertRelation(fromID: string, toID: string, type: string,
     const session = driver.session()
     console.log(`Upsert Relation ${evidence}`)
     try {
+        const normalizedType = type.toUpperCase()
+        if (!ALLOWED_RELATIONS.has(normalizedType)) {
+            throw new Error(`Invalid relationship type: ${type}`)
+        }
+
         const result = await session.run(`
             MATCH (a) where elementId(a) = $fromID
             MATCH(b) where elementId(b) = $toID
-            MERGE (a)-[r:${type}]->(b)
+            MERGE (a)-[r:${normalizedType}]->(b)
             ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence
             ON MATCH SET r.updatedAt = timestamp() , r.evidence = $evidence 
         ` , { fromID, toID, evidence: evidence ?? null })

@@ -42,13 +42,13 @@ export async function upsertVector(id: string, vector:number[], payload: Record<
 
 export async function searchSimilar(queryVector: number[], topK = 5 , colName?:string) {
     try {
-        const result = await qdrantClient.search(collectionName! || colName!, {
-            vector: queryVector,
+        const result = await qdrantClient.query(colName || collectionName!, {
+            query: queryVector,
             limit: topK,
             with_payload: true,
         })
 
-        return result
+        return result.points
     }
     catch (error: any) {
         console.log(`Error While Making Semantic Search ${error}`)

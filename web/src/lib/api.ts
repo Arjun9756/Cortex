@@ -427,54 +427,14 @@ export interface UpdateSecretResponse {
 }
 
 export async function getIntegrationsStatus(): Promise<IntegrationsStatusResponse> {
-    try {
-        return await fetchJson<IntegrationsStatusResponse>('/api/dashboard/integrations/status');
-    } catch (err) {
-        // Fallback status if backend endpoint is not present
-        return {
-            status: true,
-            integrations: {
-                github: {
-                    name: 'GitHub',
-                    isConfigured: true,
-                    webhookUrl: '/api/github/webhook',
-                    signatureHeader: 'x-hub-signature-256',
-                    eventCount: 42,
-                    secretMasked: '••••••••'
-                },
-                slack: {
-                    name: 'Slack',
-                    isConfigured: true,
-                    webhookUrl: '/api/slack/events',
-                    signatureHeader: 'x-slack-signature',
-                    eventCount: 18,
-                    secretMasked: '••••••••'
-                },
-                jira: {
-                    name: 'Jira',
-                    isConfigured: false,
-                    webhookUrl: '/api/jira/webhook',
-                    signatureHeader: 'x-atlassian-webhook',
-                    eventCount: 0,
-                    secretMasked: undefined
-                }
-            }
-        };
-    }
+    return fetchJson<IntegrationsStatusResponse>('/api/dashboard/integrations/status');
 }
 
 export async function updateIntegrationSecrets(provider: string, secret: string): Promise<UpdateSecretResponse> {
-    try {
-        return await fetchJson<UpdateSecretResponse>(`/api/${provider}/secret`, {
-            method: 'POST',
-            body: JSON.stringify({ secret }),
-        });
-    } catch (err) {
-        return {
-            status: true,
-            message: `${provider.toUpperCase()} secret updated successfully`
-        };
-    }
+    return fetchJson<UpdateSecretResponse>(`/api/${provider}/secret`, {
+        method: 'POST',
+        body: JSON.stringify({ secret }),
+    });
 }
 
 export interface RepositoryDetails {

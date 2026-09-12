@@ -41,13 +41,6 @@ analyticsRouter.get('/trends', async (req, res) => {
             });
         }
 
-        // If only 1-2 weeks exist, provide clear timeline buckets
-        if (commitTrends.length === 0) {
-            commitTrends = [
-                { label: 'Week 1', commits: 7, prs: 3, issues: 13 },
-            ];
-        }
-
         // 2. Knowledge Graph Metrics from Neo4j
         const session = driver.session();
         let totalNodes = 0;
@@ -57,23 +50,11 @@ analyticsRouter.get('/trends', async (req, res) => {
         try {
             const nr = await session.run(`MATCH (n) RETURN count(n) AS nodeCount`);
             const er = await session.run(`MATCH ()-[r]->() RETURN count(r) AS edgeCount`);
-            totalNodes = nr.records[0]?.get('nodeCount')?.toNumber() || 103;
-            totalEdges = er.records[0]?.get('edgeCount')?.toNumber() || 102;
-
-            // Live snapshot growth progression based on real total counts
-            graphGrowth = [
-                { label: 'Ingest Phase', nodes: Math.round(totalNodes * 0.35), edges: Math.round(totalEdges * 0.25) },
-                { label: 'Entity Resolution', nodes: Math.round(totalNodes * 0.65), edges: Math.round(totalEdges * 0.55) },
-                { label: 'Graph Synthesis', nodes: Math.round(totalNodes * 0.85), edges: Math.round(totalEdges * 0.80) },
-                { label: 'Live Graph Index', nodes: totalNodes, edges: totalEdges },
-            ];
+            totalNodes = nr.records[0]?.get('nodeCount')?.toNumber() ?? 0;
+            totalEdges = er.records[0]?.get('edgeCount')?.toNumber() ?? 0;
         } catch (neoErr: any) {
             console.warn('[Analytics:Trends] Neo4j fetch warning:', neoErr?.message);
-            totalNodes = 103;
-            totalEdges = 102;
-            graphGrowth = [
-                { label: 'Live Graph Index', nodes: 103, edges: 102 },
-            ];
+            return res.status(503).json({ status: 'unavailable', error: 'Knowledge graph is unavailable. No analytics data was fabricated.' });
         } finally {
             await session.close();
         }
@@ -101,51 +82,15 @@ analyticsRouter.get('/trends', async (req, res) => {
             contributors: Number(t.contributor_count ?? 1),
         }));
 
-        // 5. Real Contribution Activity Heatmap from events table
-        const rawDows = await sql`
-            SELECT 
-                EXTRACT(DOW FROM created_at)::int AS dow,
-                count(*)::int AS count
-            FROM events
-            GROUP BY 1
-            ORDER BY dow ASC
-        `;
-
-        const dowCounts: Record<number, number> = {};
-        for (const row of rawDows) {
-            dowCounts[row.dow] = Number(row.count || 0);
-        }
-
-        // Days: Monday (1) to Sunday (0)
-        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const dayIndices = [1, 2, 3, 4, 5, 6, 0]; // Monday is 1, Sunday is 0 in postgres DOW
-
-        const heatmap = dayNames.map((day, idx) => {
-            const dow = dayIndices[idx];
-            const eventCount = dowCounts[dow!] || 0;
-            
-            // Distribute across 32 weekly slots with realistic activity distribution
-            const counts = Array.from({ length: 32 }).map((_, wIdx) => {
-                if (wIdx >= 28) {
-                    // Recent weeks map real events
-                    return eventCount > 0 ? Math.min(4, Math.max(1, (eventCount * (wIdx % 3 + 1)) % 5)) : 0;
-                }
-                // Historical sparse data
-                return (idx * 2 + wIdx * 3) % 7 === 0 ? 1 : 0;
-            });
-
-            return {
-                day,
-                counts,
-            };
-        });
+        // Historical heatmap data is not persisted. Return an honest empty state.
+        const heatmap: Array<{ day: string; counts: number[] }> = [];
 
         // 6. Metadata summary
         const totalEventsRes = await sql`SELECT count(*)::int as count FROM events`;
         const totalPeopleRes = await sql`SELECT count(*)::int as count FROM person_metrics`;
 
-        const totalEventsCount = totalEventsRes[0]?.count || 35;
-        const totalPeopleCount = totalPeopleRes[0]?.count || 13;
+        const totalEventsCount = Number(totalEventsRes[0]?.count ?? 0);
+        const totalPeopleCount = Number(totalPeopleRes[0]?.count ?? 0);
 
         const metadata = {
             totalEvents: totalEventsCount,

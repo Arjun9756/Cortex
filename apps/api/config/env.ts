@@ -33,6 +33,8 @@ const envObject = {
 
     JWT_SECRET:process.env.JWT_SECRET,
     SERVER_SECRET:process.env.SERVER_SECRET,
+    CORTEX_API_KEY:process.env.CORTEX_API_KEY,
+    FRONTEND_URL:process.env.FRONTEND_URL,
     
     GROQ_API_KEY:process.env.GROQ_API_KEY,
     GEMINI_API_KEY:process.env.GEMINI_API_KEY,
@@ -57,7 +59,7 @@ const envObject = {
 
     TAVILY_API_KEY:process.env.TAVILY_API_KEY,
 
-    CORTEX_LICENSE_KEY:process.env.CORTEX_LICENSE_KEY || process.env.LICENSE_KEY || "478A-72F7-5980-D43C",
+    CORTEX_LICENSE_KEY:process.env.CORTEX_LICENSE_KEY || process.env.LICENSE_KEY,
     LICENSE_SERVER_URL:process.env.LICENSE_SERVER_URL || process.env.CORTEX_LICENSE_SERVER_URL || "https://cortex-admin-two.vercel.app/api/license/ping",
     CORTEX_MACHINE_ID:process.env.CORTEX_MACHINE_ID || "",
     LICENSE_PING_INTERVAL_HOURS:parseFloat(process.env.LICENSE_PING_INTERVAL_HOURS || "6")

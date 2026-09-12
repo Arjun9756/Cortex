@@ -51,8 +51,11 @@ async function testRecentActivity() {
             evidence: '',
             structuredEvidence: [],
             metrics: {
-                totalDurationMs: 0,
-                retrievalPasses: 0,
+                totalLatencyMs: 0,
+                plannerLatencyMs: 0,
+                parallelBatches: 0,
+                iterationCount: 0,
+                llmTokensUsed: 0,
                 toolLatencies: {},
                 toolOrder: [],
                 evidenceConfidence: 0.85

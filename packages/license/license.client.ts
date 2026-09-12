@@ -182,7 +182,7 @@ export async function pingLicenseServer(
  * Instead, it logs the status and schedules a retry in 6 hours while allowing Cortex to stay alive.
  */
 export async function verifyLicenseOnStartup(): Promise<boolean> {
-    const licenseKey = (env.CORTEX_LICENSE_KEY as string) || (process.env.LICENSE_KEY as string) || '478A-72F7-5980-D43C';
+    const licenseKey = (env.CORTEX_LICENSE_KEY as string) || (process.env.LICENSE_KEY as string) || '';
     const serverUrl = normalizeServerUrl((env.LICENSE_SERVER_URL as string) || (process.env.LICENSE_SERVER_URL as string));
     const fallbackInterval = env.LICENSE_PING_INTERVAL_HOURS ?? 6;
 

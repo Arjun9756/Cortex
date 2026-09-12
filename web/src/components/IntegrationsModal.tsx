@@ -25,14 +25,18 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [savingProvider, setSavingProvider] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchStatus = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await getIntegrationsStatus();
       setIntegrations(res.integrations);
     } catch (err: any) {
       console.error('Failed to load integrations status', err);
+      setIntegrations(null);
+      setLoadError(err.message || 'Unable to load integration status.');
     } finally {
       setLoading(false);
     }
@@ -175,7 +179,13 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
             </div>
           )}
 
-          {loading || !currentIntegration ? (
+          {loadError ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-3 text-center">
+              <AlertCircle className="h-6 w-6 text-rose-400" />
+              <p className="text-xs text-rose-300">{loadError}</p>
+              <button onClick={fetchStatus} className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-200">Retry</button>
+            </div>
+          ) : loading || !currentIntegration ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-3">
               <RefreshCw className="h-6 w-6 text-indigo-400 animate-spin" />
               <p className="text-xs text-slate-400">Loading integration status...</p>
@@ -316,7 +326,8 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
                 {activeTab === 'jira' && (
                   <ol className="list-decimal list-inside text-xs text-slate-400 space-y-1 leading-relaxed">
                     <li>Go to Jira System Administration → <strong>System</strong> → <strong>Webhooks</strong>.</li>
-                    <li>Click <strong>Create a Webhook</strong> and paste the <strong>Webhook Listener URL</strong> (including secret query param).</li>
+                    <li>Click <strong>Create a Webhook</strong> and paste the <strong>Webhook Listener URL</strong>.</li>
+                    <li>Configure the shared secret in the <code>X-Jira-Webhook-Secret</code> request header; never place it in the URL.</li>
                     <li>Under Events, check Issue Created, Issue Updated, and Comment Created.</li>
                     <li>Click <strong>Save</strong> to start streaming Jira issues into Cortex.</li>
                   </ol>

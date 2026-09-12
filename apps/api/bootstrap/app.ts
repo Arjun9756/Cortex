@@ -13,16 +13,14 @@ import { graphRouter } from '../modules/graph/router.js'
 import { dashboardRouter } from '../modules/dashboard/router.js'
 import { analyticsRouter } from '../modules/analytics/router.js'
 import { licenseGuard, getLicenseState } from '../../../packages/license/index.js'
+import { authGuard } from '../middlewares/authGuard.js'
 
 const app = express()
 
 // Cors Config
 app.use(cors({
-    origin:"*",
-    allowedHeaders:['Authorization' , 'IsSyncNeed' , 'Content-Type'],
-    preflightContinue:true,
-    optionsSuccessStatus:200,
-    methods:["GET" , "POST" , "PUT" , "PATCH" , "HEAD" , "DELETE"]
+    origin: env.FRONTEND_URL,
+    credentials: true
 }))
 
 // Dns Config of Google & Cloudflare
@@ -57,9 +55,13 @@ app.get('/api/license/status', (req, res) => {
 // Guard all subsequent /api routes
 app.use('/api', licenseGuard)
 
+// Webhook routes authenticate their providers with their own signatures/secrets.
 app.use('/api/github' , githubRouter)
 app.use('/api/slack' , slackRouter)
 app.use('/api/jira' , jiraRouter)
+
+// All non-webhook API routes require a client API key.
+app.use('/api', authGuard)
 app.use('/api/chat' , chatRouter)
 app.use('/api/graph' , graphRouter)
 app.use('/api/dashboard', dashboardRouter)

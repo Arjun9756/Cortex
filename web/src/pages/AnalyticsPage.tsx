@@ -69,14 +69,7 @@ export const AnalyticsPage: React.FC = () => {
   const repoHealthData = data.repoHealth || [];
   const techUsage = data.techUsage || [];
   const heatmapData = data.heatmap || [];
-  const metadata = data.metadata || {
-    totalEvents: 35,
-    totalNodes: 103,
-    totalEdges: 102,
-    trackedRepos: 10,
-    trackedPeople: 13,
-    trackingDurationLabel: 'Live metrics from Postgres and Neo4j',
-  };
+  const metadata = data.metadata;
 
   const totalCommits = commitTrendData.reduce((s, c) => s + (c.commits || 0), 0);
   const totalPrs = commitTrendData.reduce((s, c) => s + (c.prs || 0), 0);
@@ -275,7 +268,9 @@ export const AnalyticsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="space-y-1.5 overflow-x-auto py-2">
+        {heatmapData.length === 0 ? (
+          <p className="text-xs text-slate-400 py-4">No historical event heatmap is stored yet. Waiting for webhook events.</p>
+        ) : <div className="space-y-1.5 overflow-x-auto py-2">
           {heatmapData.map((dayItem, dIdx) => (
             <div key={dIdx} className="flex items-center space-x-1 text-[10px] text-slate-500 font-mono">
               <span className="w-8">{dayItem.day}</span>
@@ -299,7 +294,7 @@ export const AnalyticsPage: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
+        </div>}
       </div>
     </div>
   );
