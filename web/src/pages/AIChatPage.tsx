@@ -29,10 +29,7 @@ import {
   ExternalLink,
   AlertTriangle,
   Download,
-  CornerDownLeft,
-  Square,
-  ShieldCheck,
-  Hash
+  CornerDownLeft
 } from 'lucide-react';
 
 interface AgentStep {

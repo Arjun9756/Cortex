@@ -37,7 +37,14 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
   const repoHealthData = data?.repoHealth || [];
   const techUsage = data?.techUsage || [];
   const heatmapData = data?.heatmap || [];
-  const metadata = data?.metadata;
+  const metadata = data?.metadata ?? {
+    totalEvents: 0,
+    totalNodes: 0,
+    totalEdges: 0,
+    trackedRepos: 0,
+    trackedPeople: 0,
+    trackingDurationLabel: 'Live Events',
+  };
 
   const totalCommits = commitTrendData.reduce((s, c) => s + (c.commits || 0), 0);
   const totalPrs = commitTrendData.reduce((s, c) => s + (c.prs || 0), 0);
