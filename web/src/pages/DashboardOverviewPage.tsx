@@ -7,6 +7,7 @@ import {
   type RepositoryDetails,
 } from '../lib/api';
 import type { NavTab } from '../components/Sidebar';
+import { RISK_THRESHOLDS } from '../constants/riskThresholds';
 import { StatCard } from '../components/StatCard';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { RiskGauge } from '../components/RiskGauge';
@@ -251,7 +252,8 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
     peopleCount: peopleList.length,
     techCount: techList.length,
     avgBusFactor: Number(health.breakdown.avgBusFactor.toFixed(1)),
-    openHighRiskPrs: health.breakdown.spofRepoCount,
+    spofRepoCount: health.breakdown.spofRepoCount,
+    openHighRiskPrs: 0,
     totalRiskAlertsCount: riskAlerts.length,
   };
 
@@ -375,16 +377,16 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
         <StatCard
           title="Repositories"
           value={stats.repoCount}
-          subtext={`${health.breakdown.spofRepoCount} bus factor = 1`}
+          subtext={`${stats.spofRepoCount} bus factor = 1`}
           icon={<FolderGit2 className="h-5 w-5" />}
           accentColor="cyan"
-          trend={health.breakdown.spofRepoCount > 0 ? { value: `${health.breakdown.spofRepoCount} SPOF`, positive: false } : undefined}
+          trend={stats.spofRepoCount > 0 ? { value: `${stats.spofRepoCount} SPOF`, positive: false } : undefined}
           onClick={() => onNavigate('bus-factor')}
         />
         <StatCard
           title="People"
           value={stats.peopleCount}
-          subtext={`${peopleList.filter((p) => (p.risk_score ?? 0) >= 60).length} high knowledge risk`}
+          subtext={`${peopleList.filter((p) => (p.risk_score ?? 0) >= RISK_THRESHOLDS.HIGH).length} high knowledge risk`}
           icon={<Users className="h-5 w-5" />}
           accentColor="indigo"
           onClick={() => onNavigate('people')}

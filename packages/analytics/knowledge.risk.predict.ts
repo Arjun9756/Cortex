@@ -389,22 +389,31 @@ export async function calculatePendingWork(
         const name = await resolveCanonicalPersonName(session, personName);
         const targetLabel = mapping.targetLabel || 'ISSUE'
 
-        // Query 1: Get total count (exclude completed/closed work)
+        // Query 1: Get total count (exclude completed/closed work, and guard against ticket reassignment)
         const countResult = await session.run(
-            `MATCH (p:PERSON {name: $name})<-[:${mapping.relation}]-(issue:${targetLabel})
-             WHERE issue.status IS NULL OR NOT toLower(issue.status) IN ['closed', 'done', 'resolved', 'completed']
+            `MATCH (p:PERSON {name: $name})<-[r:${mapping.relation}]-(issue:${targetLabel})
+             WHERE (issue.status IS NULL OR NOT toLower(issue.status) IN ['closed', 'done', 'resolved', 'completed'])
+               AND (issue.assignee IS NULL OR toLower(trim(issue.assignee)) = toLower(trim(p.name)))
+               AND NOT EXISTS {
+                   MATCH (issue)-[newer:${mapping.relation}]->(other:PERSON)
+                   WHERE elementId(other) <> elementId(p)
+                     AND coalesce(newer.updatedAt, newer.createdAt, 0) > coalesce(r.updatedAt, r.createdAt, 0)
+               }
              RETURN count(issue) as totalCount`,
             { name }
         )
         const count = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0
 
-        // Query 2: Get evidence (top 10) (exclude completed/closed work)
-        // Fix BUG 3: use resolved `name` (from resolveCanonicalPersonName) not raw `personName`.
-        // Previously this query used `personName` (the raw input), while countResult used the
-        // resolved `name`. This caused 0 evidence for lowercase/variant-cased inputs.
+        // Query 2: Get evidence (top 10) (exclude completed/closed work, and guard against ticket reassignment)
         const evidenceResult = await session.run(
-            `MATCH (p:PERSON {name: $name})<-[:${mapping.relation}]-(issue:${targetLabel})
-             WHERE issue.status IS NULL OR NOT toLower(issue.status) IN ['closed', 'done', 'resolved', 'completed']
+            `MATCH (p:PERSON {name: $name})<-[r:${mapping.relation}]-(issue:${targetLabel})
+             WHERE (issue.status IS NULL OR NOT toLower(issue.status) IN ['closed', 'done', 'resolved', 'completed'])
+               AND (issue.assignee IS NULL OR toLower(trim(issue.assignee)) = toLower(trim(p.name)))
+               AND NOT EXISTS {
+                   MATCH (issue)-[newer:${mapping.relation}]->(other:PERSON)
+                   WHERE elementId(other) <> elementId(p)
+                     AND coalesce(newer.updatedAt, newer.createdAt, 0) > coalesce(r.updatedAt, r.createdAt, 0)
+               }
              RETURN issue.name as name,
                     labels(issue)[0] as type,
                     issue.status as status

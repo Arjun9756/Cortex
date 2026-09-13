@@ -31,7 +31,7 @@ async function testSuccessorsDirect() {
             if (res.candidates.length > 0) {
                 console.log(`- Ranked Candidates (${res.candidates.length}):`);
                 for (const c of res.candidates) {
-                    console.log(`   🏆 Candidate: ${c.name} | Composite Score: ${c.score}%`);
+                    console.log(`   🏆 Candidate: ${c.name} | Composite Score: ${c.score}% | Category: ${c.category}${c.warningLabel ? ` | ⚠️ WARNING: ${c.warningLabel}` : ''}`);
                     console.log(`      Breakdown: Tech=${c.breakdown.sharedTechScore}% (w=40%), Repo=${c.breakdown.sharedRepoScore}% (w=25%), Activity=${c.breakdown.recentActivityScore}% (w=20%), Capacity=${c.breakdown.workloadCapacityScore}% (w=15%)`);
                     console.log(`      Shared Techs: [${c.factors.sharedTechnologies.join(', ')}] (Jaccard: ${c.factors.techJaccard})`);
                     console.log(`      Shared Repos: [${c.factors.sharedRepositories.join(', ')}] (Overlap: ${c.factors.repoOverlapRatio})`);

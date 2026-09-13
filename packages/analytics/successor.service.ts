@@ -5,6 +5,9 @@ import neo4j from 'neo4j-driver';
 export interface SuccessorCandidate {
     name: string;
     score: number; // 0–100 integer
+    category: 'recommended_successor' | 'cross_training_candidate';
+    isOverloaded: boolean;
+    warningLabel?: string | undefined;
     breakdown: {
         sharedTechScore: number;  // 0–100 (40% weight)
         sharedRepoScore: number;  // 0–100 (25% weight)
@@ -303,8 +306,9 @@ export async function calculateSuccessorCandidates(rawPersonName: string): Promi
             const recentActivityScore = Math.round(recentActivityFactor * 100);
 
             // Factor 4: Current Workload / Existing Risk (15% capacity factor)
-            // Penalty for candidates who already have high knowledge risk / sole maintainership
-            const capacityFactor = Math.max(0, 1.0 - cand.knowledgeRisk);
+            // FIX B: Explicitly penalize existing SPOF accumulation (0.15 penalty per SPOF repo)
+            const spofPenalty = (cand.spofReposCount || 0) * 0.15;
+            const capacityFactor = Math.max(0, 1.0 - cand.knowledgeRisk - spofPenalty);
             const workloadCapacityScore = Math.round(capacityFactor * 100);
 
             // Composite Weighted Score (0–100)
@@ -313,30 +317,55 @@ export async function calculateSuccessorCandidates(rawPersonName: string): Promi
                                  (0.20 * recentActivityFactor) +
                                  (0.15 * capacityFactor);
 
-            const score = Math.round(compositeRaw * 100);
+            let score = Math.round(compositeRaw * 100);
+
+            // FIX C: Hard distinction between "Recommended Successor" and "Cross-Training Candidate"
+            const hasDirectRepoExperience = sharedRepoList.length > 0;
+            const category: SuccessorCandidate['category'] = hasDirectRepoExperience
+                ? 'recommended_successor'
+                : 'cross_training_candidate';
+
+            // If zero direct repo experience, cap maximum possible composite score at 25
+            if (!hasDirectRepoExperience) {
+                score = Math.min(25, score);
+            }
+
+            // FIX B: Hard eligibility cap / warning for overloaded candidates maintaining 3+ SPOF repos
+            const isOverloaded = (cand.spofReposCount || 0) >= 3;
+            let warningLabel: string | undefined = undefined;
+            if (isOverloaded) {
+                warningLabel = 'Not Recommended — Already Maintains 3+ Critical Repositories';
+            }
 
             // Build human-readable rationale
             const reasons: string[] = [];
-            if (sharedTechList.length > 0) {
-                reasons.push(`Shares ${sharedTechList.length} technologies (${sharedTechList.join(', ')}) with ${Math.round(techJaccard * 100)}% Jaccard tech similarity`);
-            }
             if (sharedRepoList.length > 0) {
                 reasons.push(`Contributes to ${sharedRepoList.length} overlapping repositories (${sharedRepoList.join(', ')})`);
+            } else {
+                reasons.push(`No direct repository experience (cross-training candidate with tech-only overlap)`);
+            }
+            if (sharedTechList.length > 0) {
+                reasons.push(`Shares ${sharedTechList.length} technologies (${sharedTechList.join(', ')}) with ${Math.round(techJaccard * 100)}% Jaccard tech similarity`);
             }
             if (activityStatus === 'active_recent') {
                 reasons.push(`Highly active recently (${daysSinceLastActivity ?? 0}d ago)`);
             } else if (activityStatus === 'active_moderate') {
                 reasons.push(`Moderately active (${daysSinceLastActivity}d ago)`);
             }
-            if (cand.knowledgeRisk < 0.30) {
+            if (isOverloaded) {
+                reasons.push(`CRITICAL OVERLOAD: Sole maintainer of ${cand.spofReposCount} SPOF repositories (fragility compounding risk)`);
+            } else if (cand.knowledgeRisk < 0.30 && cand.spofReposCount === 0) {
                 reasons.push(`Low existing departure risk (${Math.round(cand.knowledgeRisk * 100)}%) with capacity to take on ownership`);
             } else {
-                reasons.push(`Moderate existing workload (${Math.round(cand.knowledgeRisk * 100)}% risk, maintains ${cand.spofReposCount} SPOF repos)`);
+                reasons.push(`Existing workload: ${Math.round(cand.knowledgeRisk * 100)}% risk, maintains ${cand.spofReposCount} SPOF repos`);
             }
 
             scoredCandidates.push({
                 name: cand.name,
                 score,
+                category,
+                isOverloaded,
+                warningLabel,
                 breakdown: {
                     sharedTechScore,
                     sharedRepoScore,
@@ -361,15 +390,32 @@ export async function calculateSuccessorCandidates(rawPersonName: string): Promi
             });
         }
 
-        // Sort descending by score
-        scoredCandidates.sort((a, b) => b.score - a.score);
+        // Sort candidates:
+        // 1. Non-overloaded candidates rank above overloaded candidates
+        // 2. Direct successors rank above cross-training candidates
+        // 3. Descending by score
+        scoredCandidates.sort((a, b) => {
+            if (a.isOverloaded !== b.isOverloaded) {
+                return a.isOverloaded ? 1 : -1;
+            }
+            if (a.category !== b.category) {
+                return a.category === 'recommended_successor' ? -1 : 1;
+            }
+            return b.score - a.score;
+        });
 
         const top = scoredCandidates[0];
-        const hasSuccessor = Boolean(top && scoredCandidates.length > 0);
+        const hasSuccessor = Boolean(top && top.category === 'recommended_successor' && !top.isOverloaded);
         let explanation = '';
 
         if (top) {
-            explanation = `Recommended successor for ${resolvedTargetName} is ${top.name} with a ${top.score}% match score. ${top.rationale}`;
+            if (top.category === 'recommended_successor' && !top.isOverloaded) {
+                explanation = `Recommended successor for ${resolvedTargetName} is ${top.name} with a ${top.score}% match score. ${top.rationale}`;
+            } else if (top.category === 'cross_training_candidate' && !top.isOverloaded) {
+                explanation = `No direct successor with repository experience found for ${resolvedTargetName}. Top cross-training candidate is ${top.name} (${top.score}% match, capped at 25% due to 0% repository overlap). ${top.rationale}`;
+            } else {
+                explanation = `No viable successor found for ${resolvedTargetName}. Candidate ${top.name} was identified via tech stack but is ${top.warningLabel || 'overloaded'}. ${top.rationale}`;
+            }
         } else {
             explanation = `No candidate with overlapping technologies or repositories was found in the knowledge graph for ${resolvedTargetName}.`;
         }

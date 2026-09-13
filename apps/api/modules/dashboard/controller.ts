@@ -3,6 +3,7 @@ import { driver } from '../../config/neo4j.js'
 import { calculateKnowledgeRisk } from '../../../../packages/analytics/knowledge.service.js'
 import { calculateSuccessorCandidates } from '../../../../packages/analytics/successor.service.js'
 import { Request, Response } from 'express';
+import { RISK_THRESHOLDS } from '../../../../packages/shared/riskThresholds.js';
 
 // ─── Existing endpoints ────────────────────────────────────────────
 
@@ -13,19 +14,30 @@ export async function getTechnologiesHelper() {
     if (!technologies || technologies.length === 0) {
         const session = driver.session();
         try {
+            const totalRepoRes = await session.run(`MATCH (r:REPOSITORY) RETURN count(r) AS totalRepos`);
+            const totalRepos = totalRepoRes.records[0]?.get('totalRepos')?.toNumber() ?? 0;
+
             const neoTechRes = await session.run(`
                 MATCH (t:TECHNOLOGY)
                 OPTIONAL MATCH (p:PERSON)-[]-(e)-[:MENTIONED_IN|USES]-(t)
-                RETURN t.name AS tech_name, count(DISTINCT p) AS contributor_count
+                OPTIONAL MATCH (t)-[:MENTIONED_IN|USES]-(e2)-[:PART_OF]->(r:REPOSITORY)
+                RETURN t.name AS tech_name,
+                       count(DISTINCT p) AS contributor_count,
+                       count(DISTINCT r) AS repo_count
                 ORDER BY contributor_count DESC
             `);
             if (neoTechRes.records.length > 0) {
-                technologies = neoTechRes.records.map((rec: any) => ({
-                    tech_name: rec.get('tech_name'),
-                    usage_percent: Math.round(100 / neoTechRes.records.length),
-                    contributor_count: rec.get('contributor_count')?.toNumber() || 0,
-                    top_experts: []
-                }));
+                technologies = neoTechRes.records.map((rec: any) => {
+                    const repoCount = rec.get('repo_count')?.toNumber() || 0;
+                    const usagePercent = totalRepos > 0 ? Math.round((repoCount / totalRepos) * 100) : 0;
+                    return {
+                        tech_name: rec.get('tech_name'),
+                        usage_percent: usagePercent,
+                        repo_count: repoCount,
+                        contributor_count: rec.get('contributor_count')?.toNumber() || 0,
+                        top_experts: []
+                    };
+                });
             }
         } catch (cyErr: any) {
             console.warn('[TechnologiesHelper] Neo4j technology fallback warning:', cyErr?.message);
@@ -184,13 +196,13 @@ export async function getDashboardOverview(req: Request, res: Response) {
             });
         }
 
-        // People with knowledge risk > 60%
-        const highRiskPeople = people.filter((p: any) => (p.risk_score ?? 0) >= 60);
+        // People with knowledge risk >= HIGH (40%)
+        const highRiskPeople = people.filter((p: any) => (p.risk_score ?? 0) >= RISK_THRESHOLDS.HIGH);
         for (const p of highRiskPeople) {
             const reposList = Array.isArray(p.repos) ? p.repos.join(', ') : 'core modules';
             riskAlerts.push({
                 id: `person-${p.external_id || p.person_name}`,
-                severity: p.risk_score >= 80 ? 'critical' : 'warning',
+                severity: p.risk_score >= RISK_THRESHOLDS.CRITICAL ? 'critical' : 'warning',
                 category: 'Knowledge Risk',
                 entityName: p.person_name,
                 entityType: 'person',
@@ -230,7 +242,8 @@ export async function getDashboardOverview(req: Request, res: Response) {
             peopleCount: people.length,
             techCount: technologies.length,
             avgBusFactor: Number(avgBusFactor.toFixed(1)),
-            openHighRiskPrs: spofRepos.length,
+            spofRepoCount: spofRepos.length,
+            openHighRiskPrs: 0,
             totalRiskAlertsCount: riskAlerts.length
         };
 
@@ -326,7 +339,7 @@ interface Finding {
 
 // Thresholds — easily tunable without re-reading all the logic
 const BUS_FACTOR_CRITICAL_THRESHOLD = 1;    // bus_factor <= this triggers critical finding
-const PERSON_RISK_HIGH_THRESHOLD = 70;       // risk_score >= this triggers warning finding
+const PERSON_RISK_HIGH_THRESHOLD = RISK_THRESHOLDS.HIGH;       // risk_score >= this triggers warning finding
 const REPO_RISK_HIGH_THRESHOLD = 80;         // risk_score >= this triggers warning finding
 
 export async function getFindings(req: Request, res: Response) {
@@ -600,8 +613,12 @@ export async function getRepoDetails(req: Request, res: Response) {
                     name: c.name,
                     score: c.score,
                     sharedTechnologies: c.factors.sharedTechnologies,
+                    sharedRepositories: c.factors.sharedRepositories,
                     capacityScore: c.breakdown.workloadCapacityScore,
-                    rationale: c.rationale
+                    rationale: c.rationale,
+                    category: c.category,
+                    warningLabel: c.warningLabel,
+                    isOverloaded: c.isOverloaded,
                 }));
             } catch (succErr: any) {
                 console.warn('[RepoDetails] Successor calculation warning:', succErr?.message);

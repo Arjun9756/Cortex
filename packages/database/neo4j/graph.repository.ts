@@ -193,13 +193,23 @@ export async function upsertRelation(fromID: string, toID: string, type: string,
             throw new Error(`Invalid relationship type: ${type}`)
         }
 
-        const result = await session.run(`
-            MATCH (a) where elementId(a) = $fromID
-            MATCH(b) where elementId(b) = $toID
-            MERGE (a)-[r:${normalizedType}]->(b)
-            ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence
-            ON MATCH SET r.updatedAt = timestamp() , r.evidence = $evidence 
-        ` , { fromID, toID, evidence: evidence ?? null })
+        const result = (normalizedType === 'ASSIGNED_TO')
+            ? await session.run(`
+                MATCH (a) WHERE elementId(a) = $fromID
+                MATCH (b) WHERE elementId(b) = $toID
+                OPTIONAL MATCH (a)-[oldRel:ASSIGNED_TO]->(other) WHERE elementId(other) <> elementId(b)
+                DELETE oldRel
+                MERGE (a)-[r:ASSIGNED_TO]->(b)
+                ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence
+                ON MATCH SET r.updatedAt = timestamp(), r.evidence = $evidence
+            `, { fromID, toID, evidence: evidence ?? null })
+            : await session.run(`
+                MATCH (a) WHERE elementId(a) = $fromID
+                MATCH (b) WHERE elementId(b) = $toID
+                MERGE (a)-[r:${normalizedType}]->(b)
+                ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence
+                ON MATCH SET r.updatedAt = timestamp(), r.evidence = $evidence 
+            `, { fromID, toID, evidence: evidence ?? null });
     }
     catch (error: any) {
         console.log(`Error While Upsert of Relation in Graph ${error?.message}`)

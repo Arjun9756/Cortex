@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getPeople, simulateDeparture as simulateDepartureApi, type PersonMetric, type DepartureSimulation } from '../lib/api';
 import { Users, AlertTriangle, RefreshCw, GitCommit, FolderGit2, ShieldAlert, Award, UserMinus, X, Loader2, AlertCircle, Cpu } from 'lucide-react';
+import { RISK_THRESHOLDS } from '../constants/riskThresholds';
 
 interface PeoplePageProps {
   onSyncUpdated?: (date: Date) => void;
@@ -155,7 +156,8 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {people.map(person => {
             const risk = person.risk_score ?? 0;
-            const isHighRisk = risk >= 40;
+            const isCriticalRisk = risk >= RISK_THRESHOLDS.CRITICAL;
+            const isHighRisk = risk >= RISK_THRESHOLDS.HIGH;
 
             const techList: Array<{ name: string; score: number }> = Array.isArray(person.top_technologies)
               ? person.top_technologies
@@ -188,8 +190,10 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
 
                     <span
                       className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center space-x-1 ${
-                        isHighRisk
+                        isCriticalRisk
                           ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          : isHighRisk
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                           : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                       }`}
                     >

@@ -563,12 +563,21 @@ Output Range: 0 – 100 integer score per candidate
    - $61 - 90\text{ days}$: Score = 30 (`dormant`)
    - $> 90\text{ days}$: Score = 0 (`inactive`)
 
-4. **Workload Capacity (15% Weight):**  
-   $$\text{WorkloadCapacityScore} = (1.0 - \text{Candidate's Own Knowledge Risk}) \times 100$$  
+4. **Workload Capacity with SPOF Penalty (15% Weight):**  
+   $$\text{spofPenalty} = (\text{Candidate's SPOF Repos Count}) \times 0.15$$
+   $$\text{WorkloadCapacityScore} = \max(0, 1.0 - \text{Candidate's Knowledge Risk} - \text{spofPenalty}) \times 100$$  
    *Rationale:* Prevents concentrating single-point-of-failure risk onto engineers who are already critical bottlenecks elsewhere.
 
-### 10.2 Mandatory Disqualification Rule
-$$\text{IF } \text{SharedTechnologies} = 0 \text{ AND } \text{SharedRepositories} = 0 \implies \text{Candidate is Excluded}$$
+### 10.2 Mandatory Disqualification & Hard Business Rules
+1. **Disqualification:**
+   $$\text{IF } \text{SharedTechnologies} = 0 \text{ AND } \text{SharedRepositories} = 0 \implies \text{Candidate is Excluded}$$
+2. **0%-Repo-Overlap Score Cap (Fix C):**
+   $$\text{IF } \text{SharedRepositories} = 0 \implies \text{Composite Score is Capped at 25% AND Category} = \text{"cross\_training\_candidate"}$$
+3. **SPOF Overload Hard Cap (Fix B):**
+   $$\text{IF } \text{Candidate SPOF Repos Count} \ge 3 \implies \text{Flagged as Overloaded with Warning: "Not Recommended — Already Maintains 3+ Critical Repositories"}$$
+
+> 📘 **Full Mathematical & Metrics Specification:**  
+> For complete step-by-step arithmetic, repo health grading, workspace health algorithms, and concrete numerical walkthroughs, see [docs/metrics/FORMULAS_AND_CALCULATIONS.md](file:///d:/Cortex/docs/metrics/FORMULAS_AND_CALCULATIONS.md).
 
 ---
 

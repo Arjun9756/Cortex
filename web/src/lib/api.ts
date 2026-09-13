@@ -90,6 +90,7 @@ export interface DashboardStats {
     peopleCount: number;
     techCount: number;
     avgBusFactor: number;
+    spofRepoCount: number;
     openHighRiskPrs: number;
     totalRiskAlertsCount: number;
 }
@@ -514,8 +515,12 @@ export interface RepositoryDetails {
         name: string;
         score: number;
         sharedTechnologies: string[];
+        sharedRepositories?: string[];
         capacityScore: number;
         rationale: string;
+        category?: 'recommended_successor' | 'cross_training_candidate';
+        warningLabel?: string;
+        isOverloaded?: boolean;
     }>;
 }
 
