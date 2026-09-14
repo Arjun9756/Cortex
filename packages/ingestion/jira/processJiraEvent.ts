@@ -3,6 +3,7 @@ import { upsertRelation } from '../../database/neo4j/graph.repository.js'
 import { upsertVector } from '../../database/vector/qdrant.repository.js'
 import { extractFromEvent } from '../../extraction/extractor.js'
 import { saveExtractionToGraph, PersonMetadata } from '../../extraction/processExtraction.js'
+import { resolveIdentity } from '../../identity/canonicalPerson.service.js'
 import { generateEmbeddings } from '../../llm/providers/gemini.js'
 import { ICleanEvent, normalizeJiraEvent } from './normalize.js'
 import crypto from 'crypto'
@@ -16,8 +17,10 @@ export async function processJiraEvent(eventID: string) {
             return null
         }
 
+        const rawPayload = typeof event.payload === 'string' ? JSON.parse(event.payload) : (event.payload ?? {})
+
         // 2.Normalize Payload
-        const normalizedPayload: ICleanEvent | null = normalizeJiraEvent(event.payload, event.event_type)
+        const normalizedPayload: ICleanEvent | null = normalizeJiraEvent(rawPayload, event.event_type)
         if (normalizedPayload == null)
             return
 
@@ -27,11 +30,63 @@ export async function processJiraEvent(eventID: string) {
         // 4.Get The Entities and relation from LLM
         const { entities, newEntities, relationships, newRelations, summary } = await extractFromEvent(cleanEventText, 'jira')
 
-        // 5. Build person metadata from normalized Jira payload (includes email)
+        // 5. Resolve canonical identity and build person metadata
+        const issueFields = rawPayload.issue?.fields ?? {}
+        const userObj = rawPayload.user ?? issueFields.reporter ?? issueFields.assignee ?? {}
+
+        const rawExternalId = userObj.accountId 
+            ?? issueFields.reporter?.accountId 
+            ?? issueFields.assignee?.accountId 
+            ?? userObj.key 
+            ?? userObj.name 
+            ?? (normalizedPayload.author !== 'Unknown' && normalizedPayload.author !== 'unknown' ? normalizedPayload.author : undefined)
+
+        const externalId = rawExternalId ? String(rawExternalId) : `jira_${normalizedPayload.author || 'unknown'}`
+        const username = userObj.name ?? issueFields.reporter?.name ?? issueFields.assignee?.name ?? undefined
+        const displayName = (normalizedPayload.author !== 'Unknown' && normalizedPayload.author !== 'unknown') 
+            ? normalizedPayload.author 
+            : (userObj.displayName ?? username ?? externalId)
+        const email = normalizedPayload.authorEmail 
+            ?? userObj.emailAddress 
+            ?? issueFields.reporter?.emailAddress 
+            ?? issueFields.assignee?.emailAddress 
+            ?? undefined
+
+        let canonicalPersonId: string | null = null
+        const hasAuthorInfo = Boolean(
+            (rawExternalId && rawExternalId !== 'unknown' && rawExternalId !== 'Unknown') ||
+            email ||
+            (username && username !== 'unknown' && username !== 'Unknown') ||
+            (displayName && displayName !== 'unknown' && displayName !== 'Unknown')
+        )
+
+        if (hasAuthorInfo) {
+            try {
+                const identityRes = await resolveIdentity({
+                    provider: 'jira',
+                    externalId,
+                    username,
+                    email,
+                    displayName,
+                })
+                canonicalPersonId = identityRes.canonicalPersonId
+
+                if (identityRes.matchedBy === 'NEW_PERSON') {
+                    console.log(`[IdentityResolution] [Jira] Created new canonical person: ${identityRes.canonicalPersonId} for ${displayName || username || externalId} (externalId: ${externalId})`)
+                } else {
+                    console.log(`[IdentityResolution] [Jira] Linked existing canonical person: ${identityRes.canonicalPersonId} for ${displayName || username || externalId} via ${identityRes.matchedBy} (confidence: ${identityRes.confidence}, reason: ${identityRes.reason})`)
+                }
+            } catch (idErr: any) {
+                console.warn(`[Jira Ingestion] Identity resolution warning for ${externalId}: ${idErr?.message}`)
+            }
+        }
+
         const personMetadata: PersonMetadata[] = [{
             name: normalizedPayload.author,
-            email: normalizedPayload.authorEmail ?? null,
+            email: email ?? normalizedPayload.authorEmail ?? null,
             role: null, // Jira role not available from issue webhook payload
+            externalId,
+            canonicalPersonId,
         }]
 
         // Build entity metadata for Jira issue status

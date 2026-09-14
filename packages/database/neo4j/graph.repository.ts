@@ -19,6 +19,7 @@ const ALLOWED_ENTITY_TYPES = new Set([
 export async function ensureIndexes(): Promise<void> {
     const session = driver.session()
     try {
+        await session.run(`CREATE INDEX entity_person_canonicalid IF NOT EXISTS FOR (n:PERSON) ON (n.canonicalPersonId)`)
         await session.run(`CREATE INDEX entity_person_email IF NOT EXISTS FOR (n:PERSON) ON (n.email)`)
         await session.run(`CREATE INDEX entity_person_externalid IF NOT EXISTS FOR (n:PERSON) ON (n.externalId)`)
         await session.run(`CREATE INDEX entity_repo_externalid IF NOT EXISTS FOR (n:REPOSITORY) ON (n.externalId)`)
@@ -26,7 +27,7 @@ export async function ensureIndexes(): Promise<void> {
         await session.run(`CREATE INDEX entity_repo_name IF NOT EXISTS FOR (n:REPOSITORY) ON (n.name)`)
         await session.run(`CREATE INDEX entity_tech_name IF NOT EXISTS FOR (n:TECHNOLOGY) ON (n.name)`)
         await session.run(`CREATE INDEX entity_commit_createdat IF NOT EXISTS FOR (n:COMMIT) ON (n.createdAt)`)
-        console.log('[Graph] Neo4j indexes ensured (PERSON: name, email, externalId; REPOSITORY: name, externalId; TECHNOLOGY: name; COMMIT: createdAt)')
+        console.log('[Graph] Neo4j indexes ensured (PERSON: canonicalPersonId, name, email, externalId; REPOSITORY: name, externalId; TECHNOLOGY: name; COMMIT: createdAt)')
     } catch (error: any) {
         console.error('[Graph] Failed to ensure indexes:', error.message)
     } finally {
@@ -74,8 +75,21 @@ export async function upsertEntity(
         if (normalizedType === 'PERSON') {
             let matchedId: string | null = null;
 
+            // Step 0: Match by canonicalPersonId if present (highest priority identity anchor)
+            if (extraProperties?.canonicalPersonId) {
+                params.canonicalPersonId = extraProperties.canonicalPersonId;
+                const canMatch = await session.run(`
+                    MATCH (e:PERSON)
+                    WHERE e.canonicalPersonId IS NOT NULL AND e.canonicalPersonId = $canonicalPersonId
+                    RETURN elementId(e) AS id LIMIT 1
+                `, params);
+                if (canMatch.records.length > 0 && canMatch.records[0]) {
+                    matchedId = canMatch.records[0].get('id');
+                }
+            }
+
             // Step 1: Match by Email if present
-            if (extraProperties?.email) {
+            if (!matchedId && extraProperties?.email) {
                 params.email = extraProperties.email;
                 const emailMatch = await session.run(`
                     MATCH (e:PERSON)
@@ -100,24 +114,23 @@ export async function upsertEntity(
                 }
             }
 
-            // Step 3: Match by exact case-insensitive Name if still no match
-            if (!matchedId) {
-                const nameMatch = await session.run(`
-                    MATCH (e:PERSON)
-                    WHERE toLower(e.name) = toLower($name)
-                    RETURN elementId(e) AS id LIMIT 1
-                `, params);
-                if (nameMatch.records.length > 0 && nameMatch.records[0]) {
-                    matchedId = nameMatch.records[0].get('id');
-                }
-            }
+            // NOTE: Strict Identity Resolution Policy:
+            // "Wrong merge is worse than having 2 separate entries."
+            // Name-only matching for PERSON is strictly disabled to prevent auto-merging distinct people with identical/similar names.
 
-            // Update existing or Merge new
+            // Update existing or create distinct person node
             if (matchedId) {
                 params.id = matchedId;
                 result = await session.run(`
                     MATCH (e:PERSON) WHERE elementId(e) = $id
                     SET e.name = $name, e.updatedAt = timestamp()${extraSetClause}
+                    RETURN elementId(e) AS id
+                `, params);
+            } else if (extraProperties?.canonicalPersonId) {
+                result = await session.run(`
+                    MERGE (e:PERSON {canonicalPersonId: $canonicalPersonId})
+                    ON CREATE SET e.name = $name, e.createdAt = timestamp()${extraSetClause}
+                    ON MATCH SET e.name = $name, e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
                 `, params);
             } else if (extraProperties?.email) {
@@ -127,11 +140,16 @@ export async function upsertEntity(
                     ON MATCH SET e.name = $name, e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
                 `, params);
+            } else if (extraProperties?.externalId) {
+                result = await session.run(`
+                    MERGE (e:PERSON {externalId: $externalId})
+                    ON CREATE SET e.name = $name, e.createdAt = timestamp()${extraSetClause}
+                    ON MATCH SET e.name = $name, e.updatedAt = timestamp()${extraSetClause}
+                    RETURN elementId(e) AS id
+                `, params);
             } else {
                 result = await session.run(`
-                    MERGE (e:PERSON {name: $name})
-                    ON CREATE SET e.createdAt = timestamp()${extraSetClause}
-                    ON MATCH SET e.updatedAt = timestamp()${extraSetClause}
+                    CREATE (e:PERSON {name: $name, createdAt: timestamp()${extraSetClause}})
                     RETURN elementId(e) AS id
                 `, params);
             }
@@ -177,14 +195,25 @@ export async function upsertEntity(
 }
 
 export async function upsertCanonicalPersonNode(person: { id: string; name: string; email?: string | undefined }) {
-    return await upsertEntity(person.name, 'PERSON', { email: person.email, externalId: person.id });
+    return await upsertEntity(person.name, 'PERSON', { email: person.email, canonicalPersonId: person.id, externalId: person.id });
 }
 
 export async function upsertIdentityNode(identity: { provider: string; externalId: string; username: string; displayName: string; canonicalPersonId: string }) {
-    return await upsertEntity(identity.displayName || identity.username, 'PERSON', { externalId: identity.externalId, provider: identity.provider });
+    return await upsertEntity(identity.displayName || identity.username, 'PERSON', { externalId: identity.externalId, provider: identity.provider, canonicalPersonId: identity.canonicalPersonId });
 }
 
-export async function upsertRelation(fromID: string, toID: string, type: string, evidence?: string) {
+export interface RelationMetadata {
+    sourceEventId?: string | null;
+    confidence?: number | null;
+}
+
+export async function upsertRelation(
+    fromID: string,
+    toID: string,
+    type: string,
+    evidence?: string,
+    metadata?: RelationMetadata
+) {
     const session = driver.session()
     console.log(`Upsert Relation ${evidence}`)
     try {
@@ -193,6 +222,9 @@ export async function upsertRelation(fromID: string, toID: string, type: string,
             throw new Error(`Invalid relationship type: ${type}`)
         }
 
+        const sourceEventId = metadata?.sourceEventId ?? null;
+        const confidence = metadata?.confidence != null ? metadata.confidence : 1.0;
+
         const result = (normalizedType === 'ASSIGNED_TO')
             ? await session.run(`
                 MATCH (a) WHERE elementId(a) = $fromID
@@ -200,22 +232,47 @@ export async function upsertRelation(fromID: string, toID: string, type: string,
                 OPTIONAL MATCH (a)-[oldRel:ASSIGNED_TO]->(other) WHERE elementId(other) <> elementId(b)
                 DELETE oldRel
                 MERGE (a)-[r:ASSIGNED_TO]->(b)
-                ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence
-                ON MATCH SET r.updatedAt = timestamp(), r.evidence = $evidence
-            `, { fromID, toID, evidence: evidence ?? null })
+                ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence, r.sourceEventId = $sourceEventId, r.confidence = $confidence
+                ON MATCH SET r.updatedAt = timestamp(), r.evidence = $evidence, r.sourceEventId = COALESCE($sourceEventId, r.sourceEventId), r.confidence = COALESCE($confidence, r.confidence)
+            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence })
             : await session.run(`
                 MATCH (a) WHERE elementId(a) = $fromID
                 MATCH (b) WHERE elementId(b) = $toID
                 MERGE (a)-[r:${normalizedType}]->(b)
-                ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence
-                ON MATCH SET r.updatedAt = timestamp(), r.evidence = $evidence 
-            `, { fromID, toID, evidence: evidence ?? null });
+                ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence, r.sourceEventId = $sourceEventId, r.confidence = $confidence
+                ON MATCH SET r.updatedAt = timestamp(), r.evidence = $evidence, r.sourceEventId = COALESCE($sourceEventId, r.sourceEventId), r.confidence = COALESCE($confidence, r.confidence)
+            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence });
     }
     catch (error: any) {
         console.log(`Error While Upsert of Relation in Graph ${error?.message}`)
     }
     finally {
         await session.close()
+    }
+}
+
+/**
+ * Rollback / delete all relationships tagged with a specific sourceEventId.
+ * Used for reversing hallucinated or deleted/reverted webhook deliveries.
+ */
+export async function rollbackEventRelations(sourceEventId: string): Promise<number> {
+    if (!sourceEventId) return 0;
+    const session = driver.session();
+    try {
+        const result = await session.run(`
+            MATCH ()-[r]->()
+            WHERE r.sourceEventId = $sourceEventId
+            DELETE r
+            RETURN count(r) AS deletedCount
+        `, { sourceEventId });
+        const deleted = result.records[0]?.get('deletedCount')?.toNumber() ?? 0;
+        console.log(`[GraphRollback] Rolled back ${deleted} relations for sourceEventId: ${sourceEventId}`);
+        return deleted;
+    } catch (err: any) {
+        console.error(`[GraphRollback] Error rolling back relations for ${sourceEventId}: ${err?.message}`);
+        throw err;
+    } finally {
+        await session.close();
     }
 }
 

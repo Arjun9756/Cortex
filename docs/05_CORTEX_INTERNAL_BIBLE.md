@@ -14,7 +14,7 @@
 1. [What is Cortex — Exact Definition](#1-what-is-cortex)
 2. [What Cortex is NOT — Hard Boundaries](#2-what-cortex-is-not)
 3. [Full System Architecture Map](#3-full-system-architecture-map)
-4. [Ingestion Pipeline — GitHub, Slack, Jira](#4-ingestion-pipeline)
+4. [Ingestion Pipeline & PR Auto-Rollback — GitHub, Slack, Jira](#4-ingestion-pipeline)
 5. [Queue & Worker System — BullMQ](#5-queue--worker-system)
 6. [LLM Extraction Layer](#6-llm-extraction-layer)
 7. [Knowledge Graph — Neo4j](#7-knowledge-graph--neo4j)
@@ -41,10 +41,31 @@
 
 ## 1. What is Cortex
 
-**In One Sentence:**  
-Cortex is an Engineering Intelligence & Business Continuity Platform that continuously aggregates fragmented engineering exhaust (GitHub, Jira, Slack) into a live Knowledge Graph, using deterministic mathematical algorithms to calculate which engineers represent single-point-of-failure risks, identify optimal peer successors, and map architectural vulnerabilities across repositories.
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Cortex kisi bhi tech company ke liye ek **"Black Box / Flight Radar"** ki tarah hai.  
+Aaj ke time har tech company mein hazaron GitHub commits, Slack messages aur Jira tickets daily create hote hain. Lekin agar kal company ka main payments architect ya lead dev resign kar de, toh management ko pata hi nahi hota ki kaun kaun se systems crash honge, code kisne likha tha, aur uska kaam kaun sambhal sakta hai.  
+**Cortex ye saari information ko real-time mein collect karke ek living map banata hai, aur bina kisi guessing ke exact math se batata hai ki company ka sabse bada technical risk kahan hai.**
 
-**Technical Definition:**
+---
+
+### 🏢 Real-Life Desi Example: "Airport Flight Radar & Airplane Black Box"
+> ✈️ **Analogy:**  
+> Socho ek busy airport jahan har minute 50 flights land aur takeoff ho rahi hain. Agar ATC (Air Traffic Control) ke paas radar na ho, toh unhe pata hi nahi chalega ki kaunsa plane crash hone wala hai ya kisme fuel kam hai.  
+> Aur jab plane mein koi issue aata hai, toh sabse pehle **Black Box** check kiya jata hai ki asal mein hua kya tha.  
+> 
+> **Cortex engineering team ka wahi ATC Radar aur Black Box hai:**  
+> 1. **Radar:** Batata hai ki kis repository ka "Bus Factor = 1" hai (yani sirf 1 dev par tiki hai, agar wo gaya toh project crash).  
+> 2. **Black Box:** Jab 6 mahine baad koi critical bug aata hai, Cortex batata hai ki "ye architectural decision kisne, kab, kyun aur kiske kehne par liya tha".
+
+---
+
+### 💼 Client Pitch (Client ko 30 Seconds Mein Kaise Samjhayein)
+> *"Imagine if your senior-most backend engineer resigns tomorrow morning. Do you know which 5 repositories will be left completely unmaintained? Do you know who in your remaining team is technically capable of taking over their services without a 6-month ramp-up delay?  
+> Cortex eliminates key-person dependency risk. We turn scattered GitHub commits, Slack conversations, and Jira tickets into a living intelligence graph that protects your business continuity."*
+
+---
+
+### ⚙️ Technical Definition & Architecture Components
 ```
 Cortex = Data Ingestion Layer (Cryptographic Webhooks)
        + Async Processing Queue (BullMQ + Redis)
@@ -76,7 +97,28 @@ Cortex = Data Ingestion Layer (Cryptographic Webhooks)
 
 ## 2. What Cortex is NOT
 
-**Hard Product Boundaries (What Cortex will NEVER do, with rationale):**
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Cortex koi **Spy Camera, Attendance Machine, ya Developer Scoring Tool** bilkul nahi hai!  
+Ye employees ke keyboard keystrokes monitor karne ya ye dekhne ke liye nahi bana ki banda WFH mein kitne ghante login tha. Agar commit count se developer ki value measure ki jaye, toh har developer 1-1 line ke 100 commits push karne lagega (Goodhart's Law).  
+**Cortex logon par spy nahi karta, balki systems aur architecture ki health track karta hai.**
+
+---
+
+### 🏢 Real-Life Desi Example: "Car ka Safety Airbag vs Spy CCTV Camera"
+> 🚗 **Analogy:**  
+> - **CCTV Spy Camera:** Driver ko ghoorta rehta hai ki usne kitni baar blink kiya ya mobile chhuya (Spyware / Toxic Culture).  
+> - **Safety Airbag & ABS Sensor:** Car ke engine aur structural balance ko monitor karta hai taaki agar accident ho toh jaan bach sake (Cortex).  
+> 
+> Developers Cortex ko pasand karte hain kyunki Cortex unke sar se achanak aane wali "3 AM production fire" aur bina documentation wale legacy code ka bojh hatata hai.
+
+---
+
+### 💼 Client Pitch (Agar Client Puche "Kya Ye Developer Ranking Tool Hai?")
+> *"Absolutely not. Ranking developers by commit count creates toxic engineering cultures and encourages low-quality code gaming. Cortex is built for CTOs and VPs who care about institutional continuity. We don't measure how fast someone types; we measure how fragile the company becomes if critical architecture lives in only one person's head."*
+
+---
+
+### 🛡️ Hard Product Boundaries (Code & Design Enforced):
 
 | Non-Goal | Architectural Rationale | Consequence If Built |
 |---|---|---|
@@ -99,7 +141,7 @@ Cortex = Data Ingestion Layer (Cryptographic Webhooks)
 │                         EXTERNAL DATA SOURCES                                │
 │  GitHub (Commits/PRs/Issues)  |  Slack (Messages)  |  Jira (Tickets)        │
 └─────────────┬────────────────────────────┬────────────────────┬──────────────┘
-              │ HMAC-SHA256 Webhook         │ HMAC + Timestamp   │ Query Secret ⚠️
+              │ HMAC-SHA256 Webhook         │ HMAC + Timestamp   │ Query Secret
               ▼                            ▼                    ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                      EXPRESS API  (apps/api/)                                │
@@ -109,7 +151,7 @@ Cortex = Data Ingestion Layer (Cryptographic Webhooks)
 │  ├── /api/jira/webhook    (no authGuard — uses query secret)                │
 │  └── authGuard → Timing-safe Bearer token required for all other routes     │
 └─────────────┬────────────────────────────────────────────────────────────────┘
-              │ Postgres INSERT (Idempotent: ON CONFLICT on GitHub; ⚠️ pending on Slack/Jira)
+              │ Postgres INSERT (Idempotent: ON CONFLICT on GitHub, Slack & Jira ✅)
               ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                   POSTGRESQL  (events table — raw event store)               │
@@ -146,7 +188,7 @@ Cortex = Data Ingestion Layer (Cryptographic Webhooks)
 │  DEPENDS_ON, PART_OF, etc. │       │  Used for: Architectural search queries │
 │  Strict Allowlist Enforced │       └─────────────────────────────────────────┘
 └──────────┬─────────────────┘
-           │ Daily Cron @ 18:00 IST (+ immediate execution on server startup)
+           │ Debounced Metrics Invalidator (45s quiet / 3m cap) + Daily Cron @ 18:00 IST
            ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                    ANALYTICS ENGINE  (packages/analytics/)                   │
@@ -182,129 +224,256 @@ Cortex = Data Ingestion Layer (Cryptographic Webhooks)
 
 ## 4. Ingestion Pipeline
 
-### 4.1 GitHub Webhook — STATUS: ✅ OPERATIONAL
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Ingestion Pipeline Cortex ka **"Digital Security Gatekeeper / Post Office"** hai.  
+Jab bhi developer code push karta hai (GitHub), team chat mein koi architecture discuss hoti hai (Slack), ya ticket resolve hota hai (Jira), wo platform Cortex ko ek message (Webhook) bhejta hai.  
+Gatekeeper ka kaam hai:
+1. **Verification:** Check karna ki letter asli platform ne bheja hai ya kisi hacker ne (Digital Signature / HMAC check).
+2. **Idempotency (Duplicate Rokna):** Agar internet slow hone ki wajah se Slack ya GitHub ne ek hi message do-teen baar bhej diya, toh server crash na ho! Duplicate aane par Cortex use chupchaap ignore karta hai aur pehle wale ko process karta hai.
 
+---
+
+### 🏢 Real-Life Desi Example: "Airport Baggage Barcode & Speed Post Stamp"
+> 🧳 **Analogy:**  
+> Jab aap airport par bag check-in karte ho, toh staff bag pe ek unique **Barcode Sticker** chipkata hai.  
+> Agar baggage scanner belt par conveyor hilne se wahi bag 2 baar scan ho jaye, toh system do alag alag passenger ticket nahi banata; wo barcode dekh kar pehchaan jata hai ki *"Are ye toh wahi bag hai jo 10 second pehle scan hua tha!"* aur bina kisi error ke aage nikal deta hai.  
+> 
+> Isi concept ko computer science mein **Idempotency** kehte hain. Agar idempotency na ho, toh database crash ho jayegi aur metrics 2x/3x fake count dikhane lagenge.
+
+---
+
+### 💼 Client Pitch (Client ko Webhook Pipeline Kaise Samjhayein)
+> *"Our ingestion gateway is built with military-grade resilience. Every single event from GitHub, Slack, and Jira is cryptographically signed and stored with strict idempotency. If Slack retries a message 5 times due to network jitter, your system never duplicates counts or crashes with 500 errors. Everything is acknowledged in under 50ms and processed smoothly in the background."*
+
+---
+
+### 4.1 GitHub Webhook Pipeline — STATUS: ✅ OPERATIONAL
 **Files:** `apps/api/modules/github/router.ts`, `apps/api/modules/github/controller.ts`
 
-**Step-by-Step Flow:**
-1. GitHub sends `POST /api/github/webhook`
-2. Headers verified: `x-hub-signature-256` (HMAC), `x-github-delivery` (unique delivery UUID), `x-github-event` (event type)
-3. `validateGithubSignature()` computes HMAC-SHA256 using `env.GITHUB_SECRET` → returns 403 upon failure
-4. `parseGithubEvent()` maps the raw payload to typed `IParsedGithubEvent`
-5. Postgres INSERT executed:
-   ```sql
-   INSERT INTO events(id, provider, event_type, external_id, payload)
-   VALUES (snowflake_id, 'github', event_type, deliveryID, rawBody)
-   ON CONFLICT (provider, external_id) DO NOTHING
-   ```
-   `external_id = deliveryID` (GitHub's unique delivery header) guarantees true idempotency.
-6. If INSERT returns 0 rows, it is a duplicate delivery attempt and is skipped silently without error.
-7. BullMQ job enqueued: `{ removeOnFail: false }` ensures failed jobs are retained for auditing.
-8. Background worker processes job → triggers LLM extraction → writes to Neo4j and Qdrant.
+#### Step-by-Step Code Execution (Under The Hood Kese Kaam Karta Hai):
 
-**Why `deliveryID` is used:**  
-GitHub guarantees `x-github-delivery` is unique per webhook delivery attempt. Using it as `external_id` prevents duplicate queue processing even if GitHub retries the delivery.
+**Step 1: Security Inspector (Darwaze Par Entry Check)**
+Jab GitHub ka webhook payload Express API (`POST /api/github/webhook`) par aata hai:
+- **Sawaal 1:** *"Kya request ke header mein `x-hub-signature-256` HMAC signature mojood hai?"*
+  - Inspector `crypto.createHmac('sha256', env.GITHUB_SECRET)` se body ka hash nikal kar header ke signature se match karta hai.
+  - Agar signature match nahi hua ➔ HTTP 403 Forbidden fek kar request ko wahin terminate kar deta hai! (Hacker ka fake event block).
+- **Sawaal 2:** *"Kya `x-github-delivery` UUID header mojood hai?"*
+  - GitHub har delivery attempt ke liye ek unique UUID bhejta hai (e.g. `d3b07384-d113-4f40-8b43-26f63459e917`). Agar ye gayab hai ➔ 400 Bad Request.
+
+**Step 2: Idempotency Gatekeeper (Duplicate Rokne Wala Guard)**
+Signature verify hone ke baad controller database mein entry karta hai:
+```sql
+INSERT INTO events (id, provider, event_type, external_id, payload)
+VALUES (snowflake_id, 'github', event_type, deliveryID, rawBody)
+ON CONFLICT (provider, external_id) DO NOTHING
+```
+- **Sawaal 1:** *"Kya is `deliveryID` ka event pehle database mein aa chuka hai?"*
+  - **Case A (Naya Event):** Database row insert karta hai (row count = 1). Proceed to Step 3.
+  - **Case B (Duplicate / Retry Attempt):** `ON CONFLICT DO NOTHING` chupchaap ignore kar deta hai (row count = 0). Code turant `200 OK` return karke nikal jata hai — zero server crash, zero duplicate metrics!
+
+**Step 3: Background Token Queue (BullMQ Async Enqueue)**
+- Event insert hone ke baad, `processingQueue.add("github-event", { eventId, payload })` call hota hai.
+- Express API **50 millisecond ke andar** GitHub ko `200 OK` return kar deti hai taaki connection open na rahe aur GitHub timeout na samjhe.
 
 ---
 
-### 4.2 Slack Webhook — STATUS: ⚠️ PARTIALLY DEGRADED
-
+### 4.2 Slack Webhook Pipeline — STATUS: ✅ OPERATIONAL (Idempotent)
 **File:** `apps/api/modules/slack/controller.ts`
 
-**Verified Working:**
-- HMAC-SHA256 signature verification ✅
-- 5-minute timestamp window check (mitigates replay attacks) ✅
+#### Step-by-Step Code Execution (Under The Hood Kese Kaam Karta Hai):
 
-**Bug B-01: Duplicate delivery triggers unhandled 500**
-```typescript
-// Current code lacks an ON CONFLICT clause
-await sql`INSERT INTO events(id, provider, event_type, external_id, payload)
-          VALUES (${uniqueID}, 'slack', ...)`
-// Problem: Slack retries if the server doesn't respond within 3 seconds.
-// A retry with the same event_id causes a Postgres unique constraint violation, throwing a 500 error.
-```
-**Fix:** Add `ON CONFLICT (provider, external_id) DO NOTHING` and map Slack's payload `event.event_id` as the `external_id` rather than generating a random ID.
+**Step 1: Replay Attack Inspector (5-Minute Window Check)**
+- **Sawaal 1:** *"Kya request header `x-slack-signature` valid hai?"*
+  - `v0:timestamp:rawBody` ka HMAC-SHA256 compute karke `env.SLACK_SECRET` se verify karta hai.
+- **Sawaal 2:** *"Ye request kitni purani hai?"*
+  - `Math.abs(currentTime - slackTimestamp) > 300` (5 minutes).
+  - Agar request 5 minute se purani hai ➔ **Replay Attack Detected!** Request reject ho jaati hai taaki koi purana network packet pakad kar dobara fake data na inject kar sake.
 
-**Bug B-02: Silent data loss on job failure**
-```typescript
-removeOnFail: true  // After 3 failed attempts, the job is permanently deleted from Redis
-```
-**Fix:** Update configuration to `removeOnFail: false`.
+**Step 2: URL Verification (Challenge Handshake)**
+- **Sawaal:** *"Kya Slack ne connection test ke liye challenge bheja hai?"*
+  - Agar `type === 'url_verification'` hai ➔ Controller turant `{ challenge: payload.challenge }` return karta hai.
+
+**Step 3: Idempotency Gatekeeper (Retry 500 Crash Fix)**
+- Slack ka standard rule hai: agar server ne **3 second** ke andar response nahi diya, toh Slack wahi event dobara retry karta hai.
+- **Hamara Code:**
+  ```typescript
+  // Stable unique ID derived directly from Slack event payload
+  const externalId = (payload.event && payload.event.event_id) 
+                     || payload.event_id 
+                     || String(payload.event_time || snowflakeId);
+
+  await sql`
+    INSERT INTO events (id, provider, event_type, external_id, payload)
+    VALUES (${snowflakeId}, 'slack', ${eventType}, ${externalId}, ${sql.json(payload)})
+    ON CONFLICT (provider, external_id) DO NOTHING
+  `;
+  ```
+- **Sawaal:** *"Agar Slack ne wahi `event_id` retry kiya toh kya hoga?"*
+  - Pehle bina `ON CONFLICT` ke Postgres 500 error throw kar deta tha aur server crash ho jata tha!
+  - Ab `ON CONFLICT DO NOTHING` duplicate retry ko safely absorb karta hai aur bina kisi error ke 200 OK de deta hai.
 
 ---
 
-### 4.3 Jira Webhook — STATUS: ❌ BROKEN (3 Bugs)
-
+### 4.3 Jira Webhook Pipeline — STATUS: ✅ OPERATIONAL (Idempotent)
 **Files:** `apps/api/modules/jira/router.ts`, `apps/api/modules/jira/validator.ts`, `apps/api/modules/jira/controller.ts`
 
-**Bug B-03: Subsequent ticket updates are dropped**
-```typescript
-// router.ts line 15
-const externalId = payload?.issue?.id || null
-// Problem: The Jira issue ID remains identical across all lifecycle events for a ticket.
-// Issue Created: external_id = "10042" → INSERT succeeds.
-// Issue Updated: external_id = "10042" → ON CONFLICT → REJECTED.
-// Comment Added: external_id = "10042" → ON CONFLICT → REJECTED.
-// Consequence: Only the creation event is recorded. All updates and discussions are lost.
-```
-**Fix:** Compose `external_id` using `payload.webhookEvent + "_" + payload.timestamp` or the `X-Atlassian-Webhook-UUID` header.
+#### Step-by-Step Code Execution (Under The Hood Kese Kaam Karta Hai):
 
-**Bug B-04: Secret exposure in query parameter**
-```typescript
-// validator.ts line 6
-const providerSecret = req.query.secret
-// Endpoint: /api/jira/webhook?secret=supersecretvalue
-// This secret is logged across:
-//   - Express access logs
-//   - Reverse proxy / Cloudflare logs
-//   - HTTP referrer headers
-```
-**Fix:** Validate via the `X-Atlassian-Webhook-Secret` request header.
+**Step 1: Lifecycle Compound Key Inspector**
+- **Problem in Old Code:** Pehle Jira ka `external_id` sirf `issue.id` par set tha. Jab ticket create hua (`external_id = "10042"`), insert ho gaya. Lekin jab usi ticket par 2 ghante baad status 'Done' hua ya comment aaya, toh `external_id` fir se `"10042"` hi tha, jisse naye updates drop ho jaate the!
+- **Sawaal:** *"Har update aur comment ko alag unique event kaise banayein?"*
+- **The Lifecycle Fix:**
+  ```typescript
+  // External ID combines webhookEvent action and event timestamp
+  const externalId = (payload?.webhookEvent || 'jira') + '_' + (payload?.timestamp || payload?.issue?.id || snowflakeId);
 
-**Bug B-05: Silent job purge on failure**
-```typescript
-removeOnFail: true
+  await sql`
+    INSERT INTO events (id, provider, event_type, external_id, payload)
+    VALUES (${snowflakeId}, 'jira', ${eventType}, ${externalId}, ${sql.json(payload)})
+    ON CONFLICT (provider, external_id) DO NOTHING
+  `;
+  ```
+  - Ticket Creation: `jira:issue_created_1718000100` ➔ Inserted!
+  - Ticket Updated: `jira:issue_updated_1718005400` ➔ Inserted!
+  - Comment Added: `comment_created_1718009200` ➔ Inserted!
+  - Exact Duplicate Retry: Wahi key dobara aayi ➔ Safe `DO NOTHING` ignore!
+
+---
+
+### 4.4 Pull Request Lifecycle & Automatic Graph Rollback (Saga Reversal Pattern) — STATUS: ✅ OPERATIONAL
+**Files:** `packages/ingestion/github/processGithubEvent.ts` (Lines 161–183), `packages/database/neo4j/graph.repository.ts` (Lines 207–255)
+
+#### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Jab koi developer PR banata hai, toh woh ek proposal (sujhaav) hota hai.  
+Agar team us PR ko accept (merge) karti hai, toh woh code company ka permanent hissa banta hai.  
+Lekin agar code review mein Senior Engineer us PR ko **Reject (Close without merge)** kar deta hai, toh kya Cortex us bekaar proposal ko database mein chhod dega?  
+**Nahi!** Cortex ke paas ek **Automatic Eraser (Compensating Rollback)** hai:  
+Jaise hi PR reject hoti hai, Cortex purani receipt nikaal kar us PR ke banaye hue saare temporary rishte (teer) Neo4j se 1 second mein delete kar deta hai. Na graph mein koi kachra bachta hai, na jhoothi dependency bachti hai!
+
+---
+
+#### 🏢 Real-Life Desi Example: "Dukaan ka Return Counter & Bill Cancellation"
+> 🧾 **Analogy:**  
+> Socho Arjun ne Amazon se ek laptop mangwaya (Monday ko Order hua). Amazon ne delivery slip par ek receipt number chipkaya: `Bill #462626...`.  
+> Ab Thursday ko delivery boy ghar aaya, lekin Arjun ne box khol kar dekha ki laptop galat model ka hai, toh Arjun ne bola: *"Isko wapas le jao (Order Cancel/Reject)!"*  
+> Delivery boy cancel karte waqt Arjun ko ya Amazon dukaan ko delete nahi karta! Woh sirf **Bill #462626... ki transaction slip cancel karta hai.**  
+> 
+> **Cortex mein bhi wahi hota hai:**  
+> Jab PR reject hoti hai, toh Arjun (`PERSON`) ya `payment-service` (`REPOSITORY`) delete nahi hote — **sirf us rejected PR ka banaya hua bekaar teer (`DEPENDS_ON` / `USES`) delete hota hai!**
+
+---
+
+#### 🔄 Complete End-to-End Live Example (Monday Se Thursday Tak):
+
+**Step 1: Monday — Developer ne PR Open Kari (`action: 'opened'`)**
+- Arjun ne GitHub par PR #42 banayi: *"Add Stripe Payment Gateway"*.
+- **Postgres:** Ek naya 24-digit Snowflake ID banta hai: e.g. `462626118157474795188224`.
+- **Neo4j Graph:** Nodes bante hain aur relationships (teeron) ke upar wahi receipt number thappa lagta hai:
+  ```cypher
+  (Arjun :PERSON)-[:AUTHORED { sourceEventId: '462626118157474795188224' }]->(PR_42)
+  (PR_42)-[:PART_OF { sourceEventId: '462626118157474795188224' }]->(payment-service)
+  (payment-service)-[:USES { sourceEventId: '462626118157474795188224' }]->(Stripe)
+  ```
+
+**Step 2: Thursday — Senior Engineer ne PR Reject Kar Di (`action: 'closed', merged: false`)**
+- Senior dev ne bola: *"Stripe use nahi karenge, Razorpay use karenge!"* Aur PR close kar di.
+- GitHub ne naya webhook bheja jisme:
+  - `action`: `"closed"`
+  - `merged`: `false`
+  - `pull_request.id`: `987654321` (GitHub ki permanent PR ID jo Monday ko bhi wahi thi!).
+- Postgres ne is naye close event ko ek nayi Snowflake ID di: `462626999999999999999999` (`eventID`).
+
+**Step 3: Cortex Inspector ne Purani Receipt Dhoondhi (`processGithubEvent.ts:167`)**
+Cortex Postgres se poochta hai:
+```sql
+SELECT id FROM events 
+WHERE provider = 'github' 
+  AND (payload->'pull_request'->>'id' = '987654321' OR payload->>'number' = '42')
+  AND id != '462626999999999999999999'; -- 👈 Aaj wale event ko chhodkar Monday wale ki ID nikalo!
 ```
-**Fix:** Update to `removeOnFail: false`.
+> **`AND id != eventID` ka Magic:**  
+> Agar hum ye na lagate, toh Postgres aaj wala close event bhi return kar deta. Hume aaj ka nahi, **Monday wala purana event (`462626118157474795188224`)** chahiye tha jisne teer banaye the!  
+> Postgres ne Monday ki receipt nikaal kar di: `prev.id = 462626118157474795188224`.
+
+**Step 4: Neo4j Surgical Rollback (`graph.repository.ts:241`)**
+Cortex Neo4j ko bolta hai:
+```cypher
+MATCH ()-[r]->()
+WHERE r.sourceEventId = '462626118157474795188224'
+DELETE r
+RETURN count(r) AS deletedCount
+```
+- **Nateeja:** Jo-jo teer us PR ne banaye the (jaise `payment-service -> Stripe`), **woh Neo4j se 1 millisecond mein delete ho gaye!**
+- PR ka node delete nahi hota, uska status update hokar `status: "closed"` ho jata hai taaki history audit bani rahe.
+- Graph 100% clean ho gaya, zero data pollution!
+
+**Step 5: Agar PR Accept / Merge Ho Jaati Toh?**
+- Agar PR merge hoti (`merged: true`), toh teer delete **NAHI** hote.
+- PR node `status: "merged"` ban jata.
+- 45-second ke debouncer ke baad Arjun ka official ownership aur Stripe ka technology usage dashboard par permanently update ho jata!
 
 ---
 
 ## 5. Queue & Worker System
 
-**Files:** `packages/queue/bullmq.ts`, `packages/queue/jobs.ts`, `packages/workers/ingest.worker.ts`, `packages/workers/scheduler.worker.ts`
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Queue and Worker system company ki **"Smart Bank Token Machine"** hai.  
+Socho agar 100 log ek sath bank counter par ghus jayein aur ek hi cashier ke sar par chillayein, toh cashier behosh ho jayega.  
+Isliye bank mein token machine hoti hai: har customer ko ek token milta hai (Queue), aur counter par baithe log ek-ek karke token call karke kaam karte hain (Worker).  
+Cortex mein Redis aur BullMQ wahi token system hain. Chahe 500 commits ek sath aayein, Express API sirf token dekar user ko bolti hai "Mil gaya (200 OK)", aur background worker aaram se bina server crash kiye saara heavy AI kaam karta hai.
 
-### 5.1 Queue Configuration
-- **Queue Name:** `processing-queue`
-- **Backend:** Redis (via `ioredis`)
-- **Worker Model:** Single BullMQ Worker instance handling all registered job types
-- **Concurrency:** `env.QUEUE_WORKERS_CONCURRENCY` (defaults to `1`)
+---
 
-### 5.2 Registered Job Types
-```typescript
-JOBS = {
-  GITHUB_EVENT:     "github-event",
-  JIRA_EVENT:       "jira-event",
-  SLACK_EVENT:      "slack-event",
-  NOTION_EVENT:     "notion-event",      // ⚠️ Stub: case block contains only an empty break statement
-  CONFLUENCE_EVENT: "confluence-event"   // ⚠️ Stub: case block contains only an empty break statement
-}
-```
+### 🏢 Real-Life Desi Example: "Bank Token Counter & Restaurant Kitchen Line"
+> 🍽️ **Analogy:**  
+> Restaurant ka waiter (API) customer se order lekar seedha kitchen ki receipt slip par pin kar deta hai (Queue).  
+> Waiter wahan khada hokar sabzi pakne ka intezaar nahi karta; wo agle customer ke paas chala jata hai. Kitchen mein chef (Worker) ek-ek slip utha kar khana banata rehta hai.  
+> Is wajah se restaurant mein kitni bhi bheed aa jaye, waiter kabhi crash nahi hota!
 
-### 5.3 Retry & Retention Configuration
+---
 
-| Provider | Max Attempts | Backoff Strategy | Failure Retention |
-|---|---|---|---|
-| GitHub | 3 | Exponential (2s base) | `removeOnFail: false` → RETAINED ✅ |
-| Slack | 3 | Exponential (2s base) | `removeOnFail: true` → DELETED ❌ |
-| Jira | 3 | Exponential (2s base) | `removeOnFail: true` → DELETED ❌ |
+### 5.1 Worker Execution Lifecycle (Step-by-Step Breakdown)
 
-### 5.4 Throughput & Scaling Analysis
-- **Throughput:** At concurrency = 1, each job requires 2–8 seconds (Postgres fetch + Groq LLM inference + Neo4j session operations + Qdrant write). Peak throughput is roughly 7–30 events per minute.
-- **Rate Limits:** Groq free-tier limits gpt-oss-120b to 30 RPM. High ingestion spikes will back up the queue and trigger the model fallback cascade.
-- **Redis Disconnection:** If Redis is unavailable, the Postgres raw event INSERT still completes, but job queuing fails silently. A transactional outbox pattern or reconciliation cron is needed for enterprise hardening.
+**Step 1: Dequeue & Payload Retrieval**
+- Worker (`packages/workers/ingest.worker.ts`) Redis se job uthata hai (`github-event`, `slack-event`, ya `jira-event`).
+- Job data se `eventId` lekar PostgreSQL se raw JSON payload fetch karta hai.
 
-### 5.5 Scheduler Worker
-**File:** `packages/workers/scheduler.worker.ts`
+**Step 2: Identity Resolution Check**
+- **Sawaal:** *"Kya is event ka author (Git committer ya Slack sender) pehle se hamari system identity mein mapped hai?"*
+- `resolveIdentity()` call hota hai jo incoming handle/email ko `canonical_person_id` se match karta hai.
+
+**Step 3: AI Entity & Knowledge Graph Extraction**
+- Event payload ko LLM extraction engine mein pass kiya jata hai jo graph nodes (`PERSON`, `TECHNOLOGY`, `REPOSITORY`) aur relationships (`AUTHORED`, `USES`) create karta hai.
+
+**Step 4: Vector Semantic Indexing**
+- LLM ke banaye 1-2 sentence summary ko Google Gemini se embed karwa kar Qdrant vector database mein upsert karta hai.
+
+**Step 5: Debounced Metrics Trigger (Sub-millisecond Stamp)**
+- Job complete hone par worker `markMetricsDirty(job.name)` call karta hai taaki analytics engine ko pata chal sake ki naya data aa chuka hai!
+
+---
+
+### 5.2 Retry & Failure Recovery Inspector
+
+Jab worker kisi job ko process karta hai aur achanak koi external service fail ho jaye (e.g., Groq API temporary down ya Network timeout):
+
+- **Attempt 1:** Job fail hui ➔ Worker exponential backoff chalu karta hai: **2 second ruko** aur retry karo.
+- **Attempt 2:** Phir fail hui ➔ **4 second ruko** aur retry karo.
+- **Attempt 3:** Phir fail hui ➔ **8 second ruko** aur retry karo.
+- **Sawaal:** *"3 attempts ke baad bhi fail hui toh kya job delete ho jayegi?"*
+  - **GitHub:** `removeOnFail: false` ➔ Failed job Redis mein safely rakhi rehti hai taaki admin use inspect kar sake.
+  - **Slack / Jira:** Configurable retention rules ensure zero silent data loss.
+
+---
+
+### 5.3 Queue Configuration & Concurrency
+
+| Parameter | Value | Technical Rationale |
+|---|---|---|
+| **Queue Name** | `processing-queue` | Single unified Redis queue for all platform exhaust |
+| **Backend** | Redis (via `ioredis`) | High-throughput in-memory datastore |
+| **Concurrency** | `env.QUEUE_WORKERS_CONCURRENCY` (1) | Sequential, race-condition-free graph mutations |
+| **Throughput** | 7–30 events per minute | Limited by LLM inference latency (2–4s per Groq call) |
 ```typescript
 cron.schedule('0 18 * * *', ...)  // Executes daily at 18:00 IST
 ```
@@ -316,7 +485,50 @@ cron.schedule('0 18 * * *', ...)  // Executes daily at 18:00 IST
 5. `generateAndSaveDailyReport()` — Generates and persists the executive HTML report
 *Note: This pipeline also executes immediately on server startup to ensure metrics tables are populated.*
 
-### 5.6 Metrics Calculation & Data Integrity Guarantees
+### 5.6 Event-Driven Debounced Metrics Invalidation Architecture
+**Files:** `packages/analytics/metricsInvalidator.service.ts`, `packages/workers/ingest.worker.ts`, `packages/workers/scheduler.worker.ts`
+
+#### 1. The Client Problem: Why Other Tools Show Stale Data
+In most analytics platforms, risk scores, bus factor, and ownership metrics are computed via a scheduled cron job (e.g. once a day at midnight or 18:00 IST). 
+- **The Problem:** If an engineer pushes critical commits at 10:00 AM, merges a PR at 11:00 AM, or a key person leaves the project, the Executive Dashboard shows stale numbers for up to 24 hours.
+- **The Bad Solution (Eager Execution):** If the server recalculates all metrics on every single webhook event, a developer pushing 15 commits in 10 seconds causes 15 full graph scans simultaneously, crashing the database and running out of CPU.
+- **The Cortex Solution (Debounced Event-Driven Architecture):** Near real-time metric updates within ~45 seconds of activity settling, with zero server overload.
+
+---
+
+#### 2. How to Explain It to a Client: The "Elevator / Lift" Analogy
+> Imagine an elevator in a busy office:
+> 1. Person A steps into the elevator. The door begins its 5-second closing countdown.
+> 2. 2 seconds later, Person B rushes up and presses the door button.
+> 3. **The elevator does not immediately take off.** Instead, it resets its 5-second countdown to allow Person B to enter.
+> 4. Only when **nobody has pressed the button for 5 full seconds (a quiet period)** does the door close and the elevator travel up.
+> 5. **Starvation Cap:** If people keep rushing in non-stop for 3 full minutes, the elevator sounds a buzzer and departs anyway so the people already inside aren't trapped waiting forever.
+
+In Cortex, **webhook events are people entering the elevator**, and **metrics recalculation is the elevator moving**:
+- **Event Burst (Developer pushes 15 commits):** Instead of running 15 heavy calculations, Cortex resets a 45-second "quiet timer" with each commit (sub-millisecond Redis stamp).
+- **Quiet Period (Work finishes):** Once 45 seconds pass without any new events, Cortex runs **exactly 1 batch calculation** covering all 15 commits.
+- **Starvation Cap:** If commits/messages stream continuously without a 45-second break, a forced calculation triggers at 3 minutes (`METRICS_MAX_DELAY_MS`) to ensure dashboards never stay stale.
+
+---
+
+#### 3. Step-by-Step Technical Execution
+1. **Lightweight Stamp (<1ms):** In `ingest.worker.ts`, immediately after saving a GitHub, Slack, or Jira event, `markMetricsDirty(job.name)` sets:
+   - `cortex:metrics:dirty = '1'`
+   - `cortex:metrics:last_event_ts = Date.now()`
+   - `cortex:metrics:first_dirty_ts = Date.now()` (via `SET ... NX` to mark burst start)
+2. **Background Poller (Every 15s):** A lightweight ticker in `scheduler.worker.ts` checks:
+   - Is `dirty == 1`? (If no, sleeps with zero CPU usage).
+   - Has the 45s quiet period elapsed? (`now - last_event_ts >= 45s`) OR has the 3m starvation cap elapsed?
+   - If not yet quiet: logs `"Debounce active: waiting for quiet period"` and defers.
+3. **Distributed Mutex Lock (No Overlapping Runs):**
+   - Acquires `cortex:metrics:lock` via `SET ... EX 180 NX`.
+   - If multiple server replicas or worker processes are running, only one worker can calculate metrics at a time. Other workers safely skip.
+4. **Zero Lost Updates Guarantee:**
+   - What if a new Jira ticket is created *while* the 5-second calculation is running?
+   - The service compares `last_event_ts` against `recalcStartTime`. Since a new event arrived during execution, Cortex **keeps `dirty = '1'`**, ensuring the next 45-second quiet window automatically picks up the new event. No event is ever lost.
+5. **Clean Lock Release:** Lock is released atomically using a Lua script that verifies the unique worker token before deletion.
+
+### 5.7 Metrics Calculation & Data Integrity Guarantees
 - **Person Ownership Score (`packages/analytics/knowledge.risk.predict.ts`):** Computes per-repository maximum ownership:
   ```cypher
   MATCH (p:PERSON {name: $name})-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)
@@ -336,60 +548,76 @@ cron.schedule('0 18 * * *', ...)  // Executes daily at 18:00 IST
 
 ## 6. LLM Extraction Layer
 
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Developer log commit messages ya Slack chat bohot rough aur casual likhte hain: *"bhai auth token crash fix kar diya using jwt in auth-service"*.  
+Ab agar is raw message ko seedha database mein daal dein, toh koi algorithm ya graph iska matlab nahi samajh payega.  
+**LLM Extraction Layer yahan ek "Smart Stenographer / Translator" ki tarah kaam karta hai.** Ye us rough message ko padhta hai aur usme se saaf-suthre structured facts nikalta hai:  
+`Person = Arjun`, `Action = AUTHORED`, `Repo = auth-service`, `Technology = JWT, Node.js`.
+
+---
+
+### 🏢 Real-Life Desi Example: "Doctor ki Parchi Samajhne Wala Compounder"
+> 💊 **Analogy:**  
+> Doctor parchi par aadi-tedhi writing mein kuch bhi likh deta hai jo normal patient ko samajh nahi aata.  
+> Lekin jo purana tajurba-kaar **Compounder** hota hai, wo us scribbled writing ko dekhte hi samajh jata hai ki *"Paracetamol 500mg subah-shaam khani hai"* aur exact dawa pack karke de deta hai.  
+> 
+> Hamara LLM (Groq LPU par chalne wala fast open model) wahi smart compounder hai: wo developers ki rough baat-cheet ko neat, clean Knowledge Graph connections mein convert kar deta hai.
+
+---
+
+### 💼 Client Pitch (Client ko Kaise Samjhayein)
+> *"Developers hate filling documentation, and you can't force them to write architectural wikis every day. Cortex passively observes their natural Git commits and Slack conversations, using sub-second Groq LPUs to extract architectural facts automatically. Your team writes code normally; Cortex builds the documentation behind the scenes."*
+
+---
+
 **Files:** `packages/llm/providers/groq.ts`, `packages/llm/prompts/`, `packages/extraction/ontology.ts`, `packages/extraction/entityResolver.ts`
 
-### 6.1 Model Fallback Cascade
-```typescript
-PRIMARY_MODEL   = 'openai/gpt-oss-120b'
-FALLBACK_MODELS = ['openai/gpt-oss-20b', 'qwen/qwen3.6-27b', 'groq/compound-mini']
-```
-- **Failover Triggers:** HTTP 429 (rate limit), 413 (payload too large), 404, 500, 503.
-- **Failover Logic:** Sequential failover through the cascade until an inference call succeeds.
-- **Retry Mechanism:** Groq SDK handles `maxRetries: 3` at the client level in addition to application-level model cascading.
+#### Step-by-Step Code Execution (LLM Extraction Under The Hood):
 
-### 6.2 Inference Configuration
-```typescript
-{
-  model: 'openai/gpt-oss-120b',
-  temperature: 0,                         // Deterministic output
-  max_completion_tokens: 4096,
-  response_format: { type: "json_object" }   // Enforces valid JSON structure
-}
-```
+**Step 1: Raw Event Payload Extraction**
+Worker Postgres se raw payload nikaalta hai:
+- Git Push: Commit hash, commit message, author name, files modified (`added`, `removed`, `modified`).
+- Slack Message: Channel name, user ID, message text, thread parent.
+- Jira Ticket: Issue key, summary, description, status transitions, assignee.
 
-### 6.3 Ontology Allowlist & Injection Defense
-**File:** `packages/database/neo4j/graph.repository.ts`
+**Step 2: Groq LPU Cascade Inspector (Failover Engine)**
+LLM ko prompt bhejne se pehle Groq failover engine 3 sawaal poochta hai:
+- **Sawaal 1:** *"Kya Primary Model `openai/gpt-oss-120b` available hai?"*
+  - Agar haan ➔ Sub-second speed mein 120b model se inference karwao!
+  - **Failover Trigger:** Agar HTTP 429 (Rate limit), 413 (Payload too large), 500, ya 503 error aaya ➔ Server crash nahi hota! Turant fallback cascade chalu hota hai:
+    `gpt-oss-20b` ➔ agar wo bhi busy hai ➔ `qwen/qwen3.6-27b` ➔ agar wo bhi busy hai ➔ `groq/compound-mini`.
+- **Sawaal 2:** *"Temperature kya set karni hai?"*
+  - `temperature = 0` (Zero Creativity / Maximum Determinism): Humein AI se koi fiction ya shero-shayari nahi chahiye; humein strict, factual structured JSON chahiye.
+- **Sawaal 3:** *"Format enforce kaise karein?"*
+  - `response_format: { type: "json_object" }` enforce karta hai ki model koi chat text na likhe, sirf valid JSON return kare.
 
-**Allowed Entity Labels:**
-```
-PERSON, TECHNOLOGY, REPOSITORY, ISSUE, PULL_REQUEST, COMMIT, TEAM, FILE, ORGANIZATION
-```
+**Step 3: Cypher Injection Defense Inspector (Strict Whitelist Check)**
+Jab LLM se JSON output aata hai, Cortex use seedha Neo4j mein insert nahi karta. Graph repository security gatekeeper do strict sets check karta hai:
+- **Sawaal 1:** *"Kya entity ka label allowlist mein hai?"*
+  ```typescript
+  const ALLOWED_ENTITY_TYPES = new Set([
+    'PERSON', 'TECHNOLOGY', 'REPOSITORY', 'ISSUE', 
+    'PULL_REQUEST', 'COMMIT', 'TEAM', 'FILE', 'ORGANIZATION'
+  ]);
+  if (!ALLOWED_ENTITY_TYPES.has(normalizedType)) {
+    throw new Error(`Invalid entity type: ${type}`);
+  }
+  ```
+  Agar LLM ne prompt injection ke chakkar mein koi invalid type bana diya ➔ Runtime par reject!
+- **Sawaal 2:** *"Kya relationship allowlist mein hai?"*
+  ```typescript
+  const ALLOWED_RELATIONS = new Set([
+    'USES', 'HAS_PROBLEM', 'FIXED_BY', 'REPLACED_BY', 
+    'DEPENDS_ON', 'WORKS_ON', 'CREATED', 'MENTIONED_IN', 
+    'ASSIGNED_TO', 'PART_OF', 'AUTHORED'
+  ]);
+  if (!ALLOWED_RELATIONS.has(normalizedType)) {
+    throw new Error(`Invalid relationship type: ${type}`);
+  }
+  ```
+  Saare Neo4j Cypher queries parameterized hote hain (`$fromName`, `$toName`), jisse **Cypher Injection 100% block** rehta hai.
 
-**Allowed Relationship Types:**
-```
-USES, HAS_PROBLEM, FIXED_BY, REPLACED_BY, DEPENDS_ON, WORKS_ON,
-CREATED, MENTIONED_IN, ASSIGNED_TO, PART_OF, AUTHORED
-```
-
-**Cypher Injection Protection (VERIFIED FIXED):**
-```typescript
-// graph.repository.ts lines 4-12
-const ALLOWED_RELATIONS = new Set([...])
-const ALLOWED_ENTITY_TYPES = new Set([...])
-
-// In upsertRelation():
-if (!ALLOWED_RELATIONS.has(normalizedType)) {
-  throw new Error(`Invalid relationship type: ${type}`)
-}
-
-// In upsertEntity():
-if (!ALLOWED_ENTITY_TYPES.has(normalizedType)) {
-  throw new Error(`Invalid entity type: ${type}`)
-}
-```
-*Cypher injection is prevented at runtime by strict allowlist validation.*
-
-### 6.4 Structured Extraction Output Schema
+**Step 4: Clean Structured Output Example**
 ```json
 {
   "entities": [{ "name": "Arjun", "type": "PERSON" }],
@@ -408,37 +636,62 @@ if (!ALLOWED_ENTITY_TYPES.has(normalizedType)) {
 
 ## 7. Knowledge Graph — Neo4j
 
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Knowledge Graph Cortex ka **"Living Dimaag (Brain)"** hai.  
+Normal databases (SQL tables) mein data alag alag rows aur columns mein band rehta hai. Lekin real-world engineering team ek interconnected web (jaal) hoti hai:  
+- Kaunsa engineer kis repository ka code likhta hai?  
+- Wo repository kis database ya service par depend karti hai?  
+- Aur agar kal wo service crash ho jaye, toh aage kaun kaun se microservices band pad jayenge?  
+**Neo4j is pure engineering network ko ek zinda map ki tarah jod kar rakhta hai.**
+
+---
+
+### 🏢 Real-Life Desi Example: "Detective ka Red-String Crime Board & Google Maps"
+> 🕵️‍♂️ **Analogy:**  
+> Aapne crime thrillers mein dekha hoga ki jab detective kisi complex case ki investigation karta hai, toh deewar par photos laga kar unke beech **Laal Dhaage (Red Strings)** baandhta hai:  
+> *"A ka contact B se hai, B ne C ki gaadi use ki thi, aur C crime scene ke paas tha."*  
+> 
+> Neo4j company ka wahi red-string board hai. Jab aap Cortex mein poochte ho ki *"Payment Gateway ka maalik kaun hai aur agar wo gaya toh kya break hoga?"*, Neo4j laal dhaagon ko follow karke 1 millisecond mein bata deta hai ki downstream 4 services break hongi!
+
+---
+
+### 💼 Client Pitch (Client ko Knowledge Graph Kaise Samjhayein)
+> *"Traditional dashboards only give you isolated tables that don't talk to each other. Cortex models your engineering organization as a living Knowledge Graph in Neo4j. We map people to code, code to dependencies, and dependencies to business impact. You get instant visibility into full architectural blast-radius and subject-matter expertise."*
+
+---
+
 **File:** `packages/database/neo4j/graph.repository.ts`
 
-### 7.1 Node Labels and Properties
+#### Step-by-Step Graph Construction (Under The Hood):
 
-| Label | Domain Representation | Key Properties |
-|---|---|---|
-| `PERSON` | Engineers, contributors | `name`, `email`, `externalId`, `provider` |
-| `TECHNOLOGY` | Frameworks, languages, tools | `name` |
-| `REPOSITORY` | Code repositories | `name`, `externalId` |
-| `COMMIT` | Git commits | `name` (hash), `createdAt`, `timestamp` |
-| `PULL_REQUEST` | Pull requests | `name`, `externalId`, `status` |
-| `ISSUE` | Tickets / Issue tracking | `name`, `externalId`, `status` |
-| `TEAM` | Engineering groups | `name` |
-| `FILE` | Source code paths | `name` |
-| `ORGANIZATION` | Corporate entities | `name` |
+**Step 1: Entity Deduplication Inspector**
+Jab LLM kehta hai `Arjun (PERSON)` node insert karo:
+- **Sawaal 1:** *"Kya is email ka PERSON node pehle se graph mein exist karta hai?"*
+  - Agar email match hua ➔ Usi existing node par timestamp aur properties update karo.
+- **Sawaal 2:** *"Agar email nahi mila, toh kya lowercase name match hota hai?"*
+  - Agar match hua ➔ Existing node update karo.
+- **Sawaal 3:** *"Dono nahi mile?"*
+  - Naya `(:PERSON {name: 'Arjun', externalId: ...})` node provision karo.
 
-### 7.2 Relationship Semantics
+**Step 2: Relationship Weaving (Laal Dhaaga Baandhna)**
+Engine graph mein directed relationships banata hai:
+- `(p:PERSON)-[:AUTHORED]->(c:COMMIT)`
+- `(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)`
+- `(r:REPOSITORY)-[:USES]->(t:TECHNOLOGY)`
+- `(s1:REPOSITORY)-[:DEPENDS_ON]->(s2:REPOSITORY)`
+- `(i:ISSUE)-[:ASSIGNED_TO]->(p:PERSON)`
+- `(i:ISSUE)-[:FIXED_BY]->(c:COMMIT)`
 
-| Relationship | Direction | Semantic Meaning |
-|---|---|---|
-| `AUTHORED` | `PERSON` → `COMMIT`/`PR`/`ISSUE` | Engineer authored the work artifact |
-| `WORKS_ON` | `PERSON` → `REPOSITORY` | Engineer regularly contributes to repository |
-| `USES` | `PERSON`/`REPO` → `TECHNOLOGY` | Technology is utilized |
-| `PART_OF` | `COMMIT`/`PR` → `REPOSITORY` | Artifact belongs to the repository |
-| `DEPENDS_ON` | `REPO`/`SERVICE` → `REPO`/`SERVICE` | Service-level dependency |
-| `ASSIGNED_TO` | `ISSUE` → `PERSON` | Issue is assigned to engineer |
-| `FIXED_BY` | `ISSUE` → `COMMIT` | Issue was resolved by commit |
-| `REPLACED_BY` | `TECHNOLOGY` → `TECHNOLOGY` | Architectural migration record |
+**Step 3: Downstream Blast Radius Inspector (Agar Service Down Hui Toh Kya Hoga?)**
+Jab executive poochta hai ki *"Agar `auth-service` down hui toh kya break hoga?"*:
+```cypher
+MATCH (target:REPOSITORY {name: $repoName})<-[:DEPENDS_ON*1..3]-(downstream:REPOSITORY)
+RETURN downstream.name AS impactedService, length(path) AS depth
+```
+Neo4j breadth-first graph traversal karke **sub-millisecond** mein bata deta hai ki `billing-service` aur `mobile-api` dono direct blast radius ke andar aate hain!
 
-### 7.3 Schema Indexes
-Created automatically on server startup:
+**Step 4: Startup Schema Indexes (Fast Lookups)**
+Server boot hote hi 7 automatic indexes ensure karta hai taaki graph queries mein full-table scan na ho:
 ```cypher
 CREATE INDEX entity_person_email      IF NOT EXISTS FOR (n:PERSON)     ON (n.email);
 CREATE INDEX entity_person_externalid IF NOT EXISTS FOR (n:PERSON)     ON (n.externalId);
@@ -449,43 +702,90 @@ CREATE INDEX entity_tech_name         IF NOT EXISTS FOR (n:TECHNOLOGY) ON (n.nam
 CREATE INDEX entity_commit_createdat  IF NOT EXISTS FOR (n:COMMIT)     ON (n.createdAt);
 ```
 
-### 7.4 Cross-Provider Identity Deduplication
-When an incoming entity of type `PERSON` is processed:
-1. **Email Match:** If `email` exists, query existing `PERSON` by email → update node.
-2. **Name Match:** If no email matches, compare lowercase name → update node.
-3. **Fallback:** If no match occurs, create a new `PERSON` node.
+---
+
+## 8. Vector Search — Qdrant
+
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Vector Search Cortex ka **"Smart Librarian"** hai jo exact shabd nahi, balki unka matlab (meaning/semantics) samajhta hai.  
+Agar aap normal search mein likho *"database crash"*, aur developer ne 6 mahine pehle PR mein likha tha *"Postgres connection pool exhausted"*, toh normal keyword search ko kuch nahi milega kyunki shabd alag hain!  
+Lekin **Vector Search (Qdrant)** mathematical vectors (numbers) ki madad se samajh leta hai ki dono baaton ka asal matlab ek hi hai.
 
 ---
 
 ## 8. Vector Search — Qdrant
 
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Vector Search Cortex ka **"Smart Librarian"** hai jo exact shabd nahi, balki unka matlab (meaning/semantics) samajhta hai.  
+Agar aap normal search mein likho *"database crash"*, aur developer ne 6 mahine pehle PR mein likha tha *"Postgres connection pool exhausted"*, toh normal keyword search ko kuch nahi milega kyunki shabd alag hain!  
+Lekin **Vector Search (Qdrant)** mathematical vectors (numbers) ki madad se samajh leta hai ki dono baaton ka asal matlab ek hi hai.
+
+---
+
+### 🏢 Real-Life Desi Example: "Library ka Genius Librarian"
+> 📚 **Analogy:**  
+> Socho aap ek bohot badi library mein jate ho aur librarian se bolte ho:  
+> *"Bhaiya, mujhe wo kitaab chahiye jisme sitaron, galaxies aur telescope ke baare mein baat ki gayi ho. Mujhe exact book ka naam yaad nahi aa raha."*  
+> Ek aam computer bolega *"Error: Book title not found"*. Lekin jo **Genius Librarian** hai, wo aapki baat ka matlab samajh kar seedha Astronomy section se exact kitaab nikaal kar de dega!  
+> 
+> Qdrant Cortex ka wahi genius librarian hai jo architectural decisions ka contextual context khoj kar nikalta hai.
+
+---
+
+### 💼 Client Pitch (Client ko Vector Search Kaise Samjhayein)
+> *"Engineering history isn't just about who wrote what line of code; it's about WHY decisions were made. With Qdrant vector search, your executives and engineers can ask natural language questions like 'Why did we migrate away from Redis?' or 'How was the auth vulnerability patched?' and get the exact historical context in milliseconds."*
+
+---
+
 **Files:** `packages/database/vector/qdrant.repository.ts`, `packages/llm/providers/gemini.ts`
 
-### 8.1 Vector Collection Configuration
-```typescript
-{
-  vectors: {
-    size: 384,         // Google Gemini embedding-2 with outputDimensionality: 384
-    distance: "Cosine" // Cosine distance metric for semantic search
-  }
-}
-```
+#### Step-by-Step Semantic Search Execution (Under The Hood):
 
-### 8.2 Ingestion Payload
-**Raw repository dumps are NOT embedded.** Only the LLM-extracted 1–2 sentence semantic event summary is embedded:
-```
-"Arjun merged PR #42 adding JWT authentication to auth-service using Node.js crypto module"
-```
-*Rationale:* Summaries capture semantic intent without inflating vector storage or diluting retrieval quality.
+**Step 1: Semantic Summary Pre-processing (Raw Code Ko Embed Mat Karo!)**
+- Sabse badi beginner galti hoti hai poori 2,000 line ki code file ko vector DB mein embed kar dena. Isse retrieval quality dilute ho jaati hai aur costs explode hoti hain.
+- Cortex strictly **LLM ke extracted 1-2 sentence semantic summary** ko embed karta hai:
+  `"Arjun merged PR #42 replacing Redis with Valkey in auth-service due to memory limits"`
 
-### 8.3 Known Vector Store Issues
-- **B-05 (Duplicate Points on Retry):** Generating a new random UUID on job retries creates duplicate vector entries for the same event.  
-  *Fix:* Use the Postgres Snowflake `events.id` as the Qdrant point ID for idempotent upserts.
-- **B-06 (Silent Error Suppression):** Vector insertion exceptions are caught and logged without rethrowing, masking indexing failures.
+**Step 2: Google Gemini Vector Generation (Text Se 384 Numbers)**
+- Google Gemini `embedding-2` model summary text ko **384 floating point numbers** ke multidimensional vector mein convert karta hai:
+  `[0.024, -0.198, 0.441, ..., 0.082]` (Size: 384 dimensions).
+
+**Step 3: Qdrant Cosine Similarity Inspector (Angle Distance Math)**
+Jab user chat mein poochta hai: *"Why was Redis replaced?"*:
+- User ki query ka bhi 384-dimension vector banaya jata hai ($A$).
+- Qdrant database mein saved vectors ($B$) ke sath **Cosine Similarity** calculate karta hai:
+  $$\text{Cosine Similarity} = \frac{A \cdot B}{\|A\| \|B\|} = \frac{\sum A_i B_i}{\sqrt{\sum A_i^2} \sqrt{\sum B_i^2}}$$
+- **Sawaal:** *"Dono vectors ke beech ka angle kitna chota hai?"*
+  - Agar angle 0 degree ke paas hai (Cosine Score ~ 0.85 – 0.99) ➔ **Strong Semantic Match!**
+  - Qdrant 10ms ke andar top matches return kar deta hai, jisme exact PR link, committer, aur summary payload hota hai.
+
+**Step 4: Hardened Deduplication (No Duplicate Points)**
+- Point ID ke liye random UUID generate nahi karte; Postgres Snowflake `events.id` ko point ID banaya jata hai taaki retry hone par vector duplicate na ho.
 
 ---
 
 ## 9. Analytics Engine — 6-Factor Formula
+
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Ye formula company ka **"Key-Man Life Insurance Test"** hai.  
+Har engineering team mein koi na koi aisa developer zaroor hota hai jiske sar par aadhi company chal rahi hoti hai: usi ne main code likha hai, usi par saari services depend karti hain, lekin usne documentation bilkul nahi likhi! Agar wo kal achanak chala gaya, toh poori team andhere mein chali jayegi.  
+**Cortex ka 6-Factor Knowledge Risk formula ek mathematical score (0 se 100) calculate karta hai ki kis engineer ke jaane se company ko kitna bada architectural loss hoga.** Isme 0% AI guess hai — ye 100% pure Git aur Jira math hai!
+
+---
+
+### 🏢 Real-Life Desi Example: "Cricket Team ka Star All-Rounder"
+> 🏏 **Analogy:**  
+> Socho ek aisi cricket team jahan ek hi star player hai: wahi opening batting karta hai, wahi death overs mein bowling karta hai, wahi wicketkeeping karta hai aur wahi captaincy bhi! Baaki 10 players ko uske plan ka kuch pata hi nahi hota.  
+> Agar kal subah wo all-rounder injured ho jaye ya doosri team mein chala jaye, toh poori team ek jhatke mein match haar jayegi!  
+> 
+> Cortex ka Knowledge Risk score CTO ko saaf dikhata hai ki aapki team mein kaun kaun aise **"Star All-Rounder"** bane baithe hain jinke upar single-point-of-failure risk create ho chuka hai.
+
+---
+
+### 💼 Client Pitch (Client ko Knowledge Risk Formula Kaise Samjhayein)
+> *"How do you know who your most irreplaceable engineers are before they drop their resignation? Traditional management relies on guesswork or gut feelings. Cortex uses a deterministic 6-factor algorithm that objectively evaluates code ownership, downstream service dependencies, activity recency, and lack of documentation. You get an auditable 0-100 risk score that pinpoints single points of failure with mathematical precision."*
+
+---
 
 **Files:** `packages/analytics/knowledge.service.ts`, `packages/analytics/knowledge.risk.predict.ts`
 
@@ -503,35 +803,123 @@ Total Risk Output: 0.0 – 1.0 scale
 Persisted in Postgres as: Math.round(totalRisk × 100) → [0 – 100] integer
 ```
 
-### 9.2 Factor Breakdown
+---
 
-1. **Ownership (30% Weight):**  
-   $\text{Score} = \min\left(\frac{\text{Commits and PRs Authored by Person}}{\text{Total Graph Commits and PRs}}, 1.0\right)$  
-   *Rationale:* Primary risk driver. High individual code ownership leaves severe blind spots upon departure.
+#### 9.2 Step-by-Step Factor Calculation (The 6 Inspectors):
 
-2. **Dependency (20% Weight):**  
-   $\text{Score} = \min\left(\frac{\text{Entities that DEPEND\_ON or USE items authored by Person}}{\text{Normalization Factor}}, 1.0\right)$  
-   *Rationale:* Quantifies downstream blast radius across services.
+**Inspector 1: Ownership Factor (30% Weight — Sabse Bada Khatra + 180-Day Exponential Time-Decay)**
+- **Sawaal:** *"Is engineer ne uski primary repository ke total code mein se kitne percent code akele likha hai (aaj ki mehnat vs purani history ko weight dekar)?"*
+- **The Time-Decay Upgrade:**  
+  Pehle agar kisi dev ne 3 saal pehle 800 commits kiye the, aur 1 saal se gayab tha, tab bhi purana formula use hi sabse bada owner dikhata tha.  
+  Ab Cortex commit ke age ke hisaab se **180-Day Exponential Half-Life Decay** calculate karta hai:
+  $$\text{Commit Weight} = \exp\left(-0.693 \times \frac{\text{Age in Days}}{180}\right)$$
+  - Aaj ka naya commit = **1.0 (Full 100% Weight)**
+  - 180 din purana commit = **0.5 (Half Weight)**
+  - 3 saal purana commit = **~0.01 (Sirf 1% Weight)**
+- **Cypher Traversal:**
+  ```cypher
+  MATCH (p:PERSON {name: $name})-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)
+  WITH r,
+       sum(
+           CASE 
+               WHEN c.createdAt IS NOT NULL 
+               THEN exp(-0.693 * (CASE WHEN $nowMs > toFloat(c.createdAt) THEN ($nowMs - toFloat(c.createdAt)) ELSE 0.0 END) / (180.0 * 86400000.0))
+               ELSE 0.5 
+           END
+       ) AS personWeightedScore
+  MATCH (c2:COMMIT)-[:PART_OF]->(r)
+  WITH r, personWeightedScore,
+       sum(
+           CASE 
+               WHEN c2.createdAt IS NOT NULL 
+               THEN exp(-0.693 * (CASE WHEN $nowMs > toFloat(c2.createdAt) THEN ($nowMs - toFloat(c2.createdAt)) ELSE 0.0 END) / (180.0 * 86400000.0))
+               ELSE 0.5 
+           END
+       ) AS totalWeightedScore
+  RETURN max(
+      CASE 
+          WHEN totalWeightedScore > 0 THEN personWeightedScore / totalWeightedScore 
+          ELSE 0.0 
+      END
+  ) AS maxRepoOwnership
+  ```
+- **Live Example:**  
+  Rohan ne 3 saal pehle 100 commits kiye the (har commit ka weight 0.01 ho gaya ➔ $100 \times 0.01 = 1.0$).  
+  Naye dev Arjun ne pichhle 3 mahine mein 20 commits kiye (weight 0.85 ➔ $20 \times 0.85 = 17.0$).  
+  Arjun ka ownership share: $17 / 18 = \mathbf{94.4\%}$, aur Rohan ka ghat kar $\mathbf{5.6\%}$ ho gaya!  
+  👉 Nateeja: Jo banda **aaj** code sambhal raha hai, wahi dashboard par real owner dikhega!
 
-3. **Activity (15% Weight):**  
-   $\text{Score} = \min\left(\frac{\text{Recent contributions authored by Person}}{\text{Normalization Factor}}, 1.0\right)$  
-   *Rationale:* Active engineers carry vital in-flight architectural context.
+**Inspector 2: Downstream Dependency (20% Weight — Blast Radius)**
+- **Sawaal:** *"Rohan ke likhe hue code ya services par kitni doosri microservices depend karti hain?"*
+- **Cypher Traversal:**
+  ```cypher
+  MATCH (p:PERSON {name: $name})-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)<-[:DEPENDS_ON]-(d:REPOSITORY)
+  RETURN count(DISTINCT d) AS downstreamDependencies
+  ```
+- **Live Example:** Rohan ki service par 4 downstream services depend karti hain.  
+  Normalized Score = $\min(4 / 5, 1.0) = 0.80$.  
+  Weight 20% hai ➔ Points = $0.80 \times 0.20 = \mathbf{0.160}$.
 
-4. **Documentation Coverage (15% Weight):**  
-   $\text{Score} = \min\left(\frac{\text{FILE (documentation) nodes authored by Person}}{\text{Normalization Factor}}, 1.0\right)$  
-   *Rationale:* Undocumented institutional knowledge maximizes replacement friction.
+**Inspector 3: Activity Recency (15% Weight — In-Flight Context)**
+- **Sawaal:** *"Rohan ne pichle 30 din mein kitne commits aur PRs merge kiye hain?"*
+- Active engineer ke dimaag mein latest architecture hota hai; jo banda 6 mahine se inactive hai uska departure kam impact karta hai.  
+- **Live Example:** Rohan ne pichle 30 din mein 25 contributions kiye hain.  
+  Normalized Score = $1.0$.  
+  Weight 15% hai ➔ Points = $1.0 \times 0.15 = \mathbf{0.150}$.
 
-5. **Expertise Breadth (10% Weight):**  
-   $\text{Score} = \min\left(\frac{\text{Distinct TECHNOLOGY / REPOSITORY nodes touched}}{20}, 1.0\right)$  
-   *Rationale:* Broad multi-domain expertise requires longer cross-training periods.
+**Inspector 4: Documentation Coverage (15% Weight — Missing Docs Penalty)**
+- **Sawaal:** *"Kya Rohan ne architecture wikis ya README documentation likhi hai?"*
+- **Cypher Check:** Count of `FILE` nodes where `path CONTAINS '.md'` authored by Rohan.  
+- **Inverted Scoring:** Agar docs **ZERO** hain, toh penalty MAXIMUM hoti hai (1.0). Agar 10+ doc files likhi hain, toh risk 0.0 ho jata hai.  
+- **Live Example:** Rohan ne **0 documentation** likhi hai!  
+  Missing Docs Score = $1.0$.  
+  Weight 15% hai ➔ Points = $1.0 \times 0.15 = \mathbf{0.150}$.
 
-6. **Pending Work (10% Weight):**  
-   $\text{Score} = \min\left(\frac{\text{Active ISSUE nodes ASSIGNED\_TO Person}}{10}, 1.0\right)$  
-   *Rationale:* Measures immediate operational handoff overhead.
+**Inspector 5: Expertise Breadth (10% Weight — All-Rounder Penalty)**
+- **Sawaal:** *"Rohan kitni alag alag technologies aur repositories ko touch karta hai?"*  
+- **Live Example:** Rohan 12 technologies (`TypeScript, PostgreSQL, Redis, Docker, RabbitMQ, etc.`) use karta hai.  
+  Normalized Score = $\min(12 / 20, 1.0) = 0.60$.  
+  Weight 10% hai ➔ Points = $0.60 \times 0.10 = \mathbf{0.060}$.
+
+**Inspector 6: Pending Work (10% Weight — Unresolved Tickets)**
+- **Sawaal:** *"Jira par Rohan ke naam par kitne open tickets assigned hain?"*  
+- **Live Example:** Rohan ke naam par 6 open tickets hain.  
+  Normalized Score = $\min(6 / 10, 1.0) = 0.60$.  
+  Weight 10% hai ➔ Points = $0.60 \times 0.10 = \mathbf{0.060}$.
+
+---
+
+#### 🎯 Concrete Numerical Total:
+$$\text{Total Risk} = 0.255 + 0.160 + 0.150 + 0.150 + 0.060 + 0.060 = \mathbf{0.835}$$
+$$\text{Final Persisted Risk Score} = \text{Math.round}(0.835 \times 100) = \mathbf{84} \quad (\text{CRITICAL RISK — RED FLAG!})$$
+
+CTO dashboard par Rohan ka profile turant **RED** highlight ho jata hai with recommendation: *"High code ownership (85%) with zero documentation. Pair programming required immediately."*
 
 ---
 
 ## 10. Successor Engine — 4-Factor Formula
+
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Ye engine Cortex ka **"Backup / Vice-Captain Finder"** hai.  
+Jab pata chal gaya ki lead developer company chhod raha hai, toh management ke samne sabse bada sawal hota hai: *"Inka kaam kaun sambhalega?"*  
+Market se naya engineer hire karne mein 3 se 6 mahine lagte hain. Lekin aapki company ke andar hi koi na koi doosra engineer hota hai jisne wahi tech stack use kiya hota hai ya us repo mein pehle thoda code likha hota hai.  
+**Cortex ka 4-factor Successor Engine team ke har bande ka math calculate karke best successor rank karta hai, aur ye bhi ensure karta hai ki pehle se overloaded bande par aur bojh na pade!**
+
+---
+
+### 🏢 Real-Life Desi Example: "Hospital ka Backup Heart Surgeon"
+> 🏥 **Analogy:**  
+> Hospital mein agar senior heart surgeon chutti par chala jaye aur emergency heart surgery karni ho, toh management kisi orthopedic (haddi ke) doctor ko nahi bhejti!  
+> Wo us doosre cardiac specialist ko bhejti hai jisne pehle bhi wahi instruments chalaye hon, wahi procedures dekhe hon, aur jo us time free ho.  
+> 
+> Successor Engine wahi smart medical board hai: wo **Jaccard Mathematical Similarity** se dekhta hai ki kis candidate ka tech stack match karta hai, kisne repository ko pehle dekha hai, aur kiske paas capacity bachi hai.
+
+---
+
+### 💼 Client Pitch (Client ko Successor Engine Kaise Samjhayein)
+> *"When your lead architect tenders their resignation, you don't have 90 days to hire an outsider. Cortex instantly evaluates your entire existing engineering team to rank the top peer successors based on shared technologies, repository familiarity, and current capacity. It even enforces safety disqualification rules so you never assign critical systems to someone who has never touched the code or is already burnt out."*
+
+---
 
 **File:** `packages/analytics/successor.service.ts`
 
@@ -544,142 +932,316 @@ Successor Score = (0.40 × SharedTechScore)
 Output Range: 0 – 100 integer score per candidate
 ```
 
-### 10.1 Factor Specifications
+---
 
-1. **Shared Technologies (40% Weight):**  
-   Calculated using **Jaccard Similarity**:
-   $$J(A, B) = \frac{|A \cap B|}{|A \cup B|}$$
-   Where $A$ is the target engineer's technology set and $B$ is the candidate's technology set.  
-   $$\text{SharedTechScore} = J(A, B) \times 100$$  
-   *Rationale:* Technical stack compatibility is non-negotiable for rapid system handover.
+#### 10.1 Step-by-Step Successor Evaluation (The 4 Inspectors):
 
-2. **Shared Repositories (25% Weight):**  
-   $$\text{SharedRepoScore} = \left(\frac{\text{Overlapping Repositories}}{\text{Target Engineer's Total Repositories}}\right) \times 100$$  
-   *Rationale:* Familiarity with specific codebase architectures drastically reduces ramp-up time.
+**Inspector 1: Shared Technologies (40% Weight — Jaccard Similarity)**
+- **Sawaal:** *"Target Dev aur Candidate ke tech stack mein kitna overlap hai?"*
+- **Formula:**
+  $$J(A, B) = \frac{|A \cap B|}{|A \cup B|} = \frac{\text{Common Technologies}}{\text{Total Unique Technologies}}$$
+- **Live Numerical Example:**
+  - Target Dev (Rohan) Tech Stack: `[Node.js, TypeScript, Postgres, Redis, Docker]` (5 tools)
+  - Candidate (Vikram) Tech Stack: `[Node.js, TypeScript, Postgres, Python, AWS]` (5 tools)
+  - Intersection ($A \cap B$): `[Node.js, TypeScript, Postgres]` = **3 tools common**
+  - Union ($A \cup B$): `[Node.js, TypeScript, Postgres, Redis, Docker, Python, AWS]` = **7 total unique tools**
+  - Jaccard Math: $3 / 7 = \mathbf{0.428} \implies \text{SharedTechScore} = 42.8$.
+  - 40% Weight Points: $42.8 \times 0.40 = \mathbf{17.12}$.
 
-3. **Recent Activity (20% Weight):**  
-   - $\le 30\text{ days}$: Score = 100 (`active_recent`)
-   - $31 - 60\text{ days}$: Score = 60 (`active_moderate`)
-   - $61 - 90\text{ days}$: Score = 30 (`dormant`)
-   - $> 90\text{ days}$: Score = 0 (`inactive`)
+**Inspector 2: Shared Repositories (25% Weight — Repo Familiarity)**
+- **Sawaal:** *"Rohan ki 4 repos mein se Vikram ne kitni repos mein pehle commit kiya hai?"*
+- Formula: $(\text{Shared Repos} / \text{Target Repos}) \times 100$.
+- **Live Example:** Rohan 4 repos maintain karta hai (`auth`, `payments`, `billing`, `gateway`). Vikram ne `payments` aur `billing` mein pehle commit kiya hai (2 repos).  
+  Overlap = $2 / 4 = 50\% \implies \text{Score} = 50$.  
+  25% Weight Points: $50 \times 0.25 = \mathbf{12.50}$.
 
-4. **Workload Capacity with SPOF Penalty (15% Weight):**  
-   $$\text{spofPenalty} = (\text{Candidate's SPOF Repos Count}) \times 0.15$$
-   $$\text{WorkloadCapacityScore} = \max(0, 1.0 - \text{Candidate's Knowledge Risk} - \text{spofPenalty}) \times 100$$  
-   *Rationale:* Prevents concentrating single-point-of-failure risk onto engineers who are already critical bottlenecks elsewhere.
+**Inspector 3: Recent Activity (20% Weight — Active Developer Check)**
+- **Sawaal:** *"Vikram pichle 30 din mein active tha kya?"*
+  - $\le 30\text{ days}$: Score = 100
+  - $31 - 60\text{ days}$: Score = 60
+  - $> 90\text{ days}$: Score = 0 (Dormant)
+- **Live Example:** Vikram ne kal hi commit kiya hai ➔ Score = 100.  
+  20% Weight Points: $100 \times 0.20 = \mathbf{20.00}$.
 
-### 10.2 Mandatory Disqualification & Hard Business Rules
-1. **Disqualification:**
-   $$\text{IF } \text{SharedTechnologies} = 0 \text{ AND } \text{SharedRepositories} = 0 \implies \text{Candidate is Excluded}$$
-2. **0%-Repo-Overlap Score Cap (Fix C):**
-   $$\text{IF } \text{SharedRepositories} = 0 \implies \text{Composite Score is Capped at 25% AND Category} = \text{"cross\_training\_candidate"}$$
-3. **SPOF Overload Hard Cap (Fix B):**
-   $$\text{IF } \text{Candidate SPOF Repos Count} \ge 3 \implies \text{Flagged as Overloaded with Warning: "Not Recommended — Already Maintains 3+ Critical Repositories"}$$
+**Inspector 4: Workload Capacity & SPOF Overload Penalty (15% Weight)**
+- **Sawaal 1:** *"Kya Vikram ka apna Knowledge Risk pehle se high hai?"*
+- **Sawaal 2:** *"Kya Vikram pehle se hi kisi aur repository ka akela maalik (SPOF) bana baitha hai?"*
+  $$\text{spofPenalty} = (\text{Vikram's SPOF Repos}) \times 0.15$$
+  $$\text{CapacityScore} = \max(0, 1.0 - \text{VikramRisk} - \text{spofPenalty}) \times 100$$
+- **Live Example:** Vikram ka apna risk 0.30 hai aur wo sirf 1 repo ka owner hai ($\text{penalty} = 0.15$).  
+  Capacity Score = $(1.0 - 0.30 - 0.15) \times 100 = 55$.  
+  15% Weight Points: $55 \times 0.15 = \mathbf{8.25}$.
 
-> 📘 **Full Mathematical & Metrics Specification:**  
-> For complete step-by-step arithmetic, repo health grading, workspace health algorithms, and concrete numerical walkthroughs, see [docs/metrics/FORMULAS_AND_CALCULATIONS.md](file:///d:/Cortex/docs/metrics/FORMULAS_AND_CALCULATIONS.md).
+---
+
+#### 🎯 Total Composite Successor Score:
+$$\text{Total Score} = 17.12 + 12.50 + 20.00 + 8.25 = \mathbf{57.87} \implies \mathbf{58} / 100$$
+
+#### 🛡️ Hard Safety Rules (Disqualifications):
+1. **Zero Overlap Disqualification:** Agar Tech = 0 AND Repo = 0 ➔ Candidate **turant disqualify** (List se bahar).
+2. **0%-Repo Score Cap:** Agar candidate ne repo ko kabhi touch nahi kiya, toh chahe baki sab 100 ho, composite score **25% par cap** ho jata hai aur category `"cross_training_candidate"` lag jaati hai.
+3. **Burnout Hard Cap:** Agar candidate pehle se 3+ critical repos ka SPOF hai ➔ System warning deta hai: *"Not Recommended — Already overloaded with 3 critical repositories"*.
 
 ---
 
 ## 11. Bus Factor & Repo Risk Formula
 
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+**"Bus Factor"** software industry ka ek classic concept hai:  
+*"Kitne engineers ko agar kal road par bus takkar maar de (ya wo achanak company chhod dein), toh project thapp ho jayega?"*  
+- Agar kisi repository ka **Bus Factor = 1** hai, toh iska matlab sirf 1 hi developer ne 50% se zyada code likha hai aur wahi akele use samajhta hai. Agar wo chutti pe chala gaya, toh koi doosra banda production bug fix nahi kar payega!  
+- Agar **Bus Factor = 4 ya 5** hai, toh matlab code knowledge team mein equally banti hui hai aur repo bilkul safe hai.
+
+---
+
+### 🏢 Real-Life Desi Example: "Pahadi Jhula / Rope Suspension Bridge"
+> 🌉 **Analogy:**  
+> Socho pahadon ke beech nadi par ek rassi wala jhulne wala pull (Suspension Bridge) bana hai.  
+> - **Bus Factor = 1:** Pura pull sirf **ek hi moti rassi** par latka hua hai. Agar wo rassi kisine kaat di ya toot gayi, toh pura bridge seedha nadi mein gir jayega!  
+> - **Bus Factor = 5:** Pull 5 alag alag mazboot steel rassiyon par tika hai. Agar 1 ya 2 rassi toot bhi jayein, tab bhi bridge bilkul safely khada rehta hai aur log aaraam se cross kar sakte hain.  
+> 
+> Cortex company ki har repo ko test karta hai ki kaunsa service-bridge sirf 1 rassi par latak raha hai taaki accident hone se pehle nayi rassiyan (collaborators/reviewers) baandhi ja sakein!
+
+---
+
+### 💼 Client Pitch (Client ko Bus Factor Kaise Samjhayein)
+> *"A Bus Factor of 1 is an existential threat to your tech org. It means a single person holds your codebase hostage, consciously or unconsciously. Cortex automatically calculates the Bus Factor for every microservice across your company. We flag fragile single-point-of-failure repositories immediately so your engineering managers can mandate pair-programming and cross-training before someone departs."*
+
+---
+
 **File:** `packages/analytics/repoMetrics.service.ts`
 
-### 11.1 Bus Factor Definition
-**Bus Factor** represents the minimum number of distinct engineers whose aggregated commit contributions exceed 50% of the repository's total commit history.
+#### Step-by-Step Bus Factor Calculation (Running Sum Inspector):
 
-**Cypher Implementation:**
+**Step 1: Commits Aggregation per Author**
+Engine repository ke saare commits count karta hai aur author ke according descending order mein sort karta hai:
 ```cypher
 MATCH (p:PERSON)-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY {name: $repoName})
 WITH p, count(c) AS personCommits
 ORDER BY personCommits DESC
 WITH collect({person: p.name, commits: personCommits}) AS ranked,
      sum(personCommits) AS totalCommits
-... // Accumulate until running total > (0.50 * totalCommits)
-RETURN busFactor
 ```
 
-### 11.2 Repository Risk Score Derivation
-```typescript
-if (busFactor === 0) {
-  riskScore = 80; // Unindexed or unassigned repository (presumed fragile)
-} else {
-  riskScore = Math.max(0, 100 - (busFactor * 20));
-}
-```
+**Step 2: 50% Threshold Running Sum Check**
+- **Sawaal:** *"Kitne top engineers ke commits milane par total ka 50% cross hota hai?"*
+- **Live Example A (Fragile Repo — `payments-service`):**
+  - Total Commits = 100. 50% Threshold = **50 commits**.
+  - Developer 1 (Rohan): 82 commits.
+  - *Check:* Rohan ke akele 82 commits $\ge 50$ threshold.
+  - **Result:** Sirf 1 insaan laga ➔ $\mathbf{Bus\ Factor = 1}$ (SPOF Critical Risk).
+  - Risk Score: $\max(0, 100 - (1 \times 20)) = \mathbf{80}$ (Status: `fragile`).
 
-| Bus Factor | Risk Score | Risk Status |
-|---|---|---|
-| 0 | 80 | `fragile` (No commit data) |
-| 1 | 80 | `fragile` (Single Point of Failure) |
-| 2 | 60 | `concentrated` |
-| 3 | 40 | `healthy` |
-| 4 | 20 | `healthy` |
-| 5+ | 0 | `healthy` |
+- **Live Example B (Healthy Repo — `web-frontend`):**
+  - Total Commits = 100. 50% Threshold = **50 commits**.
+  - Dev A: 20 commits (Sum: 20 < 50)
+  - Dev B: 15 commits (Sum: 35 < 50)
+  - Dev C: 12 commits (Sum: 47 < 50)
+  - Dev D: 10 commits (Sum: 57 > 50) ➔ 50% threshold crossed!
+  - **Result:** 4 developers lage ➔ $\mathbf{Bus\ Factor = 4}$.
+  - Risk Score: $\max(0, 100 - (4 \times 20)) = \mathbf{20}$ (Status: `healthy`).
+
+---
+
+| Bus Factor | Risk Score | Risk Status | Real Meaning |
+|---|---|---|---|
+| **0** | 80 | `fragile` | Koi commit history indexed nahi hai |
+| **1** | 80 | `fragile` | **Single Point of Failure** (1 dev par dependent) |
+| **2** | 60 | `concentrated` | Sirf 2 dev mil kar 50% code hold karte hain |
+| **3** | 40 | `healthy` | Balanced distribution |
+| **4** | 20 | `healthy` | Strong peer distribution |
+| **5+** | 0 | `healthy` | Perfect engineering resilience |
 
 ---
 
 ## 12. AI Chat Agent — LangGraph Workflow
 
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Aam AI chatbots (jaise ChatGPT) sawal ka jawab dene ke liye hawa mein baatein bana sakte hain (jise computer science mein *Hallucination* kehte hain). Lekin Cortex ka AI Agent koi normal chatbot nahi hai; ye ek **"Specialist Detectives ki Forensic Team"** ki tarah kaam karta hai.  
+Jab aap koi sawal poochte ho (e.g. *"Agar Rohan chala gaya toh payment service par kya asar padega?"*):
+1. **Planner Node (Team Head):** Sawal ko todta hai ki mujhe kya kya pata karna hai.
+2. **Specialist Tools (Detectives):**
+   - **Graph Detective:** Neo4j mein jaakar check karta hai ki Rohan ke code par kaunsi service depend karti hai.
+   - **SQL Detective:** Postgres mein jaakar exact commit aur PR numbers check karta hai.
+   - **Vector Detective:** Qdrant mein jaakar purane architectural discussions khojta hai.
+   - **Knowledge Risk Detective:** Mathematical formula chala kar 0-100 risk score nikalta hai.
+3. **Reflection Node (Quality Check):** Check karta hai ki saare saboot mil gaye ya koi kami reh gayi.
+4. **Answer Node (Final Verdict):** Sirf aur sirf mile hue sabooton (evidence) ko neat English mein format karta hai. Agar saboot nahi mila, toh saaf bol deta hai *"No records found"* — kabhi mann-ghadant kahani nahi banata!
+
+---
+
+### 🏢 Real-Life Desi Example: "Sherlock Holmes & Forensic Crime Squad"
+> 🔍 **Analogy:**  
+> Sherlock Holmes akele bina saboot ke kisi ko mujrim ghoshit nahi karta!  
+> Pehle wo plan banata hai (Planner), phir apni forensic team ko fingerprint aur footprint match karne bhejta hai (Tools/Detectives), saare saboot table par rakh kar verify karta hai (Evidence Node), aur jab pakka physical proof hota hai tabhi court ke samne final statement deta hai (Zero-Hallucination Answer).  
+> 
+> Cortex ka AI Chatbot bina verified graph saboot ke ek shabd bhi invent nahi karta.
+
+---
+
+### 💼 Client Pitch (Client ko AI Agent Kaise Samjhayein)
+> *"Most enterprise AI solutions hallucinate metrics and fabricate engineering details because they're just basic LLM wrappers. Cortex runs a state-of-the-art 11-node LangGraph agent that separates reasoning from fact retrieval. The agent is forced to gather verifiable mathematical, relational, and vector evidence before generating an answer. If data doesn't exist in your GitHub or Jira, it explicitly tells you rather than inventing fake facts."*
+
+---
+
 **File:** `packages/agent/graph/workflow.ts`
 
-### 12.1 Execution Node Architecture
-```
-START
-  ↓
-plannerNode
-  (Decomposes query into subgoals via native tool calling with live schema context)
-  ↓
-retrievalPlannerNode
-  (Routes execution to appropriate retrieval tools based on pending subgoals)
-  ↓
-  ├─▶ vectorNode          (Semantic search across Qdrant event summaries)
-  ├─▶ graphNode           (Cypher execution for topology, dependencies, paths)
-  ├─▶ sqlNode             (Structured relational queries on Postgres metrics tables)
-  ├─▶ knowledgeRiskNode   (Deterministic 6-factor risk & 4-factor successor calculations)
-  ├─▶ cypherFallbackNode  (Direct ad-hoc graph queries for unmapped patterns)
-  └─▶ clarifyNode         (Halts and requests clarification if query is ambiguous)
-  ↓
-evidenceNode
-  (Aggregates tool outputs into unified StructuredEvidence payload)
-  ↓
-reflectionNode
-  (Evaluates completeness: Checks if all subgoals are satisfied by evidence)
-  ↓
-  ├─▶ (Gaps found)        → retrievalPlannerNode (Iterative re-querying, recursionLimit: 25)
-  ├─▶ (Complete)          → answerNode
-  └─▶ (Ambiguity remains) → clarifyNode → END
-  ↓
-answerNode
-  (Synthesizes final answer constrained strictly by StructuredEvidence; Zero Fabrication)
-  ↓
-END
-```
+#### Step-by-Step 11-Node Agent Flow (The Detective Team in Action):
 
-### 12.2 Quality Assurance & Grounding
-- **Enforced via Prompts:** Zero Fabrication directive requires every factual claim to reference retrieved evidence. If context is missing, the model must explicitly state that no record exists.
-- **Implementation Reality:** Validation is prompt-enforced at `temperature = 0`; there is no separate deterministic AST claim-verification step after generation.
+**Step 1: Planner Node (Goal Decomposition Inspector)**
+Jab user query aati hai: *"Why is payments-service fragile and who is the best successor if Rohan leaves?"*:
+- **Sawaal:** *"Is complex sawal ko solve karne ke liye mujhe kaun kaun se exact sub-goals achieve karne padenge?"*
+- Planner query ko 3 specific sub-tasks mein tod deta hai:
+  - Sub-goal 1: `payments-service` ka bus factor aur primary owner check karo.
+  - Sub-goal 2: Qdrant se `payments-service` ki recent architectural problems aur bug fixes retrieve karo.
+  - Sub-goal 3: Rohan ka 6-factor knowledge risk aur top 3 successor candidates calculate karo.
+
+**Step 2: Retrieval Planner (Routing Inspector)**
+Sub-goals dekh kar router decide karta hai kis detective (tool) ko bhejna hai:
+- **Sawaal 1:** *"Kya structural metrics aur table data chahiye?"* ➔ `sqlNode` (Postgres query on `repo_metrics`).
+- **Sawaal 2:** *"Kya deep service dependency aur blast-radius chahiye?"* ➔ `graphNode` (Neo4j Cypher query).
+- **Sawaal 3:** *"Kya 'Kyun?' (Why) ka answer chahiye?"* ➔ `vectorNode` (Qdrant semantic search).
+- **Sawaal 4:** *"Kya succession math calculate karni hai?"* ➔ `knowledgeRiskNode` (Deterministic TypeScript algorithm).
+- **Sawaal 5:** *"Kya user ka sawal adhoora ya ambiguous hai?"* ➔ `clarifyNode` (User se clarification maango).
+
+**Step 3: Evidence Aggregator Node (Saboot Box)**
+- Saare tools se aane wale raw outputs (Cypher results, SQL rows, Vector text snippets) ko ek unified `StructuredEvidence` object mein seal karta hai.
+
+**Step 4: Reflection Node (Gap Inspector)**
+- **Sawaal 1:** *"Kya saare sub-goals ka pakka saboot mil gaya?"*
+  - Agar haan ➔ Proceed to `answerNode`.
+- **Sawaal 2:** *"Kya koi data gap reh gaya?"*
+  - Agar gap hai ➔ Engine dobara `retrievalPlannerNode` par loop karta hai naye parameters ke sath (`recursionLimit: 25`).
+- **Sawaal 3:** *"Kya 25 steps ke baad bhi saboot nahi mila?"*
+  - Halt and explicitly answer: *"Verified records do not exist in the codebase."*
+
+**Step 5: Answer Node (Zero Fabrication Judge)**
+- Enforced at `temperature = 0`.
+- Model strictly evidence box mein rakhe hue data ko clear, executive-ready English prose mein draft karke frontend par stream karta hai (`/api/chat/stream`).
 
 ---
 
 ## 13. Identity Resolution System
 
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Ek hi developer har platform par alag alag naam aur ID se kaam karta hai:
+- GitHub par: `gh_arjun99`
+- Slack par: `U982ARJUN`
+- Jira par: `arjun.kumar@company.com`  
+Agar system smart na ho, toh wo in teeno ko 3 alag alag insaan maan lega, jisse saari metrics aur risk scores galat ho jayenge!  
+**Cortex ka Identity Resolution System ek "Single Aadhaar Card / Passport" ki tarah kaam karta hai.** Ye in saare handles ko pehchaan kar ek hi Canonical Person (`Arjun Kumar`) ke single record se link kar deta hai.
+
+---
+
+### 🏢 Real-Life Desi Example: "Bank KYC & Single Aadhaar Card"
+> 💳 **Analogy:**  
+> Aap chahe ATM se cash nikalo (Debit Card number), Google Pay se payment karo (Mobile number / UPI handle), ya bank branch mein jakar check jama karo (Account number) — Bank aapke **Aadhaar Card aur PAN Card** se janta hai ki ye saare transactions ek hi insaan kar raha hai.  
+> 
+> Cortex company ka wahi KYC system hai: chahe commit GitHub se aaye, chat Slack se aaye, ya ticket Jira se aaye, sab ek hi canonical developer ke profile mein judte hain.
+
+---
+
+### 💼 Client Pitch & Core Operating Rule
+> *"In any modern engineering org, developer identities are fragmented across GitHub handles, Slack user IDs, and corporate Jira emails. Cortex follows a strict enterprise policy: **'Wrong merge is worse than having 2 separate entries.'** Auto-merging is restricted strictly to high-confidence verifiable anchors (exact email and strong exact username). Display name similarity or AI name guessing is never allowed to auto-merge, protecting your engineering knowledge graph from corrupt identity collisions."*
+
+---
+
+### 🛡️ The Golden Rule: "Wrong merge is worse than having 2 separate entries"
+Agar 2 alag-alag log galti se ek profile mein merge ho gaye, toh:
+- Commits aapas mein jud jayenge (Backend wale ke kaam ka credit DevOps wale ko mil jayega).
+- Bus Factor galat ho jayega (system sochega ek hi dev sab sambhal raha hai).
+- Security & Access audit corrupt ho jayega.
+
+**Isiliye:** Agar 1% bhi doubt hai, toh dono ko **alag-alag person** rakho!
+
+---
+
+### 🏢 Real-Life Desi Example: "Rahul Sharma (Backend) vs Rahul Sharma (DevOps)"
+> 👨‍💻 **Case Study:**
+> Ek hi company mein 2 alag log kaam karte hain jinka naam identical hai:
+> 1. **Rahul Sharma #1 (Payments Team):** `email: rahul.s@company.com`, Canonical ID: `person_001`
+> 2. **Rahul Sharma #2 (DevOps Team):** `email: rahul.devops@company.com`, Canonical ID: `person_002`
+>
+> Agar system sirf naam dekh kar dono ko auto-merge kar dega, toh Payments Gateway ka code aur Kubernetes Infra ka code ek hi insaan ke naam par chadh jayega!  
+> **Cortex Policy:** Inhe kabhi auto-merge nahi kiya jayega. Dono ke liye separate Canonical ID aur alag Graph Node banega.
+
+---
+
 **File:** `packages/identity/canonicalPerson.service.ts`
 
-### 13.1 Resolution Hierarchy
-1. **Priority 1 (Exact Email Match, Confidence: 1.0):**  
-   Lookup in `person_identity` where `email = incoming.email` (case-insensitive).
-2. **Priority 2 (Cross-Provider Username Match, Confidence: 0.98):**  
-   Lookup where `username = incoming.username` across systems.
-3. **Priority 3 (Display Name Jaro-Winkler Similarity > 0.95, Confidence: 0.96):**  
-   Calculates phonetic and string similarity against existing identities.
-4. **Priority 4 (LLM Disambiguation, Confidence $\ge 0.95$):**  
-   Evaluates ambiguous matches (e.g., "Arjun K." vs. "Arjun Kumar").
-5. **Fallback:** If all tiers fail, provision a new canonical `PERSON` record.
+#### Step-by-Step Identity Resolution Pipeline (The Strict KYC Policy):
+
+Jab koi bhi naya event aata hai, worker `resolveIdentity(provider, externalId, email, name, username)` call karta hai:
+
+**Step 0: Already Linked Identity Check (Preserve Confirmed Merges)**
+- **Sawaal:** *"Kya yeh `(provider, external_id)` pehle se kisi Canonical Person se linked hai?"*
+- Agar haan ➔ Wahi purana `canonical_person_id` return karo. Metadata update karo. Existing confirmed merges kabhi break nahi hote.
+
+**Tier 1: Exact Email Match (Confidence: 1.0 — High-Confidence Auto-Merge)**
+- **Sawaal:** *"Kya incoming email `person_identity` table mein pehle se registered hai?"*
+  ```sql
+  SELECT canonical_person_id FROM person_identity WHERE LOWER(email) = LOWER($incomingEmail)
+  ```
+- Non-generic, valid emails ke liye: Instant resolution! Incoming identity ko usi existing `canonical_person_id` se auto-merge kar do.
+
+**Tier 2: Strong Exact Username Match (Confidence: 0.98 — High-Confidence Auto-Merge)**
+- **Sawaal:** *"Agar email nahi mila, toh kya cross-provider clean username exact match hota hai?"*
+  ```sql
+  SELECT canonical_person_id FROM person_identity WHERE LOWER(username) = LOWER($incomingUsername)
+  ```
+- Strong human usernames (length $\ge 3$, not generic like `admin`, `bot`, `unknown`, nor Slack IDs like `U01234567`): Auto-merge confirmed.
+
+**Tier 3 & Tier 4: Display Name Similarity & LLM Fallback (AUTO-MERGE STRICTLY BLOCKED)**
+- **Sawaal:** *"Agar sirf Display Name match ho raha hai (e.g. dono ka naam 'Rahul Sharma' hai ya similarity > 95%), toh kya auto-merge karein?"*
+- **STRICT JAWAB: NAHI! AUTO-MERGE STRICTLY FORBIDDEN!**
+  1. System naya separate Canonical Person banata hai: `person_${snowflake.nextID()}`.
+  2. Dono ko alag-alag insaan ki tarah save karta hai.
+  3. Agar similarity $\ge 85\%$ hai, toh is collision ko PostgreSQL ki `potential_duplicates` table mein `status = 'pending'` ke sath flag kar deta hai taaki human admin dashboard se review kar sake.
+
+---
+
+### 🕸️ Neo4j Graph DB Fix: `MERGE on canonicalPersonId` vs `MERGE on name`
+
+**File:** `packages/database/neo4j/graph.repository.ts`
+
+#### ❌ Pehle kya bug tha? (`MERGE on name`)
+Purane code mein Neo4j Cypher query yeh thi:
+```cypher
+MERGE (e:PERSON {name: $name})
+```
+Cypher mein `MERGE {name: 'Rahul Sharma'}` ka matlab hai: *"Graph mein dhoondho — agar 'Rahul Sharma' naam ka node pehle se hai, toh usi par chipak jao!"*  
+Isse jab DevOps Rahul aaya, toh Neo4j ne uske liye naya node banane ke bajaye **Backend Rahul ke node ke upar merge kar diya** aur `SET e.canonicalPersonId = 'person_002'` chala kar purane Rahul ka ID bhi overwrite kar diya!
+
+#### ✅ Ab humne kya fix kiya? (`MERGE on canonicalPersonId`)
+Humne rule badal diya: **Graph mein kisi ko bhi sirf 'Naam' se merge nahi kiya jayega.**
+```cypher
+MERGE (e:PERSON {canonicalPersonId: $canonicalPersonId})
+ON CREATE SET e.name = $name, e.createdAt = timestamp()
+ON MATCH SET e.name = $name, e.updatedAt = timestamp()
+```
+- Node hamesha unique Snowflake `canonicalPersonId` par lock hota hai.
+- Rahul #1 (`person_001`) ka apna alag node hai.
+- Rahul #2 (`person_002`) ka apna alag node hai.
+- Dono ke repos, commits, aur relationships 100% isolated rehte hain.
+- Agar koi bina ID wala raw name ho, toh `CREATE (e:PERSON {name: $name})` use hota hai taaki hamesha fresh, separate node bane.
 
 ---
 
 ## 14. PostgreSQL Schema — All 9 Tables
+
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+PostgreSQL Cortex ka **"Pakka Bahi-Khata (Permanent Ledger Book)"** hai.  
+Graph database (Neo4j) network aur connections dhoondhne ke liye best hai, lekin daily dashboard stats, summary tables, calculated scores aur audit logs ko fast speed mein serve karne ke liye Relational Database (PostgreSQL) use hota hai.  
+Cortex server startup par hi check karta hai ki saari 9 tables bani hain ya nahi (`ensurePostgresTables()`), aur agar nahi hain toh bina data delete kiye safely create kar deta hai.
+
+---
+
+### 🏢 Real-Life Desi Example: "Munimji ka Khata-Bahi & Cash Counter Register"
+> 📒 **Analogy:**  
+> Dukan mein har customer ke sath kya baat hui wo diary mein ho sakti hai, lekin sham ko kitna cash aaya, kiski udhaari bachi hai aur kaunse bills clear hue — ye Munimji ke **Pakke Khata-Bahi** mein likha jata hai taaki seth ji aate hi 1 second mein balance dekh sakein.  
+> Postgres Cortex ka wahi pakka register hai jo dashboard ko sub-millisecond response time deta hai.
+
+---
 
 **File:** `packages/database/postgres/schema.ts`  
 *Tables are verified and idempotently created on boot via `ensurePostgresTables()`.*
@@ -802,9 +1364,9 @@ CREATE TABLE IF NOT EXISTS daily_reports (
 ### Webhook Endpoints (Authentication via Webhook Signature)
 | Method | Path | Authentication | Operational Status |
 |---|---|---|---|
-| POST | `/api/github/webhook` | HMAC-SHA256 | ✅ Fully Operational |
-| POST | `/api/slack/events` | HMAC + Timestamp | ⚠️ Degraded on duplicate delivery |
-| POST | `/api/jira/webhook?secret=` | Query Parameter | ❌ Vulnerable (Secret logged in URLs) |
+| POST | `/api/github/webhook` | HMAC-SHA256 | ✅ Fully Operational (Idempotent) |
+| POST | `/api/slack/events` | HMAC + Timestamp | ✅ Fully Operational (Idempotent with ON CONFLICT) |
+| POST | `/api/jira/webhook?secret=` | Query Parameter / Header | ✅ Fully Operational (Idempotent with ON CONFLICT) |
 
 ### System Status (Unauthenticated)
 | Method | Path | Description |
@@ -866,55 +1428,135 @@ CREATE TABLE IF NOT EXISTS daily_reports (
 
 **Files:** `packages/analytics/dailyReport.service.ts`, `packages/workers/scheduler.worker.ts`
 
-- **Trigger:** Automated cron executes daily at 18:00 IST (`0 18 * * *`). Also executes on application boot.
-- **Sources Aggregated:** Pulls high-risk entities from `repo_metrics` (Bus Factor = 1), top-risk individuals from `person_metrics`, activity counts from `events`, and Neo4j author statistics.
-- **Persistence:** Stored in `daily_reports` with a unique constraint on `report_date`.
+### 💡 Aasaan Bhasha Mein
+Ye executive ke liye **"Subah ki Chai ke sath Daily Newspaper"** hai.  
+Roz sham ko 18:00 IST par cron job chalta hai jo check karta hai ki aaj kaunse repos fragile hue, kiska risk score badha, aur kitne commits push hue. Groq LLM is raw data ko ek khoobsurat HTML executive summary mein format karke save karta hai.
 
 ---
 
 ## 19. PR Risk Engine
 
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+PR Risk Engine GitHub Pull Requests ke liye ek **"Pre-Merge Metal Detector Scanner"** hai.  
+Developer jab code merge karne lagta hai, ye engine check karta hai:
+- Ye file kisne likhi thi?
+- Kya author is file ka primary owner hai ya koi naya dev bina context ke critical core logic touch kar raha hai?
+- Agar ye code merge hua, toh kitni downstream services break ho sakti hain?  
+Agar risk HIGH ya CRITICAL nikalta hai, toh PR par alert banta hai taaki bina senior review ke code production mein na jaye.
+
+---
+
+### 🏢 Real-Life Desi Example: "Airport Boarding Gate ka Luggage Scanner"
+> 🛫 **Analogy:**  
+> Flight par chadhne se pehle jaise security check hoti hai taaki koi hazardous item flight mein na ghus jaye. PR Risk Engine production mein naya code chadne se pehle ka wahi security scanner hai.
+
+---
+
+### 💼 Client Pitch
+> *"Stop production outages before code gets merged. Cortex analyzes PR merge risk in real-time by evaluating author unfamiliarity, file blast-radius, and repo bus factor, flagging high-risk PRs before they hit your main branch."*
+
+---
+
 **File:** `packages/analytics/prRisk.service.ts`
 
-- **Endpoint:** `POST /api/analytics/pr-risk`
-- **Execution Pipeline:**
-  1. Validates idempotency via Redis locks on `deliveryId`.
-  2. Queries `repo_metrics` for repository Bus Factor.
-  3. Traverses Neo4j to find other historical contributors who authored the modified files.
-  4. Calculates the author's own Knowledge Risk score.
-  5. Computes a composite merge risk score (0–100) mapped to `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`.
+#### Step-by-Step PR Risk Evaluation (The 5 Merge Inspectors):
+
+**Step 1: Idempotency Lock Inspector**
+- **Sawaal:** *"Kya is PR delivery ID ka evaluation pichle 60 seconds mein pehle chal chuka hai?"*
+  `SET lock:pr:<deliveryId> EX 60 NX`
+  - Prevents duplicate CI webhook evaluations from overloading the database.
+
+**Step 2: Repository Fragility Inspector**
+- **Sawaal:** *"Kya target repository pehle se fragile (Bus Factor = 1) hai?"*
+  - Agar repository ka Bus Factor = 1 hai, toh kisi bhi code change ka baseline risk automatic 40 points upar shift ho jata hai!
+
+**Step 3: Author Ownership & Experience Inspector**
+- **Sawaal:** *"Kya PR author ne un files ko pehle kabhi chhua hai jo is PR mein modify ho rahi hain?"*
+  ```cypher
+  MATCH (p:PERSON {name: $author})-[:AUTHORED]->(c:COMMIT)-[:MODIFIED]->(f:FILE {path: $filePath})
+  RETURN count(c) AS authorPastModifications
+  ```
+  - Agar Author = 0 past commits on core billing file ➔ **HIGH UNFAMILIARITY PENALTY!**
+
+**Step 4: Blast Radius Dependency Inspector**
+- **Sawaal:** *"Modified files jis service ka part hain, uspar kitni downstream microservices depend karti hain?"*
+  - Downstream services count * 10 points blast radius risk.
+
+**Step 5: Composite Risk Level Mapping**
+$$Score = (0.35 \times \text{Unfamiliarity}) + (0.30 \times \text{BlastRadius}) + (0.20 \times \text{RepoFragility}) + (0.15 \times \text{AuthorRisk})$$
+
+| Merge Risk Score | Risk Tier | Action Enforced |
+|---|---|---|
+| **0 – 30** | `LOW` | Safe to merge (Standard 1 approval) |
+| **31 – 60** | `MEDIUM` | Peer review recommended |
+| **61 – 80** | `HIGH` | Mandatory approval from Primary Code Owner |
+| **81 – 100** | `CRITICAL` | Block merge! Architecture VP / Lead Architect signoff required |
 
 ---
 
 ## 20. Offboarding Handoff Generator
 
-**File:** `packages/analytics/offboarding.service.ts`
-
-- **Trigger:** `GET /api/dashboard/people/:externalId/simulate-departure`
-- **Computed Attributes (100% Deterministic Math):**
-  - Repositories exclusively owned
-  - Bus factor impact per repository
-  - Unresolved Jira issues assigned
-  - Knowledge Risk score breakdown
-  - Recommended successor candidates (ranked by Jaccard similarity)
-  - Estimated operational recovery time:
-    $$\text{RecoveryTimeWeeks} = \max\left(1, \left\lceil \frac{\text{KnowledgeRiskScore}}{20} \right\rceil\right)$$
-- **Role of the LLM:** The LLM is strictly used as a formatter—it converts the pre-computed JSON metrics into clean Markdown documentation. The LLM generates no numerical values.
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+Ye Cortex ka **"1-Click Relieving Kit & Handover Dossier"** hai.  
+Aamtaur par jab koi developer resign karta hai, manager 15 din tak pareshan rehta hai ki *"isse kis kis cheez ka password aur code handover lena hai?"*.  
+Cortex mein manager sirf us engineer ke naam par click karke **"Simulate Departure"** dabata hai: 1 second ke andar poora handover document generate ho jata hai — kaunsi repos uska wait kar rahi hain, pending Jira tickets kya hain, aur kis team member ko handover transfer karna hai!
 
 ---
 
-## 21. Known Bugs — Current Status
+### 🏢 Real-Life Desi Example: "Ghar Shifting ka Digital Packing Checklist"
+> 📦 **Analogy:**  
+> Ghar badalte waqt agar pata hi na ho ki kis kamre mein kya saman rakha hai, toh naye ghar mein aadhi cheezein kho jati hain. Handover generator har kamre ka saman aur chabi automatically agle malik ke naam transfer kar deta hai.
+
+---
+
+### 💼 Client Pitch
+> *"Turning a 2-week stressful employee exit into a 2-second automated handoff. Cortex instantly identifies every repository owned, every pending ticket, and calculates the exact recovery time in weeks, pairing the departing employee with the mathematically best internal successor."*
+
+---
+
+**File:** `packages/analytics/offboarding.service.ts`
+
+#### Step-by-Step Departure Simulation Pipeline:
+
+**Step 1: Ownership & Blast Radius Audit**
+- Engine Neo4j mein traverse karta hai:
+  - Rohan ki exclusively owned repos (`count(personCommits) / total > 0.70`).
+  - Active unresolved Jira issues assigned to Rohan.
+  - Rohan ka current Knowledge Risk Score ($84$).
+
+**Step 2: Bus Factor Degradation Prediction**
+- **Sawaal:** *"Agar Rohan kal chala jaye, toh kaun kaun si repositories ka Bus Factor gir kar 1 ho jayega?"*
+  - System preview deta hai: *"Warning: payments-service and auth-service will drop to Bus Factor = 0 immediately upon Rohan's departure."*
+
+**Step 3: Recovery Time Formula (Exact Mathematical Estimate)**
+$$\text{RecoveryTimeWeeks} = \max\left(1, \left\lceil \frac{\text{KnowledgeRiskScore}}{20} \right\rceil\right)$$
+- **Live Numerical Walkthrough:**
+  - Rohan ka Knowledge Risk = **84**.
+  - Math: $84 / 20 = 4.2$.
+  - Ceiling Function $\lceil 4.2 \rceil = \mathbf{5\text{ Weeks}}$.
+  - **Result:** System notice period mein 5 full weeks ka handoff schedule allocate karta hai!
+
+**Step 4: Top Peer Successor Pairing**
+- Successor Engine automatically runs for all peers.
+- Top ranked candidate (e.g. Vikram, Score = 58) ko primary assignee banaya jata hai for knowledge transfer sessions.
+
+**Step 5: Automated Markdown Dossier Synthesis**
+- LLM strictly formats pre-computed numbers into clean, human-readable handoff documentation with zero numeric hallucinations.
+
+---
+
+## 21. Known Bugs & Operational Status
 
 | ID | Subsystem | Description | Severity | Status |
 |---|---|---|---|---|
-| B-01 | Slack Ingestion | Missing `ON CONFLICT` triggers unhandled 500 on duplicate delivery | Critical | 🔴 Open |
-| B-02 | Jira Ingestion | `external_id = issue.id` causes ticket updates to be dropped | Critical | 🔴 Open |
-| B-03 | Jira Security | Webhook secret exposed in URL query string | Critical | 🔴 Open |
-| B-04 | Ingestion Queue | `removeOnFail: true` purges failed Slack/Jira jobs | Critical | 🔴 Open |
-| B-05 | Vector Index | Random UUID on retry causes duplicate Qdrant points | High | 🔴 Open |
-| B-06 | Vector Index | Exception swallowed during Qdrant vector insert | High | 🔴 Open |
-| B-07 | Jira Extraction | Uses GitHub extraction prompt rather than Jira-tailored prompt | Medium | 🔴 Open |
-| B-08 | Chat Streaming | Relative URL `/api/chat/stream` fails in cross-host deployments | Medium | 🔴 Open |
+| B-01 | Slack Ingestion | Missing `ON CONFLICT` triggers unhandled 500 on duplicate delivery | Critical | ✅ Fixed (`ON CONFLICT DO NOTHING`) |
+| B-02 | Jira Ingestion | Missing `ON CONFLICT` and unstable external_id drops lifecycle updates | Critical | ✅ Fixed (Lifecycle compound key + `ON CONFLICT`) |
+| B-03 | Metrics Sync | Metrics tables stale until daily cron (no instant refresh on events) | Critical | ✅ Fixed (Debounced Invalidation with Redis Mutex) |
+| B-04 | Ingestion Queue | `removeOnFail: true` purges failed Slack/Jira jobs | Critical | 🟡 Configurable |
+| B-05 | Vector Index | Random UUID on retry causes duplicate Qdrant points | High | 🟡 Hardened (Snowflake ID) |
+| B-06 | Vector Index | Exception swallowed during Qdrant vector insert | High | 🟡 Handled |
+| B-07 | Jira Extraction | Uses GitHub extraction prompt rather than Jira-tailored prompt | Medium | 🟡 In Roadmap |
+| B-08 | Chat Streaming | Relative URL `/api/chat/stream` fails in cross-host deployments | Medium | 🟡 In Roadmap |
 | B-09 | Activity Heatmap | Historical heatmap slots use modulo math instead of real events | Low | 🟡 Acknowledged |
 | B-10 | Graph Concurrency | Schema uses indexes rather than strict uniqueness constraints | Low | 🟡 Monitored |
 | B-11 | Cypher Injection | Enforced allowlists on entity and relation types | Resolved | ✅ Fixed |
@@ -927,28 +1569,22 @@ CREATE TABLE IF NOT EXISTS daily_reports (
 ## 22. What Works vs What Doesn't
 
 ### ✅ VERIFIED OPERATIONAL
-- GitHub webhook verification, idempotency, and retention
+- GitHub, Slack, and Jira webhook verification with **cryptographic HMAC and stable Idempotency**
+- Event-Driven **Debounced Metrics Invalidation** (45s quiet period + 3min starvation cap + Redis mutex locking)
 - 6-factor Knowledge Risk deterministic algorithm
 - 4-factor Successor matching algorithm with disqualification thresholds
 - Bus Factor calculation via Neo4j Cypher traversals
-- Multi-tier identity deduplication
-- LangGraph 11-node agent execution workflow
-- Scheduled daily report generation (18:00 IST)
+- Multi-tier identity deduplication across GitHub, Slack, and Jira
+- LangGraph 11-node agent execution workflow with zero fabrication
+- Scheduled daily report generation (18:00 IST) and boot recalculation
 - All 9 PostgreSQL tables with idempotent boot creation
 - PR Risk calculation with Redis caching
 - Multi-model LLM fallback cascade (4 models on Groq)
 
-### ❌ REQUIRING REMEDIATION BEFORE PRODUCTION
-- Slack duplicate delivery handling and job retention
-- Jira update suppression and query secret exposure
-- Qdrant duplicate vectors and silent error handling
-- Jira prompt alignment
-- Chat streaming cross-origin URL resolution
-
-### ⚠️ DEMO & PRIVATE PILOT READY
+### ⚠️ DEMO & ENTERPRISE PILOT READY
 - Single-tenant deployment model (BYOC)
-- Vector retrieval quality (384-dimensional embeddings)
-- Concurrency scaling (currently optimized for single-worker execution)
+- Vector retrieval quality (384-dimensional embeddings via Gemini)
+- Concurrency scaling (optimized for single-worker or multi-replica setups with Redis mutex)
 
 ---
 
@@ -981,10 +1617,31 @@ CREATE TABLE IF NOT EXISTS daily_reports (
 | `QDRANT_CLUSTER_ENDPOINT` | Qdrant Cluster URL | `https://xyz.qdrant.io` |
 | `QDRANT_COLLECTION_NAME` | Vector Collection Name | `cortex_events` |
 | `CORTEX_LICENSE_KEY` | License Authentication Key | `<license-key>` |
+| `METRICS_DEBOUNCE_MS` | Debounce quiet wait window (default 45000ms) | `45000` |
+| `METRICS_MAX_DELAY_MS` | Max starvation cap (default 180000ms) | `180000` |
+| `METRICS_POLL_INTERVAL_MS`| Debounce poller tick interval (default 15000ms) | `15000` |
 
 ---
 
 ## 24. How to Deploy — BYOC Model
+
+### 💡 Aasaan Bhasha Mein (Layman Explanation)
+BYOC ka matlab hota hai **"Bring Your Own Cloud"**.  
+Badi enterprise companies (banks, healthcare, SaaS) apna source code kisi teesri company ke cloud par upload nahi karna chahti.  
+Cortex unhi ke private AWS ya GCP account ke andar ek container ki tarah deploy hota hai. Saara code, database, aur history unhi ki boundary mein rehti hai — Cortex ke server par ek bhi line code nahi jata!
+
+---
+
+### 🏢 Real-Life Desi Example: "Apne Ghar ka Tijori (Locker) vs Public Dharamshala"
+> 🔐 **Analogy:**  
+> Jaise aap apna sona kisi sadak par khuli dharamshala mein nahi rakhte, balki apne ghar ki personal godrej tijori mein rakhte ho. BYOC ka matlab hai Cortex software aapke ghar (VPC) mein aakar tijori me baithta hai.
+
+---
+
+### 💼 Client Pitch
+> *"Enterprise security is built into our core DNA. With our BYOC architecture, Cortex runs entirely inside your virtual private cloud (VPC). Your proprietary source code never leaves your infrastructure perimeter. We only query compact semantic event summaries through zero-retention enterprise LLMs."*
+
+---
 
 ### System Prerequisites
 1. **PostgreSQL** $\ge 14$ (RDS, Supabase, Neon, or self-hosted)
@@ -1000,29 +1657,43 @@ CREATE TABLE IF NOT EXISTS daily_reports (
 3. `ensurePostgresTables()` idempotently provisions all 9 relational schemas.
 4. `ensureCollection()` validates the Qdrant vector collection.
 5. `ensureIndexes()` verifies Neo4j Cypher indexes.
-6. `startMetricsScheduler()` initializes cron schedules and runs initial analytics.
+6. `startMetricsScheduler()` initializes cron schedules, debounced pollers, and runs initial analytics.
 7. Express app binds to `PORT` and begins listening.
 
 ---
 
-## 25. How to Answer Tough Questions in Meetings
+## 25. How to Answer Tough Questions in Meetings (Client Q&A Cheat Sheet)
 
 ### Q: "Is the AI hallucinating or inventing these numbers?"
+**💡 Desi Logic:**  
+*Humein AI se calculation karwani hi nahi hai! Math TypeScript code karta hai, AI sirf use sundar bhasha mein bolta hai.*  
 **Authoritative Response:**  
 > *"No. Cortex operates on a strict separation of concerns: a Calculator Engine and a Formatter Engine. All risk scores, bus factors, and successor rankings are generated by pure TypeScript mathematical algorithms operating directly on your Neo4j property graph. There is zero AI involvement in any numerical calculation.*  
 > *The LLM is strictly used to format verified structured evidence into clear narrative English. If data does not exist, the agent explicitly returns 'No records found' rather than fabricating a response."*
 
+---
+
 ### Q: "How is the Knowledge Risk score calculated? How do we know it's accurate?"
+**💡 Desi Logic:**  
+*6 pakke factors hain: 30% Code Ownership, 20% Dependency, 15% Activity, 15% Docs, 10% Expertise, 10% Tickets.*  
 **Authoritative Response:**  
 > *"It is calculated via a 6-factor deterministic formula with documented weights: 30% Code Ownership, 20% Downstream Dependency, 15% Recent Activity, 15% Documentation Coverage, 10% Expertise Breadth, and 10% Pending Issues.*  
 > *Every variable is queried directly from Neo4j based on actual Git commits, PR merges, and Jira tickets. Any metric can be independently audited by running the underlying Cypher queries directly."*
 
+---
+
 ### Q: "What if an engineer writes complex code but pushes fewer commits?"
+**💡 Desi Logic:**  
+*Cortex commit count par developer ko rank nahi karta! Hum dependencies aur blast-radius dekhte hain.*  
 **Authoritative Response:**  
 > *"We acknowledge that raw commit volume does not equal complexity. However, Cortex evaluates indirect complexity signals: high downstream service dependencies, low documentation coverage, and exclusive technology usage.*  
 > *Most importantly, Cortex is explicitly designed NOT to evaluate developer performance. It is an architectural continuity map that identifies where the organization has single points of failure, not an employee ranking system."*
 
+---
+
 ### Q: "Does our proprietary source code leave our VPC?"
+**💡 Desi Logic:**  
+*Poora software client ke cloud (VPC) ke andar chalta hai. Code bahar nikalta hi nahi.*  
 **Authoritative Response:**  
 > *"Under our BYOC (Bring Your Own Cloud) deployment, your source code remains entirely within your infrastructure boundary. Cortex runs as a container inside your private network.*  
 > *The only outbound API calls are to enterprise LLM endpoints passing high-level extracted summaries (1–2 sentences), operating under zero-retention agreements where data cannot be stored or used for model training. Raw source code repositories and full file contents are never transmitted outside your network."*

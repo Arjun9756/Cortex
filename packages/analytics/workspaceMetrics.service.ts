@@ -3,7 +3,12 @@ import sql from "../../apps/api/config/postgres.js";
 export async function calculateWorkspaceMetrics() {
     try {
         const [personStats] = await sql`SELECT count(*)::int AS count, avg(risk_score)::int AS avg_risk FROM person_metrics`;
-        const [repoStats] = await sql`SELECT count(*)::int AS count, avg(bus_factor)::numeric AS avg_bf FROM repo_metrics`;
+        const [repoStats] = await sql`
+            SELECT 
+                count(*)::int AS count, 
+                COALESCE(avg(bus_factor) FILTER (WHERE status NOT IN ('empty', 'scaffold') AND bus_factor > 0), 1.0)::numeric AS avg_bf 
+            FROM repo_metrics
+        `;
         const [eventStats] = await sql`
             SELECT 
                 count(*) FILTER (

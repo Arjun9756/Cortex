@@ -131,6 +131,11 @@ The ingestion layer acts as the front door for all asynchronous engineering tele
 - **Scheduled Workers (`packages/workers/scheduler.worker.ts`):**
   - Cron schedule: `0 18 * * *` (Daily at 18:00 IST).
   - Batch executes all person metrics, repo metrics, and daily executive report generation. Also runs on cold boot to ensure database metrics are pre-warmed.
+- **Event-Driven Debounced Metrics Invalidation (`packages/analytics/metricsInvalidator.service.ts`):**
+  - **Problem Solved:** Webhooks previously left PostgreSQL metrics tables (`person_metrics`, `repo_metrics`, `workspace_metrics`) stale until the 18:00 IST cron. Recalculating on every event would cause severe database contention (e.g. 15 commits in 10s triggering 15 simultaneous full-graph recalculations).
+  - **The "Elevator" Analogy:** Webhook events behave like passengers entering an elevator: every new passenger resets the door closing timer (45-second debounce window). Only after 45 seconds of quiet time does the elevator move (single batch metrics recalculation). If passengers stream continuously without pause, a 3-minute starvation cap forces recalculation so dashboards never stay stale.
+  - **Distributed Mutex Lock:** Uses Redis `SET cortex:metrics:lock <token> EX 180 NX` to prevent overlapping calculations across cluster replicas, with safe Lua-based release.
+  - **Zero Lost Updates:** If new events arrive while recalculation is in flight, the dirty flag is preserved for the next debounce cycle.
 
 ### 3.3 LLM Extraction & Inference Cascade (`packages/llm/`)
 

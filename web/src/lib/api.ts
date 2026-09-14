@@ -17,6 +17,7 @@ export interface RepoMetric {
     risk_score: number;
     primary_owner?: string;
     contributor_count?: number;
+    status?: 'empty' | 'fragile' | 'concentrated' | 'healthy' | string;
     top_technologies?: any;
     computed_at?: string;
 }
@@ -134,6 +135,43 @@ export interface FindingsResponse {
     findings: Finding[];
 }
 
+export interface SuccessorCandidate {
+    name: string;
+    score: number;
+    category: 'recommended_successor' | 'cross_training_candidate';
+    isOverloaded: boolean;
+    warningLabel?: string;
+    breakdown?: {
+        sharedTechScore: number;
+        sharedRepoScore: number;
+        recentActivityScore: number;
+        workloadCapacityScore: number;
+    };
+    factors?: {
+        sharedTechnologies: string[];
+        targetTechnologies: string[];
+        candidateTechnologies: string[];
+        techJaccard: number;
+        sharedRepositories: string[];
+        targetRepositories: string[];
+        candidateRepositories: string[];
+        repoOverlapRatio: number;
+        daysSinceLastActivity: number | null;
+        activityStatus: 'active_recent' | 'active_moderate' | 'dormant' | 'inactive';
+        existingKnowledgeRisk: number;
+        spofReposCount: number;
+    };
+    rationale: string;
+}
+
+export interface RepoSuccessorResult {
+    repoName: string;
+    busFactor?: number;
+    candidates: SuccessorCandidate[];
+    hasSuccessor: boolean;
+    explanation: string;
+}
+
 export interface DepartureSimulation {
     person: string;
     externalId: string;
@@ -165,6 +203,7 @@ export interface DepartureSimulation {
     affectedRepos: string[];
     affectedTechnologies: Array<{ name: string; score: number }>;
     commitCount: number;
+    successorsByRepo?: RepoSuccessorResult[];
 }
 
 export interface GraphNode {

@@ -5,6 +5,8 @@ export interface PersonMetadata {
     name: string
     email?: string | null
     role?: string | null
+    externalId?: string | null
+    canonicalPersonId?: string | null
 }
 
 export interface EntityMetadata {
@@ -19,8 +21,8 @@ export interface EntityMetadata {
  * @param newEntities     Entities with suggested types
  * @param relation        Relationships with confirmed types
  * @param newRelations    Relationships with suggested types
- * @param personMetadata  Optional list of { name, email, role } for PERSON nodes.
- *                        Built from normalized webhook payload's author fields.
+ * @param personMetadata  Optional list of { name, email, role, externalId, canonicalPersonId } for PERSON nodes.
+ *                        Built from normalized webhook payload's author fields and identity resolution.
  *                        Only non-null values are written — never overwrites good data with null.
  * @param entityMetadata  Optional list of { name, properties } for non-PERSON entities (e.g. ISSUE/PR status).
  */
@@ -30,7 +32,8 @@ export async function saveExtractionToGraph(
     relation:{from:string , to:string , type:string , evidence:string}[],
     newRelations:{from:string , to:string , suggestedType:string , evidence?:string}[],
     personMetadata?: PersonMetadata[],
-    entityMetadata?: EntityMetadata[]
+    entityMetadata?: EntityMetadata[],
+    options?: { sourceEventId?: string; confidence?: number }
 ) {
     // Build extraPropertiesMap from personMetadata — only include non-null values
     const extraPropertiesMap: Record<string, Record<string, any>> = {}
@@ -39,6 +42,8 @@ export async function saveExtractionToGraph(
             const extras: Record<string, any> = {}
             if (person.email != null) extras.email = person.email
             if (person.role != null) extras.role = person.role
+            if (person.externalId != null) extras.externalId = person.externalId
+            if (person.canonicalPersonId != null) extras.canonicalPersonId = person.canonicalPersonId
             if (Object.keys(extras).length > 0) {
                 extraPropertiesMap[person.name] = extras
             }
@@ -76,6 +81,9 @@ export async function saveExtractionToGraph(
             continue
         }
 
-        await upsertRelation(fromID , toID , rel.type , rel.evidence)
+        await upsertRelation(fromID , toID , rel.type , rel.evidence, {
+            sourceEventId: options?.sourceEventId,
+            confidence: options?.confidence ?? 1.0
+        })
     }
 }

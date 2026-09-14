@@ -1,7 +1,7 @@
 import sql from '../../config/postgres.js'
 import { driver } from '../../config/neo4j.js'
 import { calculateKnowledgeRisk } from '../../../../packages/analytics/knowledge.service.js'
-import { calculateSuccessorCandidates } from '../../../../packages/analytics/successor.service.js'
+import { calculateSuccessorCandidates, calculateSuccessorsByRepo } from '../../../../packages/analytics/successor.service.js'
 import { Request, Response } from 'express';
 import { RISK_THRESHOLDS } from '../../../../packages/shared/riskThresholds.js';
 
@@ -72,12 +72,19 @@ export async function getDashboardOverview(req: Request, res: Response) {
         const technologies = await getTechnologiesHelper();
 
         // 1. Compute Composite Headline Health Score (0-100)
+        // Filter out empty / scaffold repositories (0 commits or status = 'empty')
+        // Only real active repositories with commits should affect company health & SPOF
         const totalRepos = repos.length;
-        const spofRepos = repos.filter((r: any) => Number(r.bus_factor) <= 1);
-        const spofPct = totalRepos > 0 ? (spofRepos.length / totalRepos) * 100 : 0;
+        const activeRepos = repos.filter((r: any) => 
+            r.status !== 'empty' && r.status !== 'scaffold' && Number(r.risk_score) > 0 && Number(r.bus_factor) > 0
+        );
+        const totalActiveRepos = activeRepos.length;
 
-        const sumBusFactor = repos.reduce((acc: number, r: any) => acc + Number(r.bus_factor ?? 0), 0);
-        const avgBusFactor = totalRepos > 0 ? sumBusFactor / totalRepos : (Number(workspace?.bus_factor_avg) || 0);
+        const spofRepos = activeRepos.filter((r: any) => Number(r.bus_factor) <= 1);
+        const spofPct = totalActiveRepos > 0 ? (spofRepos.length / totalActiveRepos) * 100 : 0;
+
+        const sumBusFactor = activeRepos.reduce((acc: number, r: any) => acc + Number(r.bus_factor ?? 0), 0);
+        const avgBusFactor = totalActiveRepos > 0 ? sumBusFactor / totalActiveRepos : (Number(workspace?.bus_factor_avg) || 0);
 
         const sumKnowledgeRisk = people.reduce((acc: number, p: any) => acc + Number(p.risk_score ?? 0), 0);
         const avgKnowledgeRisk = people.length > 0 ? sumKnowledgeRisk / people.length : (Number(workspace?.knowledge_risk_avg) || 0);
@@ -109,12 +116,13 @@ export async function getDashboardOverview(req: Request, res: Response) {
             grade,
             statusText,
             statusColor,
-            explanation: `Based on ownership concentration (avg bus factor: ${avgBusFactor.toFixed(1)}, ${spofRepos.length} repos at bus factor 1) and activity across ${people.length} contributors and ${totalRepos} repositories.`,
+            explanation: `Based on ownership concentration (avg bus factor: ${avgBusFactor.toFixed(1)}, ${spofRepos.length} repos at bus factor 1) and activity across ${people.length} contributors and ${totalActiveRepos} active repositories (${totalRepos} total).`,
             breakdown: {
                 avgBusFactor: Number(avgBusFactor.toFixed(1)),
                 avgKnowledgeRisk: Math.round(avgKnowledgeRisk),
                 spofRepoCount: spofRepos.length,
-                totalRepos
+                totalRepos,
+                activeRepoCount: totalActiveRepos
             }
         };
 
@@ -239,6 +247,7 @@ export async function getDashboardOverview(req: Request, res: Response) {
         const openPrsCount = workspace?.open_prs_count ?? 0;
         const stats = {
             repoCount: totalRepos,
+            activeRepoCount: totalActiveRepos,
             peopleCount: people.length,
             techCount: technologies.length,
             avgBusFactor: Number(avgBusFactor.toFixed(1)),
@@ -346,11 +355,13 @@ export async function getFindings(req: Request, res: Response) {
     try {
         const findings: Finding[] = [];
 
-        // 1. Bus factor critical: repos where bus_factor <= 1
+        // 1. Bus factor critical: repos where bus_factor <= 1 (excluding empty / scaffold repos)
         const fragileRepos = await sql`
             SELECT repo_name, bus_factor, risk_score, contributor_count
             FROM repo_metrics
             WHERE bus_factor <= ${BUS_FACTOR_CRITICAL_THRESHOLD}
+              AND status NOT IN ('empty', 'scaffold')
+              AND risk_score > 0
         `;
 
         // For each fragile repo, find the top contributor via Neo4j
@@ -406,12 +417,13 @@ export async function getFindings(req: Request, res: Response) {
             });
         }
 
-        // 3. Repo risk score high: risk_score >= 80 (fragile status)
+        // 3. Repo risk score high: risk_score >= 80 (fragile status, excluding empty repos)
         const highRiskRepos = await sql`
             SELECT repo_name, risk_score, bus_factor, contributor_count
             FROM repo_metrics
             WHERE risk_score >= ${REPO_RISK_HIGH_THRESHOLD}
               AND bus_factor > ${BUS_FACTOR_CRITICAL_THRESHOLD}
+              AND status NOT IN ('empty', 'scaffold')
         `;
         // ^ Excludes repos already flagged by bus-factor-critical above
 
@@ -450,19 +462,24 @@ export async function simulateDeparture(req: Request, res: Response) {
             return res.status(400).json({ error: 'externalId parameter is required' });
         }
 
-        // Look up person_name from person_metrics by external_id
+        // Look up person from person_metrics by external_id or person_name
         const [person] = await sql`
             SELECT person_name, external_id, risk_score, top_technologies, repos, commit_count
             FROM person_metrics
-            WHERE external_id = ${externalId}
+            WHERE external_id = ${externalId} OR person_name = ${externalId}
+            LIMIT 1
         `;
 
         if (!person) {
-            return res.status(404).json({ error: `Person with externalId "${externalId}" not found in person_metrics` });
+            return res.status(404).json({ error: `Person with identifier "${externalId}" not found in person_metrics` });
         }
 
         // Call calculateKnowledgeRisk directly — no LLM agent pipeline
-        const riskResult = await calculateKnowledgeRisk(person.person_name);
+        // ALSO call calculateSuccessorsByRepo for per-repo successor recommendations
+        const [riskResult, successorsByRepo] = await Promise.all([
+            calculateKnowledgeRisk(person.person_name),
+            calculateSuccessorsByRepo(person.person_name)
+        ]);
 
         // Cross-reference stored person_metrics data for technologies and repos
         const affectedRepos: string[] = Array.isArray(person.repos) ? person.repos : [];
@@ -480,6 +497,7 @@ export async function simulateDeparture(req: Request, res: Response) {
             affectedRepos,
             affectedTechnologies,
             commitCount: person.commit_count ?? 0,
+            successorsByRepo,
         });
     } catch (error: any) {
         console.error('[SimulateDeparture] Error:', error?.message);

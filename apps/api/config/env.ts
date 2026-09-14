@@ -50,8 +50,11 @@ const envObject = {
     RATE_LIMIT:parseInt(process.env.RATE_LIMIT || "150"),
 
     GITHUB_SECRET:process.env.GITHUB_SECRET,
+    GITHUB_TOKEN:process.env.GITHUB_TOKEN,
     JIRA_SECRET:process.env.JIRA_SECRET,
+    JIRA_API_TOKEN:process.env.JIRA_API_TOKEN,
     SLACK_SECRET:process.env.SLACK_SECRET,
+    SLACK_BOT_TOKEN:process.env.SLACK_BOT_TOKEN,
 
     QDRANT_API_KEY:process.env.QDRANT_API_KEY,
     QDRANT_CLUSTER_ENDPOINT:process.env.QDRANT_CLUSTER_ENDPOINT,
@@ -62,7 +65,11 @@ const envObject = {
     CORTEX_LICENSE_KEY:process.env.CORTEX_LICENSE_KEY || process.env.LICENSE_KEY,
     LICENSE_SERVER_URL:process.env.LICENSE_SERVER_URL || process.env.CORTEX_LICENSE_SERVER_URL || "https://cortex-admin-two.vercel.app/api/license/ping",
     CORTEX_MACHINE_ID:process.env.CORTEX_MACHINE_ID || "",
-    LICENSE_PING_INTERVAL_HOURS:parseFloat(process.env.LICENSE_PING_INTERVAL_HOURS || "6")
+    LICENSE_PING_INTERVAL_HOURS:parseFloat(process.env.LICENSE_PING_INTERVAL_HOURS || "6"),
+
+    METRICS_DEBOUNCE_MS:parseInt(process.env.METRICS_DEBOUNCE_MS || "45000"),
+    METRICS_MAX_DELAY_MS:parseInt(process.env.METRICS_MAX_DELAY_MS || "180000"),
+    METRICS_POLL_INTERVAL_MS:parseInt(process.env.METRICS_POLL_INTERVAL_MS || "15000")
 }
 
 export default Object.freeze(envObject)

@@ -130,7 +130,8 @@ export const BusFactorPage: React.FC<BusFactorPageProps> = ({ onSyncUpdated }) =
         /* Repository Cards Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {repos.map(repo => {
-            const isHighRisk = repo.bus_factor <= 1 || repo.risk_score >= 70;
+            const isEmpty = repo.status === 'empty' || repo.status === 'scaffold' || (Number(repo.bus_factor) === 0 && Number(repo.risk_score) === 0);
+            const isHighRisk = !isEmpty && (repo.bus_factor <= 1 || repo.risk_score >= 70);
             return (
               <div
                 key={repo.external_id || repo.repo_name}
@@ -153,12 +154,14 @@ export const BusFactorPage: React.FC<BusFactorPageProps> = ({ onSyncUpdated }) =
                     </span>
                     <span
                       className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                        isHighRisk
+                        isEmpty
+                          ? 'bg-slate-800 text-slate-400 border border-slate-700'
+                          : isHighRisk
                           ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                           : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                       }`}
                     >
-                      Risk {repo.risk_score ?? 0}%
+                      {isEmpty ? 'Empty / Scaffold' : `Risk ${repo.risk_score ?? 0}%`}
                     </span>
                   </div>
 
@@ -170,7 +173,12 @@ export const BusFactorPage: React.FC<BusFactorPageProps> = ({ onSyncUpdated }) =
                     <ArrowRight className="h-4 w-4 text-slate-500 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                   </h4>
 
-                  {repo.primary_owner ? (
+                  {isEmpty ? (
+                    <div className="flex items-center space-x-2 text-xs text-slate-500 mt-2 italic">
+                      <Layers className="h-3.5 w-3.5 text-slate-600" />
+                      <span>No commits / scaffold repo</span>
+                    </div>
+                  ) : repo.primary_owner ? (
                     <div className="flex items-center space-x-2 text-xs text-slate-400 mt-2">
                       <UserCheck className="h-3.5 w-3.5 text-amber-400" />
                       <span>Primary: <strong className="text-slate-200 font-medium">{repo.primary_owner}</strong></span>

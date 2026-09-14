@@ -45,9 +45,12 @@ export function normalizeJiraEvent(payload: any, eventType: string): ICleanEvent
     switch (eventType) {
         case "jira:issue_created":
         case "jira:issue_updated":
+        case "issue_created":
+        case "issue_updated":
+        case "jira:issue_generic":
             return normalizeIssueEvent(payload, eventType)
         default:
-            console.warn(`Unhandled Jira event type: ${eventType}`)
+            console.warn(`[Jira] Unhandled Jira event type: ${eventType}`)
             return null
     }
 }

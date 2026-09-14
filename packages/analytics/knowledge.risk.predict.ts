@@ -101,14 +101,35 @@ export async function calculateOwnership(
             return item
         })
 
-        // Query 3: Per-repository ownership calculation taking the MAXIMUM ownership share across all repos contributed to
+        // Query 3: Per-repository ownership calculation with 180-day exponential time decay
+        // Recent commits carry full weight (1.0), 180-day-old commits carry 0.5 weight, and 3-year-old commits decay to ~0.01
+        const nowMs = Date.now()
         const ownershipResult = await session.run(
             `MATCH (p:PERSON {name: $name})-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)
-             WITH r, count(c) AS personRepoCommits
+             WITH r,
+                  sum(
+                      CASE 
+                          WHEN c.createdAt IS NOT NULL 
+                          THEN exp(-0.693 * (CASE WHEN $nowMs > toFloat(c.createdAt) THEN ($nowMs - toFloat(c.createdAt)) ELSE 0.0 END) / (180.0 * 86400000.0))
+                          ELSE 0.5 
+                      END
+                  ) AS personWeightedScore
              MATCH (c2:COMMIT)-[:PART_OF]->(r)
-             WITH r, personRepoCommits, count(c2) AS totalRepoCommits
-             RETURN max(toFloat(personRepoCommits) / toFloat(totalRepoCommits)) AS maxRepoOwnership`,
-            { name }
+             WITH r, personWeightedScore,
+                  sum(
+                      CASE 
+                          WHEN c2.createdAt IS NOT NULL 
+                          THEN exp(-0.693 * (CASE WHEN $nowMs > toFloat(c2.createdAt) THEN ($nowMs - toFloat(c2.createdAt)) ELSE 0.0 END) / (180.0 * 86400000.0))
+                          ELSE 0.5 
+                      END
+                  ) AS totalWeightedScore
+             RETURN max(
+                 CASE 
+                     WHEN totalWeightedScore > 0 THEN personWeightedScore / totalWeightedScore 
+                     ELSE 0.0 
+                 END
+             ) AS maxRepoOwnership`,
+            { name, nowMs }
         )
         const rawMaxOwnership = ownershipResult.records[0]?.get('maxRepoOwnership')
         const maxRepoOwnership = (rawMaxOwnership !== null && rawMaxOwnership !== undefined)
@@ -116,7 +137,7 @@ export async function calculateOwnership(
             : 0
         const ratio = Math.min(1, Math.max(0, isNaN(maxRepoOwnership) ? 0 : maxRepoOwnership))
 
-        console.log(`[Ownership] ${name} maxRepoOwnership = ${ratio} (personCount: ${personCount})`)
+        console.log(`[Ownership] ${name} time-decayed maxRepoOwnership = ${ratio} (personCount: ${personCount})`)
 
         return { score: ratio, count: personCount, evidence }
     } catch (error: any) {

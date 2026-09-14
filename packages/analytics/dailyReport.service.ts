@@ -70,15 +70,19 @@ export async function aggregateDailyReportData(): Promise<DailyReportData> {
             FROM person_metrics
         `;
         const [repoStats] = await sql`
-            SELECT count(*)::int AS count, COALESCE(avg(bus_factor), 1.0)::numeric AS avg_bf 
+            SELECT 
+                count(*)::int AS count, 
+                COALESCE(avg(bus_factor) FILTER (WHERE status NOT IN ('empty', 'scaffold') AND bus_factor > 0), 1.0)::numeric AS avg_bf 
             FROM repo_metrics
         `;
 
-        // 2. Repositories with Bus Factor = 1 (Critical)
+        // 2. Repositories with Bus Factor = 1 (Critical) — excluding empty / scaffold repos
         const bfOneRows = await sql`
             SELECT repo_name, bus_factor, risk_score, contributor_count 
             FROM repo_metrics 
             WHERE bus_factor <= 1 
+              AND status NOT IN ('empty', 'scaffold')
+              AND risk_score > 0
             ORDER BY risk_score DESC, repo_name ASC
             LIMIT 10
         `;

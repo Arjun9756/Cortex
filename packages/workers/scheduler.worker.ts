@@ -4,6 +4,7 @@ import { calculateAllRepoMetrics } from '../analytics/repoMetrics.service.js'
 import { calculateAllTechnologyMetrics } from '../analytics/technologyMetrics.js'
 import { calculateWorkspaceMetrics } from '../analytics/workspaceMetrics.service.js'
 import { generateAndSaveDailyReport } from '../analytics/dailyReport.service.js'
+import { startDebouncedMetricsPoller } from '../analytics/metricsInvalidator.service.js'
 
 export async function runAnalyticsJob(): Promise<void> {
     console.log('[Scheduler] Running analytics job...')
@@ -43,6 +44,7 @@ export async function runAnalyticsJob(): Promise<void> {
 }
 
 export function startMetricsScheduler() {
+    // 1. Daily Cron (18:00 IST) — preserves existing scheduled reporting
     cron.schedule('0 18 * * *', async () => {
         await runAnalyticsJob()
     }, {
@@ -51,7 +53,10 @@ export function startMetricsScheduler() {
     })
     console.log('[Scheduler] Cron scheduled — runs daily at 18:00 IST')
 
-    // Immediate execution on server startup so metrics tables are never empty right after deployment
+    // 2. Debounced Event-Driven Poller — recalculates metrics when new events arrive
+    startDebouncedMetricsPoller(runAnalyticsJob)
+
+    // 3. Immediate execution on server startup so metrics tables are never empty right after deployment
     console.log('[Scheduler] Triggering immediate startup analytics calculation...')
     runAnalyticsJob().catch(err => {
         console.error('[Scheduler] Initial startup metrics calculation error:', err?.message ?? err)

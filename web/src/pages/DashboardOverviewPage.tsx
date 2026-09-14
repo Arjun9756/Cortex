@@ -224,11 +224,13 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
     );
   }
 
-  // Dynamic calculation without fabricated fallbacks
-  const avgBusFactor = reposList.length > 0 ? (reposList.reduce((a, r) => a + Number(r.bus_factor ?? 1), 0) / reposList.length) : 0;
+  // Dynamic calculation without fabricated fallbacks (filtering out empty/scaffold repos)
+  const activeReposList = reposList.filter((r) => r.status !== 'empty' && r.status !== 'scaffold' && Number(r.risk_score) > 0 && Number(r.bus_factor) > 0);
+  const totalActiveRepos = activeReposList.length;
+  const avgBusFactor = totalActiveRepos > 0 ? (activeReposList.reduce((a, r) => a + Number(r.bus_factor ?? 1), 0) / totalActiveRepos) : 0;
   const avgKnowledgeRisk = peopleList.length > 0 ? Math.round(peopleList.reduce((a, p) => a + Number(p.risk_score ?? 0), 0) / peopleList.length) : 0;
-  const spofRepoCount = reposList.filter((r) => Number(r.bus_factor) <= 1).length;
-  const spofPct = reposList.length > 0 ? (spofRepoCount / reposList.length) * 100 : 0;
+  const spofRepoCount = activeReposList.filter((r) => Number(r.bus_factor) <= 1).length;
+  const spofPct = totalActiveRepos > 0 ? (spofRepoCount / totalActiveRepos) * 100 : 0;
   const busFactorPenalty = Math.max(0, 100 - avgBusFactor * 25);
   const compositeRisk = Math.round(0.35 * avgKnowledgeRisk + 0.35 * spofPct + 0.30 * busFactorPenalty);
   const calculatedHealthScore = Math.max(0, Math.min(100, 100 - compositeRisk));
@@ -238,12 +240,13 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
     grade: calculatedHealthScore >= 85 ? 'A' : calculatedHealthScore >= 70 ? 'B' : calculatedHealthScore >= 50 ? 'C' : 'D',
     statusText: calculatedHealthScore >= 85 ? 'Optimal Health' : calculatedHealthScore >= 70 ? 'Moderate Operational Health' : calculatedHealthScore >= 50 ? 'Elevated Risk Concentration' : 'Critical Action Required',
     statusColor: calculatedHealthScore >= 85 ? 'emerald' : calculatedHealthScore >= 70 ? 'indigo' : calculatedHealthScore >= 50 ? 'amber' : 'rose',
-    explanation: `Calculated from ${reposList.length} repositories and ${peopleList.length} contributors.`,
+    explanation: `Calculated from ${totalActiveRepos} active repositories (${reposList.length} total) and ${peopleList.length} contributors.`,
     breakdown: {
       avgBusFactor,
       avgKnowledgeRisk,
       spofRepoCount,
       totalRepos: reposList.length,
+      activeRepoCount: totalActiveRepos,
     },
   };
 

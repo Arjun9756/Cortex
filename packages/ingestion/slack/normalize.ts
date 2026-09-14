@@ -1,4 +1,5 @@
 import env from '../../../apps/api/config/env.js'
+import sql from '../../../apps/api/config/postgres.js'
 
 // ─── Slack User Profile Cache ─────────────────────────────────────────────────
 
@@ -16,8 +17,10 @@ const profileCache = new Map<string, SlackUserProfile>()
  * Resolves a Slack user ID to their full profile: name, email, and role.
  * Caches the full profile object so a single Slack API call covers all 3 fields.
  *
- * Requires SLACK_BOT_TOKEN env var. Silently returns a minimal profile with
- * only the userId as name if the token is absent or the API call fails.
+ * 1. Checks in-process cache.
+ * 2. If SLACK_BOT_TOKEN is present, queries Slack Web API (users.info).
+ * 3. If token is absent or API fails, queries PostgreSQL person_identity table.
+ * 4. Fallback: returns minimal profile with raw userId as name.
  */
 export async function resolveSlackUserProfile(userId: string): Promise<SlackUserProfile> {
     if (profileCache.has(userId)) {
@@ -26,11 +29,32 @@ export async function resolveSlackUserProfile(userId: string): Promise<SlackUser
 
     const token = (env as any).SLACK_BOT_TOKEN
     if (!token) {
-        // Fallback for test user IDs in dev/test environment when bot token is absent
-        const testUser = userId === "U0987654321" ? { name: "Arjun Kumar", email: "arjun@company.com", role: "Software Engineer", avatarUrl: null } : null
-        const minimal: SlackUserProfile = testUser ?? { name: userId, email: null, role: null, avatarUrl: null }
-        profileCache.set(userId, minimal)
-        return minimal
+        // Fallback to PostgreSQL person_identity table when Slack Bot token is not configured
+        try {
+            const [identity] = await sql`
+                SELECT display_name, email, username
+                FROM person_identity
+                WHERE (provider = 'slack' AND external_id = ${userId})
+                   OR external_id = ${userId}
+                LIMIT 1
+            `;
+            if (identity) {
+                const resolved: SlackUserProfile = {
+                    name: identity.display_name || identity.username || userId,
+                    email: identity.email || null,
+                    role: null,
+                    avatarUrl: null
+                };
+                profileCache.set(userId, resolved);
+                return resolved;
+            }
+        } catch (dbErr: any) {
+            console.warn(`[Slack] DB identity lookup fallback error for ${userId}: ${dbErr?.message}`);
+        }
+
+        const minimal: SlackUserProfile = { name: userId, email: null, role: null, avatarUrl: null };
+        profileCache.set(userId, minimal);
+        return minimal;
     }
 
     try {
@@ -101,9 +125,10 @@ export async function normalizeMessage(payload: any): Promise<CleanSlackEvent> {
 export async function normalizeSlackEvent(rawPayload: any, eventType: string): Promise<CleanSlackEvent | null> {
     switch (eventType) {
         case 'message':
+        case 'app_mention':
             return normalizeMessage(rawPayload)
         default:
-            console.warn(`Unhandled Slack event type: ${eventType}`)
+            console.warn(`[Slack] Unhandled Slack event type: ${eventType}`)
             return null
     }
 }

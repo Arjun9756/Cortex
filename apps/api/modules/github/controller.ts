@@ -23,12 +23,12 @@ export async function pushGithubEventToDatabase(payload:IParsedGithubEvent){
         }
         
         await cortexQueue.add(JOBS.GITHUB_EVENT , {id:uniqueID} , {
-            attempts:3,
+            attempts:5,
             removeOnComplete:true,
             removeOnFail:false, // Keep failed jobs for investigation instead of silent discard
             backoff:{
                 type:"exponential",
-                delay:2000
+                delay:3000
             }
         }) // Only eventID To Be Push Fetch Data From DataBase 
 

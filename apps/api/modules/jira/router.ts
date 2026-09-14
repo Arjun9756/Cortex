@@ -12,7 +12,10 @@ jiraRouter.post('/webhook' , async (req,res)=>{
 
     const payload = req.body
     const eventType = payload.webhookEvent
-    const externalId = payload?.issue?.id || null
+    const deliveryId = (req.headers['x-atlassian-webhook-identifier'] as string) || (req.headers['webhook-id'] as string)
+    const issueId = payload?.issue?.id || payload?.issue?.key || 'no_issue'
+    const timestamp = payload?.timestamp || ''
+    const externalId = deliveryId || (timestamp ? `${eventType || 'jira'}_${issueId}_${timestamp}` : (payload?.issue?.id || null))
 
     const parsedEvent:IJiraParsedEvent | null = parsedJiraEvent(eventType , externalId , payload)
     if(parsedEvent === null){

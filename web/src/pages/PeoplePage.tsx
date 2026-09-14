@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getPeople, simulateDeparture as simulateDepartureApi, type PersonMetric, type DepartureSimulation } from '../lib/api';
 import { Users, AlertTriangle, RefreshCw, GitCommit, FolderGit2, ShieldAlert, Award, UserMinus, X, Loader2, AlertCircle, Cpu } from 'lucide-react';
 import { RISK_THRESHOLDS } from '../constants/riskThresholds';
+import { SuccessorCandidateCard } from '../components/SuccessorCandidateCard';
 
 interface PeoplePageProps {
   onSyncUpdated?: (date: Date) => void;
@@ -279,7 +280,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
       {/* ─── Simulate Departure Impact Panel (Modal Overlay) ──────── */}
       {(simulation || simError) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-[#0c1121] border border-rose-500/30 rounded-2xl shadow-2xl shadow-rose-500/10 relative">
+          <div className="w-full max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto bg-[#0c1121] border border-rose-500/30 rounded-2xl shadow-2xl shadow-rose-500/10 relative">
             {/* Close button */}
             <button
               onClick={closeSimulation}
@@ -393,6 +394,82 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                     </div>
                   </div>
                 )}
+
+                {/* ─── SECTION: RECOMMENDED SUCCESSORS & HANDOFF PLAN ──────────────── */}
+                <div className="space-y-4 pt-4 border-t border-slate-800/90">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                      <Award className="h-4 w-4" />
+                      <span>Recommended Successors & Handoff Plan</span>
+                    </h4>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      Per-repository deterministic candidate ranking
+                    </span>
+                  </div>
+
+                  {simulation.successorsByRepo && simulation.successorsByRepo.length > 0 ? (
+                    <div className="space-y-4">
+                      {simulation.successorsByRepo.map((repoPlan, rIdx) => (
+                        <div
+                          key={rIdx}
+                          className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/70 pb-3">
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                              <FolderGit2 className="h-4 w-4 text-cyan-400 shrink-0" />
+                              <span className="font-mono text-sm font-bold text-white truncate">
+                                {repoPlan.repoName}
+                              </span>
+                              {repoPlan.busFactor !== undefined && (
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold shrink-0 ${
+                                    repoPlan.busFactor <= 1
+                                      ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                                      : 'bg-slate-800 text-slate-300'
+                                  }`}
+                                >
+                                  Bus Factor: {repoPlan.busFactor} {repoPlan.busFactor <= 1 ? '(SPOF)' : ''}
+                                </span>
+                              )}
+                            </div>
+
+                            <span
+                              className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border shrink-0 ${
+                                repoPlan.hasSuccessor
+                                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                                  : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                              }`}
+                            >
+                              {repoPlan.hasSuccessor ? 'Recommended Successor Identified' : 'Cross-Training Candidate Only'}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-300 italic leading-relaxed">
+                            {repoPlan.explanation}
+                          </p>
+
+                          {repoPlan.candidates.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                              {repoPlan.candidates.map((cand, cIdx) => (
+                                <SuccessorCandidateCard key={cIdx} candidate={cand} />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-3 rounded-lg bg-rose-950/20 border border-rose-500/30 text-xs text-rose-300 flex items-center gap-2">
+                              <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
+                              <span>No viable successor found for repository "{repoPlan.repoName}". No candidate with overlapping stack identified. Cross-skilling required.</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-center text-xs text-slate-400">
+                      <p>No repository-level successor candidates identified for this profile.</p>
+                      <p className="text-[10px] text-slate-500 mt-1">Cross-skilling recommended to build redundancy.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
