@@ -6,12 +6,14 @@ async function verify() {
     console.log('--- Testing simulate departure for Priya Sharma ---');
     const [priya] = await sql`SELECT * FROM person_metrics WHERE person_name = 'Priya Sharma'`;
     console.log('Priya row:', priya);
+    if (!priya) throw new Error('Priya Sharma is not present in person_metrics');
     const successorsPriya = await calculateSuccessorsByRepo(priya.person_name);
     console.log('Successors for Priya:', JSON.stringify(successorsPriya, null, 2));
 
     console.log('\n--- Testing simulate departure for Rohan Verma ---');
     const [rohan] = await sql`SELECT * FROM person_metrics WHERE person_name = 'Rohan Verma'`;
     console.log('Rohan row:', rohan);
+    if (!rohan) throw new Error('Rohan Verma is not present in person_metrics');
     const successorsRohan = await calculateSuccessorsByRepo(rohan.person_name);
     console.log('Successors for Rohan:', JSON.stringify(successorsRohan, null, 2));
 }

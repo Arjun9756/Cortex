@@ -1,4 +1,4 @@
-import { driver } from "../../apps/api/config/neo4j.js";
+import { neo4jSession } from "../../apps/api/config/neo4j.js";
 import { calculateKnowledgeRisk } from "./knowledge.service.js";
 import sql from "../../apps/api/config/postgres.js";
 
@@ -41,7 +41,7 @@ function chooseBestDisplayName(names: string[]): string {
  * 6. Upserts exactly 1 row per canonical person into `person_metrics` and purges stale/duplicate rows.
  */
 export async function calculateAllPersonMetrics() {
-    const session = driver.session();
+    const session = neo4jSession();
     try {
         console.log("[PersonMetrics] Starting canonical identity metrics calculation...");
 

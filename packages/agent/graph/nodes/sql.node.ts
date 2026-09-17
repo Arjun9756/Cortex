@@ -212,8 +212,9 @@ export async function runSafeQuery(queryType: string, params: any) {
 
         case 'repo_risk': {
             return await sql`
-                SELECT repo_name, bus_factor, risk_score, contributor_count, status 
-                FROM repo_metrics 
+                SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
+                FROM repo_metrics
+                WHERE status IS DISTINCT FROM 'empty'
                 ORDER BY risk_score DESC
             `;
         }
@@ -221,9 +222,9 @@ export async function runSafeQuery(queryType: string, params: any) {
         case 'repos_by_bus_factor': {
             const threshold = Number(params?.threshold ?? params?.busFactor ?? 1);
             return await sql`
-                SELECT repo_name, bus_factor, risk_score, contributor_count, status 
-                FROM repo_metrics 
-                WHERE bus_factor <= ${threshold}
+                SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
+                FROM repo_metrics
+                WHERE bus_factor <= ${threshold} AND status IS DISTINCT FROM 'empty'
                 ORDER BY bus_factor ASC, risk_score DESC
             `;
         }

@@ -1,3 +1,4 @@
+import { invalidateGraphCache } from '../../apps/api/modules/graph/graphCache.js';
 import redis from '../../apps/api/config/redis.js';
 import crypto from 'crypto';
 
@@ -138,6 +139,7 @@ export async function checkAndRunMetricsDebounced(): Promise<{
                 );
             } else {
                 await redis.del(REDIS_KEYS.DIRTY, REDIS_KEYS.FIRST_DIRTY_TS);
+                await invalidateGraphCache('Debounced metrics recalculation complete');
                 console.log(`[MetricsInvalidator] ✅ Metrics recalculation complete. Dirty flag cleared.`);
             }
 

@@ -301,7 +301,7 @@ export async function testPerRepoSuccessors(targetPersonName: string) {
                     },
                     factors: {
                         sharedTechnologies: sharedTechList,
-                        targetTechnologies: Array.from(targetRepoTechs),
+                        targetTechnologies: Array.from(targetRepoTechs ?? []),
                         candidateTechnologies: Array.from(cand.technologies),
                         techJaccard: Math.round(techJaccard * 1000) / 1000,
                         sharedRepositories: hasDirectRepoExperience ? [repoName] : [],

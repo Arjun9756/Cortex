@@ -328,6 +328,10 @@ async function main() {
     for (let i = 0; i < baseline.candidates.length; i++) {
         const b = baseline.candidates[i];
         const s = scoped.candidates[i];
+        if (!b || !s) {
+            matchCandidates = false;
+            continue;
+        }
         if (b.name !== s.name || b.score !== s.score || b.category !== s.category || b.isOverloaded !== s.isOverloaded || b.warningLabel !== s.warningLabel) {
             matchCandidates = false;
             console.log(`Mismatch at candidate ${i}: baseline=${JSON.stringify(b)}, scoped=${JSON.stringify(s)}`);

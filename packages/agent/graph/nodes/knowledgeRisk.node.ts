@@ -1,7 +1,7 @@
 import { AgentStateType, StructuredEvidence } from "../state.js";
 import { calculateKnowledgeRisk } from "../../../analytics/knowledge.service.js";
 import { calculateSuccessorCandidates } from "../../../analytics/successor.service.js";
-import { driver } from "../../../../apps/api/config/neo4j.js";
+import { neo4jSession } from "../../../../apps/api/config/neo4j.js";
 import sql from "../../../../apps/api/config/postgres.js";
 
 export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
@@ -34,7 +34,7 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
     // Helper: resolve person name against Neo4j PERSON nodes
     async function resolvePersonName(rawName: string): Promise<string | null> {
         if (!rawName || !rawName.trim()) return null;
-        const session = driver.session();
+        const session = neo4jSession();
         try {
             const res = await session.run(`
                 MATCH (p:PERSON)
@@ -57,7 +57,7 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
 
     // Helper: fetch all PERSON node names from graph (excludes Slack user ID nodes)
     async function getAllPersonNames(): Promise<string[]> {
-        const session = driver.session();
+        const session = neo4jSession();
         try {
             const result = await session.run(`
                 MATCH (p:PERSON)

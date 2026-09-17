@@ -122,7 +122,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
             </div>
             <div>
               <h3 className="text-lg font-bold text-white tracking-tight">Integrate Webhooks & Secret Keys</h3>
-              <p className="text-xs text-slate-400">Connect live event webhooks for real-time engineering risk analysis</p>
+              <p className="text-xs text-slate-400">Connect event webhooks for automated engineering risk analysis</p>
             </div>
           </div>
           <button

@@ -1,4 +1,4 @@
-import { driver } from "../../apps/api/config/neo4j.js";
+import { neo4jSession } from "../../apps/api/config/neo4j.js";
 import sql from "../../apps/api/config/postgres.js";
 import { getGraphSchema } from "../database/neo4j/schemaCache.js";
 
@@ -14,7 +14,7 @@ import { getGraphSchema } from "../database/neo4j/schemaCache.js";
  * risk_score is stored as a 0–100 INTEGER (percentage).
  */
 export async function calculateAllRepoMetrics() {
-    const session = driver.session();
+    const session = neo4jSession();
 
     // Bug #5 fix: check schema before running AUTHORED/PART_OF queries
     let hasAuthored = true

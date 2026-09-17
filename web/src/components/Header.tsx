@@ -18,17 +18,22 @@ export const Header: React.FC<HeaderProps> = ({
   lastSyncedAt,
   onGoLanding
 }) => {
-  const [timeAgoText, setTimeAgoText] = useState<string>('Live');
+  const [timeAgoText, setTimeAgoText] = useState<string>('Just now');
+  const [isStale, setIsStale] = useState<boolean>(false);
 
   useEffect(() => {
     if (!lastSyncedAt) {
-      setTimeAgoText('Live');
+      setTimeAgoText('Sync pending');
+      setIsStale(false);
       return;
     }
 
     const updateTimer = () => {
       const now = Date.now();
-      const diffSec = Math.floor((now - lastSyncedAt.getTime()) / 1000);
+      const diffSec = Math.max(0, Math.floor((now - lastSyncedAt.getTime()) / 1000));
+      // Softer visual state when last successful sync is older than 2 minutes
+      setIsStale(diffSec >= 120);
+
       if (diffSec < 5) {
         setTimeAgoText('Just now');
       } else if (diffSec < 60) {
@@ -40,9 +45,38 @@ export const Header: React.FC<HeaderProps> = ({
     };
 
     updateTimer();
-    const interval = setInterval(updateTimer, 5000);
+    const interval = setInterval(updateTimer, 2000);
     return () => clearInterval(interval);
   }, [lastSyncedAt]);
+
+  const getBadgeStyle = () => {
+    if (isRefreshing) {
+      return {
+        container: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300',
+        pingColor: 'bg-indigo-400',
+        dotColor: 'bg-indigo-500',
+        showPing: true,
+      };
+    }
+    if (isStale) {
+      // Softer visual state when data sync is older than 2 minutes
+      return {
+        container: 'bg-slate-800/60 border-slate-700/80 text-slate-400',
+        pingColor: '',
+        dotColor: 'bg-slate-400',
+        showPing: false,
+      };
+    }
+    // Fresh healthy state (synced within last 2 minutes)
+    return {
+      container: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      pingColor: 'bg-emerald-400',
+      dotColor: 'bg-emerald-500',
+      showPing: true,
+    };
+  };
+
+  const badgeStyle = getBadgeStyle();
 
   return (
     <header className="sticky top-0 z-20 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-8 py-4 flex items-center justify-between">
@@ -69,21 +103,18 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Workspace: <strong className="text-white font-semibold">Cortex Core</strong></span>
         </div>
 
-        {/* Dynamic Realtime Sync Status Badge */}
-        <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-          isRefreshing 
-            ? 'bg-indigo-500/10 border border-indigo-500/30 text-indigo-300'
-            : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-        }`}>
+        {/* Dynamic Auto-Sync Status Badge */}
+        <div 
+          title={lastSyncedAt ? `Auto-sync active (polling every 30s) · Last synced ${timeAgoText}` : 'Auto-sync active'}
+          className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${badgeStyle.container}`}
+        >
           <span className="relative flex h-2 w-2">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-              isRefreshing ? 'bg-indigo-400' : 'bg-emerald-400'
-            }`}></span>
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${
-              isRefreshing ? 'bg-indigo-500' : 'bg-emerald-500'
-            }`}></span>
+            {badgeStyle.showPing && (
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${badgeStyle.pingColor}`}></span>
+            )}
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${badgeStyle.dotColor}`}></span>
           </span>
-          <span className="font-semibold">{isRefreshing ? 'Syncing...' : 'Realtime Sync'}</span>
+          <span className="font-semibold">{isRefreshing ? 'Syncing...' : 'Auto-Sync'}</span>
           <span className="text-[10px] text-slate-400 border-l border-slate-700 pl-1.5 font-mono">
             {timeAgoText}
           </span>

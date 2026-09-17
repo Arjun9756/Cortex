@@ -342,16 +342,21 @@ export interface AnalyticsTrendsResponse {
     status: boolean;
     commitTrends: Array<{ label: string; commits: number; prs: number; issues?: number }>;
     graphGrowth: Array<{ label: string; nodes: number; edges: number }>;
-    repoHealth: Array<{ name: string; score: number; busFactor: number; contributors: number; riskScore: number }>;
-    techUsage: Array<{ name: string; pct: number; contributors: number }>;
+    repoHealth: Array<{ name: string; score: number; busFactor: number; contributors: number; riskScore: number; status?: string; fullName?: string }>;
+    techUsage: Array<{ name: string; pct: number; contributors: number; repos?: number }>;
     heatmap: Array<{ day: string; counts: number[] }>;
     metadata: {
         totalEvents: number;
         totalNodes: number;
         totalEdges: number;
         trackedRepos: number;
+        activeRepos?: number;
+        emptyRepos?: number;
         trackedPeople: number;
+        trackedTechnologies?: number;
         trackingDurationLabel: string;
+        source?: string;
+        isGraphDegraded?: boolean;
     };
 }
 
@@ -567,3 +572,73 @@ export async function getRepositoryDetails(repoName: string): Promise<Repository
     return await fetchJson<RepositoryDetails>(`/api/dashboard/repos/${encodeURIComponent(repoName)}/details`);
 }
 
+
+export interface GraphSummaryResponse {
+    status: boolean;
+    cached: boolean;
+    generated_at: string;
+    nodeCount: number;
+    edgeCount: number;
+    nodes: GraphNode[];
+    edges: GraphEdge[];
+}
+
+export interface NodeContributor {
+    id: string;
+    name: string;
+    risk_score: number;
+    commit_count: number;
+}
+
+export interface NodeNeighbor {
+    id: string;
+    name: string;
+    type: string;
+    relation: string;
+}
+
+export interface GraphNodeDetail {
+    id: string;
+    canonical_id?: string;
+    name: string;
+    type: string;
+    status?: string;
+    bus_factor?: number;
+    risk_score?: number;
+    risk_tier?: string;
+    primary_owner?: string | null;
+    contributor_count?: number;
+    commit_count?: number;
+    usage_percent?: number;
+    trend_percent?: number;
+    repo_count?: number;
+    top_contributors?: NodeContributor[];
+    related_technologies?: string[];
+    repos?: Array<{ name: string; status: string; risk_score: number; bus_factor: number }>;
+    top_technologies?: any[];
+    top_experts?: any[];
+    related_repos?: string[];
+    neighbors?: NodeNeighbor[];
+    computed_at?: string;
+    generated_at: string;
+    cached: boolean;
+    actions?: Record<string, { type: string; target: string; label: string; params?: any }>;
+}
+
+export async function getGraphSummary(filters?: GraphFilters): Promise<GraphSummaryResponse> {
+    const queryParams = new URLSearchParams();
+    if (filters?.repository) queryParams.set('repository', filters.repository);
+    if (filters?.personExternalId) queryParams.set('personExternalId', filters.personExternalId);
+    if (filters?.limit) queryParams.set('limit', filters.limit.toString());
+    const queryString = queryParams.toString();
+    const endpoint = '/api/graph/summary' + (queryString ? ('?' + queryString) : '');
+    return fetchJson<GraphSummaryResponse>(endpoint);
+}
+
+export async function getGraphNodeDetail(id: string, type?: string): Promise<GraphNodeDetail> {
+    const queryParams = new URLSearchParams();
+    if (type) queryParams.set('type', type);
+    const queryString = queryParams.toString();
+    const endpoint = '/api/graph/node/' + encodeURIComponent(id) + (queryString ? ('?' + queryString) : '');
+    return fetchJson<GraphNodeDetail>(endpoint);
+}

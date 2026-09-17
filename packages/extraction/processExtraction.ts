@@ -82,7 +82,7 @@ export async function saveExtractionToGraph(
         }
 
         await upsertRelation(fromID , toID , rel.type , rel.evidence, {
-            sourceEventId: options?.sourceEventId,
+            sourceEventId: options?.sourceEventId ?? null,
             confidence: options?.confidence ?? 1.0
         })
     }

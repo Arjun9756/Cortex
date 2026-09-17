@@ -3,7 +3,7 @@ export function buildSqlPlannerPrompt(query: string, evidence = ''): string {
 You are a query planner for a Postgres "events" and "repo_metrics" tables.
 
 Events Table columns: id, external_id, provider ('github' | 'slack' | 'jira'), event_type, payload (JSONB), created_at.
-Repo Metrics Table columns: repo_name, bus_factor, risk_score, contributor_count, status.
+Repo Metrics Table columns: repo_name, bus_factor, risk_score, contributor_count, primary_owner, status.
 
 User Question: "${query}"
 ${evidence ? `\nEvidence collected so far:\n${evidence}` : ''}

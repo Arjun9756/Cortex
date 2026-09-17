@@ -35,7 +35,7 @@ async function proveLifecycle() {
             MATCH (i:ISSUE {name: "LIFECYCLE-TEST-42"})
             RETURN count(i) AS nodesCount, i.status AS currentStatus
         `);
-        console.log(`   (Neo4j Check: Total nodes with name "LIFECYCLE-TEST-42" = ${nodeCheck.records[0].get('nodesCount')}, Status = "${nodeCheck.records[0].get('currentStatus')}")`);
+        console.log(`   (Neo4j Check: Total nodes with name "LIFECYCLE-TEST-42" = ${nodeCheck.records[0]!.get('nodesCount')}, Status = "${nodeCheck.records[0]!.get('currentStatus')}")`);
 
         // Step 3: Run calculatePendingWork again on the exact same node
         const closedState = await calculatePendingWork(

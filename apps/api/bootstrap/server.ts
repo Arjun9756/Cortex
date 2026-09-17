@@ -6,6 +6,7 @@ import { ensureIndexes } from '../../../packages/database/neo4j/graph.repository
 import { ensurePostgresTables } from '../../../packages/database/postgres/schema.js'
 import { startMetricsScheduler } from '../../../packages/workers/scheduler.worker.js'
 import { verifyLicenseOnStartup } from '../../../packages/license/index.js'
+import { verifyNeo4jConnectivity } from '../config/neo4j.js'
 
 async function startServer() {
     try {
@@ -17,8 +18,15 @@ async function startServer() {
         }
 
         await ensurePostgresTables()
+        // Graph enrichment is optional for API reads. Surface the real infrastructure
+        // failure at startup, but do not make Postgres-backed metrics unavailable.
+        try {
+            await verifyNeo4jConnectivity()
+            await ensureIndexes()
+        } catch (error: any) {
+            console.error(`[Neo4j] Starting in degraded mode; graph enrichment is unavailable: ${error?.message}`)
+        }
         await ensureCollection()
-        await ensureIndexes()
 
         startMetricsScheduler()
 

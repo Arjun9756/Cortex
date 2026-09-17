@@ -105,7 +105,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({ onSyncUpdated }) => 
             <span>Activity Timeline</span>
           </h3>
           <p className="text-xs text-slate-400 mt-1">
-            Realtime engineering activity feed ingested from GitHub, Slack, and Jira webhooks.
+            Automated engineering activity feed ingested from GitHub, Slack, and Jira webhooks.
           </p>
         </div>
         <button

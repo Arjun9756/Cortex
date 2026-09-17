@@ -121,7 +121,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   useEffect(() => {
     fetchOverview(false);
 
-    // Realtime Periodic Polling: poll overview every 30 seconds
+    // Periodic Polling: poll overview every 30 seconds (auto-sync)
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchOverview(true);
@@ -207,7 +207,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           <div className="space-y-2">
             <h3 className="text-xl font-bold text-white tracking-tight">No Workspace Data Ingested Yet</h3>
             <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-              Cortex has not indexed any repositories, commits, or contributors in this workspace. Connect GitHub, Slack, or Jira webhooks to begin indexing your codebase and computing live Bus Factor and Knowledge Risk scores.
+              Cortex has not indexed any repositories, commits, or contributors in this workspace. Connect GitHub, Slack, or Jira webhooks to begin indexing your codebase and computing automated Bus Factor and Knowledge Risk scores.
             </p>
           </div>
           <div className="flex items-center justify-center gap-3 pt-2">

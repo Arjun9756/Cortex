@@ -123,17 +123,61 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
       const style = CATEGORY_STYLES[cat] || CATEGORY_STYLES.TECHNOLOGY;
 
       let radius = 9;
-      if (cat === 'PERSON') radius = 13;
-      if (cat === 'REPOSITORY') radius = 14;
-      if (cat === 'TECHNOLOGY') radius = 10;
-      if (cat === 'COMMIT') radius = 8;
-      if (cat === 'ISSUE') radius = 10;
+      let nodeColor = style.color;
+      let glowColor = style.glow;
+
+      if (cat === 'REPOSITORY') {
+        const repoStatus = String(node.status || '').toLowerCase();
+        const busFactor = Number(node.bus_factor || 0);
+        const riskScore = Number(node.risk_score || 0);
+
+        if (repoStatus === 'empty') {
+          nodeColor = '#64748B'; // Neutral Slate for empty/scaffold repo
+          glowColor = 'rgba(100, 116, 139, 0.4)';
+          radius = 11;
+        } else if (repoStatus === 'fragile' || (busFactor <= 1 && riskScore >= 70)) {
+          nodeColor = '#EF4444'; // Red (high risk / SPOF)
+          glowColor = 'rgba(239, 68, 68, 0.5)';
+          radius = 16;
+        } else if (repoStatus === 'concentrated' || riskScore >= 40) {
+          nodeColor = '#F59E0B'; // Amber (concentrated risk)
+          glowColor = 'rgba(245, 158, 11, 0.5)';
+          radius = 14;
+        } else {
+          nodeColor = '#10B981'; // Emerald (healthy)
+          glowColor = 'rgba(16, 185, 129, 0.45)';
+          radius = 13;
+        }
+      } else if (cat === 'PERSON') {
+        const riskScore = Number(node.risk_score || 0);
+        const commits = Number(node.commit_count || 0);
+        if (riskScore >= 70) {
+          nodeColor = '#F43F5E'; // Rose - Critical Knowledge Risk
+          glowColor = 'rgba(244, 63, 94, 0.5)';
+        } else if (riskScore >= 40) {
+          nodeColor = '#F59E0B'; // Amber - Moderate Knowledge Risk
+          glowColor = 'rgba(245, 158, 11, 0.5)';
+        } else {
+          nodeColor = '#10B981'; // Emerald - Low Knowledge Risk
+          glowColor = 'rgba(16, 185, 129, 0.45)';
+        }
+        radius = Math.min(22, Math.max(12, 12 + Math.log10(commits + 1) * 3));
+      } else if (cat === 'TECHNOLOGY') {
+        const usage = Number(node.usage_percent || 0);
+        radius = Math.min(18, Math.max(10, 10 + Math.round(usage / 15)));
+        nodeColor = '#8B5CF6';
+        glowColor = 'rgba(139, 92, 246, 0.45)';
+      } else if (cat === 'COMMIT') {
+        radius = 7;
+      } else if (cat === 'ISSUE') {
+        radius = 9;
+      }
 
       return {
         ...node,
         category: cat,
-        color: style.color,
-        glowColor: style.glow,
+        color: nodeColor,
+        glowColor: glowColor,
         x: width / 2 + Math.cos(angle) * radiusDist,
         y: height / 2 + Math.sin(angle) * radiusDist,
         vx: (Math.random() - 0.5) * 0.4,

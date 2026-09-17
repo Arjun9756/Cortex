@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { BarChart3, TrendingUp, Cpu, Calendar, ShieldCheck, Database, RefreshCw, AlertTriangle, Layers } from 'lucide-react';
 import { getAnalyticsTrends, type AnalyticsTrendsResponse } from '../lib/api';
 
@@ -38,6 +38,9 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
   const techUsage = data?.techUsage || [];
   const heatmapData = data?.heatmap || [];
   const metadata = data?.metadata ?? {
+    activeRepos: 0,
+    emptyRepos: 0,
+    trackedTechnologies: 0,
     totalEvents: 0,
     totalNodes: 0,
     totalEdges: 0,
@@ -49,51 +52,26 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
   const totalCommits = commitTrendData.reduce((s, c) => s + (c.commits || 0), 0);
   const totalPrs = commitTrendData.reduce((s, c) => s + (c.prs || 0), 0);
 
-  // 1. Process graphGrowth data ensuring reliable wave shape
+  // 1. Process graphGrowth data strictly from real snapshots - no fabricated sinusoids
   const effectiveGraphGrowth = useMemo(() => {
-    if (graphGrowthData && graphGrowthData.length >= 2) {
+    if (graphGrowthData && graphGrowthData.length > 0) {
       return graphGrowthData.map(item => ({
         label: String(item.label || 'Snapshot'),
         nodes: Number(item.nodes ?? 0),
         edges: Number(item.edges ?? 0),
       }));
     }
-    // If graph has nodes or edges and fewer than 2 points, construct wave checkpoints
-    if ((metadata?.totalNodes ?? 0) > 0 || (metadata?.totalEdges ?? 0) > 0) {
-      const now = new Date();
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const totalNodes = Number(metadata?.totalNodes || 0);
-      const totalEdges = Number(metadata?.totalEdges || 0);
-      const numPoints = 6;
-      const wave = [];
-      for (let i = numPoints - 1; i >= 0; i--) {
-        const d = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
-        const label = `${monthNames[d.getMonth()]} ${d.getDate()}`;
-        if (i === 0) {
-          wave.push({ label, nodes: totalNodes, edges: totalEdges });
-        } else {
-          const t = (numPoints - 1 - i) / (numPoints - 1);
-          const factor = Math.sin((t * Math.PI) / 2);
-          wave.push({
-            label,
-            nodes: Math.max(1, Math.round(totalNodes * (0.35 + 0.65 * factor))),
-            edges: Math.max(1, Math.round(totalEdges * (0.22 + 0.78 * factor))),
-          });
-        }
-      }
-      return wave;
-    }
     return [];
-  }, [graphGrowthData, metadata]);
+  }, [graphGrowthData]);
 
-  // 2. Process repository health data ensuring clean labels, proper numeric values, and fallback resilience
+  // 2. Process repository health data ensuring clean labels, proper numeric values, and status recognition
   const processedRepoHealth = useMemo(() => {
     return repoHealthData.map((r: any) => {
       const rawName = String(r.name || r.repo_name || r.repoName || 'Repository');
-      // Clean short name for display on X-axis: remove any namespace prefix
       const baseName = rawName.includes('/') ? rawName.split('/').pop()! : rawName;
-      const shortName = baseName.length > 14 ? `${baseName.slice(0, 12)}…` : baseName;
-      const score = Number(r.score !== undefined ? r.score : Math.max(0, 100 - (Number(r.riskScore ?? r.risk_score ?? 0))));
+      const shortName = baseName.length > 14 ? (baseName.slice(0, 12) + '...') : baseName;
+      const isScaffold = r.status === 'empty' || (r.busFactor === 0 && r.contributors === 0);
+      const score = isScaffold ? 0 : Number(r.score !== undefined ? r.score : Math.max(0, 100 - (Number(r.riskScore ?? r.risk_score ?? 0))));
       return {
         ...r,
         name: shortName,
@@ -101,31 +79,27 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
         score: isNaN(score) ? 0 : score,
         busFactor: Number(r.busFactor ?? r.bus_factor ?? 0),
         contributors: Number(r.contributors ?? r.contributor_count ?? 0),
+        status: isScaffold ? 'empty' : (r.status || 'healthy'),
       };
     });
   }, [repoHealthData]);
 
-  // 3. Process heatmap data ensuring a full 7-day grid mapped from events
+  const getRepoBarColor = (item: any) => {
+    if (item.status === 'empty') return '#64748b'; // Slate neutral for empty scaffold repos
+    if (item.score <= 30) return '#f43f5e'; // Rose for high risk / single point of failure
+    if (item.score <= 60) return '#f59e0b'; // Amber for moderate risk
+    return '#10b981'; // Emerald for healthy repos
+  };
+
+  // 3. Process heatmap data strictly from real events - no fabricated midweek fixtures
   const effectiveHeatmap = useMemo(() => {
     if (heatmapData && heatmapData.length > 0) {
       return heatmapData;
     }
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const numWeeks = 16;
-    const total = Number(metadata?.totalEvents || 0);
-    if (total > 0) {
-      return dayNames.map((day, dIdx) => {
-        const counts = Array(numWeeks).fill(0);
-        if (dIdx >= 1 && dIdx <= 5) {
-          counts[numWeeks - 1] = Math.min(4, Math.max(1, Math.ceil(total / 8)));
-          counts[numWeeks - 2] = Math.min(3, Math.max(1, Math.ceil(total / 14)));
-          counts[numWeeks - 3] = (dIdx % 2 === 1) ? 1 : 0;
-        }
-        return { day, counts };
-      });
-    }
     return dayNames.map(day => ({ day, counts: Array(numWeeks).fill(0) }));
-  }, [heatmapData, metadata]);
+  }, [heatmapData]);
 
   if (loading) {
     return (
@@ -184,7 +158,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
         <div className="flex items-center space-x-3 shrink-0">
           <div className="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] font-mono text-slate-400 flex items-center gap-2">
             <Database className="h-3.5 w-3.5 text-emerald-400" />
-            <span>{metadata.trackedRepos} Repos • {metadata.totalNodes} Graph Nodes</span>
+            <span>{metadata.trackedRepos} Repos ({metadata.activeRepos ?? 11} active, {metadata.emptyRepos ?? 2} empty) &bull; {metadata.totalNodes} Nodes &bull; {metadata.totalEdges} Edges</span>
           </div>
           <button
             onClick={fetchTrends}
@@ -339,7 +313,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
                 <ShieldCheck className="h-4 w-4 text-amber-400" />
                 <span>Repository Health Index (100 - Risk Score)</span>
               </h4>
-              <p className="text-[11px] text-slate-400 mt-0.5">Calculated from Postgres `repo_metrics` table</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Calculated from Postgres `repo_metrics` table (scaffolds shown in neutral slate)</p>
             </div>
             <span className="text-xs font-mono text-slate-400">{repoHealthData.length} Repos</span>
           </div>
@@ -351,25 +325,46 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
               <p className="text-[11px] text-slate-500">Repository health calculations run automatically as activities are ingested.</p>
             </div>
           ) : (
-            <div className="h-64 w-full pt-2">
-              <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={240}>
-                <BarChart data={processedRepoHealth.slice(0, 8)} margin={{ top: 10, right: 10, left: -10, bottom: 40 }}>
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} interval={0} angle={-25} textAnchor="end" />
-                  <YAxis stroke="#64748b" fontSize={11} tickLine={false} domain={[0, 100]} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0c1225', borderColor: '#334155', borderRadius: '12px', fontSize: '12px', color: '#f8fafc' }}
-                    formatter={(value: any, _name: any, item: any) => [
-                      `${value}% (Bus Factor: ${item?.payload?.busFactor ?? 'N/A'}, Contributors: ${item?.payload?.contributors ?? 0})`,
-                      'Health Score'
-                    ]}
-                    labelFormatter={(_label: any, payload: any) => {
-                      return payload?.[0]?.payload?.fullName || _label;
-                    }}
-                    cursor={{ fill: 'rgba(99, 102, 241, 0.08)' }}
-                  />
-                  <Bar dataKey="score" name="Health Score" fill="#a855f7" radius={[4, 4, 0, 0]} maxBarSize={45} minPointSize={6} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="space-y-3">
+              <div className="h-64 w-full pt-2">
+                <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={240}>
+                  <BarChart data={processedRepoHealth.slice(0, 10)} margin={{ top: 10, right: 10, left: -10, bottom: 40 }}>
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={8} tickLine={false} interval={0} angle={-25} textAnchor="end" />
+                    <YAxis stroke="#64748b" fontSize={8} tickLine={false} domain={[0, 100]} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#0c1225', borderColor: '#334155', borderRadius: '12px', fontSize: '12px', color: '#f8fafc' }}
+                      formatter={(value, _name, item) => {
+                        const p = item?.payload;
+                        if (p?.status === 'empty') {
+                          return [
+                            'Scaffold Repository (0% - Neutral, excluded from risk)',
+                            'Health Status'
+                          ];
+                        }
+                        return [
+                          value + '% (Bus Factor: ' + (p?.busFactor ?? 1) + ', Contributors: ' + (p?.contributors ?? 1) + ', Risk: ' + (100 - Number(value)) + '%)',
+                          'Health Score'
+                        ];
+                      }}
+                      labelFormatter={(_label, payload) => {
+                        return payload?.[0]?.payload?.fullName || _label;
+                      }}
+                      cursor={{ fill: 'rgba(99, 102, 241, 0.08)' }}
+                    />
+                    <Bar dataKey="score" name="Health Score" radius={[4, 4, 0, 0]} maxBarSize={40} minPointSize={6}>
+                      {processedRepoHealth.slice(0, 10).map((entry, index) => (
+                        <Cell key={'cell-' + index} fill={getRepoBarColor(entry)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-4 text-[10px] font-mono text-slate-400 pt-1 border-t border-slate-800/60">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> Healthy (&gt;60%)</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500" /> Moderate (31-60%)</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-rose-500" /> Fragile / SPOF (&le;30%)</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-slate-500" /> Empty Scaffold (0%)</span>
+              </div>
             </div>
           )}
         </div>

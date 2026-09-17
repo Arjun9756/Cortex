@@ -73,7 +73,7 @@ async function runHardeningTests() {
         if (checkRes.records.length === 0) {
             throw new Error('Relation with sourceEventId was not found in Neo4j');
         }
-        console.log(`[Test 3 Check] Found tagged relation with confidence: ${checkRes.records[0].get('confidence')}`);
+        console.log(`[Test 3 Check] Found tagged relation with confidence: ${checkRes.records[0]!.get('confidence')}`);
 
         // Now test rollback
         const deletedCount = await rollbackEventRelations(testEventId);

@@ -1,5 +1,5 @@
 import sql from '../../config/postgres.js'
-import { driver } from '../../config/neo4j.js'
+import { driver, neo4jSession } from '../../config/neo4j.js'
 import { calculateKnowledgeRisk } from '../../../../packages/analytics/knowledge.service.js'
 import { calculateSuccessorCandidates, calculateSuccessorsByRepo } from '../../../../packages/analytics/successor.service.js'
 import { Request, Response } from 'express';
@@ -357,46 +357,24 @@ export async function getFindings(req: Request, res: Response) {
 
         // 1. Bus factor critical: repos where bus_factor <= 1 (excluding empty / scaffold repos)
         const fragileRepos = await sql`
-            SELECT repo_name, bus_factor, risk_score, contributor_count
+            SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner
             FROM repo_metrics
             WHERE bus_factor <= ${BUS_FACTOR_CRITICAL_THRESHOLD}
               AND status NOT IN ('empty', 'scaffold')
               AND risk_score > 0
         `;
 
-        // For each fragile repo, find the top contributor via Neo4j
-        // Uses the same Cypher pattern as calculateBusFactor in repoMetrics.service.ts
-        if (fragileRepos.length > 0) {
-            const session = driver.session();
-            try {
-                for (const repo of fragileRepos) {
-                    let topContributor = 'a single contributor';
-                    try {
-                        const result = await session.run(
-                            `MATCH (p:PERSON)-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r {name: $repoName})
-                             RETURN p.name AS person, count(c) AS commits
-                             ORDER BY commits DESC
-                             LIMIT 1`,
-                            { repoName: repo.repo_name }
-                        );
-                        if (result.records.length > 0) {
-                            topContributor = result.records[0]?.get('person') || topContributor;
-                        }
-                    } catch (cyErr: any) {
-                        console.warn(`[Findings] Neo4j top-contributor query failed for ${repo.repo_name}:`, cyErr?.message);
-                    }
-
-                    findings.push({
-                        severity: 'critical',
-                        title: 'Bus factor critical',
-                        description: `${repo.repo_name} depends entirely on ${topContributor} (bus factor: ${repo.bus_factor}, risk: ${repo.risk_score}%)`,
-                        relatedEntity: repo.repo_name,
-                        relatedEntityType: 'repo',
-                    });
-                }
-            } finally {
-                await session.close();
-            }
+        // Ownership/risk findings deliberately use repo_metrics, the same source
+        // as the dashboard and agent. Graph commit topology is enrichment only.
+        for (const repo of fragileRepos) {
+            const owner = repo.primary_owner || 'an unassigned owner';
+            findings.push({
+                severity: 'critical',
+                title: 'Bus factor critical',
+                description: `${repo.repo_name} depends entirely on ${owner} (bus factor: ${repo.bus_factor}, risk: ${repo.risk_score}%)`,
+                relatedEntity: repo.repo_name,
+                relatedEntityType: 'repo',
+            });
         }
 
         // 2. Person knowledge risk high: risk_score >= 70
@@ -476,10 +454,30 @@ export async function simulateDeparture(req: Request, res: Response) {
 
         // Call calculateKnowledgeRisk directly — no LLM agent pipeline
         // ALSO call calculateSuccessorsByRepo for per-repo successor recommendations
-        const [riskResult, successorsByRepo] = await Promise.all([
-            calculateKnowledgeRisk(person.person_name),
-            calculateSuccessorsByRepo(person.person_name)
-        ]);
+        // Person metrics are the durable source of truth. The graph calculation
+        // adds evidence and successor scoring, but must not make this SQL-backed
+        // detail endpoint fail during a Neo4j outage.
+        let partial = false;
+        let graphError: string | undefined;
+        let riskResult: any;
+        let successorsByRepo: any[] = [];
+        try {
+            [riskResult, successorsByRepo] = await Promise.all([
+                calculateKnowledgeRisk(person.person_name),
+                calculateSuccessorsByRepo(person.person_name)
+            ]);
+        } catch (error: any) {
+            partial = true;
+            graphError = error?.message || 'Neo4j enrichment unavailable';
+            console.warn('[SimulateDeparture] Neo4j enrichment unavailable:', graphError);
+            riskResult = {
+                person: person.person_name,
+                totalRisk: Number(person.risk_score ?? 0) / 100,
+                breakdown: {},
+                details: {},
+                evidence: {}
+            };
+        }
 
         // Cross-reference stored person_metrics data for technologies and repos
         const affectedRepos: string[] = Array.isArray(person.repos) ? person.repos : [];
@@ -498,6 +496,8 @@ export async function simulateDeparture(req: Request, res: Response) {
             affectedTechnologies,
             commitCount: person.commit_count ?? 0,
             successorsByRepo,
+            partial,
+            graphError
         });
     } catch (error: any) {
         console.error('[SimulateDeparture] Error:', error?.message);
@@ -527,17 +527,32 @@ export async function getRepoDetails(req: Request, res: Response) {
         return res.status(400).json({ error: 'repoName parameter is required' });
     }
 
-    const session = driver.session();
     try {
         // 1. Fetch from Postgres repo_metrics
         const [metric] = await sql`
-            SELECT repo_name, bus_factor, risk_score, contributor_count, status, computed_at
+            SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status, computed_at
             FROM repo_metrics
             WHERE lower(repo_name) = lower(${repoName})
             LIMIT 1
         `;
 
-        // 2. Fetch Contributors and commit counts from Neo4j
+        // Metrics are the source of truth for this endpoint. A graph outage must
+        // never turn an inspect request with a metrics row into an HTTP 500.
+        if (!metric) {
+            return res.status(404).json({ error: `Repository "${repoName}" not found in repo_metrics` });
+        }
+
+        let contributors: any[] = [];
+        let technologies: string[] = [];
+        let recentActivity: any[] = [];
+        let graphAvailable = true;
+        let graphError: string | undefined;
+
+        // Graph data is optional enrichment. All graph calls share one failure
+        // boundary so routing/DNS failures return the SQL metrics response.
+        try {
+        const session = neo4jSession();
+        try {
         const contribsRes = await session.run(`
             MATCH (p:PERSON)-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)
             WHERE lower(r.name) = lower($repoName)
@@ -546,21 +561,13 @@ export async function getRepoDetails(req: Request, res: Response) {
             ORDER BY commits DESC
         `, { repoName });
 
-        const contributors = contribsRes.records.map(rec => ({
+        contributors = contribsRes.records.map(rec => ({
             name: rec.get('name'),
             email: rec.get('email'),
             role: rec.get('role'),
             commitCount: rec.get('commits')?.toNumber?.() ?? Number(rec.get('commits'))
         }));
 
-        const totalCommits = contributors.reduce((acc, c) => acc + c.commitCount, 0);
-        const topContributor = contributors[0] || null;
-        const primaryOwner = topContributor ? {
-            ...topContributor,
-            ownershipPercentage: totalCommits > 0 ? Math.round((topContributor.commitCount / totalCommits) * 100) : 100
-        } : null;
-
-        // 3. Fetch Technologies used in this repository
         const techRes = await session.run(`
             MATCH (r:REPOSITORY)
             WHERE lower(r.name) = lower($repoName)
@@ -571,7 +578,7 @@ export async function getRepoDetails(req: Request, res: Response) {
         `, { repoName });
 
         const rawTechs = techRes.records[0]?.get('technologies') || [];
-        const technologies = [...new Set(rawTechs.filter(Boolean))];
+        technologies = [...new Set(rawTechs.filter(Boolean))] as string[];
 
         // 4. Fetch Recent Activity (commits / PRs)
         const activityRes = await session.run(`
@@ -586,7 +593,7 @@ export async function getRepoDetails(req: Request, res: Response) {
             LIMIT 10
         `, { repoName });
 
-        const recentActivity = activityRes.records.map(rec => ({
+        recentActivity = activityRes.records.map(rec => ({
             title: rec.get('title') || rec.get('hash') || 'Code contribution',
             hash: rec.get('hash'),
             externalId: rec.get('externalId'),
@@ -595,20 +602,31 @@ export async function getRepoDetails(req: Request, res: Response) {
             author: rec.get('author') || 'Team Contributor'
         }));
 
-        // 5. Compute Risk Explanation
-        const busFactor = metric?.bus_factor !== undefined && metric?.bus_factor !== null
-            ? Number(metric.bus_factor)
-            : (contributors.length > 0 ? contributors.length : 0);
-        const riskScore = metric?.risk_score !== undefined && metric?.risk_score !== null
-            ? Number(metric.risk_score)
-            : Math.max(0, 100 - busFactor * 20);
+        } finally {
+            await session.close();
+        }
+        } catch (error: any) {
+            graphAvailable = false;
+            graphError = error?.message || 'Neo4j enrichment unavailable';
+            console.warn('[RepoDetails] Neo4j enrichment unavailable:', graphError);
+        }
+
+        const totalCommits = contributors.reduce((acc, c) => acc + c.commitCount, 0);
+        const graphOwner = contributors[0] || null;
+        const primaryOwner = metric.primary_owner
+            ? { name: metric.primary_owner, ownershipPercentage: graphOwner && totalCommits > 0 ? Math.round((graphOwner.commitCount / totalCommits) * 100) : null, commitCount: graphOwner?.commitCount ?? null }
+            : graphOwner ? { ...graphOwner, ownershipPercentage: totalCommits > 0 ? Math.round((graphOwner.commitCount / totalCommits) * 100) : 100 } : null;
+        const busFactor = Number(metric.bus_factor ?? 0);
+        const riskScore = Number(metric.risk_score ?? 0);
         const isSPOF = busFactor === 1;
 
         const factors: string[] = [];
         if (isSPOF) {
             factors.push(`Bus factor of ${busFactor} indicates a Single Point of Failure (SPOF).`);
-            if (primaryOwner) {
+            if (primaryOwner && graphOwner) {
                 factors.push(`${primaryOwner.name} authored ${primaryOwner.ownershipPercentage}% (${primaryOwner.commitCount}/${totalCommits || 1}) of all indexed commits.`);
+            } else if (primaryOwner) {
+                factors.push(`${primaryOwner.name} is the primary owner recorded in the latest repository metrics.`);
             }
             if (contributors.length <= 1) {
                 factors.push(`0 active co-maintainers or secondary reviewers found in graph records.`);
@@ -624,7 +642,7 @@ export async function getRepoDetails(req: Request, res: Response) {
 
         // 6. Find Suggested Backup Owners
         let suggestedBackups: any[] = [];
-        if (primaryOwner) {
+        if (primaryOwner && graphAvailable) {
             try {
                 const succRes = await calculateSuccessorCandidates(primaryOwner.name);
                 suggestedBackups = succRes.candidates.slice(0, 3).map(c => ({
@@ -647,28 +665,30 @@ export async function getRepoDetails(req: Request, res: Response) {
             repoName: metric?.repo_name || repoName,
             busFactor,
             riskScore,
-            status: metric?.status || (isSPOF ? 'fragile' : 'healthy'),
+            status: metric.status || (isSPOF ? 'fragile' : 'healthy'),
             contributorCount: contributors.length || metric?.contributor_count || 0,
             primaryOwner,
             contributors,
             technologies,
             recentActivity,
             riskExplanation: {
-                summary: isSPOF
+                summary: metric.status === 'empty'
+                    ? 'Empty repository: no indexed contributors and no current ownership risk.'
+                    : isSPOF
                     ? `Critical Single Point of Failure: ${primaryOwner?.name || 'Sole Contributor'} holds 100% of architectural knowledge.`
                     : `Distributed Repository: Maintained by ${contributors.length} contributors with acceptable redundancy.`,
                 factors,
                 isSPOF
             },
-            suggestedBackups
+            suggestedBackups,
+            partial: !graphAvailable,
+            graphError: graphAvailable ? undefined : graphError
         };
 
         res.json(details);
     } catch (err: any) {
         console.error('[GetRepoDetails] Error:', err?.message);
         res.status(500).json({ error: 'Failed to fetch repository details', message: err?.message });
-    } finally {
-        await session.close();
     }
 }
 

@@ -651,7 +651,7 @@ export async function calculateSuccessorCandidates(rawPersonName: string, target
     }
 
     // If targetRepoName specified, find that repository's recommendation
-    let chosenRepoResult = repoResults[0];
+    let chosenRepoResult = repoResults[0]!;
     if (targetRepoName) {
         const found = repoResults.find(r => r.repoName.toLowerCase() === targetRepoName.toLowerCase());
         if (found) chosenRepoResult = found;

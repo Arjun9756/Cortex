@@ -1,4 +1,4 @@
-import { driver } from '../../../apps/api/config/neo4j.js'
+import { neo4jSession } from '../../../apps/api/config/neo4j.js'
 
 interface GraphSchema {
     nodeLabels: string[]
@@ -21,7 +21,7 @@ export async function getGraphSchema(): Promise<GraphSchema> {
         return schemaCache
     }
 
-    const session = driver.session()
+    const session = neo4jSession()
 
     try {
         // Get all node labels

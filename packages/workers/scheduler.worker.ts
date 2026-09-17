@@ -1,3 +1,4 @@
+import { invalidateGraphCache } from '../../apps/api/modules/graph/graphCache.js';
 import cron from 'node-cron'
 import { calculateAllPersonMetrics } from '../analytics/personMetrics.service.js'
 import { calculateAllRepoMetrics } from '../analytics/repoMetrics.service.js'
@@ -41,6 +42,7 @@ export async function runAnalyticsJob(): Promise<void> {
 
     const succeeded = results.filter(r => r.status === 'fulfilled').length
     console.log(`[Scheduler] Analytics job done — ${succeeded}/${results.length} succeeded`)
+    await invalidateGraphCache('Analytics job completed');
 }
 
 export function startMetricsScheduler() {

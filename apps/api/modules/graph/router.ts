@@ -1,6 +1,17 @@
-import { Router } from 'express'
-import { getGraphVisualization } from './controller.js'
+import { Router } from 'express';
+import {
+    getGraphSummaryHandler,
+    getGraphNodeDetailHandler,
+    getGraphVisualization
+} from './controller.js';
 
-export const graphRouter = Router()
+export const graphRouter = Router();
 
-graphRouter.get('/visualize', getGraphVisualization)
+// Executive summary graph endpoint
+graphRouter.get('/summary', getGraphSummaryHandler);
+
+// Node detail risk inspection endpoint
+graphRouter.get('/node/:id', getGraphNodeDetailHandler);
+
+// Backward-compatible visualization endpoint
+graphRouter.get('/visualize', getGraphVisualization);
