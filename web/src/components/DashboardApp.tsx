@@ -51,7 +51,7 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({ onGoToLanding }) => 
   return (
     <div className="flex h-screen bg-[#090d16] text-[#F5F5F7] overflow-hidden">
       {/* Sidebar with top return banner */}
-      <div className="flex flex-col h-full shrink-0 border-r border-slate-800 bg-[#070a12] w-64 overflow-hidden z-30">
+      <div className="flex flex-col h-full shrink-0 border-r border-slate-800 bg-[#070a12] w-72 overflow-hidden z-30">
         <div className="p-3 border-b border-slate-800/80 bg-slate-950/80 shrink-0">
           <button
             onClick={onGoToLanding}

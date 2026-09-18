@@ -76,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
   ];
 
   return (
-    <aside className="w-64 bg-[#070a12] border-r border-slate-800/80 flex flex-col h-screen sticky top-0 z-30 select-none backdrop-blur-md">
+    <aside className="w-72 bg-[#070a12] border-r border-slate-800/80 flex flex-col h-screen sticky top-0 z-30 select-none backdrop-blur-md shrink-0">
       {/* Brand Header matching Reference Images */}
       <div className="p-6 border-b border-slate-800/80 flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -116,18 +116,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'
                   }`}
                 >
-                  <div className="flex items-center space-x-3">
-                    <Icon className={`h-4 w-4 transition-colors ${
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <Icon className={`h-4 w-4 shrink-0 transition-colors ${
                       isActive 
                         ? 'text-indigo-400' 
                         : item.isSecondaryTool
                         ? 'text-indigo-400/70 group-hover:text-indigo-300'
                         : 'text-slate-500 group-hover:text-slate-300'
                     }`} />
-                    <span>{item.label}</span>
+                    <span className="whitespace-nowrap truncate">{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                    <span className={`shrink-0 ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded border whitespace-nowrap ${
                       item.badgeVariant === 'live'
                         ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
                         : item.badgeVariant === 'secondary'

@@ -30,7 +30,7 @@ export const ArchitectureDiagram: React.FC = () => {
             How Data Flows Into Cortex
           </h2>
           <p className="mt-4 text-base sm:text-lg text-slate-400 font-normal">
-            Real-time webhook events stream into a hybrid knowledge engine combining Neo4j graph relationships, Qdrant vector embeddings, and Fast-Path intent routing.
+            Event-driven webhook events stream into a hybrid knowledge engine combining Neo4j graph relationships, Qdrant vector embeddings, and in-memory intent routing.
           </p>
         </div>
 
@@ -44,7 +44,7 @@ export const ArchitectureDiagram: React.FC = () => {
             </span>
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#060911] border border-slate-800 text-indigo-400 text-xs font-mono">
               <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-              <span>Captured automatically via real-time webhooks</span>
+              <span>Captured automatically via event-driven webhooks</span>
             </div>
           </div>
 
@@ -125,8 +125,8 @@ export const ArchitectureDiagram: React.FC = () => {
                   <p className="text-xs text-slate-400 font-mono">Fast-Path Intent Router &amp; Multi-Tool Execution Graph</p>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold w-fit">
-                ~0.1ms Fast-Path Router
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-mono font-bold w-fit">
+                Sub-Millisecond Fast-Path Router
               </span>
             </div>
 

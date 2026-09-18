@@ -112,17 +112,25 @@ ${schemaContext}
 
 AVAILABLE TOOLS & RULES:
 1. "graph_count_by_label": {"label": "REPOSITORY"|"TECHNOLOGY"|"PERSON"|"COMMIT"} -> Use for counting total number of repositories, technologies, or people.
-2. "sql_search": {"queryType": "repos_by_bus_factor", "params": {"threshold": 1}} -> Use for repositories with bus factor <= 1, Single Point of Failure (SPOF) repos, or repo risk ranking.
-3. "knowledge_risk": {"personName": "<name>"|"ALL"} -> Use for questions about engineer departure/leaving, knowledge loss, what breaks if someone quits, sole maintainers, and successors.
+2. "sql_search":
+   - {"queryType": "repo_details", "params": {"repo": "<repo_name>"}} -> MANDATORY for "Who is the primary owner of <repo>?", "What is the bus factor of <repo>?", or risk of a single repository. ALWAYS query repo_metrics.
+   - {"queryType": "healthy_vs_fragile"} -> MANDATORY for "Show healthy vs fragile repositories", comparing good vs fragile repos.
+   - {"queryType": "repos_by_bus_factor", "params": {"threshold": 1}} -> Use for repositories with bus factor <= 1, Single Point of Failure (SPOF) repos.
+   - {"queryType": "repo_risk"} -> Use for overall repository risk ranking.
+   - {"queryType": "jira_tickets", "params": {"priority": "high"}} -> MANDATORY for "Show all high priority Jira tickets and who is working on them". Combine with vector_search.
+   - {"queryType": "slack_search", "params": {"searchTerm": "<keywords>"}} -> MANDATORY for "Which Slack discussions are related to <topic/incident e.g. AWS KMS key rotation>?". Combine with vector_search.
+   - {"queryType": "person_repos", "params": {"person": "<name>"}} -> Use for which repos a person works on. Combine with graph_list_nodes.
+   - {"queryType": "person_profile", "params": {"person": "<name>"}} -> Use for verified person identity, email, and accounts.
+3. "knowledge_risk": {"personName": "<name>"|"ALL"} -> MANDATORY for BOTH departure questions ("What happens if X leaves?") AND takeover/successor questions ("Who can take over X's repositories if he resigns?", "Successors for X", "Who will replace X").
 4. "graph_list_nodes": {"entity": "<name>", "relation": "USES"|"WORKS_ON", "targetLabel": "TECHNOLOGY"|"REPOSITORY"} -> Use for what technologies an engineer uses or which repos an engineer works on.
-5. "graph_describe_entity": {"entity": "<name>"} -> Use for entity profile, email, role, description.
+5. "graph_describe_entity": {"entity": "<name>"} -> Use for entity profile, email, role, description in the graph.
 6. "vector_search": {"query": "<search query>"} -> Use for semantic/architectural rationale ("why was X replaced with Y and when?", decisions, Slack discussions, incident reasons).
-7. "graph_repository_summary": {"repositoryName": "<repo>"|"ALL"} -> Use for repository contributors, tech stack mapping, and repository-to-technology mappings ("every repo their corresponding technology", "what technologies are used in repo X?").
+7. "graph_repository_summary": {"repositoryName": "<repo>"|"ALL"} -> Use for repository contributors, tech stack mapping, and repository-to-technology mappings.
 8. "graph_dependency_analysis": {"entity": "<service>"} -> Use for service/repo dependency trees.
 9. "graph_impact_analysis": {"entity": "<service>"} -> Use for blast radius of changes.
 10. "graph_shortest_path": {"from": "<A>", "to": "<B>"} -> Use for shortest path/connections between 2 entities.
 11. "graph_expertise_analysis": {"entity": "<tech/topic>"} -> Use for who is the top expert / who knows the most about a topic.
-12. "recent_activity": {"author": "<name>", "repository": "<repo>", "limit": 5} -> MANDATORY for ANY question asking what an engineer/person recently did, latest commits/PRs/issues by a person, when someone made changes, or recent repository/team activity (e.g. "What did Rohan Verma do recently and on what date?", "rohan ne latest kya kra", "Show recent commits by Priya", "latest activity in checkout-service").
+12. "recent_activity": {"author": "<name>", "repository": "<repo>", "limit": 5} -> MANDATORY for ANY question asking what an engineer/person recently did, latest commits/PRs/issues by a person, when someone made changes, or recent repository/team activity.
 
 INSTRUCTIONS:
 - For EACH ask listed below, plan one or more tool calls that directly answer it.

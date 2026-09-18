@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { GraphBackground } from './GraphBackground';
 import { InteractiveQueryDemo } from './InteractiveQueryDemo';
-import { TrustBadge } from './TrustBadge';
 import { VideoShowcase } from './VideoShowcase';
 
 interface HeroProps {
@@ -15,11 +14,6 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onOpenContact }) => {
-  const scrollToArchitecture = () => {
-    const el = document.getElementById('architecture');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
     <section className="relative py-24 md:py-32 overflow-hidden bg-[#06080e] antialiased">
       {/* Dynamic Graph Background Canvas */}
@@ -49,47 +43,51 @@ export const Hero: React.FC<HeroProps> = ({ onOpenContact }) => {
             </span>
           </h1>
 
-          {/* 3. Subheadline */}
-          <p className="mt-6 text-lg sm:text-xl text-slate-400 font-normal max-w-3xl mx-auto leading-relaxed">
-            When engineers leave, tribal knowledge vanishes. <strong className="text-slate-200 font-semibold">Cortex ingests GitHub, Slack, and Jira</strong> into a self-hosted Knowledge Graph — predicting departure loss risk, answering complex codebase questions, and calculating backup owners with deterministic math.
+          {/* 3. Subheadline - 2 Lines Max for CTOs */}
+          <p className="mt-6 text-base sm:text-lg text-slate-300 font-normal max-w-3xl mx-auto leading-relaxed">
+            When engineers leave, tribal knowledge vanishes. <strong className="text-white font-semibold">Cortex connects GitHub, Slack, and Jira</strong> into a self-hosted Knowledge Graph to calculate bus factor, simulate departure impact, and answer codebase questions with mathematical proof.
           </p>
 
-          {/* 4. Action CTAs */}
+          {/* 4. Action CTAs - Clear Hierarchy & Keyboard Focus */}
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={onOpenContact}
-              className="w-full sm:w-auto px-8 py-4 text-sm font-bold font-mono text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all duration-200 shadow-xl shadow-indigo-600/30 flex items-center justify-center space-x-2 cursor-pointer transform hover:-translate-y-0.5 border border-indigo-400/20"
+              className="w-full sm:w-auto px-8 py-4 text-sm font-bold font-mono text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all duration-200 shadow-xl shadow-indigo-600/30 flex items-center justify-center space-x-2 cursor-pointer transform hover:-translate-y-0.5 border border-indigo-400/20 focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none"
             >
               <span>Request Free Setup</span>
               <ArrowRight className="w-4 h-4 text-white" />
             </button>
 
             <button
-              onClick={scrollToArchitecture}
-              className="w-full sm:w-auto px-7 py-4 text-sm font-bold font-mono text-slate-200 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer shadow-md"
+              onClick={() => {
+                const el = document.getElementById('proof');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="w-full sm:w-auto px-7 py-4 text-sm font-bold font-mono text-slate-200 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer shadow-md focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none"
             >
               <Network className="w-4 h-4 text-indigo-400" />
-              <span>Explore Architecture</span>
+              <span>See Product Proof</span>
             </button>
           </div>
 
-          {/* 5. Telemetry Guarantees */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs font-mono text-slate-400">
-            <span className="flex items-center space-x-1.5">
+          {/* 5. Enterprise Trust Row (Verified & Honest) */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs font-mono text-slate-300">
+            <span className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Self-Hosted &amp; 100% Private</span>
+              <span>Self-Hosted in Your VPC</span>
             </span>
-            <span className="flex items-center space-x-1.5">
+            <span className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800">
               <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
-              <span>~0.1ms Fast-Path Intent Router</span>
+              <span>Deterministic Risk Formulas</span>
             </span>
-            <span className="flex items-center space-x-1.5">
-              <TrustBadge label="Pure math, zero AI guessing" />
+            <span className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800">
+              <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
+              <span>GitHub, Slack &amp; Jira Webhooks</span>
             </span>
           </div>
         </div>
 
-        {/* Product Video Showcase (Apple/Linear Style Custom Player) */}
+        {/* Product Video Showcase */}
         <div className="mt-14 max-w-5xl mx-auto">
           <VideoShowcase
             src="/Cortex.mp4"

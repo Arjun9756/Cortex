@@ -83,7 +83,7 @@ export const BentoFeatures: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 3: ~0.1ms Fast-Path Intent Router */}
+          {/* Card 3: Sub-Millisecond Fast-Path Intent Router */}
           <div className="bg-[#090d16]/90 border border-slate-800/80 hover:border-amber-500/40 rounded-2xl p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-950/30 group flex flex-col justify-between backdrop-blur-xl">
             <div>
               <div className="flex items-center justify-between mb-6">
@@ -93,16 +93,16 @@ export const BentoFeatures: React.FC = () => {
                 <TrustBadge label="Deterministic Fast-Path Rules" />
               </div>
               <h3 className="text-xl font-bold text-white font-sans mb-3">
-                ~0.1ms Fast-Path Intent Router
+                Sub-Millisecond Fast-Path Router
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Matches routine queries using high-speed fast-path rules in sub-milliseconds with zero token cost, seamlessly handing off complex multi-hop queries to parallel agent graph tools.
+                Matches routine queries using in-memory routing rules in sub-milliseconds with zero token cost, seamlessly handing off complex multi-hop queries to parallel agent graph tools.
               </p>
             </div>
 
             <div className="mt-6 p-3.5 rounded-xl bg-[#060911] border border-slate-800/80 flex items-center justify-between font-mono text-xs">
               <span className="text-slate-400">Rule Match Latency:</span>
-              <span className="text-amber-400 font-bold">~0.1ms (0 Token Cost)</span>
+              <span className="text-amber-400 font-bold">&lt;1ms In-Memory (0 Token Cost)</span>
             </div>
           </div>
 
@@ -113,7 +113,7 @@ export const BentoFeatures: React.FC = () => {
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                   <Calculator className="w-6 h-6" />
                 </div>
-                <TrustBadge label="Pure math, zero AI guessing" />
+                <TrustBadge label="Deterministic 4-Factor Formula" />
               </div>
               <h3 className="text-xl font-bold text-white font-sans mb-3">
                 Deterministic Successor Recommendation
@@ -127,7 +127,7 @@ export const BentoFeatures: React.FC = () => {
               <span className="text-slate-400">Formula Jaccard Match:</span>
               <span className="text-emerald-400 font-bold flex items-center space-x-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Zero Hallucination</span>
+                <span>Calculated in Code</span>
               </span>
             </div>
           </div>

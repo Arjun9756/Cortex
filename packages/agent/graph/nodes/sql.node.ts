@@ -21,6 +21,11 @@ function formatTimestamp12h(date: Date): string {
     return `${day} ${month} ${year}, ${strHours}:${minutes}:${seconds} ${ampm}`;
 }
 
+export function normalizeRepoName(input: string): string {
+    if (!input) return '';
+    return input.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
 export async function runSafeQuery(queryType: string, params: any) {
     switch (queryType) {
         case "recent_activity": {
@@ -229,6 +234,249 @@ export async function runSafeQuery(queryType: string, params: any) {
             `;
         }
 
+        case 'repo_details': {
+            const rawRepo = (params.repo || params.repository || params.repo_name || params.name || '').trim();
+            if (!rawRepo) return [];
+            const normalized = normalizeRepoName(rawRepo);
+            const spaced = rawRepo.toLowerCase().replace(/[-_]/g, ' ');
+
+            // 1. Exact normalized match (e.g. payment-gateway-v2)
+            let rows = await sql`
+                SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
+                FROM repo_metrics
+                WHERE lower(repo_name) = ${normalized}
+                   OR lower(repo_name) = ${rawRepo.toLowerCase()}
+                LIMIT 1
+            `;
+
+            // 2. Fallback fuzzy ILIKE match
+            if (rows.length === 0) {
+                rows = await sql`
+                    SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
+                    FROM repo_metrics
+                    WHERE repo_name ILIKE ${'%' + normalized + '%'}
+                       OR replace(lower(repo_name), '-', ' ') ILIKE ${'%' + spaced + '%'}
+                    ORDER BY 
+                        CASE WHEN lower(repo_name) = ${normalized} THEN 0 ELSE 1 END,
+                        risk_score DESC
+                    LIMIT 1
+                `;
+            }
+
+            return rows.map((r: any) => ({
+                repo_name: r.repo_name,
+                bus_factor: Number(r.bus_factor ?? 1),
+                risk_score: Number(r.risk_score ?? 0),
+                contributor_count: Number(r.contributor_count ?? 1),
+                primary_owner: r.primary_owner || 'Unknown',
+                status: r.status || 'active',
+                isSPOF: Number(r.bus_factor ?? 1) <= 1 && r.status !== 'empty'
+            }));
+        }
+
+        case 'healthy_vs_fragile': {
+            const rows = await sql`
+                SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
+                FROM repo_metrics
+                ORDER BY 
+                    CASE 
+                        WHEN status = 'empty' THEN 3
+                        WHEN bus_factor <= 1 THEN 1
+                        ELSE 2
+                    END,
+                    risk_score DESC
+            `;
+
+            const fragile = rows.filter((r: any) => Number(r.bus_factor) <= 1 && r.status !== 'empty').map((r: any) => ({
+                repo_name: r.repo_name,
+                bus_factor: Number(r.bus_factor),
+                risk_score: Number(r.risk_score),
+                primary_owner: r.primary_owner || 'Unknown',
+                contributor_count: Number(r.contributor_count),
+                category: 'fragile'
+            }));
+
+            const healthy = rows.filter((r: any) => Number(r.bus_factor) > 1 && r.status !== 'empty').map((r: any) => ({
+                repo_name: r.repo_name,
+                bus_factor: Number(r.bus_factor),
+                risk_score: Number(r.risk_score),
+                primary_owner: r.primary_owner || 'Unknown',
+                contributor_count: Number(r.contributor_count),
+                category: 'healthy'
+            }));
+
+            const scaffold = rows.filter((r: any) => r.status === 'empty').map((r: any) => ({
+                repo_name: r.repo_name,
+                bus_factor: 0,
+                risk_score: 0,
+                primary_owner: r.primary_owner || 'None',
+                contributor_count: 0,
+                category: 'scaffold'
+            }));
+
+            return [{
+                summary: `Found ${healthy.length} healthy repositories, ${fragile.length} fragile repositories, and ${scaffold.length} scaffold/empty repositories.`,
+                fragile_repositories: fragile,
+                healthy_repositories: healthy,
+                scaffold_repositories: scaffold,
+                total_active: healthy.length + fragile.length,
+                spof_count: fragile.length,
+            }];
+        }
+
+        case 'jira_tickets': {
+            const limit = Math.min(Number(params.limit ?? 25), 50);
+            const priorityFilter = (params.priority || 'all').toLowerCase();
+            const searchTerms = ['%high%', '%highest%', '%p0%', '%p1%', '%critical%', '%urgent%'];
+
+            let rows: any[] = [];
+            if (priorityFilter === 'high') {
+                rows = await sql`
+                    SELECT id, external_id, provider, event_type, payload, created_at 
+                    FROM events 
+                    WHERE provider = 'jira'
+                      AND (
+                          payload->'issue'->'fields'->'priority'->>'name' ILIKE ANY(${searchTerms})
+                          OR payload->'issue'->'fields'->>'summary' ILIKE ANY(${searchTerms})
+                          OR payload->'issue'->'fields'->>'description' ILIKE ANY(${searchTerms})
+                          OR payload->>'text' ILIKE ANY(${searchTerms})
+                          OR payload->>'summary' ILIKE ANY(${searchTerms})
+                      )
+                    ORDER BY created_at DESC 
+                    LIMIT ${limit}
+                `;
+            }
+
+            if (rows.length === 0) {
+                rows = await sql`
+                    SELECT id, external_id, provider, event_type, payload, created_at 
+                    FROM events 
+                    WHERE provider = 'jira'
+                    ORDER BY created_at DESC 
+                    LIMIT ${limit}
+                `;
+            }
+
+            return rows.map((r: any) => {
+                const payload = r.payload || {};
+                const issue = payload.issue || {};
+                const fields = issue.fields || {};
+
+                const issueKey = issue.key || payload.issueKey || fields.key || r.external_id || 'JIRA-TICKET';
+                const summary = fields.summary || payload.summary || payload.text || 'No summary provided';
+                const priorityName = fields.priority?.name || payload.priority || 'High (inferred from title/labels)';
+                const assigneeName = fields.assignee?.displayName || fields.assignee?.name || payload.assignee || fields.reporter?.displayName || 'Unassigned';
+                const statusName = fields.status?.name || payload.status || 'Open';
+                const projectKey = fields.project?.key || fields.project?.name || issueKey.split('-')[0] || 'GENERAL';
+
+                return {
+                    id: r.id,
+                    issue_key: issueKey,
+                    summary: typeof summary === 'string' ? summary.replace(/\r?\n/g, ' ').trim() : String(summary),
+                    priority: priorityName,
+                    assignee: assigneeName,
+                    status: statusName,
+                    project: projectKey,
+                    created_at: r.created_at,
+                    formatted_date: formatTimestamp12h(new Date(r.created_at)),
+                    priority_field_sparse_note: !fields.priority?.name
+                };
+            });
+        }
+
+        case 'slack_search': {
+            const limit = Math.min(Number(params.limit ?? 20), 50);
+            const term = (params.searchTerm || params.query || params.term || 'KMS').trim();
+            const tokens = term.split(/\s+/).filter((t: string) => t.length > 2);
+            const patterns = Array.from(new Set([term, ...tokens])).map(t => `%${t}%`);
+
+            const rows = await sql`
+                SELECT id, external_id, provider, event_type, payload, created_at 
+                FROM events 
+                WHERE provider = 'slack'
+                  AND (
+                      payload->>'text' ILIKE ANY(${patterns})
+                      OR payload->>'message' ILIKE ANY(${patterns})
+                      OR payload->'event'->>'text' ILIKE ANY(${patterns})
+                      OR payload->'item'->'message'->>'text' ILIKE ANY(${patterns})
+                  )
+                ORDER BY created_at DESC 
+                LIMIT ${limit}
+            `;
+
+            return rows.map((r: any) => {
+                const payload = r.payload || {};
+                const channel = payload.channel || payload.event?.channel || 'general';
+                const user = payload.userDisplayName || payload.user || payload.event?.user || payload.author || 'Slack User';
+                const text = payload.text || payload.message || payload.event?.text || '';
+
+                return {
+                    id: r.id,
+                    provider: 'slack',
+                    channel: channel.startsWith('C') ? `#${channel}` : channel,
+                    author: user,
+                    text: typeof text === 'string' ? text.replace(/\r?\n/g, ' ').trim() : String(text),
+                    timestamp: r.created_at,
+                    formatted_date: formatTimestamp12h(new Date(r.created_at)),
+                };
+            });
+        }
+
+        case 'person_repos': {
+            const personName = (params.person || params.personName || params.name || '').trim();
+            if (!personName) return [];
+
+            const rows = await sql`
+                SELECT person_name, external_id, risk_score, repos, top_technologies, commit_count
+                FROM person_metrics
+                WHERE person_name ILIKE ${'%' + personName + '%'}
+                   OR external_id ILIKE ${'%' + personName + '%'}
+                LIMIT 5
+            `;
+
+            return rows.map((r: any) => ({
+                person_name: r.person_name,
+                external_id: r.external_id,
+                risk_score: Number(r.risk_score ?? 0),
+                repos: Array.isArray(r.repos) ? r.repos : [],
+                top_technologies: Array.isArray(r.top_technologies) ? r.top_technologies : [],
+                commit_count: Number(r.commit_count ?? 0)
+            }));
+        }
+
+        case 'person_profile': {
+            const personName = (params.person || params.personName || params.name || '').trim();
+            if (!personName) return [];
+
+            const identities = await sql`
+                SELECT id, provider, external_id, username, email, display_name, canonical_person_id
+                FROM person_identity
+                WHERE display_name ILIKE ${'%' + personName + '%'}
+                   OR username ILIKE ${'%' + personName + '%'}
+                   OR email ILIKE ${'%' + personName + '%'}
+            `;
+
+            const metrics = await sql`
+                SELECT person_name, external_id, risk_score, repos, top_technologies, commit_count
+                FROM person_metrics
+                WHERE person_name ILIKE ${'%' + personName + '%'}
+                LIMIT 1
+            `;
+
+            return [{
+                person: personName,
+                metrics: metrics[0] || null,
+                identities: identities.map((i: any) => ({
+                    provider: i.provider,
+                    external_id: i.external_id,
+                    username: i.username,
+                    email: i.email,
+                    display_name: i.display_name,
+                    canonical_person_id: i.canonical_person_id
+                }))
+            }];
+        }
+
         default:
             return [];
     }
@@ -309,7 +557,7 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
                 confidence: 0.95,
                 summary: `SQL query "${queryType}" returned ${results.length} record(s).`,
                 rawPayload: results,
-                entitiesFound: results.map((r: any) => r.repo_name || r.engineer || r.author || r.repository).filter(Boolean),
+                entitiesFound: results.map((r: any) => r.repo_name || r.engineer || r.author || r.repository || r.issue_key || r.person).filter(Boolean),
                 queryExplanation: `Executed safe relational query "${queryType}" with params ${JSON.stringify(queryParams)}`,
                 ...(sqlCall.subgoalId ? { toolCallId: sqlCall.subgoalId, subgoalId: sqlCall.subgoalId } : {}),
             };

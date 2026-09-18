@@ -7,9 +7,9 @@ export const HowItWorks: React.FC = () => {
       number: '01',
       title: 'Connect your sources',
       description:
-        'Point Cortex at your GitHub, Slack, and Jira. Webhooks stream events in real time with zero manual tagging.',
+        'Point Cortex at your GitHub, Slack, and Jira. Webhooks stream events automatically with debounced Auto-Sync.',
       bullets: [
-        'GitHub App install in 2 clicks',
+        'GitHub App or webhook install',
         'Slack workspace OAuth',
         'Jira webhook integration',
       ],
@@ -21,9 +21,9 @@ export const HowItWorks: React.FC = () => {
       description:
         'Commits, PRs, and messages are parsed into Neo4j graph entities — linking who authored what, why, and how components depend on each other.',
       bullets: [
-        'Automatic entity resolution',
-        'Real-time Neo4j & Vector indexing',
-        'No manual data entry',
+        'Cross-platform entity resolution',
+        'Neo4j graph & Qdrant vector indexing',
+        'Zero manual data entry',
       ],
       icon: <Cpu className="w-5 h-5 text-purple-400" />,
     },
@@ -31,9 +31,9 @@ export const HowItWorks: React.FC = () => {
       number: '03',
       title: 'Ask questions & fix risk',
       description:
-        'Query codebase history in plain English with ~0.1ms Fast-Path responses or trigger 1-Click Auto-Fix PRs to eliminate knowledge risk.',
+        'Query codebase history in plain English with in-memory fast-path responses or generate 1-Click Auto-Doc PRs to eliminate knowledge risk.',
       bullets: [
-        'Natural language Q&A',
+        'Natural language Q&A with citations',
         '6-Factor departure risk scoring',
         '1-Click Auto-Doc GitHub PRs',
       ],

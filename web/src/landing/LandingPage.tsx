@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { Hero } from './Hero';
+import { ProductProofSection } from './ProductProofSection';
 import { ArchitectureDiagram } from './ArchitectureDiagram';
 import { ProblemSection } from './ProblemSection';
 import { HowItWorks } from './HowItWorks';
@@ -12,7 +13,7 @@ import { FaqSection } from './FaqSection';
 import { ContactModal } from './ContactModal';
 import { Footer } from './Footer';
 import { useScrollReveal } from './useScrollReveal';
-import { Send, Sparkles, Mail, CheckCircle2, User, Building2, MessageSquare } from 'lucide-react';
+import { Send, Sparkles, Mail, CheckCircle2, User, Building2, MessageSquare, ArrowRight } from 'lucide-react';
 
 interface LandingPageProps {
   onLaunchDemo?: () => void;
@@ -21,6 +22,15 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
   useScrollReveal();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showMobileStickyCta, setShowMobileStickyCta] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowMobileStickyCta(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const [inlineForm, setInlineForm] = useState({
     name: '',
     email: '',
@@ -74,8 +84,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
       <Navbar onOpenContact={() => setIsModalOpen(true)} onLaunchDemo={onLaunchDemo} />
 
       <main>
-        {/* Hero Section with Interactive Query Playground */}
+        {/* Hero Section */}
         <Hero onOpenContact={() => setIsModalOpen(true)} />
+
+        {/* 3-Frame Enterprise Product Proof Section (SPOF Table · Departure Simulation · Grounded Agent) */}
+        <ProductProofSection />
 
         {/* Architecture Diagram Section */}
         <ArchitectureDiagram />
@@ -121,8 +134,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
                     <h2 className="text-3xl sm:text-4xl font-extrabold text-white font-sans">
                       Deploy Cortex on Your Infrastructure
                     </h2>
-                    <p className="mt-3 text-sm sm:text-base text-slate-400 font-normal">
-                      Get Cortex running on your team's AWS, GCP, or Docker infrastructure — 100% self-hosted &amp; private.
+                    <p className="mt-3 text-sm sm:text-base text-slate-300 font-normal">
+                      Get Cortex running on your team's AWS, GCP, or Docker infrastructure — self-hosted within your VPC.
                     </p>
                   </div>
 
@@ -238,6 +251,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
           </div>
         </section>
       </main>
+
+      {/* Mobile Sticky Bottom CTA Bar */}
+      {showMobileStickyCta && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-3 bg-[#06080e]/95 backdrop-blur-xl border-t border-slate-800/90 shadow-2xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
+          <div className="flex flex-col min-w-0 pl-1">
+            <span className="text-xs font-bold text-white truncate font-sans">Cortex Self-Hosted</span>
+            <span className="text-[10px] text-indigo-400 font-mono">Free Early Access</span>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2 text-xs font-bold font-mono text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl shadow-lg shadow-indigo-600/30 shrink-0 flex items-center space-x-1.5 cursor-pointer"
+          >
+            <span>Request Setup</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Contact Modal overlay */}
       <ContactModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />

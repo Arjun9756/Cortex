@@ -4,6 +4,7 @@ import { describeEntity, countByLabel, listNodes, listNodesMultiHop, repositoryS
 import { executeGraphTraversal } from '../../../graph/cypher/graphTraversalExecutor.js'
 import { GraphTraversalSpec } from '../../tools/schemas.js'
 import type { EntityCandidate } from '../../../graph/cypher/analysis.cypher.js'
+import sql from '../../../../apps/api/config/postgres.js'
 
 /**
  * All tool names that route to this graph node.
@@ -128,6 +129,44 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
                         callEntities.push(resolved);
                         const result = await describeEntity(resolved);
                         if (result) {
+                            // If describing a PERSON, verify identity against Postgres person_identity
+                            if (result.type === 'PERSON') {
+                                try {
+                                    const identities = await sql`
+                                        SELECT id, provider, external_id, username, email, display_name, canonical_person_id 
+                                        FROM person_identity 
+                                        WHERE display_name ILIKE ${'%' + resolved + '%'}
+                                           OR username ILIKE ${'%' + resolved + '%'}
+                                    `;
+                                    if (identities.length > 0) {
+                                        const canonicalId = identities[0].canonical_person_id;
+                                        const validExternalIds = new Set(identities.map((i: any) => String(i.external_id || '').toLowerCase()));
+                                        const validUsernames = new Set(identities.map((i: any) => String(i.username || '').toLowerCase()));
+                                        const verifiedEmails = identities.map((i: any) => i.email).filter(Boolean);
+
+                                        if (result.properties) {
+                                            const props = { ...result.properties };
+                                            // Strip mismatched Slack ID (e.g. U888DEVENDRA1 on Vikram Patel)
+                                            if (props.slackId && !validExternalIds.has(String(props.slackId).toLowerCase()) && !validUsernames.has(String(props.slackId).toLowerCase())) {
+                                                console.log(`[GraphNode] Stripping mismatched slackId "${props.slackId}" from person "${resolved}"`);
+                                                delete props.slackId;
+                                            }
+                                            if (props.externalId && String(props.externalId).startsWith('U') && !validExternalIds.has(String(props.externalId).toLowerCase())) {
+                                                console.log(`[GraphNode] Stripping mismatched externalId "${props.externalId}" from person "${resolved}"`);
+                                                delete props.externalId;
+                                            }
+                                            if (verifiedEmails.length > 0 && !props.email) {
+                                                props.email = verifiedEmails[0];
+                                            }
+                                            props.canonicalPersonId = canonicalId;
+                                            result.properties = props;
+                                        }
+                                    }
+                                } catch (idErr: any) {
+                                    console.warn(`[GraphNode] Identity verification warning: ${idErr?.message}`);
+                                }
+                            }
+
                             const resArray = Array.isArray(result) ? result : [result];
                             callGraphResults.push(...resArray);
                             callEvidence.push({
@@ -183,6 +222,52 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
                         if (direct.count === 0 || targetLabel === 'TECHNOLOGY') {
                             const multiHop = await listNodesMultiHop(resolved, targetLabel, relation);
                             if (multiHop.count > 0) result = multiHop;
+                        }
+
+                        // Fallback to PostgreSQL person_metrics if graph has no connections for PERSON
+                        if (targetLabel === 'TECHNOLOGY' && (result.count === 0 || !result.items || result.items.length === 0)) {
+                            try {
+                                const [pm] = await sql`
+                                    SELECT top_technologies FROM person_metrics 
+                                    WHERE person_name ILIKE ${'%' + resolved + '%'}
+                                    LIMIT 1
+                                `;
+                                if (pm?.top_technologies && Array.isArray(pm.top_technologies) && pm.top_technologies.length > 0) {
+                                    const techs = pm.top_technologies.map((t: any) => typeof t === 'string' ? t : (t?.name || t?.tech)).filter(Boolean);
+                                    result = {
+                                        entity: resolved,
+                                        targetLabel: 'TECHNOLOGY',
+                                        relation: relation || 'USES',
+                                        count: techs.length,
+                                        items: techs.map((t: string) => ({ name: t, type: 'TECHNOLOGY' })),
+                                        source: 'person_metrics'
+                                    };
+                                }
+                            } catch (err: any) {
+                                console.warn('[GraphNode] person_metrics technology fallback warning:', err?.message);
+                            }
+                        }
+
+                        if (targetLabel === 'REPOSITORY' && (result.count === 0 || !result.items || result.items.length === 0)) {
+                            try {
+                                const [pm] = await sql`
+                                    SELECT repos FROM person_metrics 
+                                    WHERE person_name ILIKE ${'%' + resolved + '%'}
+                                    LIMIT 1
+                                `;
+                                if (pm?.repos && Array.isArray(pm.repos) && pm.repos.length > 0) {
+                                    result = {
+                                        entity: resolved,
+                                        targetLabel: 'REPOSITORY',
+                                        relation: relation || 'WORKS_ON',
+                                        count: pm.repos.length,
+                                        items: pm.repos.map((r: string) => ({ name: r, type: 'REPOSITORY' })),
+                                        source: 'person_metrics'
+                                    };
+                                }
+                            } catch (err: any) {
+                                console.warn('[GraphNode] person_metrics repository fallback warning:', err?.message);
+                            }
                         }
 
                         callGraphResults.push(result);

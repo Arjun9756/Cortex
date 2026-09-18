@@ -37,7 +37,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onOpenContact })
       borderColor: 'border-blue-500/30 group-hover:border-blue-500/60',
       iconColor: 'text-blue-400',
       description:
-        'Cortex itself has no license fee, no subscription, no per-seat pricing. You never pay us a single rupee for the core software.',
+        'Cortex Self-Hosted Community Edition has no license fee, no subscription tiers, and no per-seat pricing. You retain complete source control over the software.',
       bulletPoints: [
         'No seat caps or tier limits',
         'No credit card required',
@@ -47,13 +47,13 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onOpenContact })
     {
       step: '02',
       title: 'You bring your own cloud',
-      badge: '100% Free-Tier Cloud',
+      badge: 'Free-Tier Cloud Compatible',
       icon: Cloud,
       color: 'from-purple-500/20 via-indigo-500/10 to-transparent',
       borderColor: 'border-purple-500/30 group-hover:border-purple-500/60',
       iconColor: 'text-purple-400',
       description:
-        'Runs on Neo4j Aura Free, Qdrant Cloud Free, Postgres, and Groq\'s free tier — infrastructure you sign up for and control directly.',
+        'Runs on Neo4j Aura Free, Qdrant Cloud Free, Postgres, and Groq free tier — infrastructure you sign up for and control directly.',
       bulletPoints: [
         'Zero vendor lock-in',
         'Proprietary code stays in your VPC',
@@ -135,7 +135,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onOpenContact })
       features: [
         {
           name: 'Natural language Q&A with evidence citations',
-          detail: 'Strict zero-hallucination answers citing exact graph node IDs, commit hashes, and Jira issue links.',
+          detail: 'Grounded answers citing exact graph node IDs, commit hashes, and Jira issue links.',
         },
         {
           name: 'Multi-part compound query support',
@@ -651,7 +651,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onOpenContact })
             </h3>
 
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-              Reach out and I'll personally set up Cortex on your cloud infrastructure. Free forever, self-hosted, and 100% private.
+              Reach out and I'll personally assist in setting up Cortex on your cloud infrastructure. Free early access, self-hosted, and VPC-contained.
             </p>
 
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">

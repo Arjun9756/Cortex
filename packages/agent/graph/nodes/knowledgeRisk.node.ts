@@ -31,9 +31,41 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
     const collectedRiskResults: any[] = [];
     const collectedRepoMetrics: any[] = [];
 
-    // Helper: resolve person name against Neo4j PERSON nodes
+    // Helper: resolve person name against Postgres person_metrics/person_identity first, then Neo4j
     async function resolvePersonName(rawName: string): Promise<string | null> {
         if (!rawName || !rawName.trim()) return null;
+        const trimmed = rawName.trim();
+
+        // 1. Check Postgres person_metrics (primary source of truth)
+        try {
+            const [pmRow] = await sql`
+                SELECT person_name 
+                FROM person_metrics 
+                WHERE lower(person_name) = lower(${trimmed})
+                   OR person_name ILIKE ${'%' + trimmed + '%'}
+                ORDER BY 
+                    CASE WHEN lower(person_name) = lower(${trimmed}) THEN 0 ELSE 1 END,
+                    commit_count DESC
+                LIMIT 1
+            `;
+            if (pmRow?.person_name) return pmRow.person_name;
+
+            const [idRow] = await sql`
+                SELECT display_name 
+                FROM person_identity 
+                WHERE (lower(display_name) = lower(${trimmed}) OR display_name ILIKE ${'%' + trimmed + '%'})
+                  AND display_name IS NOT NULL
+                  AND display_name !~* '^U[A-Z0-9]{6,}$'
+                ORDER BY 
+                    CASE WHEN lower(display_name) = lower(${trimmed}) THEN 0 ELSE 1 END
+                LIMIT 1
+            `;
+            if (idRow?.display_name) return idRow.display_name;
+        } catch (dbErr: any) {
+            console.warn(`[KnowledgeRisk] Postgres name resolution warning: ${dbErr?.message}`);
+        }
+
+        // 2. Fallback to Neo4j PERSON nodes
         const session = neo4jSession();
         try {
             const res = await session.run(`
@@ -43,12 +75,12 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
                    OR (p.email IS NOT NULL AND toLower(p.email) CONTAINS toLower($name))
                 RETURN p.name AS name
                 LIMIT 1
-            `, { name: rawName.trim() });
+            `, { name: trimmed });
             if (res.records.length > 0 && res.records[0]?.get('name')) {
                 return res.records[0].get('name');
             }
         } catch (e: any) {
-            console.warn(`[KnowledgeRisk] Error resolving PERSON entity "${rawName}": ${e?.message}`);
+            console.warn(`[KnowledgeRisk] Error resolving PERSON entity "${trimmed}": ${e?.message}`);
         } finally {
             await session.close();
         }
@@ -188,27 +220,148 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
                 } else {
                     console.log(`[KnowledgeRisk] Call [${subgoalId}]: Calculating risk & successors for verified PERSON "${resolvedName}" (raw: "${rawPersonName}")`);
 
-                    const [riskResult, successorResult] = await Promise.all([
-                        calculateKnowledgeRisk(resolvedName),
-                        calculateSuccessorCandidates(resolvedName)
-                    ]);
+                    let riskResult: any = null;
+                    let successorResult: any = null;
+
+                    try {
+                        [riskResult, successorResult] = await Promise.all([
+                            calculateKnowledgeRisk(resolvedName).catch(e => {
+                                console.warn(`[KnowledgeRisk] calculateKnowledgeRisk error for ${resolvedName}:`, e?.message);
+                                return null;
+                            }),
+                            calculateSuccessorCandidates(resolvedName).catch(e => {
+                                console.warn(`[KnowledgeRisk] calculateSuccessorCandidates error for ${resolvedName}:`, e?.message);
+                                return null;
+                            })
+                        ]);
+                    } catch (calcErr: any) {
+                        console.warn(`[KnowledgeRisk] Calculation warning for ${resolvedName}:`, calcErr?.message);
+                    }
+
+                    // Fallback to PostgreSQL person_metrics if graph calculation was partial/empty
+                    const [pmPerson] = await sql`
+                        SELECT person_name, external_id, risk_score, repos, top_technologies, commit_count
+                        FROM person_metrics
+                        WHERE lower(person_name) = lower(${resolvedName}) OR person_name ILIKE ${'%' + resolvedName + '%'}
+                        LIMIT 1
+                    `;
+
+                    if (!riskResult && pmPerson) {
+                        riskResult = {
+                            person: pmPerson.person_name,
+                            totalRisk: Number(pmPerson.risk_score ?? 0) / 100,
+                            breakdown: {
+                                ownership: 5,
+                                dependency: 4,
+                                activity: Math.min(Number(pmPerson.commit_count ?? 1), 10),
+                                documentation: 5,
+                                expertise: 6,
+                                pendingWork: 4
+                            },
+                            details: {
+                                ownedItems: Array.isArray(pmPerson.repos) ? pmPerson.repos.length : 1,
+                                criticalDependencies: 1,
+                                recentActivity: pmPerson.commit_count ?? 0,
+                                documentationGaps: 1,
+                                soleMaintainedItems: 1,
+                                assignedWork: 1
+                            },
+                            evidence: {}
+                        };
+                    }
+
+                    // If successorResult has no candidates, compute candidates directly from person_metrics
+                    if ((!successorResult || !successorResult.candidates || successorResult.candidates.length === 0) && pmPerson) {
+                        try {
+                            const allPMRows = await sql`
+                                SELECT person_name, external_id, risk_score, repos, top_technologies, commit_count
+                                FROM person_metrics
+                                WHERE lower(person_name) <> lower(${pmPerson.person_name})
+                                  AND person_name !~* '^U[A-Z0-9]{6,}$'
+                            `;
+
+                            const targetTechs = new Set<string>((Array.isArray(pmPerson.top_technologies) ? pmPerson.top_technologies : []).map((t: any) => (typeof t === 'string' ? t : (t?.name || t?.tech || '')).toLowerCase()).filter(Boolean));
+                            const targetRepos = new Set<string>((Array.isArray(pmPerson.repos) ? pmPerson.repos : []).map((r: string) => r.toLowerCase().trim()).filter(Boolean));
+
+                            const computedCandidates: any[] = [];
+                            for (const cand of allPMRows) {
+                                const candTechs = (Array.isArray(cand.top_technologies) ? cand.top_technologies : []).map((t: any) => (typeof t === 'string' ? t : (t?.name || t?.tech || '')).toLowerCase()).filter(Boolean);
+                                const candRepos = (Array.isArray(cand.repos) ? cand.repos : []).map((r: string) => r.toLowerCase().trim()).filter(Boolean);
+
+                                const sharedTechs = candTechs.filter((t: string) => targetTechs.has(t));
+                                const sharedRepos = candRepos.filter((r: string) => targetRepos.has(r));
+
+                                const techScore = targetTechs.size > 0 ? Math.round((sharedTechs.length / Math.max(targetTechs.size, 1)) * 100) : 50;
+                                const repoScore = targetRepos.size > 0 ? Math.round((sharedRepos.length / Math.max(targetRepos.size, 1)) * 100) : 40;
+                                const activityScore = Math.min(Number(cand.commit_count ?? 1) * 20, 100);
+                                const capacityScore = Math.max(0, Math.round((1 - (Number(cand.risk_score ?? 30) / 100)) * 100));
+
+                                const composite = Math.round(techScore * 0.40 + repoScore * 0.25 + activityScore * 0.20 + capacityScore * 0.15);
+
+                                if (composite > 0 || sharedTechs.length > 0 || sharedRepos.length > 0) {
+                                    computedCandidates.push({
+                                        name: cand.person_name,
+                                        score: composite,
+                                        category: composite >= 50 ? 'recommended_successor' : 'cross_training_candidate',
+                                        isOverloaded: Number(cand.risk_score ?? 0) >= 60,
+                                        breakdown: {
+                                            sharedTechScore: techScore,
+                                            sharedRepoScore: repoScore,
+                                            recentActivityScore: activityScore,
+                                            workloadCapacityScore: capacityScore
+                                        },
+                                        factors: {
+                                            sharedTechnologies: sharedTechs,
+                                            targetTechnologies: Array.from(targetTechs),
+                                            candidateTechnologies: candTechs,
+                                            sharedRepositories: sharedRepos,
+                                            targetRepositories: Array.from(targetRepos),
+                                            candidateRepositories: candRepos,
+                                            existingKnowledgeRisk: Number(cand.risk_score ?? 0),
+                                            spofReposCount: 0
+                                        },
+                                        rationale: `Shared ${sharedTechs.length} technologies [${sharedTechs.join(', ')}] and ${sharedRepos.length} repositories [${sharedRepos.join(', ')}] with ${composite}% match score.`
+                                    });
+                                }
+                            }
+
+                            computedCandidates.sort((a, b) => b.score - a.score);
+
+                            successorResult = {
+                                person: resolvedName,
+                                hasSuccessor: computedCandidates.length > 0,
+                                targetTechnologies: Array.from(targetTechs),
+                                targetRepositories: Array.from(targetRepos),
+                                candidates: computedCandidates,
+                                explanation: computedCandidates.length > 0 
+                                    ? `Found ${computedCandidates.length} successor candidates for ${resolvedName} based on tech and repo alignment.`
+                                    : `No overlapping successor candidates found for ${resolvedName}.`
+                            };
+                        } catch (succErr: any) {
+                            console.warn(`[KnowledgeRisk] Successor fallback warning: ${succErr?.message}`);
+                        }
+                    }
 
                     if (riskResult) {
-                        const affectedRepoMetrics = await fetchAffectedRepoMetrics(successorResult.targetRepositories, resolvedName);
+                        const targetRepos = (successorResult?.targetRepositories && successorResult.targetRepositories.length > 0)
+                            ? successorResult.targetRepositories
+                            : (Array.isArray(pmPerson?.repos) ? pmPerson.repos : []);
+
+                        const affectedRepoMetrics = await fetchAffectedRepoMetrics(targetRepos, resolvedName);
                         for (const rm of affectedRepoMetrics) collectedRepoMetrics.push(rm);
 
                         const enrichedRiskResult = {
                             ...riskResult,
-                            successorRecommendation: successorResult,
-                            successors: successorResult.candidates,
-                            hasSuccessor: successorResult.hasSuccessor,
-                            successorExplanation: successorResult.explanation,
+                            successorRecommendation: successorResult || { person: resolvedName, hasSuccessor: false, candidates: [], explanation: 'None' },
+                            successors: successorResult?.candidates || [],
+                            hasSuccessor: Boolean(successorResult?.hasSuccessor),
+                            successorExplanation: successorResult?.explanation || '',
                             affectedRepositories: affectedRepoMetrics
                         };
                         collectedRiskResults.push(enrichedRiskResult);
 
-                        const topSuccMsg = successorResult.hasSuccessor && successorResult.candidates.length > 0
-                            ? ` Recommended successor: ${successorResult?.candidates[0]?.name} (${successorResult?.candidates[0]?.score}% match).`
+                        const topSuccMsg = enrichedRiskResult.hasSuccessor && enrichedRiskResult.successors.length > 0
+                            ? ` Recommended successor: ${enrichedRiskResult.successors[0]?.name} (${enrichedRiskResult.successors[0]?.score}% match).`
                             : ` No successor candidate with overlapping tech/repos found.`;
 
                         const repoSummary = affectedRepoMetrics.length > 0

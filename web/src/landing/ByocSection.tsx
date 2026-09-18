@@ -26,15 +26,15 @@ export const ByocSection: React.FC<ByocSectionProps> = ({ onOpenContact }) => {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#0c111e] border border-slate-800/80 text-indigo-400 text-xs font-mono mb-4">
             <Lock className="w-3.5 h-3.5 text-indigo-400" />
-            <span>100% Data Privacy &amp; Isolation</span>
+            <span>VPC-Contained &amp; Self-Hosted</span>
           </div>
 
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-sans">
-            Self-Hosted on Your Cloud. <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">Zero Data Retention.</span>
+            Self-Hosted on Your Cloud. <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">Your Code Stays in Your VPC.</span>
           </h2>
 
-          <p className="mt-4 text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed font-normal">
-            Your proprietary codebase, Git commits, and Slack channels never leave your infrastructure. Deploy Cortex in 60 seconds on Docker, AWS, GCP, or Kubernetes.
+          <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
+            Your proprietary codebase, Git commits, and Slack discussions never leave your cloud perimeter. Deploy Cortex via Docker, AWS ECS, GCP Cloud Run, or Kubernetes Helm.
           </p>
         </div>
 

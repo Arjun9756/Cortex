@@ -39,7 +39,7 @@ export const ProblemSection: React.FC = () => {
 
             <button
               onClick={() => setIsUnified(!isUnified)}
-              className="px-5 py-2.5 rounded-xl text-xs font-mono font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white transition-all duration-300 shadow-lg shadow-indigo-600/15 flex items-center space-x-2 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl text-xs font-mono font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white transition-all duration-300 shadow-lg shadow-indigo-600/15 flex items-center space-x-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none"
             >
               <Sparkles className="w-4 h-4" />
               <span>{isUnified ? 'Show Fragmented State' : 'Unify into Cortex Graph'}</span>
@@ -50,7 +50,7 @@ export const ProblemSection: React.FC = () => {
           <div className="relative min-h-[340px] flex items-center justify-center p-6 bg-[#060911] rounded-xl border border-slate-800/80 overflow-hidden">
             
             {/* SVG Connecting Lines */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700" style={{ opacity: isUnified ? 1 : 0.1 }}>
+            <svg className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 motion-reduce:transition-none" style={{ opacity: isUnified ? 1 : 0.1 }}>
               <line x1="25%" y1="30%" x2="50%" y2="50%" stroke="#6366f1" strokeWidth="2" strokeDasharray="4 4" />
               <line x1="75%" y1="30%" x2="50%" y2="50%" stroke="#8b5cf6" strokeWidth="2" strokeDasharray="4 4" />
               <line x1="25%" y1="70%" x2="50%" y2="50%" stroke="#06b6d4" strokeWidth="2" strokeDasharray="4 4" />
@@ -59,7 +59,7 @@ export const ProblemSection: React.FC = () => {
 
             {/* Central Cortex Core */}
             <div
-              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 transition-all duration-700 transform ${
+              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 transition-all duration-700 motion-reduce:transition-none transform ${
                 isUnified ? 'scale-110 opacity-100' : 'scale-75 opacity-20'
               }`}
             >

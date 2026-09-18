@@ -193,20 +193,96 @@ intents:
       action: "listNodes"
       target: "TECHNOLOGY"
 
-  - id: WHY_DECISION_QUERY
-    description: "User asks why a technical decision was made, why something was replaced, or for architectural reasoning"
+  - id: PRIMARY_OWNER_OF_REPO
+    description: "User asks who is the primary owner or sole maintainer of a specific repository"
     patterns:
-      - "why did we"
-      - "why was replaced"
-      - "why was removed"
-      - "why was chosen"
-      - "reason for replacing"
-      - "reason we use"
-      - "why switched to"
-      - "why migrated to"
-      - "decision to use"
-      - "architectural decision"
-      - "why not use"
-      - "why did the team"
+      - "primary owner of"
+      - "owner of"
+      - "who owns"
+      - "who is the owner"
+      - "who maintains"
+      - "who is the maintainer"
+      - "lead of"
+      - "who leads"
     executionPlan:
-      tool: "vector_search"
+      tool: "sql_search"
+      queryType: "repo_details"
+
+  - id: REPO_BUS_FACTOR_SINGLE
+    description: "User asks for the bus factor, risk score, or health of a single specific repository"
+    patterns:
+      - "bus factor of"
+      - "what is the bus factor of"
+      - "bus factor for"
+      - "risk score of"
+      - "health of repository"
+      - "metrics for repo"
+    executionPlan:
+      tool: "sql_search"
+      queryType: "repo_details"
+
+  - id: HEALTHY_VS_FRAGILE_REPOSITORIES
+    description: "User asks for a comparison of healthy repositories versus fragile or at-risk repositories"
+    patterns:
+      - "healthy vs fragile"
+      - "healthy repositories"
+      - "fragile vs healthy"
+      - "show healthy"
+      - "healthy repos"
+      - "list healthy repositories"
+      - "good repo and bad repo"
+    executionPlan:
+      tool: "sql_search"
+      queryType: "healthy_vs_fragile"
+
+  - id: SUCCESSORS_FOR_PERSON
+    description: "User asks who can take over, succeed, or replace an engineer if they leave or resign"
+    patterns:
+      - "who can take over"
+      - "take over"
+      - "takeover"
+      - "successors for"
+      - "successor for"
+      - "who will replace"
+      - "who can replace"
+      - "replacement for"
+      - "backup maintainer for"
+      - "who can step in"
+      - "who can assume ownership"
+    executionPlan:
+      tool: "knowledge_risk"
+
+  - id: JIRA_HIGH_PRIORITY
+    description: "User asks for high-priority Jira tickets, critical issues, or who is working on urgent tasks"
+    patterns:
+      - "high priority jira"
+      - "high priority tickets"
+      - "highest priority"
+      - "critical jira"
+      - "urgent tickets"
+      - "p0 issues"
+      - "p1 issues"
+      - "who is working on high priority"
+      - "show all high priority"
+    executionPlan:
+      tool: "sql_search"
+      queryType: "jira_tickets"
+      params:
+        priority: "high"
+
+  - id: SLACK_INCIDENT_SEARCH
+    description: "User asks for Slack discussions, threads, or incident communications related to a topic"
+    patterns:
+      - "slack discussions"
+      - "slack discussion"
+      - "slack incident"
+      - "slack thread"
+      - "discussions are related to"
+      - "slack message about"
+      - "key rotation incident"
+      - "kms incident"
+      - "aws kms"
+    executionPlan:
+      tool: "sql_search"
+      queryType: "slack_search"
+

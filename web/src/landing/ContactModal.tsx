@@ -88,7 +88,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                 Request Free Cortex Setup
               </h3>
               <p className="mt-2 text-xs sm:text-sm text-[#9497A6] leading-relaxed">
-                Reach out to request assistance in deploying Cortex on your free-tier Oracle, Neo4j &amp; Qdrant accounts — ₹0 cost.
+                Schedule guided deployment assistance to run Cortex on your cloud infrastructure (AWS, GCP, Docker, or Kubernetes) — ₹0 license fee.
               </p>
             </div>
 

@@ -20,69 +20,95 @@ TOOL SELECTION DISAMBIGUATION RULES:
 
 1. COMPOUND ASKS: If the query asks for both structured metrics (e.g. Bus Factor, dependencies, departure risk) and contextual information (e.g. open issues, breaking changes, architectural rationale), EMIT BOTH TOOL CALLS in parallel. Do not pick only one.
 
-2. DEPARTURE / SINGLE POINT OF FAILURE / LEAVING:
-   - ANY question about an engineer leaving, resigning, departing, backup maintainers, or unowned architecture components MUST invoke:
-     knowledge_risk(personName: "<engineer_name>") or knowledge_risk(personName: "ALL")
-   - Do NOT use vector_search alone for departure risk.
+2. PRIMARY OWNER / SINGLE REPOSITORY METRICS:
+   - ANY question asking "Who is the primary owner of <repo>?", "What is the bus factor of <repo>?", "Risk score of <repo>":
+     MUST invoke: sql_search(queryType: "repo_details", params: { repo: "<repo_name>" })
+     NEVER rely on graph alone for primary owner or bus factor — Postgres repo_metrics is the single source of truth.
 
-3. BUS FACTOR / CODEBASE HEALTH / SPOF METRICS:
-   - ANY question about Bus Factor, repository risk rankings, or contributor counts MUST invoke:
-     sql_search(queryType: "repos_by_bus_factor", params: { threshold: 1 }) or sql_search(queryType: "repo_risk")
+3. REPOSITORY RISK / SPOF / BUS FACTOR LISTS:
+   - "Which repositories are SPOF / at risk?", "bus factor 1 repos":
+     MUST invoke: sql_search(queryType: "repos_by_bus_factor", params: { threshold: 1 })
+   - "Show healthy vs fragile repositories", "compare healthy and fragile":
+     MUST invoke: sql_search(queryType: "healthy_vs_fragile")
+   - Full repo risk ranking: sql_search(queryType: "repo_risk")
 
-4. DEPENDENCIES / BLAST RADIUS / PATHS:
+4. DEPARTURE / SUCCESSORS / TAKEOVER / RESIGNATION:
+   - "What happens if X leaves?", "Who can take over X's repositories if he resigns?", "Successors for X", "Who will replace X":
+     BOTH departure impact and takeover questions MUST invoke:
+     knowledge_risk(personName: "<engineer_name>")
+     This ensures identical, verified successor recommendations and affected repos from the unified engine.
+
+5. WHO WORKS ON REPOSITORIES (PERSON REPOS):
+   - "Which repos does X work in?", "What repositories does X contribute to?":
+     MUST invoke BOTH:
+     sql_search(queryType: "person_repos", params: { person: "<name>" })
+     graph_list_nodes(entity: "<name>", targetLabel: "REPOSITORY")
+
+6. JIRA HIGH-PRIORITY TICKETS & ASSIGNEES:
+   - "Show all high priority Jira tickets and who is working on them", "urgent issues":
+     MUST invoke BOTH:
+     sql_search(queryType: "jira_tickets", params: { priority: "high" })
+     vector_search(query: "high priority Jira issues tickets assignees")
+
+7. SLACK INCIDENT DISCUSSIONS & THREADS:
+   - "Which Slack discussions are related to <topic / incident e.g. AWS KMS key rotation>?":
+     MUST invoke BOTH:
+     sql_search(queryType: "slack_search", params: { searchTerm: "<keywords>" })
+     vector_search(query: "<incident topic>")
+
+8. PERSON PROFILE & TECHNOLOGIES:
+   - "Who is X and what technologies does he use?":
+     MUST invoke:
+     sql_search(queryType: "person_profile", params: { person: "<name>" })
+     graph_describe_entity(entity: "<name>")
+     graph_list_nodes(entity: "<name>", relation: "USES", targetLabel: "TECHNOLOGY")
+
+9. DEPENDENCIES / BLAST RADIUS / PATHS:
    - Upstream/downstream service dependencies → graph_dependency_analysis(entity: "...")
    - Blast radius / failure impact → graph_impact_analysis(entity: "...")
    - Connection between two services/people → graph_shortest_path(from: "...", to: "...")
    - Custom depth / multi-hop exploration → graph_traverse(startEntities: ["..."], relations: [...], depth: { min: 1, max: 4 })
 
-5. SEMANTIC SEARCH (vector_search):
-   - Use vector_search for architectural rationale ("why"), incident root causes, Slack discussions, PR descriptions, or searching for specific text/issues/breaking changes.
-   - For compound queries with issues/breaking changes, combine with sql_search or graph tools.
-
-6. SPECIALIZED GRAPH LOOKUPS:
-   - "What is X's email/role?" → graph_describe_entity(entity: "X")
-   - "How many repos/people/technologies exist?" → graph_count_by_label(label: "REPOSITORY" | "PERSON" | "TECHNOLOGY", searchTerm: "")
-   - "What repos does X work on?" → graph_list_nodes(entity: "X", targetLabel: "REPOSITORY")
-   - "What tech does X use?" → graph_list_nodes(entity: "X", relation: "USES", targetLabel: "TECHNOLOGY")
-   - "Show repos with contributors" → graph_repository_summary(repositoryName: "ALL")
-   - "Who knows about X / Who is the expert on X?" → graph_expertise_analysis(entity: "X")
+10. SEMANTIC SEARCH (vector_search):
+   - Use vector_search for architectural rationale ("why"), incident root causes, PR descriptions, or architectural decisions.
 
 FEW-SHOT EXAMPLES:
 
-Query: "If Priya Sharma leaves tomorrow, which repositories have no backup maintainer, and what critical architecture components become unowned?"
-→ knowledge_risk(personName: "Priya Sharma")
+Query: "Who is the primary owner of payment-gateway-v2?"
+→ sql_search(queryType: "repo_details", params: { repo: "payment-gateway-v2" })
 
-Query: "Which repositories with Bus Factor = 1 also have open high-priority issues or recent breaking changes?"
+Query: "What is the bus factor of auth-token-vault?"
+→ sql_search(queryType: "repo_details", params: { repo: "auth-token-vault" })
+
+Query: "Which repositories are SPOF / at risk?"
 → sql_search(queryType: "repos_by_bus_factor", params: { threshold: 1 })
-→ vector_search(query: "high priority issues breaking changes")
 
-Query: "Find the full dependency chain starting from checkout-service to all underlying databases and third-party services."
-→ graph_dependency_analysis(entity: "checkout-service")
+Query: "Show healthy vs fragile repositories"
+→ sql_search(queryType: "healthy_vs_fragile")
 
-Query: "How are billing-service and notification-service connected through shared dependencies or common authors?"
-→ graph_shortest_path(from: "billing-service", to: "notification-service")
+Query: "What happens if Vikram Patel leaves?"
+→ knowledge_risk(personName: "Vikram Patel")
 
-Query: "If auth-gateway goes down or is rewritten, which downstream services, repositories, and upstream technologies are indirectly impacted?"
-→ graph_impact_analysis(entity: "auth-gateway")
+Query: "Who can take over Vikram Patel's repositories if he resigns?"
+→ knowledge_risk(personName: "Vikram Patel")
 
-Query: "What happens if Vikram leaves?"
-→ knowledge_risk(personName: "Vikram")
+Query: "Which repos does Vikram Patel work in?"
+→ sql_search(queryType: "person_repos", params: { person: "Vikram Patel" })
+→ graph_list_nodes(entity: "Vikram Patel", targetLabel: "REPOSITORY")
 
-Query: "Which repos have bus factor 1?"
-→ sql_search(queryType: "repos_by_bus_factor", params: { threshold: 1 })
+Query: "Who is Vikram Patel and what technologies does he use?"
+→ sql_search(queryType: "person_profile", params: { person: "Vikram Patel" })
+→ graph_describe_entity(entity: "Vikram Patel")
+→ graph_list_nodes(entity: "Vikram Patel", relation: "USES", targetLabel: "TECHNOLOGY")
+
+Query: "Show all high priority Jira tickets and who is working on them"
+→ sql_search(queryType: "jira_tickets", params: { priority: "high" })
+→ vector_search(query: "high priority Jira issues and assignees")
+
+Query: "Which Slack discussions are related to the AWS KMS key rotation incident?"
+→ sql_search(queryType: "slack_search", params: { searchTerm: "KMS" })
+→ vector_search(query: "AWS KMS key rotation incident Slack discussion")
 
 Query: "Why was Redis replaced with Valkey?"
-→ vector_search(query: "why Redis replaced with Valkey")
-
-Query: "Trace all downstream effects from Priya's commits, going 5 levels deep"
-→ graph_traverse(startEntities: ["Priya"], relations: ["AUTHORED", "DEPENDS_ON"], depth: { min: 1, max: 5 }, direction: "outgoing")
-
-Query: "Compare checkout-service and auth-gateway in terms of repository risk score and active contributors"
-→ sql_search(queryType: "repo_risk")
-→ graph_repository_summary(repositoryName: "checkout-service")
-→ graph_repository_summary(repositoryName: "auth-gateway")
-
-Query: "Who knows the most about Kafka and what repos use it?"
-→ graph_expertise_analysis(entity: "Kafka")
-→ graph_list_nodes(entity: "Kafka", targetLabel: "REPOSITORY", relation: "USES")`.trim();
+→ vector_search(query: "why Redis replaced with Valkey")`.trim();
 }

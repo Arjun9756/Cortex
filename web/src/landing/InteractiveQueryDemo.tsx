@@ -69,7 +69,7 @@ const SAMPLE_QUERIES: SampleQuery[] = [
     },
     answer: {
       headline: 'Priya Sharma (38% Composite Match • 82% Available Capacity)',
-      summary: 'Devendra Singh holds 100% commit ownership on payment-gateway-v2 (Bus Factor = 1, 80% SPOF risk). Cortex evaluated all team engineers using the deterministic 4-factor formula without AI hallucination.',
+      summary: 'Devendra Singh holds 100% commit ownership on payment-gateway-v2 (Bus Factor = 1, 80% SPOF risk). Cortex evaluated candidate engineers using the deterministic 4-factor formula (Jaccard technology similarity, commit overlap, recency, and capacity).',
       keyPoints: [
         { label: 'Primary Candidate', value: 'Priya Sharma (Staff Engineer) has matching expertise in Go, Valkey, and Stripe API.' },
         { label: 'Skill Similarity', value: '13% Jaccard technology set overlap across payment and ledger infrastructure.' },
@@ -81,7 +81,7 @@ const SAMPLE_QUERIES: SampleQuery[] = [
       { type: 'git', label: 'Commit f1a2b3c', detail: 'PAY-901: Architected core PCI-DSS tokenization pipeline in Go & HashiCorp Vault' },
       { type: 'jira', label: 'Jira PAY-901', detail: 'Architect Go gRPC and HashiCorp Vault tokenization pipeline in payment-gateway-v2' },
       { type: 'slack', label: 'Slack #fintech-payments', detail: 'Devendra Singh: Finalized payment-gateway-v2 architecture using Go & Vault (50k TPS)' },
-      { type: 'math', label: 'Pure Math Engine', detail: '100% deterministic Jaccard formula — Zero LLM guessing' }
+      { type: 'math', label: 'Deterministic Engine', detail: '4-Factor Jaccard formula calculated in code — Grounded proof' }
     ]
   },
   {
@@ -127,21 +127,21 @@ export const InteractiveQueryDemo: React.FC = () => {
             <div className="w-3 h-3 rounded-full bg-amber-500/80" />
             <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
           </div>
-          <span className="text-xs font-mono text-slate-400 font-semibold pl-2">
-            Live Verified Query Playground • Zero-Hallucination Evidence
+          <span className="text-xs font-mono text-slate-300 font-semibold pl-2">
+            Interactive Query Walkthrough • Grounded Multi-Source Evidence
           </span>
         </div>
 
-        <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Real Captured Output (Zero Fabrication)</span>
+        <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+          <span>Representative Scenario (Fixture Data)</span>
         </div>
       </div>
 
       {/* Question Selector Tabs */}
       <div className="p-4 bg-[#070b14] border-b border-slate-800/80">
-        <span className="text-[10px] font-mono uppercase font-bold text-slate-500 tracking-wider block mb-2.5">
-          Select a Real-World Engineering Intelligence Query:
+        <span className="text-[10px] font-mono uppercase font-bold text-slate-400 tracking-wider block mb-2.5">
+          Select an Example Walkthrough Scenario:
         </span>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
           {SAMPLE_QUERIES.map((q) => {
@@ -191,7 +191,7 @@ export const InteractiveQueryDemo: React.FC = () => {
 
           <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
             <Calculator className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
-            <span>Pure math, zero AI guessing</span>
+            <span>Deterministic Graph Traversal</span>
           </span>
         </div>
 

@@ -44,7 +44,7 @@ export async function retrievalPlannerNode(state: AgentStateType): Promise<Parti
     if (toolNames.has('vector_search')) {
         toolPromises.push(wrapTool(vectorNode(state), 'vector_search'));
     }
-    if (toolNames.has('sql_search')) {
+    if (toolNames.has('sql_search') || toolNames.has('recent_activity')) {
         toolPromises.push(wrapTool(sqlNode(state), 'sql_search'));
     }
     if (toolNames.has('cypher_fallback')) {

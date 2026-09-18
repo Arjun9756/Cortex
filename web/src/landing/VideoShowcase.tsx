@@ -445,7 +445,7 @@ export const VideoShowcase: React.FC<VideoShowcaseProps> = ({
             <div className="flex items-center space-x-2">
               <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-[10px] font-mono text-indigo-300">
                 <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
-                <span>4K Walkthrough</span>
+                <span>Architecture Walkthrough</span>
               </span>
             </div>
           </div>

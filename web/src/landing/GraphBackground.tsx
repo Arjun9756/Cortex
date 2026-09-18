@@ -9,6 +9,9 @@ export const GraphBackground: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.innerWidth < 768;
+
     let animationFrameId: number;
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
@@ -17,11 +20,14 @@ export const GraphBackground: React.FC = () => {
       if (!canvas) return;
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
+      if (prefersReducedMotion || window.innerWidth < 768) {
+        drawStatic();
+      }
     };
 
     window.addEventListener('resize', handleResize);
 
-    const nodeCount = Math.min(Math.floor(width / 32), 45);
+    const nodeCount = isMobile ? 18 : Math.min(Math.floor(width / 36), 38);
     const nodes: Array<{
       x: number;
       y: number;
@@ -34,13 +40,13 @@ export const GraphBackground: React.FC = () => {
       nodes.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
-        radius: Math.random() * 2 + 1.5,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        radius: Math.random() * 1.5 + 1.2,
       });
     }
 
-    const draw = () => {
+    const renderNodesAndEdges = () => {
       ctx.clearRect(0, 0, width, height);
 
       // Draw edges between close nodes
@@ -50,19 +56,36 @@ export const GraphBackground: React.FC = () => {
           const dy = nodes[i].y - nodes[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 140) {
-            const alpha = (1 - dist / 140) * 0.15;
+          if (dist < 130) {
+            const alpha = (1 - dist / 130) * 0.12;
             ctx.beginPath();
             ctx.moveTo(nodes[i].x, nodes[i].y);
             ctx.lineTo(nodes[j].x, nodes[j].y);
-            ctx.strokeStyle = `rgba(56, 189, 248, ${alpha})`;
+            ctx.strokeStyle = `rgba(99, 102, 241, ${alpha})`;
             ctx.lineWidth = 1;
             ctx.stroke();
           }
         }
       }
 
-      // Draw nodes & update position
+      // Draw nodes
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(129, 140, 248, 0.35)';
+        ctx.fill();
+      }
+    };
+
+    const drawStatic = () => {
+      renderNodesAndEdges();
+    };
+
+    const drawAnimated = () => {
+      renderNodesAndEdges();
+
+      // Update positions
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
         node.x += node.vx;
@@ -70,24 +93,23 @@ export const GraphBackground: React.FC = () => {
 
         if (node.x < 0 || node.x > width) node.vx *= -1;
         if (node.y < 0 || node.y > height) node.vy *= -1;
-
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(129, 140, 248, 0.4)';
-        ctx.shadowColor = 'rgba(56, 189, 248, 0.6)';
-        ctx.shadowBlur = 6;
-        ctx.fill();
-        ctx.shadowBlur = 0;
       }
 
-      animationFrameId = requestAnimationFrame(draw);
+      animationFrameId = requestAnimationFrame(drawAnimated);
     };
 
-    draw();
+    // If user prefers reduced motion or is on mobile device, render once statically
+    if (prefersReducedMotion || isMobile) {
+      drawStatic();
+    } else {
+      drawAnimated();
+    }
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animationFrameId);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
   }, []);
 

@@ -160,8 +160,27 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
         }).join('\n');
 
         const sqlText = state.sqlResult.map((item: any) => {
+            if (item?.healthy_repositories || item?.fragile_repositories) {
+                const hLines = (item.healthy_repositories || []).map((r: any) => `  - [HEALTHY] "${r.repo_name}" | Bus Factor: ${r.bus_factor} | Risk: ${r.risk_score}% | Owner: ${r.primary_owner} | Contributors: ${r.contributor_count}`);
+                const fLines = (item.fragile_repositories || []).map((r: any) => `  - [FRAGILE] "${r.repo_name}" | Bus Factor: ${r.bus_factor} (SPOF) | Risk: ${r.risk_score}% | Owner: ${r.primary_owner} | Contributors: ${r.contributor_count}`);
+                const sLines = (item.scaffold_repositories || []).map((r: any) => `  - [SCAFFOLD/EMPTY] "${r.repo_name}" | Bus Factor: 0 | Risk: 0% | Owner: ${r.primary_owner}`);
+                return `[HEALTHY VS FRAGILE REPOSITORIES OVERVIEW]\nHealthy Count: ${(item.healthy_repositories || []).length} | Fragile Count: ${(item.fragile_repositories || []).length} | Empty Count: ${(item.scaffold_repositories || []).length}\n${fLines.join('\n')}\n${hLines.join('\n')}\n${sLines.join('\n')}`;
+            }
+            if (item?.issue_key) {
+                return `[JIRA TICKET] Key: "${item.issue_key}" | Priority: ${item.priority} | Assignee: ${item.assignee} | Status: ${item.status} | Project: ${item.project} | Summary: "${item.summary}" | Date: ${item.formatted_date || item.created_at}${item.priority_field_sparse_note ? ' (Note: Priority field sparse in payload)' : ''}`;
+            }
+            if (item?.provider === 'slack' && item?.text) {
+                return `[SLACK DISCUSSION] Channel: ${item.channel} | Author: ${item.author} | Date: ${item.formatted_date || item.timestamp} | Message: "${item.text}"`;
+            }
+            if (item?.person_name && Array.isArray(item?.repos)) {
+                return `[PERSON REPOSITORIES] Person: "${item.person_name}" | Repositories: [${item.repos.join(', ')}] | Commits: ${item.commit_count ?? 0} | Tech: [${(item.top_technologies || []).map((t: any) => typeof t === 'string' ? t : t?.name).join(', ')}]`;
+            }
+            if (item?.person && Array.isArray(item?.identities)) {
+                const idList = item.identities.map((i: any) => `${i.provider}:${i.username || i.external_id}${i.email ? ` (${i.email})` : ''}`).join(', ');
+                return `[VERIFIED PERSON PROFILE] Person: "${item.person}" | Verified Accounts: [${idList}]`;
+            }
             if (item?.repo_name) {
-                return `[REPOSITORY RISK & METRIC] Repo Name: "${item.repo_name}" | Bus Factor: ${item.bus_factor} | Total Risk Score: ${item.risk_score}% | Primary Owner: ${item.primary_owner || 'Unknown'} | Contributors: ${item.contributor_count || 1}`;
+                return `[REPOSITORY RISK & METRIC] Repo Name: "${item.repo_name}" | Bus Factor: ${item.bus_factor} | Total Risk Score: ${item.risk_score}% | Primary Owner: ${item.primary_owner || 'Unknown'} | Status: ${item.status || 'active'} | Contributors: ${item.contributor_count || 1}`;
             }
             if (item?.engineer) {
                 return `[Engineer: ${item.engineer}] [Provider: ${item.provider || 'all'}] Total Activity Events: ${item.event_count || item.count || 1}`;

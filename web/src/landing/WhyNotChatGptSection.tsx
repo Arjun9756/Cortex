@@ -128,11 +128,11 @@ export const WhyNotChatGptSection: React.FC = () => {
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <div className="flex items-center gap-2">
-                      <strong className="text-white font-semibold block">100% Deterministic Risk Math:</strong>
-                      <TrustBadge label="Pure math, zero guessing" />
+                      <strong className="text-white font-semibold block">Deterministic Risk Math:</strong>
+                      <TrustBadge label="Formula calculated in code" />
                     </div>
                     <span className="text-slate-300 text-xs mt-0.5 block">
-                      Calculates exact Bus Factor formulas and 4-factor Jaccard successor matches in pure code before LLM synthesis.
+                      Calculates exact Bus Factor formulas and 4-factor Jaccard successor matches in code before LLM synthesis.
                     </span>
                   </div>
                 </div>
@@ -156,7 +156,7 @@ export const WhyNotChatGptSection: React.FC = () => {
             </div>
 
             <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-indigo-200 text-xs font-mono flex items-center justify-between">
-              <span>Outcome: Zero-hallucination graph intelligence with mathematical proof.</span>
+              <span>Outcome: Grounded graph intelligence with mathematical proof.</span>
             </div>
           </div>
 
