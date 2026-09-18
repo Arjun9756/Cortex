@@ -19,6 +19,11 @@ export const driver = neo4j.driver(uri, neo4j.auth.basic(username, password), {
     maxTransactionRetryTime: 5_000,
 })
 
+const originalSession = driver.session.bind(driver)
+driver.session = function (config: any = {}) {
+    return originalSession({ database: neo4jDatabase, ...config })
+}
+
 export function neo4jSession(config: Record<string, unknown> = {}) {
     return driver.session({ database: neo4jDatabase, ...config })
 }

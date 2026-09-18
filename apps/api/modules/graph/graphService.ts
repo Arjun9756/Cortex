@@ -230,7 +230,7 @@ export async function buildGraphSummary(filters: GraphSummaryFilters = {}): Prom
         } finally {
             await session.close();
         }
-    }, 1200, undefined);
+    }, 3000, undefined);
     // 7. Filtering & Node Capping
     let allNodes = Array.from(new Set(nodeMap.values()));
     let filteredEdges = edges;
