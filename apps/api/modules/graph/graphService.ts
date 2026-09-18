@@ -373,7 +373,8 @@ async function resolveRepoDetail(identifier: string) {
         const session = driver.session();
         try {
             const res = await session.run(`
-                MATCH (r:Repository {name: $repoName})-[:USES|DEPENDS_ON-->(t:Technology)
+                MATCH (r:REPOSITORY)-[:USES|DEPENDS_ON]->(t:TECHNOLOGY)
+                WHERE lower(r.name) = lower($repoName)
                 RETURN t.name AS name LIMIT 10
             `, { repoName });
             res.records.forEach(rec => {
