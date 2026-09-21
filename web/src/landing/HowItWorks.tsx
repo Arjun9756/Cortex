@@ -8,7 +8,7 @@ export const HowItWorks: React.FC = () => {
       title: 'Connect Ingestion Sources',
       icon: GitBranch,
       description:
-        'Install the lightweight GitHub App or configure webhook endpoints for GitHub, GitLab, Slack, and Jira. Cortex begins ingesting commits, PR reviews, and architectural discussions immediately.',
+        'Install the lightweight GitHub App or configure webhook endpoints for GitHub, Slack, and Jira. Cortex begins ingesting commits, PR reviews, and architectural discussions immediately.',
       details: [
         'Webhooks stream changes continuously',
         'Zero code instrumentation or agent sidecars',

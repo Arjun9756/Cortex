@@ -351,7 +351,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
           Tools in Your Stack <span className="text-slate-400 font-normal">(select all that apply)</span>
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {['GitHub', 'GitLab', 'Slack', 'Jira', 'Linear'].map((tool) => {
+          {['GitHub', 'Slack', 'Jira', 'Linear', 'Other'].map((tool) => {
             const isChecked = formData.stack.includes(tool);
             return (
               <button

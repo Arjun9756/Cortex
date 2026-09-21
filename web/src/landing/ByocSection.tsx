@@ -38,7 +38,7 @@ export const ByocSection: React.FC<ByocSectionProps> = ({ onOpenContact }) => {
     {
       title: 'HMAC Webhook Verification',
       icon: Lock,
-      description: 'All GitHub, GitLab, and Jira event webhooks are cryptographically validated using HMAC SHA-256 signatures before graph ingestion.',
+      description: 'All GitHub, Slack, and Jira event webhooks are cryptographically validated using HMAC SHA-256 signatures before graph ingestion.',
     },
     {
       title: 'Full Database Sovereignty',
