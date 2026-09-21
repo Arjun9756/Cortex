@@ -219,7 +219,7 @@ Cortex operates under a strict **"Calculator vs. Formatter"** architecture:
 
 ## Who Built This?
 
-I am the builder of the Cortex system — built without external funding, team, or formal mentors as a self-taught backend developer. Every feature included in Cortex (knowledge risk scoring, bus factor evaluation, successor recommendations) is designed, implemented, and verified with deterministic mathematical formulas grounded in real company data.
+We the builder of the Cortex system — built without external funding, team, or formal mentors. Every feature included in Cortex (knowledge risk scoring, bus factor evaluation, successor recommendations) is designed, implemented, and verified with deterministic mathematical formulas grounded in real company data.
 
 ---
 
