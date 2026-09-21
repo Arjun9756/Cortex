@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, ArrowRight } from 'lucide-react';
 import { isDemoEnabled } from '../config';
+import { CortexLogo } from '../components/CortexLogo';
 
 interface NavbarProps {
   onOpenContact: () => void;
@@ -76,9 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
             }
           }}
         >
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#161B22] border border-white/10 overflow-hidden text-blue-400 font-mono font-bold text-sm">
-            <img src="/cortex-logo.png" alt="Cortex" className="w-full h-full object-cover" />
-          </div>
+          <CortexLogo className="w-8 h-8" />
           <div className="flex items-baseline space-x-2">
             <span className="text-base font-bold tracking-tight text-white font-sans">
               Cortex

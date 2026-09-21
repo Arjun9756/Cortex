@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShieldCheck, Mail, GitBranch } from 'lucide-react';
+import { CortexLogo } from '../components/CortexLogo';
 
 interface FooterProps {
   onOpenContact: () => void;
@@ -14,9 +15,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenContact }) => {
           {/* Brand & Purpose */}
           <div className="md:col-span-2 space-y-3">
             <div className="flex items-center space-x-2.5">
-              <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#161B22] border border-white/10 overflow-hidden">
-                <img src="/cortex-logo.png" alt="Cortex" className="w-full h-full object-cover" />
-              </div>
+              <CortexLogo className="w-7 h-7" />
               <span className="text-base font-bold text-white font-sans tracking-tight">
                 Cortex
               </span>
