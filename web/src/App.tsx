@@ -13,13 +13,15 @@ import { TechnologiesPage } from './pages/TechnologiesPage';
 import { TimelinePage } from './pages/TimelinePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 
+import { isDemoEnabled } from './config';
+
 export function App() {
   const [viewMode, setViewMode] = useState<'landing' | 'dashboard' | 'pricing' | 'request'>(() => {
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view');
     if (view === 'request' || window.location.pathname === '/request') return 'request';
     if (view === 'pricing' || window.location.pathname === '/pricing') return 'pricing';
-    if (view === 'dashboard' || window.location.pathname === '/dashboard') return 'dashboard';
+    if ((view === 'dashboard' || window.location.pathname === '/dashboard') && isDemoEnabled) return 'dashboard';
     // Default to Landing Page
     return 'landing';
   });
