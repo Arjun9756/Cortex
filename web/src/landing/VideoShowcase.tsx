@@ -13,8 +13,7 @@ import {
   Maximize, 
   Minimize, 
   RotateCcw, 
-  Loader2,
-  Sparkles
+  Loader2
 } from 'lucide-react';
 
 export interface VideoShowcaseProps {
@@ -421,13 +420,13 @@ export const VideoShowcase: React.FC<VideoShowcaseProps> = ({
             setShowCenterPlay(false);
           }
         }}
-        className={`group relative w-full aspect-video rounded-2xl overflow-hidden bg-[#06080e] border border-slate-800/80 shadow-[0_0_50px_-12px_rgba(99,102,241,0.25)] focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus:outline-none transition-all duration-300 ${
+        className={`group relative w-full aspect-video rounded-xl overflow-hidden bg-[#090D12] border border-white/10 shadow-2xl focus-visible:ring-2 focus-visible:ring-blue-500 focus:outline-none transition-all duration-200 ${
           isFullscreen ? 'fixed inset-0 z-50 rounded-none max-w-none border-none' : ''
         }`}
       >
-        {/* Ambient Back Glow */}
+        {/* Subtle Ambient Back Glow */}
         <div 
-          className="absolute -inset-1 bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/10 rounded-2xl blur-xl opacity-60 pointer-events-none group-hover:opacity-100 transition-opacity duration-500 -z-10" 
+          className="absolute -inset-0.5 bg-blue-500/5 rounded-xl blur-lg pointer-events-none -z-10" 
         />
 
         {/* Top Window Bezel Bar (Apple / Linear Showcase Style) */}
@@ -443,8 +442,8 @@ export const VideoShowcase: React.FC<VideoShowcaseProps> = ({
             </div>
 
             <div className="flex items-center space-x-2">
-              <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-[10px] font-mono text-indigo-300">
-                <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
+              <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-md bg-[#12181F] border border-white/10 text-[10px] font-mono text-slate-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                 <span>Architecture Walkthrough</span>
               </span>
             </div>

@@ -1,136 +1,131 @@
-/* Cortex Design Tokens System - Strict Non-Negotiable Rules */
+/* Cortex Enterprise B2B Design Tokens — Calm, Credible, Institutional */
 :root {
-  --bg-landing: #0A0B0E;
-  --card-landing: #12141A;
-  --border-landing: rgba(255, 255, 255, 0.08);
-  --border-landing-hover: rgba(59, 130, 246, 0.3);
-  --text-primary: #F5F5F7;
-  --text-muted: #9497A6;
+  --bg-landing: #0B0F14;
+  --surface-primary: #12181F;
+  --surface-secondary: #161B22;
+  --surface-subtle: #0E131A;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-muted: rgba(255, 255, 255, 0.14);
+  --border-hover: rgba(59, 130, 246, 0.4);
+  --text-primary: #F3F4F6;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
   --accent-blue: #3B82F6;
   --accent-blue-hover: #2563EB;
-  --accent-blue-glow: rgba(59, 130, 246, 0.25);
+  --accent-cyan: #06B6D4;
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --success: #10B981;
   --radius-card: 12px;
-  --padding-card: 24px;
+  --radius-btn: 10px;
 }
 
-/* Unified Card Class */
+/* Institutional Card Styling */
 .cortex-card {
-  background-color: #12141A;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 24px;
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .cortex-card:hover {
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+  border-color: var(--border-muted);
 }
 
-/* Unified Button Styles */
+.cortex-surface-elevated {
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Buttons — Solid primary, crisp outline secondary (No pill candy) */
 .cortex-btn-primary {
-  background-color: #3B82F6;
-  color: #ffffff;
+  background-color: var(--accent-blue);
+  color: #FFFFFF;
   font-weight: 600;
-  border-radius: 12px;
-  padding: 12px 24px;
-  transition: all 0.2s ease;
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  font-size: 0.875rem;
+  border-radius: var(--radius-btn);
+  padding: 10px 20px;
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .cortex-btn-primary:hover {
-  background-color: #2563EB;
-  box-shadow: 0 0 25px rgba(59, 130, 246, 0.5);
+  background-color: var(--accent-blue-hover);
+  transform: translateY(-1px);
+}
+
+.cortex-btn-primary:focus-visible {
+  outline: 2px solid #60A5FA;
+  outline-offset: 2px;
 }
 
 .cortex-btn-secondary {
-  background-color: #12141A;
-  color: #F5F5F7;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: var(--surface-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-muted);
   font-weight: 600;
-  border-radius: 12px;
-  padding: 12px 24px;
-  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  border-radius: var(--radius-btn);
+  padding: 10px 20px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .cortex-btn-secondary:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: #1A222D;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
 }
 
-/* Unified Section Padding */
-.cortex-section {
-  padding-top: 96px;
-  padding-bottom: 96px;
+.cortex-btn-secondary:focus-visible {
+  outline: 2px solid #60A5FA;
+  outline-offset: 2px;
 }
 
-@media (max-width: 768px) {
-  .cortex-section {
-    padding-top: 48px;
-    padding-bottom: 48px;
-  }
+/* Browser Chrome Frame */
+.browser-chrome {
+  background-color: #0E131A;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
 }
 
-/* Physics-Based Scroll Reveal Animations */
-.reveal-on-scroll {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
+.browser-header {
+  background-color: #121820;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.reveal-on-scroll.is-revealed {
-  opacity: 1;
-  transform: translateY(0);
+.browser-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
 }
 
-/* Stagger Delays for Children */
-.stagger-1 { transition-delay: 60ms; }
-.stagger-2 { transition-delay: 120ms; }
-.stagger-3 { transition-delay: 180ms; }
-.stagger-4 { transition-delay: 240ms; }
-
-/* Pulse Glow Keyframes */
-@keyframes pulseGlow {
-  0%, 100% {
-    opacity: 0.4;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
+/* Subtle Technical Grid Background */
+.tech-grid-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
 
-.animate-pulse-glow {
-  animation: pulseGlow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* Keyboard Focus Rings */
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 
-/* Float Node Keyframes */
-@keyframes floatNode {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-.animate-float-node {
-  animation: floatNode 6s ease-in-out infinite;
-}
-
-/* Reduced Motion Fallbacks */
+/* Accessible Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-  .reveal-on-scroll {
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
-  }
-
-  .animate-pulse-glow,
-  .animate-float-node,
-  .animate-bounce {
-    animation: none !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

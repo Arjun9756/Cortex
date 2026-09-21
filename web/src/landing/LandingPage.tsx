@@ -2,266 +2,118 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { Hero } from './Hero';
 import { ProductProofSection } from './ProductProofSection';
-import { ArchitectureDiagram } from './ArchitectureDiagram';
-import { ProblemSection } from './ProblemSection';
 import { HowItWorks } from './HowItWorks';
-import { BentoFeatures } from './BentoFeatures';
-import { WhyNotChatGptSection } from './WhyNotChatGptSection';
+import { DifferentiationSection } from './DifferentiationSection';
 import { ByocSection } from './ByocSection';
 import { PricingSection } from './PricingSection';
 import { FaqSection } from './FaqSection';
 import { ContactModal } from './ContactModal';
+import { DemoRequestForm } from './DemoRequestForm';
 import { Footer } from './Footer';
-import { useScrollReveal } from './useScrollReveal';
-import { Send, Sparkles, Mail, CheckCircle2, User, Building2, MessageSquare, ArrowRight } from 'lucide-react';
+import { Shield, ArrowRight } from 'lucide-react';
 
 interface LandingPageProps {
   onLaunchDemo?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
-  useScrollReveal();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
   const [showMobileStickyCta, setShowMobileStickyCta] = useState(false);
 
+  // Auto-open modal if URL query parameter asks for it
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('request') === 'true' || params.get('demo') === 'true' || window.location.pathname === '/request') {
+      setIsModalOpen(true);
+    }
+
     const handleScroll = () => {
-      setShowMobileStickyCta(window.scrollY > 400);
+      setShowMobileStickyCta(window.scrollY > 450);
     };
-    window.addEventListener('scroll', handleScroll);
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  const [inlineForm, setInlineForm] = useState({
-    name: '',
-    email: '',
-    company: '',
-    message: '',
-  });
-  const [inlineSubmitted, setInlineSubmitted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [inlineError, setInlineError] = useState<string | null>(null);
 
-  const handleInlineSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setInlineError(null);
-
-    try {
-      const response = await fetch('https://api.web3forms.com/submit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          access_key: '9eddc368-c586-4cdf-afea-5fa2e28b24c4',
-          name: inlineForm.name,
-          email: inlineForm.email,
-          company: inlineForm.company || 'N/A',
-          message: inlineForm.message,
-          subject: `Cortex Setup Request - ${inlineForm.name} (${inlineForm.company || 'Individual'})`,
-          from_name: 'Cortex Landing Page',
-        }),
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        setInlineSubmitted(true);
-      } else {
-        setInlineError(result.message || 'Unable to submit request. Please try again.');
-      }
-    } catch (error: any) {
-      console.error('[Web3Forms] Error submitting inline form:', error);
-      setInlineError(error?.message || 'Network error occurred while submitting request. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+  const openContactWithPlan = (planTitle?: string) => {
+    if (planTitle) {
+      setModalMessage(`Interested in: ${planTitle}`);
+    } else {
+      setModalMessage('');
     }
+    setIsModalOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-[#06080e] text-slate-100 font-sans selection:bg-indigo-500/30 selection:text-white antialiased">
-      {/* Sticky Header Nav */}
-      <Navbar onOpenContact={() => setIsModalOpen(true)} onLaunchDemo={onLaunchDemo} />
+    <div className="min-h-screen bg-[#0B0F14] text-[#F3F4F6] font-sans antialiased selection:bg-blue-600/30 selection:text-white">
+      {/* 1. Navigation Header */}
+      <Navbar 
+        onOpenContact={() => setIsModalOpen(true)} 
+        onLaunchDemo={onLaunchDemo} 
+      />
 
       <main>
-        {/* Hero Section */}
+        {/* 2. Hero Section (Headline, 2-line subcopy, CTAs, 3 trust chips, integration logo strip) */}
         <Hero onOpenContact={() => setIsModalOpen(true)} />
 
-        {/* 3-Frame Enterprise Product Proof Section (SPOF Table · Departure Simulation · Grounded Agent) */}
+        {/* 3. Product Proof in Authentic Browser Chrome Frames (SPOF Table · Departure Simulation · Grounded Q&A) */}
         <ProductProofSection />
 
-        {/* Architecture Diagram Section */}
-        <ArchitectureDiagram />
-
-        {/* Problem Section (Fragmentation to Unification) */}
-        <ProblemSection />
-
-        {/* How It Works Timeline Section */}
+        {/* 4. How It Works (3 Steps: Connect -> Build Graph -> Mitigate Risk & Search) */}
         <HowItWorks />
 
-        {/* Bento Features Section */}
-        <BentoFeatures />
+        {/* 5. Differentiation (Deterministic Graph Math vs Generic LLMs & DORA Metrics) */}
+        <DifferentiationSection />
 
-        {/* "Why Not Just ChatGPT" Differentiator Section */}
-        <WhyNotChatGptSection />
-
-        {/* BYOC & Zero Cost Section */}
+        {/* 6. Security & BYOC Infrastructure (VPC Boundary, Air-Gapped, Docker Quickstart) */}
         <ByocSection onOpenContact={() => setIsModalOpen(true)} />
 
-        {/* Transparent One-Plan Pricing Section */}
-        <PricingSection onOpenContact={(plan) => {
-          if (plan) {
-            setInlineForm(prev => ({ ...prev, message: `Interested in Cortex ${plan}` }));
-          }
-          setIsModalOpen(true);
-        }} />
+        {/* 7. Transparent Pricing (Community Edition $0 License Fee + Future Enterprise Cloud) */}
+        <PricingSection onOpenContact={openContactWithPlan} />
 
-        {/* FAQ Accordion Section */}
+        {/* 8. Technical FAQ for Engineering Leaders */}
         <FaqSection />
 
-        {/* Inline Contact & Founder Onboarding Section */}
-        <section id="contact" className="py-24 md:py-32 bg-[#06080e] relative overflow-hidden border-t border-slate-800/80">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="bg-[#090d16]/90 border border-slate-800/80 rounded-2xl p-8 sm:p-12 shadow-2xl shadow-indigo-950/30 backdrop-blur-xl">
+        {/* 9. High-Conversion Final CTA & Embedded Setup Request Section */}
+        <section id="contact" className="py-20 md:py-28 bg-[#0B0F14] relative border-t border-white/10 antialiased">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-[#12181F] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl">
               
-              {!inlineSubmitted ? (
-                <div>
-                  <div className="text-center max-w-2xl mx-auto mb-10">
-                    <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#0c111e] border border-slate-800/80 text-indigo-400 text-xs font-mono mb-4">
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>Enterprise Self-Hosted Onboarding</span>
-                    </div>
-                    <h2 className="text-3xl sm:text-4xl font-extrabold text-white font-sans">
-                      Deploy Cortex on Your Infrastructure
-                    </h2>
-                    <p className="mt-3 text-sm sm:text-base text-slate-300 font-normal">
-                      Get Cortex running on your team's AWS, GCP, or Docker infrastructure — self-hosted within your VPC.
-                    </p>
-                  </div>
-
-                  {inlineError && (
-                    <div className="mb-6 max-w-xl mx-auto p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
-                      <span>{inlineError}</span>
-                      <button type="button" onClick={() => setInlineError(null)} className="text-slate-400 hover:text-white cursor-pointer ml-2">
-                        ✕
-                      </button>
-                    </div>
-                  )}
-
-                  <form onSubmit={handleInlineSubmit} className="space-y-4 max-w-xl mx-auto">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-mono text-slate-300 mb-1">
-                          Full Name <span className="text-indigo-400">*</span>
-                        </label>
-                        <div className="relative">
-                          <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                          <input
-                            type="text"
-                            required
-                            placeholder="Alex Morgan"
-                            value={inlineForm.name}
-                            onChange={(e) => setInlineForm({ ...inlineForm, name: e.target.value })}
-                            className="w-full pl-10 pr-4 py-3 bg-[#060911] border border-slate-800/80 rounded-xl text-white text-xs sm:text-sm focus:border-indigo-500 focus:outline-none transition-colors"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-mono text-slate-300 mb-1">
-                          Work Email <span className="text-indigo-400">*</span>
-                        </label>
-                        <div className="relative">
-                          <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                          <input
-                            type="email"
-                            required
-                            placeholder="alex@company.com"
-                            value={inlineForm.email}
-                            onChange={(e) => setInlineForm({ ...inlineForm, email: e.target.value })}
-                            className="w-full pl-10 pr-4 py-3 bg-[#060911] border border-slate-800/80 rounded-xl text-white text-xs sm:text-sm focus:border-indigo-500 focus:outline-none transition-colors"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-mono text-slate-300 mb-1">
-                        Company / Team Name <span className="text-slate-500">(Optional)</span>
-                      </label>
-                      <div className="relative">
-                        <Building2 className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                        <input
-                          type="text"
-                          placeholder="Stripe Infrastructure Team"
-                          value={inlineForm.company}
-                          onChange={(e) => setInlineForm({ ...inlineForm, company: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-[#060911] border border-slate-800/80 rounded-xl text-white text-xs sm:text-sm focus:border-indigo-500 focus:outline-none transition-colors"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-mono text-slate-300 mb-1">
-                        Tell us about your setup <span className="text-slate-500">(GitHub / Slack / Jira)</span>
-                      </label>
-                      <div className="relative">
-                        <MessageSquare className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                        <textarea
-                          rows={3}
-                          placeholder="Tell us what repos, Slack channels, or Jira projects you want to ingest..."
-                          value={inlineForm.message}
-                          onChange={(e) => setInlineForm({ ...inlineForm, message: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-[#060911] border border-slate-800/80 rounded-xl text-white text-xs sm:text-sm focus:border-indigo-500 focus:outline-none transition-colors resize-none"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full py-4 px-4 text-xs sm:text-sm font-mono font-bold text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all shadow-xl shadow-indigo-600/30 flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 border border-indigo-400/20"
-                    >
-                      {isSubmitting ? (
-                        <span>Sending Request...</span>
-                      ) : (
-                        <>
-                          <span>Submit Onboarding Request</span>
-                          <Send className="w-4 h-4 text-white" />
-                        </>
-                      )}
-                    </button>
-                  </form>
+              <div className="text-center max-w-2xl mx-auto mb-8">
+                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#0E131A] border border-white/10 text-blue-400 text-xs font-mono mb-4">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Design Partner Program</span>
                 </div>
-              ) : (
-                <div className="text-center py-8 space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-indigo-500/20 border border-indigo-500/50 text-indigo-400 flex items-center justify-center mx-auto shadow-xl shadow-indigo-500/30">
-                    <CheckCircle2 className="w-10 h-10 text-indigo-400" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white font-sans">
-                    Request Received!
-                  </h3>
-                  <p className="text-sm text-slate-400 leading-relaxed max-w-md mx-auto">
-                    Thanks <span className="text-white font-semibold">{inlineForm.name}</span> — I'll reach out directly to <span className="text-indigo-400 font-semibold">{inlineForm.email}</span> within 24 hours to guide you through setting up Cortex on your cloud infrastructure.
-                  </p>
-                </div>
-              )}
+                <h2 className="text-2xl sm:text-3xl font-bold text-white font-sans tracking-tight">
+                  Deploy Cortex on your infrastructure.
+                </h2>
+                <p className="mt-2 text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                  Schedule a 30-minute architecture walkthrough and receive custom Docker Compose or Kubernetes Helm manifests for your team's VPC.
+                </p>
+              </div>
+
+              {/* Embedded High-UX Enterprise Demo Request Form */}
+              <DemoRequestForm source="Landing Page Bottom Section" />
 
             </div>
           </div>
         </section>
       </main>
 
+      {/* 10. Minimal Institutional Footer */}
+      <Footer onOpenContact={() => setIsModalOpen(true)} />
+
       {/* Mobile Sticky Bottom CTA Bar */}
       {showMobileStickyCta && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-3 bg-[#06080e]/95 backdrop-blur-xl border-t border-slate-800/90 shadow-2xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-3 bg-[#0B0F14]/95 backdrop-blur-md border-t border-white/10 flex items-center justify-between gap-3 shadow-2xl">
           <div className="flex flex-col min-w-0 pl-1">
-            <span className="text-xs font-bold text-white truncate font-sans">Cortex Self-Hosted</span>
-            <span className="text-[10px] text-indigo-400 font-mono">Free Early Access</span>
+            <span className="text-xs font-semibold text-white truncate font-sans">Cortex Self-Hosted</span>
+            <span className="text-[10px] text-blue-400 font-mono">$0 License Fee · VPC</span>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 text-xs font-bold font-mono text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl shadow-lg shadow-indigo-600/30 shrink-0 flex items-center space-x-1.5 cursor-pointer"
+            className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shrink-0 flex items-center space-x-1.5 cursor-pointer shadow-sm"
           >
             <span>Request Setup</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -269,11 +121,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
         </div>
       )}
 
-      {/* Contact Modal overlay */}
-      <ContactModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-
-      {/* Footer */}
-      <Footer onOpenContact={() => setIsModalOpen(true)} />
+      {/* Enterprise Contact & Walkthrough Modal */}
+      <ContactModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        initialMessage={modalMessage}
+      />
     </div>
   );
 };

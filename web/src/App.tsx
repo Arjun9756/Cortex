@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LandingPage } from './landing/LandingPage';
 import { PricingPage } from './pages/PricingPage';
+import { RequestPage } from './pages/RequestPage';
 import { Sidebar, type NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { DashboardOverviewPage } from './pages/DashboardOverviewPage';
@@ -13,9 +14,10 @@ import { TimelinePage } from './pages/TimelinePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 
 export function App() {
-  const [viewMode, setViewMode] = useState<'landing' | 'dashboard' | 'pricing'>(() => {
+  const [viewMode, setViewMode] = useState<'landing' | 'dashboard' | 'pricing' | 'request'>(() => {
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view');
+    if (view === 'request' || window.location.pathname === '/request') return 'request';
     if (view === 'pricing' || window.location.pathname === '/pricing') return 'pricing';
     if (view === 'dashboard' || window.location.pathname === '/dashboard') return 'dashboard';
     // Default to Landing Page
@@ -124,6 +126,10 @@ export function App() {
         );
     }
   };
+
+  if (viewMode === 'request') {
+    return <RequestPage onGoBack={() => setViewMode('landing')} onLaunchDemo={() => setViewMode('dashboard')} />;
+  }
 
   if (viewMode === 'pricing') {
     return <PricingPage onGoBack={() => setViewMode('landing')} onLaunchDemo={() => setViewMode('dashboard')} />;

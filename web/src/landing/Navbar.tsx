@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Menu, X, Zap } from 'lucide-react';
+import { Menu, X, ArrowRight } from 'lucide-react';
 import { isDemoEnabled } from '../config';
 
 interface NavbarProps {
@@ -16,7 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
 
-      const sectionIds = ['proof', 'architecture', 'features', 'byoc', 'pricing', 'faq'];
+      const sectionIds = ['proof', 'how-it-works', 'differentiation', 'security', 'pricing', 'faq'];
       const scrollPosition = window.scrollY + 120;
 
       for (const id of sectionIds) {
@@ -35,7 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -49,25 +49,25 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
 
   const navItems = [
     { id: 'proof', label: 'Product Proof' },
-    { id: 'architecture', label: 'Architecture' },
-    { id: 'features', label: 'Capabilities' },
-    { id: 'byoc', label: 'Self-Hosted Setup' },
+    { id: 'how-it-works', label: 'How It Works' },
+    { id: 'differentiation', label: 'Architecture & Math' },
+    { id: 'security', label: 'Security & BYOC' },
     { id: 'pricing', label: 'Pricing' },
     { id: 'faq', label: 'FAQ' },
   ];
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-40 transition-colors duration-200 ${
         isScrolled
-          ? 'bg-[#06080e]/95 backdrop-blur-xl border-b border-slate-800/80 py-3 shadow-2xl shadow-indigo-950/10'
-          : 'bg-transparent py-5'
+          ? 'bg-[#0B0F14]/95 backdrop-blur-md border-b border-white/10 py-3 shadow-md'
+          : 'bg-transparent py-4'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Left: Brand Logo */}
         <div
-          className="flex items-center space-x-3 cursor-pointer group focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none rounded-xl"
+          className="flex items-center space-x-3 cursor-pointer group rounded-lg focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none p-1"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           tabIndex={0}
           onKeyDown={(e) => {
@@ -76,31 +76,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
             }
           }}
         >
-          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 border border-indigo-500/40 overflow-hidden shadow-lg shadow-indigo-500/20 group-hover:border-indigo-400 transition-all">
-            <img src="/cortex-logo.png" alt="Cortex Logo" className="w-full h-full object-cover" />
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#161B22] border border-white/10 overflow-hidden text-blue-400 font-mono font-bold text-sm">
+            <img src="/cortex-logo.png" alt="Cortex" className="w-full h-full object-cover" />
           </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-lg font-extrabold tracking-tight text-white font-sans">
+          <div className="flex items-baseline space-x-2">
+            <span className="text-base font-bold tracking-tight text-white font-sans">
               Cortex
             </span>
-            <span className="px-2.5 py-0.5 text-[10px] font-mono tracking-wider font-bold rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 uppercase">
-              Self-Hosted Knowledge Graph
+            <span className="hidden sm:inline-block text-[11px] font-mono text-slate-400">
+              engineering intelligence
             </span>
           </div>
         </div>
 
-        {/* Desktop Navigation Links with Active Scrollspy */}
-        <nav className="hidden md:flex items-center space-x-7 text-xs font-semibold uppercase tracking-wider">
+        {/* Desktop Navigation Links */}
+        <nav className="hidden lg:flex items-center space-x-7 text-xs font-medium text-slate-300">
           {navItems.map((item) => {
             const isActive = activeSection === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => scrollToSection(item.id)}
-                className={`transition-all duration-200 cursor-pointer py-1 border-b-2 focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none rounded-sm ${
+                className={`transition-colors py-1 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded ${
                   isActive
-                    ? 'text-white border-indigo-400 font-bold'
-                    : 'text-slate-400 border-transparent hover:text-slate-200'
+                    ? 'text-white font-semibold'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {item.label}
@@ -110,69 +110,78 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
         </nav>
 
         {/* Right Action CTAs */}
-        <div className="hidden md:flex items-center space-x-3">
+        <div className="hidden sm:flex items-center space-x-3">
           {onLaunchDemo && isDemoEnabled && (
             <button
               onClick={onLaunchDemo}
-              className="px-4 py-2 text-xs font-bold font-mono text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl transition-all cursor-pointer flex items-center space-x-2 focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none"
+              className="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#12181F] hover:bg-[#1A222D] border border-white/10 rounded-lg transition-colors cursor-pointer"
             >
-              <Zap className="w-3.5 h-3.5 text-amber-300" />
-              <span>Launch Demo</span>
+              Interactive Demo
             </button>
           )}
 
           <button
             onClick={onOpenContact}
-            className="px-4 py-2 text-xs font-bold font-mono text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/25 border border-indigo-400/20 focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none"
+            className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-400"
           >
-            Request Free Setup
+            Request Walkthrough
           </button>
         </div>
 
         {/* Mobile Menu Toggle Button */}
-        <div className="md:hidden flex items-center space-x-2">
-          {onLaunchDemo && isDemoEnabled && (
-            <button
-              onClick={onLaunchDemo}
-              className="px-3 py-1.5 text-xs font-bold font-mono text-white bg-indigo-600 rounded-lg flex items-center space-x-1"
-            >
-              <span>Demo</span>
-            </button>
-          )}
+        <div className="lg:hidden flex items-center space-x-2">
+          <button
+            onClick={onOpenContact}
+            className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg"
+          >
+            Request Demo
+          </button>
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-lg"
+            className="p-2 text-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg"
             aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#07090e]/95 border-b border-slate-800/80 px-4 pt-3 pb-6 space-y-3 font-mono text-xs text-slate-300 backdrop-blur-xl animate-in fade-in duration-200">
+        <div className="lg:hidden bg-[#0E131A] border-b border-white/10 px-4 pt-3 pb-6 space-y-2 text-sm text-slate-300 animate-in fade-in duration-150">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => scrollToSection(item.id)}
-              className={`block w-full text-left py-2.5 border-b border-slate-900 transition-colors ${
-                activeSection === item.id ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-white'
+              className={`block w-full text-left py-2 px-2 rounded-lg transition-colors ${
+                activeSection === item.id ? 'bg-white/5 text-white font-semibold' : 'text-slate-400 hover:text-white'
               }`}
             >
               {item.label}
             </button>
           ))}
 
+          {onLaunchDemo && isDemoEnabled && (
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onLaunchDemo();
+              }}
+              className="w-full text-left py-2 px-2 text-slate-300 font-mono text-xs hover:text-white"
+            >
+              Launch Live App Demo →
+            </button>
+          )}
+
           <button
             onClick={() => {
               setMobileMenuOpen(false);
               onOpenContact();
             }}
-            className="w-full mt-3 py-3 font-bold text-center text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/30"
+            className="w-full mt-3 py-2.5 font-semibold text-center text-white bg-blue-600 hover:bg-blue-500 rounded-lg flex items-center justify-center space-x-2 shadow-sm"
           >
-            <span>Request Free Setup</span>
+            <span>Request Walkthrough</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

@@ -6,10 +6,10 @@ import {
   GitBranch, 
   CheckCircle2, 
   AlertTriangle, 
-  Sparkles, 
-  GitCommit, 
-  Check, 
-  FileCode 
+  FileCode, 
+  Lock, 
+  Search, 
+  ExternalLink 
 } from 'lucide-react';
 
 export const ProductProofSection: React.FC = () => {
@@ -23,9 +23,9 @@ export const ProductProofSection: React.FC = () => {
       primaryOwner: 'rohanverma',
       commitsPct: 100,
       status: 'Fragile (SPOF)',
-      statusClass: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+      badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
       barColor: 'bg-rose-500',
-      reason: '100% commit ownership by single author. Zero co-authors on Twilio SMS worker queue.'
+      reason: '100% commit ownership by single author. Zero co-authors on SMS worker queue.'
     },
     {
       name: 'payment-gateway-v2',
@@ -33,9 +33,9 @@ export const ProductProofSection: React.FC = () => {
       primaryOwner: 'devendrasingh',
       commitsPct: 84,
       status: 'Concentrated Risk',
-      statusClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
       barColor: 'bg-amber-500',
-      reason: 'Devendra Singh holds 84% commit ownership. Single maintainer of PCI-DSS tokenization pipeline.'
+      reason: 'Devendra Singh holds 84% commit volume. Sole author of PCI-DSS tokenization pipeline.'
     },
     {
       name: 'billing-service',
@@ -43,65 +43,61 @@ export const ProductProofSection: React.FC = () => {
       primaryOwner: 'priyasharma',
       commitsPct: 80,
       status: 'Concentrated Risk',
-      statusClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
       barColor: 'bg-amber-500',
-      reason: 'Priya Sharma is sole author of Stripe idempotency webhook handlers & invoice generator.'
+      reason: 'Priya Sharma is primary author of Stripe idempotency webhook handlers & invoice generator.'
     },
     {
       name: 'auth-service',
-      busFactor: 2,
+      busFactor: 3,
       primaryOwner: 'vikrampatel',
       commitsPct: 42,
-      status: 'Healthy (Distributed)',
-      statusClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      status: 'Distributed (Healthy)',
+      badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
       barColor: 'bg-emerald-500',
       reason: 'Shared ownership across 3 active contributors. Documented OAuth2 PKCE key rotation.'
     }
   ];
 
   return (
-    <section id="proof" className="py-20 md:py-28 bg-[#06080e] relative overflow-hidden border-t border-slate-800/80 antialiased">
-      {/* Subtle background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-indigo-600/5 rounded-full blur-[140px] pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    <section id="proof" className="py-20 md:py-28 bg-[#0B0F14] relative border-t border-white/10 antialiased">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#0c111e] border border-slate-800 text-indigo-400 text-xs font-mono mb-4">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Verifiable Product Proof</span>
-            <span className="text-slate-500">· Real Graph Output</span>
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#12181F] border border-white/10 text-slate-300 text-xs font-mono mb-4">
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span>Product Proof · Real Interface Views</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-sans">
-            See the actual intelligence Cortex delivers.
+          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight font-sans">
+            Quantifiable engineering risk. Not opinions.
           </h2>
-          <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed font-normal">
-            No mockups or vague promises. Here is what Cortex computes from your git commits, pull requests, and internal discussions.
+          <p className="mt-3 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Cortex parses git commits, PR review graphs, and issue discussions into deterministic risk metrics and grounded contextual search.
           </p>
         </div>
 
-        {/* Tab Selection Navigation (3 Enterprise Frames) */}
+        {/* Tab Selection Navigation */}
         <div className="flex justify-center mb-8">
-          <div className="inline-flex p-1.5 rounded-2xl bg-[#090d16] border border-slate-800/90 shadow-xl max-w-full overflow-x-auto">
+          <div className="inline-flex p-1 rounded-lg bg-[#12181F] border border-white/10 max-w-full overflow-x-auto">
             <button
               onClick={() => setActiveTab('spof')}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-semibold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+              className={`px-4 sm:px-5 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'spof'
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/20 border border-indigo-400/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <ShieldAlert className="w-4 h-4" />
-              <span>1. Repo SPOF &amp; Bus Factor</span>
+              <span>1. Single Point of Failure (SPOF)</span>
             </button>
 
             <button
               onClick={() => setActiveTab('departure')}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-semibold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+              className={`px-4 sm:px-5 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'departure'
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/20 border border-indigo-400/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <UserCheck className="w-4 h-4" />
@@ -110,304 +106,346 @@ export const ProductProofSection: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('agent')}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-semibold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+              className={`px-4 sm:px-5 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'agent'
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/20 border border-indigo-400/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <MessageSquareCode className="w-4 h-4" />
-              <span>3. Grounded Agent &amp; Citations</span>
+              <span>3. Grounded Q&amp;A With Citations</span>
             </button>
           </div>
         </div>
 
-        {/* FRAME 1: REPO SPOF & BUS FACTOR TABLE */}
-        {activeTab === 'spof' && (
-          <div className="max-w-5xl mx-auto bg-[#090d16]/95 border border-slate-800/90 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-800/80 gap-3">
-              <div>
-                <span className="text-[11px] font-mono uppercase tracking-widest text-indigo-400 font-semibold">
-                  Deterministic Codebase Metrics
-                </span>
-                <h3 className="text-xl font-bold text-white font-sans mt-0.5">
-                  Single-Point-of-Failure (SPOF) Risk Table
-                </h3>
-              </div>
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-xs font-mono">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Calculated in code from Git commit graphs</span>
-              </div>
+        {/* REAL BROWSER CHROME CONTAINER */}
+        <div className="max-w-5xl mx-auto browser-chrome">
+          {/* Browser Window Header Bar */}
+          <div className="browser-header justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="browser-dot bg-[#EF4444]/80" />
+              <span className="browser-dot bg-[#F59E0B]/80" />
+              <span className="browser-dot bg-[#10B981]/80" />
+              <span className="text-xs text-slate-500 font-mono ml-2 hidden sm:inline">Cortex Enterprise UI</span>
             </div>
 
-            {/* Table */}
-            <div className="mt-6 overflow-x-auto">
-              <table className="w-full text-left font-mono text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-[11px]">
-                    <th className="pb-3 font-semibold">REPOSITORY</th>
-                    <th className="pb-3 font-semibold">BUS FACTOR</th>
-                    <th className="pb-3 font-semibold">PRIMARY MAINTAINER</th>
-                    <th className="pb-3 font-semibold">COMMIT RATIO</th>
-                    <th className="pb-3 font-semibold">STATUS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {repoData.map((repo) => (
-                    <tr key={repo.name} className="hover:bg-slate-800/20 transition-colors">
-                      <td className="py-4 font-bold text-white flex items-center space-x-2">
-                        <FileCode className="w-4 h-4 text-indigo-400 shrink-0" />
-                        <span>{repo.name}</span>
-                      </td>
-                      <td className="py-4">
-                        <span className={`px-2.5 py-1 rounded-md font-bold text-xs ${
-                          repo.busFactor === 0 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' :
-                          repo.busFactor === 1 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
-                          'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                        }`}>
-                          BF: {repo.busFactor}
-                        </span>
-                      </td>
-                      <td className="py-4 text-slate-300">
-                        @{repo.primaryOwner}
-                      </td>
-                      <td className="py-4 w-44">
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[10px] text-slate-400">
-                            <span>{repo.commitsPct}% commits</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                            <div className={`h-full ${repo.barColor}`} style={{ width: `${repo.commitsPct}%` }} />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${repo.statusClass}`}>
-                          {repo.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Simulated Address Bar */}
+            <div className="flex items-center space-x-2 px-3 py-1 bg-[#090D12] border border-white/5 rounded-md text-[11px] font-mono text-slate-400 w-72 sm:w-96 truncate">
+              <Lock className="w-3 h-3 text-slate-500 shrink-0" />
+              <span className="truncate">
+                {activeTab === 'spof' && 'https://cortex.internal/v1/metrics/bus-factor'}
+                {activeTab === 'departure' && 'https://cortex.internal/v1/simulate/devendra-singh'}
+                {activeTab === 'agent' && 'https://cortex.internal/v1/grounded-query?q=clickhouse-migration'}
+              </span>
             </div>
 
-            {/* CTO Plain-English Caption */}
-            <div className="mt-6 pt-5 border-t border-slate-800/80 flex items-start space-x-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-[#060911] p-4 rounded-xl border border-slate-800">
-              <div className="p-1 rounded bg-indigo-500/20 text-indigo-400 shrink-0 mt-0.5">
-                <Check className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <strong className="text-white font-semibold">Why this matters for engineering leaders: </strong>
-                <span>
-                  Pinpoints mission-critical codebases where over 80% of institutional knowledge rests with one developer. Bus factor is computed directly from commit frequency, author churn, and module distribution — giving your leadership team early warning before an engineer's resignation creates an outage.
-                </span>
-              </div>
+            <div className="text-[11px] font-mono text-slate-500 hidden sm:block">
+              VPC Isolated
             </div>
           </div>
-        )}
 
-        {/* FRAME 2: DEPARTURE & SUCCESSOR SIMULATION */}
-        {activeTab === 'departure' && (
-          <div className="max-w-5xl mx-auto bg-[#090d16]/95 border border-slate-800/90 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-800/80 gap-3">
-              <div>
-                <span className="text-[11px] font-mono uppercase tracking-widest text-purple-400 font-semibold">
-                  Continuity Planning Engine
-                </span>
-                <h3 className="text-xl font-bold text-white font-sans mt-0.5">
-                  Simulated Departure Impact: Devendra Singh (Staff Engineer)
-                </h3>
-              </div>
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono font-bold">
-                <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-                <span>80% Departure Knowledge Risk</span>
-              </div>
-            </div>
-
-            {/* Impact Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-[#060911] p-5 rounded-xl border border-slate-800 space-y-3">
-                <div className="text-xs font-mono text-slate-400 uppercase tracking-wider font-semibold">
-                  Vulnerable Repositories &amp; Modules
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono p-2 rounded bg-slate-900/60 border border-slate-800">
-                    <span className="text-white font-semibold">payment-gateway-v2</span>
-                    <span className="text-rose-400 font-bold">100% Core Ownership</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs font-mono p-2 rounded bg-slate-900/60 border border-slate-800">
-                    <span className="text-white font-semibold">pci-token-vault</span>
-                    <span className="text-amber-400 font-bold">Sole Active Maintainer</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-[#060911] p-5 rounded-xl border border-slate-800 space-y-3">
-                <div className="text-xs font-mono text-slate-400 uppercase tracking-wider font-semibold">
-                  Orphaned Technologies &amp; Keys
-                </div>
-                <div className="flex flex-wrap gap-2 pt-1 font-mono text-xs">
-                  <span className="px-2.5 py-1 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Go gRPC (50k TPS)</span>
-                  <span className="px-2.5 py-1 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">HashiCorp Vault</span>
-                  <span className="px-2.5 py-1 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Stripe PCI-DSS</span>
-                  <span className="px-2.5 py-1 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Valkey Cache</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Deterministic Successor Recommendations */}
-            <div className="bg-[#0c111e] p-5 rounded-xl border border-indigo-500/30 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-mono text-indigo-300 uppercase tracking-wider font-bold flex items-center space-x-2">
-                  <UserCheck className="w-4 h-4 text-indigo-400" />
-                  <span>Successor Ranking (4-Factor Jaccard Match Formula)</span>
-                </div>
-                <span className="text-[10px] font-mono text-slate-400">Deterministic Math · Calculated in Code</span>
-              </div>
-
-              <div className="space-y-3">
-                {/* Candidate 1 */}
-                <div className="p-3.5 rounded-lg bg-[#060911] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
+          {/* Browser Window Body Content */}
+          <div className="p-6 sm:p-8 bg-[#12181F]">
+            
+            {/* FRAME 1: REPO SPOF TABLE */}
+            {activeTab === 'spof' && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/10 gap-3">
+                  <div>
                     <div className="flex items-center space-x-2">
-                      <span className="text-sm font-bold text-white font-mono">Priya Sharma</span>
-                      <span className="text-xs text-slate-400">(Staff Engineer)</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        Best Successor
+                      <h3 className="text-lg font-bold text-white font-sans">
+                        Repository Bus Factor Matrix
+                      </h3>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        Formula: Author Dispersion
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400">
-                      Matches Go, Valkey, and payment gateway APIs with 82% available capacity.
+                    <p className="text-xs text-slate-400 mt-1">
+                      Computed from 1,420 commits across 4 services over a 180-day rolling window.
                     </p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-base font-bold font-mono text-indigo-400">38% Composite Match</div>
-                    <div className="text-[10px] font-mono text-slate-500">13% Tech Jaccard · 82% Capacity</div>
+                  <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
+                    <span>Export CSV</span>
+                    <span>·</span>
+                    <span className="text-blue-400">View Cypher Query</span>
                   </div>
                 </div>
 
-                {/* Candidate 2 */}
-                <div className="p-3.5 rounded-lg bg-[#060911] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-bold text-white font-mono">Neha Gupta</span>
-                      <span className="text-xs text-slate-400">(Lead Data Engineer)</span>
+                {/* Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left font-mono text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 text-slate-400 text-[11px]">
+                        <th className="pb-3 font-semibold">SERVICE</th>
+                        <th className="pb-3 font-semibold">BUS FACTOR</th>
+                        <th className="pb-3 font-semibold">PRIMARY MAINTAINER</th>
+                        <th className="pb-3 font-semibold">COMMIT RATIO</th>
+                        <th className="pb-3 font-semibold">DIAGNOSTIC</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {repoData.map((repo) => (
+                        <tr key={repo.name} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-3.5 font-semibold text-white flex items-center space-x-2">
+                            <FileCode className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{repo.name}</span>
+                          </td>
+                          <td className="py-3.5">
+                            <span className={`px-2 py-0.5 rounded font-mono font-bold text-xs ${
+                              repo.busFactor === 0 ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30' :
+                              repo.busFactor === 1 ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' :
+                              'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            }`}>
+                              BF: {repo.busFactor}
+                            </span>
+                          </td>
+                          <td className="py-3.5 text-slate-300">
+                            @{repo.primaryOwner}
+                          </td>
+                          <td className="py-3.5 w-40">
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] text-slate-400">
+                                <span>{repo.commitsPct}% commits</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-[#0E131A] rounded-full overflow-hidden">
+                                <div className={`h-full ${repo.barColor}`} style={{ width: `${repo.commitsPct}%` }} />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-medium border ${repo.badgeClass}`}>
+                              {repo.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Plain-spoken takeaway */}
+                <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 text-xs text-slate-300 leading-relaxed flex items-start space-x-3">
+                  <div className="w-5 h-5 rounded bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-white">Why engineering leaders rely on this: </strong>
+                    <span>
+                      Identifies modules where knowledge is concentrated in a single head before an unexpected departure triggers a production incident. No manual surveys or documentation sprints required.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* FRAME 2: DEPARTURE & SUCCESSOR SIMULATION */}
+            {activeTab === 'departure' && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/10 gap-3">
+                  <div>
+                    <h3 className="text-lg font-bold text-white font-sans">
+                      Departure Impact Simulation: Devendra Singh (Staff Engineer)
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Evaluates orphaned components, unreviewed pull requests, and matching successors based on tech stack intersection.
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono font-medium">
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                    <span>84% Core Payment Risk</span>
+                  </div>
+                </div>
+
+                {/* At-risk modules grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 space-y-2">
+                    <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">
+                      Vulnerable Modules &amp; Repositories
+                    </span>
+                    <div className="space-y-1.5 text-xs font-mono">
+                      <div className="flex justify-between p-2 rounded bg-[#12181F] border border-white/5">
+                        <span className="text-white">payment-gateway-v2</span>
+                        <span className="text-rose-400">Sole Active Maintainer</span>
+                      </div>
+                      <div className="flex justify-between p-2 rounded bg-[#12181F] border border-white/5">
+                        <span className="text-white">pci-token-vault</span>
+                        <span className="text-amber-400">84% Ownership</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-400">
-                      Co-authored event bus pipeline; 70% available capacity.
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 space-y-2">
+                    <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">
+                      Associated Technologies &amp; Keys
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 pt-1 text-xs font-mono">
+                      <span className="px-2 py-1 rounded bg-[#12181F] text-slate-300 border border-white/10">Go gRPC (50k TPS)</span>
+                      <span className="px-2 py-1 rounded bg-[#12181F] text-slate-300 border border-white/10">HashiCorp Vault</span>
+                      <span className="px-2 py-1 rounded bg-[#12181F] text-slate-300 border border-white/10">Stripe PCI-DSS</span>
+                      <span className="px-2 py-1 rounded bg-[#12181F] text-slate-300 border border-white/10">Valkey Cache</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Successor Recommendation */}
+                <div className="p-5 rounded-lg bg-[#0E131A] border border-blue-500/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-mono text-blue-400 font-semibold uppercase tracking-wider flex items-center space-x-2">
+                      <UserCheck className="w-4 h-4 text-blue-400" />
+                      <span>Recommended Successors (4-Factor Jaccard Match)</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500">Deterministic Algorithm</span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {/* Candidate 1 */}
+                    <div className="p-3 rounded-lg bg-[#12181F] border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-semibold text-white font-mono">Priya Sharma</span>
+                          <span className="text-xs text-slate-400">(Staff Engineer)</span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                            Primary Recommendation
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Co-authors payment gateway webhook handlers; 82% current bandwidth capacity.
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0 font-mono">
+                        <div className="text-sm font-bold text-blue-400">38% Composite Match</div>
+                        <div className="text-[10px] text-slate-500">Go, Vault, Postgres overlap</div>
+                      </div>
+                    </div>
+
+                    {/* Candidate 2 */}
+                    <div className="p-3 rounded-lg bg-[#12181F] border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-semibold text-white font-mono">Neha Gupta</span>
+                          <span className="text-xs text-slate-400">(Lead Data Engineer)</span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Maintains event pipeline consuming payment events; 70% available capacity.
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0 font-mono">
+                        <div className="text-sm font-semibold text-slate-300">29% Composite Match</div>
+                        <div className="text-[10px] text-slate-500">Kafka &amp; Go overlap</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Plain-spoken takeaway */}
+                <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 text-xs text-slate-300 leading-relaxed flex items-start space-x-3">
+                  <div className="w-5 h-5 rounded bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-white">Continuity without drama: </strong>
+                    <span>
+                      When an engineer gives notice, leadership immediately knows which internal peers already share the necessary technical context to take over ownership smoothly.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* FRAME 3: GROUNDED AGENT Q&A */}
+            {activeTab === 'agent' && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/10 gap-3">
+                  <div>
+                    <h3 className="text-lg font-bold text-white font-sans">
+                      Grounded Codebase Search with Source Citations
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Queries graph topology and vector search in parallel. Returns answers backed by exact Git commits and Jira epics.
                     </p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-base font-bold font-mono text-slate-300">29% Composite Match</div>
-                    <div className="text-[10px] font-mono text-slate-500">9% Tech Jaccard · 70% Capacity</div>
+                  <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-mono">
+                    <Search className="w-3.5 h-3.5" />
+                    <span>Exact Source Citations</span>
+                  </div>
+                </div>
+
+                {/* Simulated Query Box */}
+                <div className="p-3.5 rounded-lg bg-[#0E131A] border border-white/10">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
+                    Leadership Query:
+                  </span>
+                  <p className="text-sm font-mono text-white font-medium">
+                    "Why was Elasticsearch replaced with ClickHouse in realtime-stream-engine, and who approved it?"
+                  </p>
+                </div>
+
+                {/* Execution Trace */}
+                <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 font-mono text-xs space-y-2">
+                  <div className="text-blue-400 font-semibold flex items-center space-x-2 text-[11px]">
+                    <span className="w-2 h-2 rounded-full bg-blue-400" />
+                    <span>Graph &amp; Vector Execution Trace:</span>
+                  </div>
+                  <div className="space-y-1 text-slate-400 pl-3 border-l border-white/10 text-[11px]">
+                    <div>1. <code className="text-slate-200">vector_search("ClickHouse migration rationale")</code> → Retrieved ADR-014 from Slack #data-streaming</div>
+                    <div>2. <code className="text-slate-200">{"graph_cypher(\"MATCH (p:Person)-[:AUTHORED]->(c:Commit)-[:TOUCHES]->(:Repo {name: 'realtime-stream'})\")"}</code> → Retrieved Commit d2e3f4a</div>
+                    <div>3. <code className="text-slate-200">jira_lookup("STREAM-401")</code> → Epic status: Done by Neha Gupta</div>
+                  </div>
+                </div>
+
+                {/* Grounded Result Box */}
+                <div className="p-5 rounded-lg bg-[#0E131A] border border-white/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-white">
+                      Migration Rationale &amp; Author Lineage
+                    </h4>
+                    <span className="text-[10px] font-mono text-emerald-400 font-semibold">
+                      Verified from 3 Sources
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                    The migration was led by <strong className="text-white">Neha Gupta</strong> (Lead Data Engineer) under Jira ticket <code className="text-blue-400 font-mono">STREAM-401</code> to resolve 75% disk storage bloat. Elasticsearch index compaction issues were eliminated by switching to ClickHouse columnar compression, reducing query latency from 340ms to 45ms for realtime streaming dashboards.
+                  </p>
+
+                  {/* Citations list */}
+                  <div className="pt-3 border-t border-white/10 space-y-2 font-mono text-xs">
+                    <span className="text-[11px] text-slate-400 font-medium uppercase tracking-wider block">
+                      Verifiable Source Links:
+                    </span>
+                    <div className="flex flex-wrap gap-2 text-[11px]">
+                      <span className="px-2.5 py-1 rounded bg-[#12181F] border border-white/10 text-slate-300 flex items-center space-x-1.5">
+                        <GitBranch className="w-3 h-3 text-blue-400" />
+                        <span>Commit d2e3f4a (merged 2024-08-14)</span>
+                      </span>
+                      <span className="px-2.5 py-1 rounded bg-[#12181F] border border-white/10 text-slate-300 flex items-center space-x-1.5">
+                        <ExternalLink className="w-3 h-3 text-purple-400" />
+                        <span>Jira Epic STREAM-401</span>
+                      </span>
+                      <span className="px-2.5 py-1 rounded bg-[#12181F] border border-white/10 text-slate-300 flex items-center space-x-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                        <span>Slack #data-streaming (thread 1892)</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Plain-spoken takeaway */}
+                <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 text-xs text-slate-300 leading-relaxed flex items-start space-x-3">
+                  <div className="w-5 h-5 rounded bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-white">Zero hallucination risk: </strong>
+                    <span>
+                      General-purpose AI guesses and invents code reasons. Cortex anchors every sentence to an audited Git commit, Jira ticket, or Slack architecture discussion.
+                    </span>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* CTO Plain-English Caption */}
-            <div className="pt-4 border-t border-slate-800/80 flex items-start space-x-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-[#060911] p-4 rounded-xl border border-slate-800">
-              <div className="p-1 rounded bg-purple-500/20 text-purple-400 shrink-0 mt-0.5">
-                <Check className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <strong className="text-white font-semibold">Continuity planning, not surveillance: </strong>
-                <span>
-                  When a key engineer gives 2 weeks notice, Cortex immediately identifies which systems are orphaned and ranks existing engineers who already have intersecting technology commits and bandwidth to inherit ownership.
-                </span>
-              </div>
-            </div>
           </div>
-        )}
-
-        {/* FRAME 3: GROUNDED AGENT & CITATIONS */}
-        {activeTab === 'agent' && (
-          <div className="max-w-5xl mx-auto bg-[#090d16]/95 border border-slate-800/90 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-800/80 gap-3">
-              <div>
-                <span className="text-[11px] font-mono uppercase tracking-widest text-cyan-400 font-semibold">
-                  Multi-Tool Decomposed Agent
-                </span>
-                <h3 className="text-xl font-bold text-white font-sans mt-0.5">
-                  Grounded Codebase Intelligence with Verifiable Citations
-                </h3>
-              </div>
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono">
-                <GitCommit className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Cites real commit SHAs &amp; Jira epics</span>
-              </div>
-            </div>
-
-            {/* User Question */}
-            <div className="bg-[#060911] p-4 rounded-xl border border-slate-800">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
-                Incoming Query from Engineering Leader
-              </span>
-              <p className="text-sm font-mono font-semibold text-white">
-                "Why was Elasticsearch replaced with ClickHouse in realtime-stream-engine, and who approved it?"
-              </p>
-            </div>
-
-            {/* Tool Execution Trace */}
-            <div className="bg-[#080d19] p-4 rounded-xl border border-indigo-500/30 font-mono text-xs space-y-2">
-              <div className="text-indigo-300 font-bold flex items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Tool Execution Pipeline (Parallel Dispatch):</span>
-              </div>
-              <div className="text-slate-400 space-y-1 pl-4 border-l-2 border-indigo-500/30 text-[11px]">
-                <div>1. <code className="text-slate-200">vector_search("Elasticsearch ClickHouse migration rationale")</code> → Retrieved ADR-014 in Slack #data-streaming</div>
-                <div>2. <code className="text-slate-200">graph_search("Commit Touching realtime-stream-engine ClickHouse")</code> → Retrieved Commit d2e3f4a by Neha Gupta</div>
-                <div>3. <code className="text-slate-200">sql_tool("SELECT key, summary, status FROM jira_issues WHERE key='STREAM-401'")</code> → Retrieved Jira ticket</div>
-              </div>
-            </div>
-
-            {/* Synthesized Answer with Proof */}
-            <div className="p-5 rounded-xl bg-[#0a101f] border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-white font-mono">
-                  75% Disk Storage Reduction &amp; 45ms Query Latency
-                </h4>
-                <span className="text-[10px] font-mono text-emerald-400 font-bold">100% Grounded</span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                The migration was driven by <strong className="text-white">Neha Gupta</strong> (Lead Data Engineer) under Jira ticket <code className="text-indigo-300 font-mono">STREAM-401</code>. Elasticsearch index bloat was eliminated by moving to ClickHouse columnar block compression, and Apache Flink native streaming was connected directly to the new tables.
-              </p>
-
-              {/* Citations Box */}
-              <div className="pt-3 border-t border-slate-800/80 space-y-1.5">
-                <div className="text-[11px] font-mono text-slate-400 font-semibold uppercase tracking-wider">
-                  Direct Verifiable Citations:
-                </div>
-                <div className="flex flex-wrap gap-2 text-[11px] font-mono">
-                  <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-cyan-300 flex items-center space-x-1">
-                    <GitBranch className="w-3 h-3 text-cyan-400" />
-                    <span>Commit d2e3f4a</span>
-                  </span>
-                  <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-purple-300 flex items-center space-x-1">
-                    <span>Jira STREAM-401</span>
-                  </span>
-                  <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-amber-300 flex items-center space-x-1">
-                    <span>Slack #data-streaming</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* CTO Plain-English Caption */}
-            <div className="pt-4 border-t border-slate-800/80 flex items-start space-x-3 text-xs sm:text-sm text-slate-300 leading-relaxed bg-[#060911] p-4 rounded-xl border border-slate-800">
-              <div className="p-1 rounded bg-cyan-500/20 text-cyan-400 shrink-0 mt-0.5">
-                <Check className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <strong className="text-white font-semibold">Evidence-backed answers with verifiable citations: </strong>
-                <span>
-                  Generic AI makes up plausible-sounding answers. Cortex queries the underlying Neo4j graph, PostgreSQL metrics, and Qdrant embeddings to provide definitive answers anchored directly in Git commits, Jira issues, and Slack ADR discussions.
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
 
       </div>
     </section>

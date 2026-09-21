@@ -1,13 +1,13 @@
 import React from 'react';
 import { 
   ArrowRight, 
-  Network, 
-  ArrowUpRight, 
-  CheckCircle2
+  Terminal, 
+  CheckCircle2,
+  Lock,
+  GitBranch,
+  Calculator
 } from 'lucide-react';
 import { GraphBackground } from './GraphBackground';
-import { InteractiveQueryDemo } from './InteractiveQueryDemo';
-import { VideoShowcase } from './VideoShowcase';
 
 interface HeroProps {
   onOpenContact: () => void;
@@ -15,46 +15,36 @@ interface HeroProps {
 
 export const Hero: React.FC<HeroProps> = ({ onOpenContact }) => {
   return (
-    <section className="relative py-24 md:py-32 overflow-hidden bg-[#06080e] antialiased">
-      {/* Dynamic Graph Background Canvas */}
+    <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden bg-[#0B0F14] antialiased">
+      {/* Non-distracting CSS dot grid background */}
       <GraphBackground />
 
-      {/* Subtle Indigo/Violet Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-gradient-to-tr from-indigo-600/10 via-purple-600/10 to-pink-600/5 rounded-full blur-[120px] pointer-events-none" />
-
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
-        <div className="text-center max-w-4xl mx-auto">
+        <div className="text-center max-w-3xl mx-auto">
           
-          {/* 1. Category Badge */}
-          <div
-            onClick={onOpenContact}
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-[#0d121f] border border-slate-800/80 text-slate-300 text-xs font-mono mb-8 hover:border-indigo-500/40 transition-all cursor-pointer shadow-lg shadow-indigo-950/20 group"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-200 font-semibold tracking-wide">Enterprise Knowledge Graph for Engineering Teams</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-indigo-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          {/* 1. Category Tag */}
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#12181F] border border-white/10 text-slate-300 text-xs font-mono mb-8">
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span className="font-medium tracking-wide">Self-Hosted Knowledge Graph for Engineering Teams</span>
           </div>
 
-          {/* 2. Headline */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold text-white tracking-tight leading-[1.08] font-sans">
-            Engineering Knowledge,
-            <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-200 to-indigo-400 font-extrabold">
-              Decoupled From Key Engineers.
-            </span>
+          {/* 2. Headline: Problem + Outcome in 1 clear headline (≤ 2 lines, no rainbow gradient) */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.12] font-sans">
+            Engineering knowledge, decoupled from key engineers.
           </h1>
 
-          {/* 3. Subheadline - 2 Lines Max for CTOs */}
-          <p className="mt-6 text-base sm:text-lg text-slate-300 font-normal max-w-3xl mx-auto leading-relaxed">
-            When engineers leave, tribal knowledge vanishes. <strong className="text-white font-semibold">Cortex connects GitHub, Slack, and Jira</strong> into a self-hosted Knowledge Graph to calculate bus factor, simulate departure impact, and answer codebase questions with mathematical proof.
+          {/* 3. Subcopy: Exactly 2 lines of value prop for VP Eng / CTO */}
+          <p className="mt-6 text-base sm:text-lg text-slate-400 font-normal leading-relaxed max-w-2xl mx-auto">
+            When senior developers leave, critical system context disappears. Cortex ingests GitHub, Slack, and Jira into a self-hosted graph to quantify bus factor, simulate departure impact, and ground codebase Q&amp;A.
           </p>
 
-          {/* 4. Action CTAs - Clear Hierarchy & Keyboard Focus */}
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          {/* 4. Action CTAs */}
+          <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5">
             <button
               onClick={onOpenContact}
-              className="w-full sm:w-auto px-8 py-4 text-sm font-bold font-mono text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all duration-200 shadow-xl shadow-indigo-600/30 flex items-center justify-center space-x-2 cursor-pointer transform hover:-translate-y-0.5 border border-indigo-400/20 focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none"
+              className="w-full sm:w-auto px-6 py-3.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-sm focus-visible:ring-2 focus-visible:ring-blue-400"
             >
-              <span>Request Free Setup</span>
+              <span>Book a 30-Min Walkthrough</span>
               <ArrowRight className="w-4 h-4 text-white" />
             </button>
 
@@ -63,43 +53,53 @@ export const Hero: React.FC<HeroProps> = ({ onOpenContact }) => {
                 const el = document.getElementById('proof');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="w-full sm:w-auto px-7 py-4 text-sm font-bold font-mono text-slate-200 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer shadow-md focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none"
+              className="w-full sm:w-auto px-6 py-3.5 text-sm font-semibold text-slate-200 hover:text-white bg-[#12181F] hover:bg-[#1A222D] border border-white/10 hover:border-white/20 rounded-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-400"
             >
-              <Network className="w-4 h-4 text-indigo-400" />
-              <span>See Product Proof</span>
+              <Terminal className="w-4 h-4 text-slate-400" />
+              <span>Explore Product Proof</span>
             </button>
           </div>
 
-          {/* 5. Enterprise Trust Row (Verified & Honest) */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs font-mono text-slate-300">
-            <span className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800">
+          {/* 5. Three Concrete Trust Chips */}
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4 text-xs font-mono text-slate-400">
+            <span className="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-[#12181F] border border-white/10">
+              <Lock className="w-3.5 h-3.5 text-blue-400" />
+              <span>Self-hosted in your VPC</span>
+            </span>
+            <span className="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-[#12181F] border border-white/10">
+              <Calculator className="w-3.5 h-3.5 text-blue-400" />
+              <span>Deterministic risk formulas</span>
+            </span>
+            <span className="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-[#12181F] border border-white/10">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Self-Hosted in Your VPC</span>
-            </span>
-            <span className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800">
-              <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Deterministic Risk Formulas</span>
-            </span>
-            <span className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800">
-              <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
-              <span>GitHub, Slack &amp; Jira Webhooks</span>
+              <span>Zero code leaves your infrastructure</span>
             </span>
           </div>
         </div>
 
-        {/* Product Video Showcase */}
-        <div className="mt-14 max-w-5xl mx-auto">
-          <VideoShowcase
-            src="/Cortex.mp4"
-            poster="/cortex-video-poster.jpg"
-            title="Cortex Product Walkthrough"
-            subtitle="Autonomous Neural Knowledge Graph • Ingesting GitHub, Jira & Slack with deterministic accuracy"
-          />
-        </div>
-        
-        {/* Interactive Query Playground (Proves Answers Come With Proof) */}
-        <div className="mt-16 max-w-5xl mx-auto">
-          <InteractiveQueryDemo />
+        {/* 6. Integration Strip / Social Proof Structure */}
+        <div className="mt-16 pt-12 border-t border-white/10 text-center max-w-4xl mx-auto">
+          <p className="text-xs font-mono uppercase tracking-widest text-slate-500 mb-6">
+            CONTINUOUS INGESTION FROM YOUR EXISTING ENGINEERING STACK
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 opacity-80 hover:opacity-100 transition-opacity">
+            <div className="flex items-center space-x-2 text-slate-300 font-mono text-xs">
+              <GitBranch className="w-4 h-4 text-slate-400" />
+              <span>GitHub &amp; GitHub Enterprise</span>
+            </div>
+            <div className="flex items-center space-x-2 text-slate-300 font-mono text-xs">
+              <span className="w-2 h-2 rounded-full bg-orange-400" />
+              <span>GitLab Self-Managed</span>
+            </div>
+            <div className="flex items-center space-x-2 text-slate-300 font-mono text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>Slack Workspace</span>
+            </div>
+            <div className="flex items-center space-x-2 text-slate-300 font-mono text-xs">
+              <span className="w-2 h-2 rounded-full bg-blue-400" />
+              <span>Jira &amp; Linear Issues</span>
+            </div>
+          </div>
         </div>
 
       </div>
