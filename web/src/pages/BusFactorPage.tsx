@@ -3,6 +3,8 @@ import { getBusFactor, getRepositoryDetails, type RepoMetric, type RepositoryDet
 import { ShieldAlert, AlertTriangle, UserCheck, Code, Layers, RefreshCw, ArrowRight } from 'lucide-react';
 import { RepoDetailModal } from '../components/RepoDetailModal';
 
+import { RISK_THRESHOLDS } from '../constants/riskThresholds';
+
 interface BusFactorPageProps {
   onSyncUpdated?: (date: Date) => void;
 }
@@ -61,11 +63,11 @@ export const BusFactorPage: React.FC<BusFactorPageProps> = ({ onSyncUpdated }) =
 
   if (loading) {
     return (
-      <div className="p-8 space-y-6 animate-pulse">
-        <div className="h-8 w-64 bg-slate-800 rounded-lg"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-48 bg-slate-900/80 rounded-xl border border-slate-800"></div>
+      <div className="p-6 md:p-8 space-y-6 animate-pulse bg-[var(--bg-app)] min-h-screen">
+        <div className="h-6 w-56 bg-[var(--bg-panel)] rounded"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="h-44 bg-[var(--bg-panel)] rounded-lg border border-[var(--border-subtle)]"></div>
           ))}
         </div>
       </div>
@@ -74,20 +76,20 @@ export const BusFactorPage: React.FC<BusFactorPageProps> = ({ onSyncUpdated }) =
 
   if (error) {
     return (
-      <div className="p-8">
-        <div className="p-6 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center justify-between">
+      <div className="p-6 md:p-8 bg-[var(--bg-app)] min-h-screen">
+        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-lg flex items-center justify-between">
           <div className="flex items-center space-x-3 text-rose-300">
-            <AlertTriangle className="h-6 w-6 text-rose-400" />
+            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />
             <div>
-              <h4 className="font-semibold text-white">Failed to Load Bus Factor Metrics</h4>
+              <h4 className="font-semibold text-sm text-[var(--text-primary)]">Failed to Load Bus Factor Metrics</h4>
               <p className="text-xs text-rose-300/80">{error}</p>
             </div>
           </div>
           <button
             onClick={() => fetchBusFactor()}
-            className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2 transition-all cursor-pointer"
+            className="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-md flex items-center space-x-1.5 cursor-pointer"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-3.5 w-3.5" />
             <span>Retry</span>
           </button>
         </div>
@@ -96,21 +98,21 @@ export const BusFactorPage: React.FC<BusFactorPageProps> = ({ onSyncUpdated }) =
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-6 md:p-8 space-y-6 bg-[var(--bg-app)] min-h-screen">
       {/* Header Banner */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <ShieldAlert className="h-6 w-6 text-amber-400" />
+          <h3 className="text-lg font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-amber-400" />
             <span>Bus Factor & Repository Vulnerability</span>
           </h3>
-          <p className="text-xs text-slate-400 mt-1">
-            Repositories ranked by single point of failure risk. Click any repository card to inspect maintainers, commit timeline, stack technologies, and suggested backup owners.
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            Repositories ranked by single point of failure risk. Click any repository card to inspect maintainers and candidate backups.
           </p>
         </div>
         <button
           onClick={() => fetchBusFactor()}
-          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2 cursor-pointer transition-all"
+          className="px-2.5 py-1 bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md flex items-center space-x-1.5 cursor-pointer transition-colors"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span>Refresh</span>
@@ -119,19 +121,23 @@ export const BusFactorPage: React.FC<BusFactorPageProps> = ({ onSyncUpdated }) =
 
       {/* Empty Cold-Start State */}
       {repos.length === 0 ? (
-        <div className="glass-card p-12 text-center space-y-3">
-          <Layers className="h-10 w-10 text-slate-500 mx-auto" />
-          <h4 className="text-base font-semibold text-slate-300">No Repository Metrics Populated Yet</h4>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
+        <div className="p-10 text-center space-y-2.5 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-lg">
+          <Layers className="h-8 w-8 text-slate-500 mx-auto" />
+          <h4 className="text-sm font-semibold text-[var(--text-secondary)]">No Repository Metrics Populated Yet</h4>
+          <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto">
             Metrics are generated by the nightly cron worker or webhook events. Once repository activities are indexed, bus factor calculations will appear here.
           </p>
         </div>
       ) : (
         /* Repository Cards Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {repos.map(repo => {
             const isEmpty = repo.status === 'empty' || repo.status === 'scaffold' || (Number(repo.bus_factor) === 0 && Number(repo.risk_score) === 0);
-            const isHighRisk = !isEmpty && (repo.bus_factor <= 1 || repo.risk_score >= 70);
+            const isSPOF = !isEmpty && Number(repo.bus_factor) <= 1;
+            const risk = Number(repo.risk_score ?? 0);
+            const isCritical = risk >= RISK_THRESHOLDS.CRITICAL;
+            const isHigh = risk >= RISK_THRESHOLDS.HIGH;
+
             return (
               <div
                 key={repo.external_id || repo.repo_name}
@@ -145,56 +151,64 @@ export const BusFactorPage: React.FC<BusFactorPageProps> = ({ onSyncUpdated }) =
                     handleOpenDetails(repo.repo_name);
                   }
                 }}
-                className="glass-card glass-card-hover p-6 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus:outline-none"
+                className={`bg-[var(--bg-panel)] p-4 rounded-lg border transition-colors flex flex-col justify-between space-y-3 cursor-pointer group hover:bg-[var(--bg-elevated)] ${
+                  isEmpty
+                    ? 'border-[var(--border-subtle)]'
+                    : isSPOF
+                    ? 'border-rose-500/30 hover:border-rose-500/50'
+                    : 'border-[var(--border-subtle)] hover:border-[var(--border-strong)]'
+                }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                      Bus Factor: <strong className="text-white">{repo.bus_factor !== undefined && repo.bus_factor !== null ? repo.bus_factor : 'N/A'}</strong>
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[var(--bg-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
+                      Bus Factor: <strong className="text-[var(--text-primary)] font-bold">{repo.bus_factor !== undefined && repo.bus_factor !== null ? repo.bus_factor : 'N/A'}</strong>
                     </span>
                     <span
-                      className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded border uppercase tracking-wider ${
                         isEmpty
-                          ? 'bg-slate-800 text-slate-400 border border-slate-700'
-                          : isHighRisk
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          ? 'bg-[var(--status-empty-bg)] text-[var(--status-empty)] border-[var(--status-empty-border)]'
+                          : isCritical || isSPOF
+                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                          : isHigh
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                       }`}
                     >
-                      {isEmpty ? 'Empty / Scaffold' : `Risk ${repo.risk_score ?? 0}%`}
+                      {isEmpty ? 'Scaffold / Empty' : `Risk ${risk}%`}
                     </span>
                   </div>
 
-                  <h4 className="text-lg font-bold text-white mt-3 flex items-center justify-between group-hover:text-indigo-300 transition-colors">
+                  <h4 className="text-sm font-bold text-[var(--text-primary)] mt-2.5 flex items-center justify-between group-hover:text-indigo-300 transition-colors">
                     <div className="flex items-center space-x-2">
                       <Code className="h-4 w-4 text-indigo-400" />
                       <span>{repo.repo_name}</span>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-slate-500 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                    <ArrowRight className="h-3.5 w-3.5 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                   </h4>
 
                   {isEmpty ? (
-                    <div className="flex items-center space-x-2 text-xs text-slate-500 mt-2 italic">
-                      <Layers className="h-3.5 w-3.5 text-slate-600" />
-                      <span>No commits / scaffold repo</span>
+                    <div className="flex items-center space-x-1.5 text-xs text-[var(--text-muted)] mt-1.5">
+                      <Layers className="h-3.5 w-3.5 text-slate-500" />
+                      <span>No commits / scaffold repository</span>
                     </div>
                   ) : repo.primary_owner ? (
-                    <div className="flex items-center space-x-2 text-xs text-slate-400 mt-2">
+                    <div className="flex items-center space-x-1.5 text-xs text-[var(--text-secondary)] mt-1.5">
                       <UserCheck className="h-3.5 w-3.5 text-amber-400" />
-                      <span>Primary: <strong className="text-slate-200 font-medium">{repo.primary_owner}</strong></span>
+                      <span>Primary: <strong className="text-[var(--text-primary)] font-medium">{repo.primary_owner}</strong></span>
                     </div>
                   ) : (
-                    <div className="flex items-center space-x-2 text-xs text-slate-500 mt-2 italic">
-                      <UserCheck className="h-3.5 w-3.5 text-slate-600" />
+                    <div className="flex items-center space-x-1.5 text-xs text-[var(--text-muted)] mt-1.5">
+                      <UserCheck className="h-3.5 w-3.5 text-slate-500" />
                       <span>Single maintainer codebase</span>
                     </div>
                   )}
                 </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                  <span>Contributors: <strong className="text-slate-200">{repo.contributor_count ?? 0}</strong></span>
-                  <span className="text-[11px] font-semibold text-indigo-400 group-hover:underline flex items-center gap-1">
-                    <span>Inspect Risk</span>
+                <div className="pt-2.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs text-[var(--text-muted)] font-mono">
+                  <span>Contributors: <strong className="text-[var(--text-primary)]">{repo.contributor_count ?? 0}</strong></span>
+                  <span className="text-[11px] font-sans font-medium text-indigo-400 group-hover:underline flex items-center gap-0.5">
+                    <span>Inspect</span>
                     <span>→</span>
                   </span>
                 </div>

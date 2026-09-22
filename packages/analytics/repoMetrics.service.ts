@@ -1,6 +1,7 @@
 import { neo4jSession } from "../../apps/api/config/neo4j.js";
 import sql from "../../apps/api/config/postgres.js";
 import { getGraphSchema } from "../database/neo4j/schemaCache.js";
+import { CYPHER_BOT_FILTER } from "../shared/botDetection.js";
 
 /**
  * Migration note: repo_metrics table must have these columns for this service to work:
@@ -16,15 +17,15 @@ import { getGraphSchema } from "../database/neo4j/schemaCache.js";
 export async function calculateAllRepoMetrics() {
     const session = neo4jSession();
 
-    // Bug #5 fix: check schema before running AUTHORED/PART_OF queries
+    // Check schema before running queries
     let hasAuthored = true
     let hasPartOf = true
+    let hasContributedTo = true
     try {
         const schema = await getGraphSchema()
         hasAuthored = schema.relationshipTypes.includes('AUTHORED')
         hasPartOf   = schema.relationshipTypes.includes('PART_OF')
-        if (!hasAuthored) console.warn('[RepoMetrics] AUTHORED relation not in schema — bus factor will be 0')
-        if (!hasPartOf)   console.warn('[RepoMetrics] PART_OF relation not in schema — contributor count may be incomplete')
+        hasContributedTo = schema.relationshipTypes.includes('CONTRIBUTED_TO')
     } catch (schemaErr: any) {
         console.warn('[RepoMetrics] Schema fetch failed, proceeding with best-effort queries:', schemaErr?.message)
     }
@@ -43,17 +44,25 @@ export async function calculateAllRepoMetrics() {
 
             // Bug #6 fix: per-record try/catch so one bad repo doesn't abort the whole batch
             try {
+                // P0-1: Contributor count includes CONTRIBUTED_TO, WORKS_ON, and legacy PART_OF
                 const contributorsResult = await session.run(
-                    `MATCH (p:PERSON)-[]-(e)-[:PART_OF]->(r {name: $repoName})
-                     RETURN count(DISTINCT p) AS count`,
+                    `MATCH (r:REPOSITORY)
+                     WHERE toLower(r.name) = toLower($repoName)
+                     OPTIONAL MATCH (p1:PERSON)-[:CONTRIBUTED_TO|WORKS_ON]->(r)
+                     OPTIONAL MATCH (p2:PERSON)-[]-(e)-[:PART_OF]->(r)
+                     WITH collect(DISTINCT p1) + collect(DISTINCT p2) AS allP
+                     UNWIND allP AS p
+                     WITH p WHERE p IS NOT NULL
+                       AND ${CYPHER_BOT_FILTER}
+                       AND COALESCE(p.isActive, true) = true
+                       AND COALESCE(p.employmentStatus, 'active') <> 'alumni'
+                     RETURN count(DISTINCT COALESCE(p.canonicalPersonId, p.externalId, p.email, p.name)) AS count`,
                     { repoName }
                 );
                 const contributorCount = contributorsResult.records[0]?.get("count")?.toNumber() ?? 0;
 
-                // Bug #5 fix: only run bus factor Cypher if AUTHORED exists in schema
-                const { busFactor, primaryOwner, totalCommits } = (hasAuthored && hasPartOf)
-                    ? await calculateBusFactorAndOwner(session, repoName)
-                    : { busFactor: 0, primaryOwner: null, totalCommits: 0 };
+                // P0-1: Bus factor calculated via CONTRIBUTED_TO rollup edges with legacy fallback
+                const { busFactor, primaryOwner, totalCommits } = await calculateBusFactorAndOwner(session, repoName);
 
                 // Empty / scaffold repository: 0 commits or 0 contributors
                 const isEmpty = totalCommits === 0 || contributorCount === 0;
@@ -102,30 +111,64 @@ export async function calculateAllRepoMetrics() {
 /**
  * Calculates the bus factor (minimum contributors covering >=50% of commits)
  * and identifies the primary owner (top committer by commit count).
- * Uses AUTHORED and PART_OF relations — callers must verify these exist in schema first.
+ * P0-1: Queries CONTRIBUTED_TO rollup edges with fallback to legacy COMMIT nodes.
  */
 async function calculateBusFactorAndOwner(
     session: any, 
     repoName: string
 ): Promise<{ busFactor: number; primaryOwner: string | null; totalCommits: number }> {
     try {
-        const result = await session.run(
-            `MATCH (p:PERSON)-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r {name: $repoName})
-             WHERE p.name IS NOT NULL OR p.canonicalPersonId IS NOT NULL OR p.externalId IS NOT NULL
+        // 1. Primary path: query CONTRIBUTED_TO relationship rollup
+        const contribRes = await session.run(
+            `MATCH (p:PERSON)-[rel:CONTRIBUTED_TO]->(r:REPOSITORY)
+             WHERE toLower(r.name) = toLower($repoName)
+               AND (p.name IS NOT NULL OR p.canonicalPersonId IS NOT NULL OR p.externalId IS NOT NULL)
+               AND ${CYPHER_BOT_FILTER}
+               AND COALESCE(p.isActive, true) = true
+               AND COALESCE(p.employmentStatus, 'active') <> 'alumni'
              WITH COALESCE(p.canonicalPersonId, p.externalId, p.email, p.name) AS personKey,
                   head(collect(COALESCE(p.name, p.externalId, 'Unknown'))) AS personName,
-                  count(c) AS commits
+                  sum(COALESCE(rel.commitCount, 1)) AS commits
              RETURN personName AS person, commits
-             ORDER BY commits DESC`,
+             ORDER BY commits DESC, person ASC`,
             { repoName }
         );
 
-        if (result.records.length === 0) return { busFactor: 0, primaryOwner: null, totalCommits: 0 };
+        let rows: Array<{ person: string; commits: number }> = [];
 
-        const rows = result.records.map((r: any) => ({
-            person: r.get("person") as string,
-            commits: r.get("commits")?.toNumber() ?? 0,
-        }));
+        if (contribRes.records.length > 0) {
+            rows = contribRes.records.map((r: any) => ({
+                person: r.get("person") as string,
+                commits: r.get("commits")?.toNumber ? r.get("commits").toNumber() : Number(r.get("commits") || 0),
+            })).filter((r: { person: string; commits: number }) => r.commits > 0);
+        }
+
+        // 2. Fallback path for legacy graphs with uncompacted COMMIT nodes
+        if (rows.length === 0) {
+            const legacyRes = await session.run(
+                `MATCH (p:PERSON)-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)
+                 WHERE toLower(r.name) = toLower($repoName)
+                   AND (p.name IS NOT NULL OR p.canonicalPersonId IS NOT NULL OR p.externalId IS NOT NULL)
+                   AND ${CYPHER_BOT_FILTER}
+                   AND COALESCE(p.isActive, true) = true
+                   AND COALESCE(p.employmentStatus, 'active') <> 'alumni'
+                 WITH COALESCE(p.canonicalPersonId, p.externalId, p.email, p.name) AS personKey,
+                      head(collect(COALESCE(p.name, p.externalId, 'Unknown'))) AS personName,
+                      count(c) AS commits
+                 RETURN personName AS person, commits
+                 ORDER BY commits DESC, person ASC`,
+                { repoName }
+            );
+
+            if (legacyRes.records.length > 0) {
+                rows = legacyRes.records.map((r: any) => ({
+                    person: r.get("person") as string,
+                    commits: r.get("commits")?.toNumber ? r.get("commits").toNumber() : Number(r.get("commits") || 0),
+                }));
+            }
+        }
+
+        if (rows.length === 0) return { busFactor: 0, primaryOwner: null, totalCommits: 0 };
 
         // Primary owner = top committer (first record, already sorted DESC)
         const primaryOwner = rows[0]?.person ?? null;

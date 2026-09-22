@@ -123,6 +123,17 @@ export async function normalizeMessage(payload: any): Promise<CleanSlackEvent> {
 }
 
 export async function normalizeSlackEvent(rawPayload: any, eventType: string): Promise<CleanSlackEvent | null> {
+    // P1-4: Drop pure bot messages (bot_message subtype, bot_id, USLACKBOT) to prevent junk person creation
+    if (
+        rawPayload.subtype === 'bot_message' ||
+        Boolean(rawPayload.bot_id) ||
+        rawPayload.user === 'USLACKBOT' ||
+        Boolean(rawPayload.bot_profile)
+    ) {
+        console.log(`[Slack] Dropping bot message (subtype: ${rawPayload.subtype}, bot_id: ${rawPayload.bot_id}, user: ${rawPayload.user})`);
+        return null;
+    }
+
     switch (eventType) {
         case 'message':
         case 'app_mention':

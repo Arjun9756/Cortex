@@ -149,14 +149,14 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
   };
 
   return (
-    <div className="p-8 space-y-6 relative min-h-screen">
+    <div className="p-8 space-y-6 relative min-h-screen bg-[var(--bg-app)]">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Network className="h-6 w-6 text-indigo-400" />
+          <h3 className="text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+            <Network className="h-5 w-5 text-indigo-400" />
             <span>Risk Knowledge Graph</span>
           </h3>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[var(--text-muted)] mt-1">
             Production risk exploration surface powered by precomputed Postgres metrics and high-signal Neo4j relations.
           </p>
         </div>
@@ -164,27 +164,24 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
         <div className="flex items-center space-x-3">
           <div
             title={'Data as of ' + (generatedAt ? new Date(generatedAt).toLocaleTimeString() : 'now') + (isCachedSummary ? ' (cached)' : '')}
-            className="flex items-center space-x-2 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-400 font-medium"
+            className="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] font-mono"
           >
-            <span className="relative flex h-2 w-2">
-              <span className={'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ' + (isRefreshing ? 'bg-indigo-400' : 'bg-emerald-400')} />
-              <span className={'relative inline-flex rounded-full h-2 w-2 ' + (isRefreshing ? 'bg-indigo-500' : 'bg-emerald-500')} />
-            </span>
+            <span className={`h-1.5 w-1.5 rounded-full ${isRefreshing ? 'bg-indigo-400' : 'bg-emerald-400'}`} />
             <span>{isRefreshing ? 'Syncing...' : 'Auto-Sync'}</span>
             {generatedAt && (
-              <span className="text-slate-400 border-l border-emerald-500/20 pl-1.5 text-[10px]">
+              <span className="text-[var(--text-muted)] border-l border-[var(--border-subtle)] pl-1.5 text-[10px]">
                 {timeAgo(generatedAt)}
               </span>
             )}
           </div>
 
-          <span className="text-xs text-slate-400 font-medium">
-            Nodes: <strong className="text-white">{nodeCount}</strong> | Edges: <strong className="text-white">{edgeCount}</strong>
+          <span className="text-xs text-[var(--text-muted)] font-mono">
+            Nodes: <strong className="text-[var(--text-primary)]">{nodeCount}</strong> | Edges: <strong className="text-[var(--text-primary)]">{edgeCount}</strong>
           </span>
           <button
             onClick={() => fetchGraph(false)}
             disabled={loading || isRefreshing}
-            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2 transition-all cursor-pointer disabled:opacity-50"
+            className="px-3 py-1.5 bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-xs text-[var(--text-secondary)] hover:text-white rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={'h-3.5 w-3.5 ' + (isRefreshing || loading ? 'animate-spin text-indigo-400' : '')} />
             <span>Refresh</span>
@@ -192,30 +189,30 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
         </div>
       </div>
 
-      <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 backdrop-blur-sm">
+      <div className="cortex-card p-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center space-x-2 text-xs text-slate-400 font-medium mr-1">
+          <div className="flex items-center space-x-1.5 text-xs text-[var(--text-muted)] font-medium mr-1">
             <Filter className="h-3.5 w-3.5 text-indigo-400" />
-            <span>Filter Scope:</span>
+            <span>Scope:</span>
           </div>
 
           <select
             value={selectedRepo}
             onChange={(e) => setSelectedRepo(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
+            className="bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
           >
             <option value="">All Repositories</option>
- {availableRepos.map(repo => (
- <option key={repo} value={repo}>{repo}</option>
- ))}
- </select>
+            {availableRepos.map(repo => (
+              <option key={repo} value={repo}>{repo}</option>
+            ))}
+          </select>
 
- <select
- value={selectedPerson}
- onChange={(e) => setSelectedPerson(e.target.value)}
- className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
- >
- <option value="">All Engineers</option>
+          <select
+            value={selectedPerson}
+            onChange={(e) => setSelectedPerson(e.target.value)}
+            className="bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
+          >
+            <option value="">All Engineers</option>
             {availablePeople.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -224,7 +221,7 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
           <select
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
-            className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
+            className="bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
           >
             <option value={50}>Top 50 nodes</option>
             <option value={100}>Top 100 nodes</option>
@@ -240,7 +237,7 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
               setSelectedPerson('');
               setLimit(100);
             }}
-            className="text-xs text-slate-400 hover:text-white underline underline-offset-4 cursor-pointer"
+            className="text-xs text-[var(--text-muted)] hover:text-white underline underline-offset-4 cursor-pointer"
           >
             Reset Filters
           </button>
@@ -248,29 +245,29 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
       </div>
 
       <div className="relative flex gap-6">
-        <div className="flex-1 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 backdrop-blur-sm min-h-[720px] flex flex-col justify-center items-center relative overflow-hidden">
+        <div className="flex-1 cortex-card p-2 min-h-[720px] flex flex-col justify-center items-center relative overflow-hidden">
           {loading ? (
             <div className="flex flex-col items-center justify-center space-y-3">
               <div className="h-8 w-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-              <p className="text-xs text-slate-400">Loading risk summary graph...</p>
+              <p className="text-xs text-[var(--text-muted)]">Loading risk summary graph...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center space-y-3 max-w-md text-center">
-              <AlertTriangle className="h-10 w-10 text-rose-500/80" />
-              <h4 className="text-sm font-semibold text-white">Knowledge Graph Unavailable</h4>
-              <p className="text-xs text-slate-400">{error}</p>
+            <div className="flex flex-col items-center justify-center space-y-3 max-w-md text-center p-6">
+              <AlertTriangle className="h-8 w-8 text-rose-400" />
+              <h4 className="text-sm font-semibold text-[var(--text-primary)]">Knowledge Graph Unavailable</h4>
+              <p className="text-xs text-[var(--text-muted)]">{error}</p>
               <button
                 onClick={() => fetchGraph(false)}
-                className="mt-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs text-white rounded-lg transition-colors cursor-pointer"
+                className="mt-2 px-3 py-1.5 cortex-btn-primary text-xs cursor-pointer"
               >
                 Retry
               </button>
             </div>
           ) : nodes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center space-y-3 max-w-md text-center">
-              <Layers className="h-10 w-10 text-slate-600" />
-              <h4 className="text-sm font-semibold text-white">No Graph Nodes Match Scope</h4>
-              <p className="text-xs text-slate-400">Try clearing active repo or engineer filters above.</p>
+            <div className="flex flex-col items-center justify-center space-y-3 max-w-md text-center p-6">
+              <Layers className="h-8 w-8 text-[var(--text-muted)]" />
+              <h4 className="text-sm font-semibold text-[var(--text-primary)]">No Graph Nodes Match Scope</h4>
+              <p className="text-xs text-[var(--text-muted)]">Try clearing active repo or engineer filters above.</p>
             </div>
           ) : (
             <div className="w-full h-full flex-1">
@@ -280,21 +277,21 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
         </div>
 
         {selectedNode && (
-          <aside className="w-96 bg-slate-950/95 border border-slate-800/90 rounded-2xl p-6 shadow-2xl backdrop-blur-md flex flex-col justify-between shrink-0 animate-in slide-in-from-right duration-200">
+          <aside className="w-96 bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-xl p-5 shadow-2xl flex flex-col justify-between shrink-0">
             <div>
-              <div className="flex items-start justify-between pb-4 border-b border-slate-800/80">
+              <div className="flex items-start justify-between pb-3.5 border-b border-[var(--border-subtle)]">
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded bg-[var(--bg-elevated)] text-indigo-400 border border-[var(--border-subtle)]">
                       {nodeDetail?.type || getNodeCategory(selectedNode)}
                     </span>
                     {nodeDetail?.cached && (
-                      <span className="text-[9px] text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded">
-                        instant cache
+                      <span className="text-[9px] text-[var(--text-muted)] bg-[var(--bg-app)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)]">
+                        cached
                       </span>
                     )}
                   </div>
-                  <h4 className="text-base font-bold text-white tracking-tight break-all">
+                  <h4 className="text-base font-bold text-[var(--text-primary)] tracking-tight break-all">
                     {nodeDetail?.name || selectedNode.name || selectedNode.id}
                   </h4>
                 </div>
@@ -303,31 +300,31 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
                     setSelectedNode(null);
                     setNodeDetail(null);
                   }}
-                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  className="p-1 rounded hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-white transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="mt-5 space-y-5 overflow-y-auto pr-1 style={{ maxHeight: '560px' }}">
+              <div className="mt-4 space-y-4 overflow-y-auto pr-1">
                 {loadingDetail ? (
                   <div className="py-12 flex flex-col items-center justify-center space-y-2">
                     <div className="h-6 w-6 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-                    <p className="text-xs text-slate-400">Resolving business risk metrics...</p>
+                    <p className="text-xs text-[var(--text-muted)]">Resolving business risk metrics...</p>
                   </div>
                 ) : detailError ? (
-                  <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400">
+                  <div className="p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400">
                     {detailError}
                   </div>
                 ) : nodeDetail?.type === 'REPOSITORY' ? (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80">
-                        <span className="text-[10px] text-slate-400 font-medium block">Status</span>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div className="p-3 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)]">
+                        <span className="text-[10px] text-[var(--text-muted)] font-medium block">Status</span>
                         <div className="flex items-center space-x-1.5 mt-1">
                           {nodeDetail.status === 'empty' ? (
-                            <span className="inline-flex items-center text-xs font-semibold text-slate-300">
-                              <span className="h-2 w-2 rounded-full bg-slate-400 mr-1.5" /> Empty
+                            <span className="inline-flex items-center text-xs font-semibold text-[var(--status-empty)]">
+                              <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-empty)] mr-1.5" /> Empty
                             </span>
                           ) : nodeDetail.status === 'fragile' ? (
                             <span className="inline-flex items-center text-xs font-semibold text-rose-400">
@@ -345,46 +342,46 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80">
-                        <span className="text-[10px] text-slate-400 font-medium block">Bus Factor</span>
-                        <div className="text-base font-bold text-white mt-0.5">
+                      <div className="p-3 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)]">
+                        <span className="text-[10px] text-[var(--text-muted)] font-medium block">Bus Factor</span>
+                        <div className="text-base font-bold text-[var(--text-primary)] font-mono mt-0.5">
                           {Number(nodeDetail.bus_factor || 0).toFixed(1)}
                         </div>
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 space-y-2">
+                    <div className="p-3 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400">Risk Score:</span>
-                        <span className="font-semibold text-white">{nodeDetail.risk_score || 0}/100</span>
+                        <span className="text-[var(--text-muted)]">Risk Score:</span>
+                        <span className="font-semibold text-[var(--text-primary)] font-mono">{nodeDetail.risk_score || 0}/100</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400">Primary Owner:</span>
-                        <span className="font-medium text-indigo-300">
+                        <span className="text-[var(--text-muted)]">Primary Owner:</span>
+                        <span className="font-medium text-indigo-400">
                           {nodeDetail.primary_owner || 'Shared / None'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400">Contributors:</span>
-                        <span className="font-medium text-slate-200">{nodeDetail.contributor_count || 0}</span>
+                        <span className="text-[var(--text-muted)]">Contributors:</span>
+                        <span className="font-medium text-[var(--text-secondary)] font-mono">{nodeDetail.contributor_count || 0}</span>
                       </div>
                     </div>
 
                     {nodeDetail.top_contributors && nodeDetail.top_contributors.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-semibold text-slate-300 block">Top Contributors</span>
-                        <div className="space-y-1.5">
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-semibold text-[var(--text-secondary)] block">Top Contributors</span>
+                        <div className="space-y-1">
                           {nodeDetail.top_contributors.map(c => (
                             <button
                               key={c.id}
                               onClick={() => handleSelectNeighbor(c.id, 'PERSON')}
-                              className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-900/40 hover:bg-slate-900 border border-slate-800/60 text-xs transition-colors cursor-pointer text-left"
+                              className="w-full flex items-center justify-between p-2 rounded-lg bg-[var(--bg-subtle)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs transition-colors cursor-pointer text-left"
                             >
-                              <span className="text-slate-200 font-medium flex items-center gap-1.5">
-                                <User className="h-3 w-3 text-slate-400" />
+                              <span className="text-[var(--text-primary)] font-medium flex items-center gap-1.5">
+                                <User className="h-3 w-3 text-[var(--text-muted)]" />
                                 {c.name}
                               </span>
-                              <span className="text-[10px] text-slate-400">{c.commit_count} commits</span>
+                              <span className="text-[10px] text-[var(--text-muted)] font-mono">{c.commit_count} commits</span>
                             </button>
                           ))}
                         </div>
@@ -392,14 +389,14 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
                     )}
 
                     {nodeDetail.related_technologies && nodeDetail.related_technologies.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-semibold text-slate-300 block">Technologies Used</span>
-                        <div className="flex flex-wrap gap-1.5">
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-semibold text-[var(--text-secondary)] block">Technologies Used</span>
+                        <div className="flex flex-wrap gap-1">
                           {nodeDetail.related_technologies.map(t => (
                             <button
                               key={t}
                               onClick={() => handleSelectNeighbor(t, 'TECHNOLOGY')}
-                              className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-300 hover:bg-purple-500/20 transition-colors cursor-pointer"
+                              className="px-2 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[10px] text-[var(--text-secondary)] hover:border-indigo-500/40 transition-colors cursor-pointer font-mono"
                             >
                               {t}
                             </button>
@@ -409,23 +406,23 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
                     )}
                   </div>
                 ) : nodeDetail?.type === 'PERSON' ? (
-                  <div className="space-y-5">
-                    <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-2">
+                  <div className="space-y-4">
+                    <div className="p-3.5 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-[11px] text-slate-400 font-medium">Knowledge Risk Tier</span>
-                        <span className={'text-xs font-bold px-2 py-0.5 rounded-full ' + (
+                        <span className="text-[11px] text-[var(--text-muted)] font-medium">Knowledge Risk Tier</span>
+                        <span className={'text-xs font-semibold px-2 py-0.5 rounded border ' + (
                           nodeDetail.risk_tier === 'Critical'
-                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                             : nodeDetail.risk_tier === 'Moderate'
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                         )}>
                           {nodeDetail.risk_tier} ({nodeDetail.risk_score || 0}/100)
                         </span>
                       </div>
-                      <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                      <div className="w-full bg-[var(--bg-app)] rounded-full h-1.5 overflow-hidden">
                         <div
-                          className={'h-full ' + (
+                          className={'h-full rounded-full ' + (
                             nodeDetail.risk_tier === 'Critical'
                               ? 'bg-rose-500'
                               : nodeDetail.risk_tier === 'Moderate'
@@ -435,30 +432,30 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
                           style={{ width: Math.min(100, Math.max(5, nodeDetail.risk_score || 0)) + '%' }}
                         />
                       </div>
-                      <div className="flex justify-between text-[11px] text-slate-400 pt-1">
+                      <div className="flex justify-between text-[11px] text-[var(--text-muted)] pt-1">
                         <span>Total Commits</span>
-                        <span className="text-white font-medium">{nodeDetail.commit_count || 0}</span>
+                        <span className="text-[var(--text-primary)] font-medium font-mono">{nodeDetail.commit_count || 0}</span>
                       </div>
                     </div>
 
                     {nodeDetail.repos && nodeDetail.repos.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-semibold text-slate-300 block">
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-semibold text-[var(--text-secondary)] block">
                           Associated Repositories ({nodeDetail.repos.length})
                         </span>
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           {nodeDetail.repos.map(r => (
                             <button
                               key={r.name}
                               onClick={() => handleSelectNeighbor(r.name, 'REPOSITORY')}
-                              className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-900/40 hover:bg-slate-900 border border-slate-800/60 text-xs transition-colors cursor-pointer text-left"
+                              className="w-full flex items-center justify-between p-2 rounded-lg bg-[var(--bg-subtle)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs transition-colors cursor-pointer text-left"
                             >
-                              <span className="text-slate-200 font-medium flex items-center gap-1.5">
-                                <GitBranch className="h-3 w-3 text-slate-400" />
+                              <span className="text-[var(--text-primary)] font-medium flex items-center gap-1.5 font-mono">
+                                <GitBranch className="h-3 w-3 text-[var(--text-muted)]" />
                                 {r.name}
                               </span>
                               <span className={'text-[10px] font-medium ' + (
-                                r.status === 'fragile' ? 'text-rose-400' : r.status === 'concentrated' ? 'text-amber-400' : 'text-slate-400'
+                                r.status === 'fragile' ? 'text-rose-400' : r.status === 'concentrated' ? 'text-amber-400' : 'text-[var(--text-muted)]'
                               )}>
                                 {r.status}
                               </span>
@@ -469,16 +466,16 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
                     )}
 
                     {nodeDetail.top_technologies && nodeDetail.top_technologies.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-semibold text-slate-300 block">Domain Expertise</span>
-                        <div className="flex flex-wrap gap-1.5">
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-semibold text-[var(--text-secondary)] block">Domain Expertise</span>
+                        <div className="flex flex-wrap gap-1">
                           {nodeDetail.top_technologies.map((t: any) => {
                             const name = typeof t === 'string' ? t : t?.name;
                             return (
                               <button
                                 key={name}
                                 onClick={() => handleSelectNeighbor(name, 'TECHNOLOGY')}
-                                className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-300 hover:bg-purple-500/20 transition-colors cursor-pointer"
+                                className="px-2 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[10px] text-[var(--text-secondary)] hover:border-indigo-500/40 transition-colors cursor-pointer font-mono"
                               >
                                 {name}
                               </button>
@@ -489,37 +486,37 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80">
-                        <span className="text-[10px] text-slate-400 font-medium block">Usage Share</span>
-                        <div className="text-base font-bold text-white mt-0.5">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div className="p-3 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)]">
+                        <span className="text-[10px] text-[var(--text-muted)] font-medium block">Usage Share</span>
+                        <div className="text-base font-bold text-[var(--text-primary)] font-mono mt-0.5">
                           {nodeDetail?.usage_percent || 0}%
                         </div>
                       </div>
-                      <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80">
-                        <span className="text-[10px] text-slate-400 font-medium block">Repos Using</span>
-                        <div className="text-base font-bold text-white mt-0.5">
+                      <div className="p-3 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)]">
+                        <span className="text-[10px] text-[var(--text-muted)] font-medium block">Repos Using</span>
+                        <div className="text-base font-bold text-[var(--text-primary)] font-mono mt-0.5">
                           {nodeDetail?.repo_count || nodeDetail?.related_repos?.length || 0}
                         </div>
                       </div>
                     </div>
 
                     {nodeDetail?.top_experts && nodeDetail.top_experts.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-semibold text-slate-300 block">Internal Experts</span>
-                        <div className="space-y-1.5">
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-semibold text-[var(--text-secondary)] block">Internal Experts</span>
+                        <div className="space-y-1">
                           {nodeDetail.top_experts.map((e: any) => (
                             <button
                               key={e.name}
                               onClick={() => handleSelectNeighbor(e.name, 'PERSON')}
-                              className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-900/40 hover:bg-slate-900 border border-slate-800/60 text-xs transition-colors cursor-pointer text-left"
+                              className="w-full flex items-center justify-between p-2 rounded-lg bg-[var(--bg-subtle)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs transition-colors cursor-pointer text-left"
                             >
-                              <span className="text-slate-200 font-medium flex items-center gap-1.5">
-                                <User className="h-3 w-3 text-slate-400" />
+                              <span className="text-[var(--text-primary)] font-medium flex items-center gap-1.5">
+                                <User className="h-3 w-3 text-[var(--text-muted)]" />
                                 {e.name}
                               </span>
-                              <span className="text-[10px] text-indigo-400">{(e.commits || '') + ' contributions'}</span>
+                              <span className="text-[10px] text-indigo-400 font-mono">{(e.commits || '') + ' contributions'}</span>
                             </button>
                           ))}
                         </div>
@@ -527,14 +524,14 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
                     )}
 
                     {nodeDetail?.related_repos && nodeDetail.related_repos.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-semibold text-slate-300 block">Applied In Repos</span>
-                        <div className="flex flex-wrap gap-1.5">
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-semibold text-[var(--text-secondary)] block">Applied In Repos</span>
+                        <div className="flex flex-wrap gap-1">
                           {nodeDetail.related_repos.map(r => (
                             <button
                               key={r}
                               onClick={() => handleSelectNeighbor(r, 'REPOSITORY')}
-                              className="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-[10px] text-blue-300 hover:bg-blue-500/20 transition-colors cursor-pointer"
+                              className="px-2 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[10px] text-[var(--text-secondary)] hover:border-indigo-500/40 transition-colors cursor-pointer font-mono"
                             >
                               {r}
                             </button>
@@ -548,12 +545,12 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
             </div>
 
             {nodeDetail?.actions && Object.keys(nodeDetail.actions).length > 0 && (
-              <div className="pt-4 mt-4 border-t border-slate-800/80 flex flex-col gap-2">
+              <div className="pt-3.5 mt-3.5 border-t border-[var(--border-subtle)] flex flex-col gap-2">
                 {Object.entries(nodeDetail.actions).map(([key, action]) => (
                   <button
                     key={key}
                     onClick={() => handleActionClick(action)}
-                    className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full py-2 px-3 cortex-btn-primary flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <span>{action.label}</span>
                     <ArrowRight className="h-3.5 w-3.5" />

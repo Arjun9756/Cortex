@@ -1,112 +1,274 @@
 @import "tailwindcss";
 @import "./landing/tokens.css";
 
-@layer base {
-  :root {
-    --background: #0B0F14;
-    --foreground: #F3F4F6;
-    --card: #12181F;
-    --card-foreground: #F3F4F6;
-    --primary: #3B82F6;
-    --primary-foreground: #FFFFFF;
-    --border: rgba(255, 255, 255, 0.08);
-  }
+/* ─── CORTEX EXECUTIVE APPLICATION DESIGN TOKENS ───────────────────── */
+:root {
+  /* Surfaces */
+  --bg-app: #0B0F17;
+  --bg-panel: #111622;
+  --bg-elevated: #161D2C;
+  --bg-subtle: #0E131E;
 
+  /* Borders */
+  --border-subtle: #1E2638;
+  --border-strong: #2A3449;
+  --border-focus: #6366F1;
+
+  /* Typography / Text */
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  /* Single Accent (Restrained Indigo) */
+  --accent-default: #6366F1;
+  --accent-muted: rgba(99, 102, 241, 0.12);
+  --accent-hover: #4F46E5;
+  --accent-border: rgba(99, 102, 241, 0.3);
+
+  /* Risk Semantic Tokens (Aligned strictly to RISK_THRESHOLDS: 60 / 40 / 25) */
+  --risk-critical: #EF4444;
+  --risk-critical-bg: rgba(239, 68, 68, 0.1);
+  --risk-critical-border: rgba(239, 68, 68, 0.25);
+
+  --risk-high: #F97316;
+  --risk-high-bg: rgba(249, 115, 22, 0.1);
+  --risk-high-border: rgba(249, 115, 22, 0.25);
+
+  --risk-moderate: #FBBF24;
+  --risk-moderate-bg: rgba(251, 191, 36, 0.1);
+  --risk-moderate-border: rgba(251, 191, 36, 0.25);
+
+  --risk-low: #10B981;
+  --risk-low-bg: rgba(16, 185, 129, 0.1);
+  --risk-low-border: rgba(16, 185, 129, 0.25);
+
+  /* Status Tokens */
+  --status-empty: #94A3B8;
+  --status-empty-bg: rgba(148, 163, 184, 0.1);
+  --status-empty-border: rgba(148, 163, 184, 0.2);
+
+  --status-healthy: #10B981;
+  --status-fragile: #EF4444;
+  --status-concentrated: #F59E0B;
+
+  /* Functional Feedback */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --info: #6366F1;
+
+  /* Radii */
+  --radius-card: 8px;
+  --radius-btn: 6px;
+  --radius-badge: 4px;
+}
+
+@layer base {
   body {
-    background-color: #0B0F14;
-    color: #F3F4F6;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* Institutional Card Base */
+/* ─── Institutional Console Primitives ────────────────────────────── */
+
+/* Base 1px Flat Panel Card (replaces translucent glass-card) */
+.cortex-card,
 .glass-card {
-  background-color: #12181F;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.75rem;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
 }
 
+.cortex-card-hover,
 .glass-card-hover {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
+.cortex-card-hover:hover,
 .glass-card-hover:hover {
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  border-color: var(--border-strong);
 }
 
-/* Refined, non-hyped gradient utilities */
-.gradient-text-subtle {
-  background: linear-gradient(180deg, #FFFFFF 0%, #D1D5DB 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* Solid Buttons (no pill/candy glows) */
+.cortex-btn-primary {
+  background-color: var(--accent-default);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  border-radius: var(--radius-btn);
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
 }
 
-.gradient-blue-cyan {
-  background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.cortex-btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.cortex-btn-secondary {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  font-weight: 600;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  border-radius: var(--radius-btn);
+  padding: 6px 14px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.cortex-btn-secondary:hover {
+  background-color: var(--bg-elevated);
+  border-color: var(--border-strong);
+}
+
+/* Restrained Badges */
+.cortex-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-badge);
+  border-width: 1px;
+  border-style: solid;
+  white-space: nowrap;
+}
+
+.badge-empty {
+  background-color: var(--status-empty-bg);
+  border-color: var(--status-empty-border);
+  color: var(--status-empty);
+}
+
+.badge-healthy {
+  background-color: var(--risk-low-bg);
+  border-color: var(--risk-low-border);
+  color: var(--risk-low);
+}
+
+.badge-fragile {
+  background-color: var(--risk-critical-bg);
+  border-color: var(--risk-critical-border);
+  color: var(--risk-critical);
+}
+
+.badge-moderate {
+  background-color: var(--risk-moderate-bg);
+  border-color: var(--risk-moderate-border);
+  color: var(--risk-moderate);
+}
+
+.badge-accent {
+  background-color: var(--accent-muted);
+  border-color: var(--accent-border);
+  color: var(--accent-default);
+}
+
+/* Dense Executive Tables */
+.cortex-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.cortex-table th {
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cortex-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.cortex-table tr:hover td {
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0B0F14;
+  background: var(--bg-app);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1F2937;
+  background: var(--border-strong);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: #3E4B66;
 }
 
-/* ── Recharts Dark Theme Overrides ─────────────────────────────── */
+/* Recharts Console Styling */
 .recharts-tooltip-wrapper {
   outline: none !important;
 }
 
 .recharts-default-tooltip {
-  background-color: #12181F !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  border-radius: 0.5rem !important;
-  color: #F3F4F6 !important;
-  font-size: 12px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+  background-color: var(--bg-elevated) !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: var(--radius-card) !important;
+  color: var(--text-primary) !important;
+  font-size: 11px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
 }
 
 .recharts-tooltip-label {
-  color: #9CA3AF !important;
+  color: var(--text-secondary) !important;
   font-weight: 600 !important;
   font-size: 11px !important;
+  margin-bottom: 4px !important;
 }
 
 .recharts-tooltip-item {
-  color: #E5E7EB !important;
+  color: var(--text-primary) !important;
+  padding: 2px 0 !important;
 }
 
 .recharts-rectangle.recharts-tooltip-cursor {
-  fill: rgba(59, 130, 246, 0.06) !important;
+  fill: rgba(99, 102, 241, 0.04) !important;
 }
 
 .recharts-cursor {
-  fill: rgba(59, 130, 246, 0.06) !important;
-  stroke: rgba(59, 130, 246, 0.15) !important;
+  fill: rgba(99, 102, 241, 0.04) !important;
+  stroke: rgba(99, 102, 241, 0.15) !important;
 }
 
-.recharts-active-bar {
-  fill: inherit !important;
-  filter: brightness(1.15);
-}
-
-/* Keyboard focus visibility */
+/* Accessible Focus Rings */
 :focus-visible {
-  outline: 2px solid #3B82F6;
+  outline: 2px solid var(--border-focus);
   outline-offset: 2px;
+}
+
+/* Accessible Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { RISK_THRESHOLDS } from '../constants/riskThresholds';
+
 export interface RiskGaugeProps {
   score: number; // 0 to 100
   size?: 'sm' | 'md' | 'lg';
@@ -17,22 +19,31 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
 }) => {
   const normalizedScore = Math.max(0, Math.min(100, score));
 
-  // Risk levels: < 40 Low (emerald), 40-70 Medium (amber), > 70 High/Critical (rose)
+  // Risk levels aligned strictly to RISK_THRESHOLDS: Critical (≥60), High (≥40), Moderate (≥25), Low (<25)
   const getRiskTheme = (val: number) => {
-    if (val >= 70) {
+    if (val >= RISK_THRESHOLDS.CRITICAL) {
       return {
         text: 'text-rose-400',
         bg: 'bg-rose-500',
-        stroke: '#f43f5e',
+        stroke: '#EF4444',
         badge: 'bg-rose-500/10 text-rose-300 border-rose-500/30',
+        tag: 'CRITICAL',
+      };
+    }
+    if (val >= RISK_THRESHOLDS.HIGH) {
+      return {
+        text: 'text-orange-400',
+        bg: 'bg-orange-500',
+        stroke: '#F97316',
+        badge: 'bg-orange-500/10 text-orange-300 border-orange-500/30',
         tag: 'HIGH RISK',
       };
     }
-    if (val >= 40) {
+    if (val >= RISK_THRESHOLDS.MODERATE) {
       return {
         text: 'text-amber-400',
         bg: 'bg-amber-500',
-        stroke: '#f59e0b',
+        stroke: '#FBBF24',
         badge: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
         tag: 'MODERATE',
       };
@@ -40,7 +51,7 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
     return {
       text: 'text-emerald-400',
       bg: 'bg-emerald-500',
-      stroke: '#10b981',
+      stroke: '#10B981',
       badge: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
       tag: 'HEALTHY',
     };
@@ -50,10 +61,10 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
 
   if (type === 'dot') {
     return (
-      <div className="flex items-center space-x-2">
-        <span className={`w-2.5 h-2.5 rounded-full ${theme.bg} animate-pulse`} />
+      <div className="flex items-center space-x-1.5">
+        <span className={`w-2 h-2 rounded-full ${theme.bg}`} />
         {showLabel && (
-          <span className={`text-xs font-semibold ${theme.text}`}>
+          <span className={`text-xs font-medium ${theme.text}`}>
             {normalizedScore}% {label ? `(${label})` : ''}
           </span>
         )}

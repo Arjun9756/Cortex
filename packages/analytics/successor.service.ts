@@ -1,6 +1,7 @@
 import { driver } from '../../apps/api/config/neo4j.js';
 import sql from '../../apps/api/config/postgres.js';
 import neo4j from 'neo4j-driver';
+import { isBotAccount, CYPHER_BOT_FILTER } from '../shared/botDetection.js';
 
 export interface SuccessorCandidate {
     name: string;
@@ -222,7 +223,7 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
                         coalesce(payload->'sender'->>'login', payload->'pusher'->>'name', payload->'actor'->>'login') AS author,
                         MAX(created_at) as latest_event
                     FROM events
-                    WHERE payload IS NOT NULL
+                    WHERE payload IS NOT NULL AND created_at >= NOW() - INTERVAL '180 days'
                     GROUP BY author
                 `,
                 sql`
@@ -238,11 +239,17 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
         const targetIdentity = resolveCanonicalTarget(rawPersonName, identityRows);
         const targetNamesLower = Array.from(targetIdentity.names);
 
-        // Build list of valid human candidate names to scope Neo4j query
+        // Build list of valid human candidate names to scope Neo4j query (excluding bots and inactive/alumni)
         const SLACK_ID_PATTERN = /^U[A-Z0-9]{6,}$/i;
         const candidateNames: string[] = [];
         for (const pm of pmRows) {
-            if (pm.person_name && !SLACK_ID_PATTERN.test(pm.person_name.trim())) {
+            if (
+                pm.person_name &&
+                pm.is_active !== false &&
+                pm.employment_status !== 'alumni' &&
+                !SLACK_ID_PATTERN.test(pm.person_name.trim()) &&
+                !isBotAccount(pm.person_name, null, null, pm.external_id)
+            ) {
                 candidateNames.push(pm.person_name.trim());
             }
         }
@@ -250,7 +257,9 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
         // Step 2: Scoped Neo4j queries for target and candidates + repo-level technologies
         const graphRes = await session.run(`
             MATCH (p:PERSON)
-            WHERE toLower(p.name) = toLower($rawPersonName) OR toLower(p.name) IN $targetNamesLower OR p.name IN $candidateNames
+            WHERE (toLower(p.name) = toLower($rawPersonName) OR toLower(p.name) IN $targetNamesLower OR p.name IN $candidateNames)
+              AND ${CYPHER_BOT_FILTER}
+              AND (toLower(p.name) = toLower($rawPersonName) OR toLower(p.name) IN $targetNamesLower OR (COALESCE(p.isActive, true) = true AND COALESCE(p.employmentStatus, 'active') <> 'alumni'))
             OPTIONAL MATCH (p)-[:USES]->(t1:TECHNOLOGY)
             OPTIONAL MATCH (p)-[:AUTHORED|CREATED|WORKS_ON|ASSIGNED_TO|CONTRIBUTED_TO]-(w)-[:USES|MENTIONED_IN]-(t2:TECHNOLOGY)
             OPTIONAL MATCH (p)-[:WORKS_ON|CONTRIBUTED_TO]-(r1:REPOSITORY)
@@ -328,9 +337,28 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
                 }
             }
 
-            // Augment with Postgres events recency
-            const firstName = name.split(' ')[0]?.toLowerCase() || name.toLowerCase();
-            const matchedEvent = eventRows.find(ev => ev.author && ev.author.toLowerCase().includes(firstName));
+            // Augment with Postgres events recency using exact identity aliases
+            const candidateAliases = new Set<string>([name.toLowerCase()]);
+            for (const row of identityRows) {
+                if (
+                    (row.display_name && row.display_name.toLowerCase() === name.toLowerCase()) ||
+                    (row.username && row.username.toLowerCase() === name.toLowerCase()) ||
+                    (row.external_id && row.external_id.toLowerCase() === name.toLowerCase())
+                ) {
+                    if (row.canonical_person_id) {
+                        for (const r2 of identityRows) {
+                            if (r2.canonical_person_id === row.canonical_person_id) {
+                                if (r2.username) candidateAliases.add(r2.username.toLowerCase());
+                                if (r2.display_name) candidateAliases.add(r2.display_name.toLowerCase());
+                                if (r2.external_id) candidateAliases.add(r2.external_id.toLowerCase());
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+
+            const matchedEvent = eventRows.find(ev => ev.author && candidateAliases.has(ev.author.toLowerCase()));
             if (matchedEvent?.latest_event) {
                 const t = new Date(matchedEvent.latest_event).getTime();
                 if (!latestActivityTimestamp || t > latestActivityTimestamp) {
@@ -446,6 +474,10 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
             const scoredCandidates: SuccessorCandidate[] = [];
 
             for (const [pKey, cand] of profileMap.entries()) {
+                if (isBotAccount(cand.name, cand.email, cand.externalId) || isBotAccount(pKey)) {
+                    continue; // Never recommend bots as human successors
+                }
+
                 if (isDepartingPersonOrAlias(cand, targetIdentity, identityRows)) {
                     continue; // Exclude departing engineer and any alias accounts from being their own successor
                 }
@@ -671,3 +703,5 @@ export async function calculateSuccessorCandidates(rawPersonName: string, target
         successorsByRepo: repoResults
     };
 }
+
+export const findSuccessors = calculateSuccessorsByRepo;

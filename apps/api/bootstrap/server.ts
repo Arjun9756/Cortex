@@ -28,11 +28,12 @@ async function startServer() {
         }
         await ensureCollection()
 
-        startMetricsScheduler()
-
-        app.listen(parseInt(env.PORT as string), () => {
-            console.log(`Cortex Server is Running on Port ${env.PORT}`)
+        const port = parseInt((process.env.PORT || env.PORT || '3000') as string, 10)
+        app.listen(port, '0.0.0.0', () => {
+            console.log(`Cortex Server is Running on Port ${port}`)
         })
+
+        startMetricsScheduler()
     }
     catch (error: any) {
         console.log(`Error While Server Starting`, error)

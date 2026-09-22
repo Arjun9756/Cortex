@@ -33,33 +33,33 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
   const isHighRisk = (details?.riskScore ?? 0) >= 70;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#0c1222] border border-slate-700/80 rounded-2xl shadow-2xl shadow-black/80 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full max-w-4xl max-h-[90vh] bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-lg shadow-2xl flex flex-col overflow-hidden">
         
         {/* Modal Header */}
-        <div className="p-6 border-b border-slate-800 bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950/40 flex items-center justify-between shrink-0">
+        <div className="p-5 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-              <FolderGit2 className="h-6 w-6" />
+            <div className="p-2 rounded-md bg-[var(--accent-muted)] border border-[var(--accent-border)] text-indigo-400">
+              <FolderGit2 className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-xl font-extrabold text-white tracking-tight">
+                <h3 className="text-base font-bold text-[var(--text-primary)] tracking-tight">
                   {details?.repoName || 'Repository Details'}
                 </h3>
                 {details && (
                   <span
-                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded border uppercase tracking-wider ${
                       isSPOF
-                        ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
-                        : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                     }`}
                   >
                     Bus Factor {details.busFactor} {isSPOF ? '• Single Point of Failure' : '• Healthy'}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
                 Deep architectural risk analysis, ownership concentration & backup owner recommendations.
               </p>
             </div>
@@ -67,27 +67,27 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all cursor-pointer"
+            className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
             title="Close"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {loading ? (
-            <div className="p-16 text-center space-y-3">
-              <div className="h-10 w-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-sm font-semibold text-slate-300">Traversing knowledge graph & calculating risk metrics...</p>
-              <p className="text-xs text-slate-500">Querying contributors, multi-hop technologies & candidate backups.</p>
+            <div className="p-12 text-center space-y-2">
+              <div className="h-8 w-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs font-semibold text-[var(--text-secondary)]">Traversing knowledge graph & calculating risk metrics...</p>
+              <p className="text-[11px] text-[var(--text-muted)]">Querying contributors, multi-hop technologies & candidate backups.</p>
             </div>
           ) : error ? (
-            <div className="p-6 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center justify-between text-rose-300">
-              <div className="flex items-center space-x-3">
-                <AlertTriangle className="h-6 w-6 text-rose-400 shrink-0" />
+            <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-md flex items-center justify-between text-rose-300">
+              <div className="flex items-center space-x-2.5">
+                <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />
                 <div>
-                  <h4 className="font-semibold text-white">Failed to load repository details</h4>
+                  <h4 className="font-semibold text-xs text-[var(--text-primary)]">Failed to load repository details</h4>
                   <p className="text-xs text-rose-300/80">{error}</p>
                 </div>
               </div>
@@ -95,94 +95,94 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
           ) : details ? (
             <>
               {/* Top Stats Banner */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-1">
+                  <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
                     Bus Factor Rating
                   </span>
                   <div className="flex items-baseline gap-2">
-                    <span className={`text-2xl font-extrabold ${isSPOF ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    <span className={`text-xl font-bold ${isSPOF ? 'text-rose-400' : 'text-emerald-400'}`}>
                       {details.busFactor}
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-[var(--text-muted)]">
                       {isSPOF ? '(Critical SPOF)' : '(Acceptable)'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-[var(--text-secondary)]">
                     Min contributors covering ≥50% commits
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                <div className="p-3 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-1">
+                  <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
                     Total Risk Score
                   </span>
                   <div className="flex items-baseline gap-2">
-                    <span className={`text-2xl font-extrabold ${isHighRisk ? 'text-rose-400' : 'text-amber-400'}`}>
+                    <span className={`text-xl font-bold ${isHighRisk ? 'text-rose-400' : 'text-amber-400'}`}>
                       {details.riskScore}%
                     </span>
-                    <span className="text-xs text-slate-400 uppercase font-mono">
+                    <span className="text-xs text-[var(--text-muted)] uppercase font-mono">
                       {details.status}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-[var(--text-secondary)]">
                     Fragility index based on co-authorship
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                <div className="p-3 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-1">
+                  <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
                     Active Contributors
                   </span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-extrabold text-cyan-400">
+                    <span className="text-xl font-bold text-cyan-400">
                       {details.contributorCount}
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-[var(--text-muted)]">
                       Indexed engineer{details.contributorCount === 1 ? '' : 's'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-[var(--text-secondary)]">
                     Primary: {details.primaryOwner?.name || 'Unassigned'}
                   </p>
                 </div>
               </div>
 
               {/* ─── SECTION 1: PRIMARY MAINTAINER & OWNERSHIP ──────────────────── */}
-              <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 to-slate-950 border border-slate-800 space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
-                  <UserCheck className="h-4 w-4" />
+              <div className="p-4 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                  <UserCheck className="h-3.5 w-3.5" />
                   <span>Primary Contributor & Ownership Concentration</span>
                 </h4>
 
                 {details.primaryOwner ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#090d18] border border-slate-800">
-                    <div className="flex items-center space-x-3.5">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-md bg-[var(--bg-panel)] border border-[var(--border-subtle)]">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-8 w-8 rounded-full bg-[var(--accent-muted)] border border-[var(--accent-border)] flex items-center justify-center text-indigo-300 font-bold text-xs">
                         {details.primaryOwner.name.charAt(0)}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-white text-sm">
+                          <span className="font-semibold text-[var(--text-primary)] text-xs">
                             {details.primaryOwner.name}
                           </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[var(--accent-muted)] text-indigo-300 border border-[var(--accent-border)]">
                             Primary Owner
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-[var(--text-muted)]">
                           {details.primaryOwner.role || 'Software Engineer'} • {details.primaryOwner.email || 'Author'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-4 border-t sm:border-t-0 sm:border-l border-slate-800 pt-2 sm:pt-0 sm:pl-4 text-xs font-mono">
+                    <div className="flex items-center space-x-4 border-t sm:border-t-0 sm:border-l border-[var(--border-subtle)] pt-2 sm:pt-0 sm:pl-4 text-xs font-mono">
                       <div>
-                        <span className="text-slate-500 block text-[10px] uppercase">Commits</span>
-                        <span className="font-bold text-white">{details.primaryOwner.commitCount}</span>
+                        <span className="text-[var(--text-muted)] block text-[10px] uppercase">Commits</span>
+                        <span className="font-bold text-[var(--text-primary)]">{details.primaryOwner.commitCount}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block text-[10px] uppercase">Ownership</span>
+                        <span className="text-[var(--text-muted)] block text-[10px] uppercase">Ownership</span>
                         <span className={`font-bold ${details.primaryOwner.ownershipPercentage >= 80 ? 'text-rose-400' : 'text-amber-400'}`}>
                           {details.primaryOwner.ownershipPercentage}%
                         </span>
@@ -190,23 +190,23 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 italic">No primary contributor identified in git records.</p>
+                  <p className="text-xs text-[var(--text-muted)] italic">No primary contributor identified in git records.</p>
                 )}
 
                 {/* Additional Contributors if any */}
                 {details.contributors.length > 1 && (
-                  <div className="pt-2">
-                    <span className="text-[11px] font-semibold text-slate-400 block mb-2">
+                  <div className="pt-1">
+                    <span className="text-[10px] font-semibold text-[var(--text-muted)] block mb-1.5 uppercase">
                       Other Contributors ({details.contributors.length - 1}):
                     </span>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {details.contributors.slice(1).map((c, i) => (
                         <span
                           key={i}
-                          className="text-xs px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 flex items-center gap-2"
+                          className="text-xs px-2 py-0.5 rounded bg-[var(--bg-panel)] border border-[var(--border-subtle)] text-[var(--text-secondary)] flex items-center gap-1.5"
                         >
                           <span>{c.name}</span>
-                          <span className="text-[10px] font-mono text-slate-500">({c.commitCount} commits)</span>
+                          <span className="text-[10px] font-mono text-[var(--text-muted)]">({c.commitCount} commits)</span>
                         </span>
                       ))}
                     </div>
@@ -215,23 +215,23 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
               </div>
 
               {/* ─── SECTION 2: WHY THIS IS RISKY (EVIDENCE-BASED) ──────────────── */}
-              <div className={`p-5 rounded-2xl border space-y-3 ${
-                isSPOF ? 'bg-rose-500/5 border-rose-500/20' : 'bg-slate-900/60 border-slate-800'
+              <div className={`p-4 rounded-md border space-y-2.5 ${
+                isSPOF ? 'bg-rose-500/5 border-rose-500/20' : 'bg-[var(--bg-subtle)] border-[var(--border-subtle)]'
               }`}>
-                <h4 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${
+                <h4 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
                   isSPOF ? 'text-rose-400' : 'text-emerald-400'
                 }`}>
-                  {isSPOF ? <ShieldAlert className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                  {isSPOF ? <ShieldAlert className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
                   <span>Why This Is Risky (Evidence Analysis)</span>
                 </h4>
 
-                <p className="text-xs text-slate-200 font-medium leading-relaxed">
+                <p className="text-xs text-[var(--text-primary)] font-medium leading-relaxed">
                   {details.riskExplanation.summary}
                 </p>
 
-                <div className="space-y-2 pt-1">
+                <div className="space-y-1.5 pt-0.5">
                   {details.riskExplanation.factors.map((factor, idx) => (
-                    <div key={idx} className="flex items-start space-x-2 text-xs text-slate-300">
+                    <div key={idx} className="flex items-start space-x-2 text-xs text-[var(--text-secondary)]">
                       <span className="text-rose-400 font-bold shrink-0 mt-0.5">•</span>
                       <span>{factor}</span>
                     </div>
@@ -240,14 +240,14 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
               </div>
 
               {/* ─── SECTION 3: TECHNOLOGIES USED IN THIS REPO ─────────────────── */}
-              <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-2">
-                  <Cpu className="h-4 w-4" />
+              <div className="p-4 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-2.5">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                  <Cpu className="h-3.5 w-3.5" />
                   <span>Technologies & Stack in this Repository ({details.technologies.length})</span>
                 </h4>
 
                 {details.technologies.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {details.technologies.map((tech, idx) => (
                       <span
                         key={idx}
@@ -304,13 +304,13 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
               </div>
 
               {/* ─── SECTION 5: SUGGESTED BACKUP OWNERS (SUCCESSOR LOGIC) ───────── */}
-              <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950/30 border border-slate-800 space-y-3">
+              <div className="p-5 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
                     <Award className="h-4 w-4" />
                     <span>Suggested Backup Owners (Successor Recommendation Engine)</span>
                   </h4>
-                  <span className="text-[10px] text-slate-500 font-mono">
+                  <span className="text-[10px] text-[var(--text-muted)] font-mono">
                     Based on 4-factor tech overlap & capacity formula
                   </span>
                 </div>
@@ -322,7 +322,7 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                     ))}
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-center text-xs text-slate-400">
+                  <div className="p-4 rounded-md bg-[var(--bg-panel)] border border-[var(--border-subtle)] text-center text-xs text-[var(--text-secondary)]">
                     <p>No qualified candidate with shared technology overlap was identified in the graph.</p>
                     <p className="text-[10px] text-slate-500 mt-1">Cross-skilling recommended to eliminate single-contributor risk.</p>
                   </div>

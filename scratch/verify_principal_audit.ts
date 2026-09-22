@@ -73,9 +73,10 @@ async function runAudit() {
         const [personMetricsCount] = await sql`SELECT count(*)::int AS count FROM person_metrics`;
         const [workspaceMetricsCount] = await sql`SELECT count(*)::int AS count FROM workspace_metrics`;
         const [eventsCount] = await sql`SELECT count(*)::int AS count FROM events`;
+        const ok = (repoMetricsCount?.count ?? 0) > 0 && (personMetricsCount?.count ?? 0) > 0 && (eventsCount?.count ?? 0) > 0;
         record('Infra', 'Postgres Metrics & Events Readability',
-            repoMetricsCount.count > 0 && personMetricsCount.count > 0 && eventsCount.count > 0,
-            `repo_metrics=${repoMetricsCount.count}, person_metrics=${personMetricsCount.count}, workspace_metrics=${workspaceMetricsCount.count}, events=${eventsCount.count}`
+            ok,
+            `repo_metrics=${repoMetricsCount?.count}, person_metrics=${personMetricsCount?.count}, workspace_metrics=${workspaceMetricsCount?.count}, events=${eventsCount?.count}`
         );
     } catch (err: any) {
         record('Infra', 'Postgres Metrics & Events Readability', false, err.message);
@@ -223,7 +224,7 @@ async function runAudit() {
 
         const ok = repos.length > 0 && activeRepos.length > 0 && emptyRepos.length === 2 && topo.totalNodes > 0;
         record('Analytics', 'Data Surface Aggregation & Health Alignment', ok,
-            `Total repos=${repos.length} (Active=${activeRepos.length}, Empty=${emptyRepos.length}), Total events=${eventCountRes.count}, Graph nodes=${topo.totalNodes}`
+            `Total repos=${repos.length} (Active=${activeRepos.length}, Empty=${emptyRepos.length}), Total events=${(eventCountRes as any)?.count || 0}, Graph nodes=${topo.totalNodes}`
         );
     } catch (err: any) {
         record('Analytics', 'Data Surface Aggregation', false, err.message);
@@ -267,7 +268,7 @@ async function runAudit() {
             externalId: 'test_strict_regress_1',
             username: 'regress_unique_user',
             email: 'regress_strict@example.com',
-            name: 'Audit Person Alpha'
+            displayName: 'Audit Person Alpha'
         });
 
         // Exact Email match with different name -> merges into canonicalA
@@ -276,7 +277,7 @@ async function runAudit() {
             externalId: 'test_strict_regress_2',
             username: 'different_user',
             email: 'REGRESS_STRICT@example.com', // case-insensitive email
-            name: 'Completely Different Name'
+            displayName: 'Completely Different Name'
         });
 
         // Name-only similarity with no matching email or username -> must NOT auto-merge
@@ -285,7 +286,7 @@ async function runAudit() {
             externalId: 'test_strict_regress_3',
             username: 'unrelated_user_xyz',
             email: 'unrelated_email@example.com',
-            name: 'Audit Person Alpha' // same name, but strictly NO auto-merge
+            displayName: 'Audit Person Alpha' // same name, but strictly NO auto-merge
         });
 
         const idA = canonicalA.canonicalPersonId;

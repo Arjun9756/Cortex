@@ -34,13 +34,18 @@ export async function ensurePostgresTables(): Promise<void> {
                 top_technologies JSONB,
                 repos JSONB,
                 commit_count INTEGER DEFAULT 0,
+                is_active BOOLEAN DEFAULT true,
+                employment_status VARCHAR(20) DEFAULT 'active',
                 computed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
         `;
+        await sql`ALTER TABLE person_metrics ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`;
+        await sql`ALTER TABLE person_metrics ADD COLUMN IF NOT EXISTS employment_status VARCHAR(20) DEFAULT 'active'`;
         await sql`
             CREATE UNIQUE INDEX IF NOT EXISTS person_metrics_external_id_idx 
             ON person_metrics(external_id)
         `;
+        await sql`CREATE INDEX IF NOT EXISTS person_metrics_is_active_idx ON person_metrics(is_active)`;
 
         // 3. Repo Metrics Table (Repository Bus Factor & SPOF risk)
         await sql`
@@ -108,10 +113,12 @@ export async function ensurePostgresTables(): Promise<void> {
                 username VARCHAR(255),
                 email VARCHAR(255),
                 display_name VARCHAR(255),
+                is_active BOOLEAN DEFAULT true,
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT unique_provider_external_id UNIQUE (provider, external_id)
             )
         `;
+        await sql`ALTER TABLE person_identity ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`;
         await sql`CREATE INDEX IF NOT EXISTS person_identity_canonical_id_idx ON person_identity(canonical_person_id)`;
         await sql`CREATE INDEX IF NOT EXISTS person_identity_email_idx ON person_identity(LOWER(email))`;
         await sql`CREATE INDEX IF NOT EXISTS person_identity_username_idx ON person_identity(LOWER(username))`;

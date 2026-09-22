@@ -1,11 +1,35 @@
 import { invalidateGraphCache } from '../../apps/api/modules/graph/graphCache.js';
 import cron from 'node-cron'
+import sql from '../../apps/api/config/postgres.js'
 import { calculateAllPersonMetrics } from '../analytics/personMetrics.service.js'
 import { calculateAllRepoMetrics } from '../analytics/repoMetrics.service.js'
 import { calculateAllTechnologyMetrics } from '../analytics/technologyMetrics.js'
 import { calculateWorkspaceMetrics } from '../analytics/workspaceMetrics.service.js'
 import { generateAndSaveDailyReport } from '../analytics/dailyReport.service.js'
 import { startDebouncedMetricsPoller } from '../analytics/metricsInvalidator.service.js'
+
+/**
+ * P0-3: Events Table Retention Policy
+ * Purges raw event payloads older than EVENTS_RETENTION_DAYS (default 90 days).
+ * Keeps recent events to protect idempotency keys (provider, external_id) on retries.
+ */
+export async function cleanupOldEvents(): Promise<number> {
+    const retentionDays = parseInt(process.env.EVENTS_RETENTION_DAYS || '90', 10);
+    try {
+        const result = await sql`
+            DELETE FROM events
+            WHERE created_at < NOW() - (${retentionDays + ' days'})::interval
+        `;
+        const count = result.count ?? 0;
+        if (count > 0) {
+            console.log(`[Retention] Cleaned up ${count} raw events older than ${retentionDays} days`);
+        }
+        return count;
+    } catch (err: any) {
+        console.error('[Retention] Failed to cleanup old events:', err?.message);
+        return 0;
+    }
+}
 
 export async function runAnalyticsJob(): Promise<void> {
     console.log('[Scheduler] Running analytics job...')
@@ -38,6 +62,13 @@ export async function runAnalyticsJob(): Promise<void> {
         await generateAndSaveDailyReport();
     } catch (reportErr: any) {
         console.error('[Scheduler] Daily report generation error:', reportErr?.message ?? reportErr);
+    }
+
+    // P0-3: Perform events table retention cleanup
+    try {
+        await cleanupOldEvents();
+    } catch (retentionErr: any) {
+        console.error('[Scheduler] Retention cleanup error:', retentionErr?.message ?? retentionErr);
     }
 
     const succeeded = results.filter(r => r.status === 'fulfilled').length

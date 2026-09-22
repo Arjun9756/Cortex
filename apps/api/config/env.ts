@@ -10,7 +10,7 @@ dotenv.config({
 })
 
 const envObject = {
-    PORT:process.env.PORT,
+    PORT: process.env.PORT || "3000",
     NODE_ENV:process.env.NODE_ENV,
 
     POSTGRES_HOST:process.env.POSTGRES_HOST,

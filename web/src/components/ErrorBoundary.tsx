@@ -27,18 +27,18 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#090d16] text-white flex items-center justify-center p-8">
-          <div className="max-w-md glass-card p-8 text-center space-y-4 border-rose-500/40">
-            <AlertTriangle className="h-12 w-12 text-rose-400 mx-auto" />
-            <h3 className="text-xl font-bold">Something went wrong</h3>
-            <p className="text-xs text-rose-300/80 font-mono bg-slate-950 p-3 rounded border border-slate-800 text-left overflow-x-auto">
+        <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)] flex items-center justify-center p-8">
+          <div className="max-w-md cortex-card p-8 text-center space-y-4 border-rose-500/30">
+            <AlertTriangle className="h-10 w-10 text-rose-400 mx-auto" />
+            <h3 className="text-lg font-bold text-[var(--text-primary)]">Something went wrong</h3>
+            <p className="text-xs text-rose-300/80 font-mono bg-[var(--bg-app)] p-3 rounded border border-[var(--border-subtle)] text-left overflow-x-auto">
               {this.state.error?.toString() || 'Unknown UI Error'}
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2 mx-auto"
+              className="cortex-btn-primary px-4 py-2 text-xs rounded-md flex items-center justify-center space-x-2 mx-auto cursor-pointer"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-3.5 w-3.5" />
               <span>Reload Application</span>
             </button>
           </div>

@@ -62,11 +62,15 @@ In plain English: If these engineers were hit by a bus (or quit tomorrow), more 
 
 ### 2.2 The Algorithm
 1. Take all commits in the repository.
-2. Count how many commits each engineer authored.
-3. Sort engineers in descending order (highest contributor first).
-4. Start adding commits from the top contributor until the running sum reaches **50% of the total commits**.
-5. The number of engineers it took to reach 50% is the **Bus Factor**.
-6. The #1 top contributor is designated the **Primary Owner**.
+2. **Filter out all bot and automated accounts** (e.g., `dependabot`, `renovate`, `github-actions`, accounts ending in `[bot]`, CI runners). Bots are never allowed to steal primary ownership or inflate the Bus Factor denominator.
+3. **Filter out Alumni and Inactive Engineers:** Engineers marked inactive (`is_active = false` or `employment_status = 'alumni'`) retain their historical contribution edges for code provenance, but are **strictly excluded** from being designated as the **Primary Owner** or counting toward the current repository **Bus Factor**. (A departed engineer cannot respond to incidents or maintain the code today).
+4. **Credit Co-authors:** Commits containing Git commit trailers (`Co-authored-by: Name <email>`) resolve both the main author and all co-authors to their canonical person records and credit `CONTRIBUTED_TO` rollups.
+5. Group commits by canonical person identity (deduplicating multiple emails, GitHub logins, and Slack IDs belonging to the same human engineer).
+6. Count how many commits each active human engineer authored.
+7. Sort active engineers in descending order (highest contributor first), using alphabetical name as a deterministic secondary sort.
+8. Start adding commits from the top active contributor until the running sum reaches **50% of the total commits**.
+9. The number of active human engineers it took to reach 50% is the **Bus Factor**.
+10. The #1 top active human contributor is designated the **Primary Owner**.
 
 ### 2.3 Repository Risk Score Formula
 ```
@@ -116,24 +120,28 @@ The Health Score combines three company-wide factors:
 3. **Bus Factor Penalty (30% weight)**
 
 ```
-Step 1: Calculate Average Bus Factor
-Average Bus Factor = (Sum of Bus Factors of all repos) / (Total number of repos)
+Step 1: Identify Active Repositories
+Active Repositories = Repositories where status NOT IN ('empty', 'scaffold') AND bus_factor > 0.
+(Crucial: Repositories with Bus Factor >= 5 have risk_score = 0, but are fully active and represent the healthiest assets in the company. They are strictly included in all health denominators.)
 
-Step 2: Calculate Average Knowledge Risk
-Average Knowledge Risk = (Sum of all people's risk scores) / (Total number of people)
+Step 2: Calculate Average Bus Factor
+Average Bus Factor = (Sum of Bus Factors of all active repos) / (Total number of active repos)
 
-Step 3: Calculate SPOF Percentage
-SPOF Percentage = (Number of repos with Bus Factor <= 1) / (Total number of repos) * 100
+Step 3: Calculate Average Knowledge Risk
+Average Knowledge Risk = (Sum of all active human engineers' risk scores) / (Total number of active human engineers)
 
-Step 4: Calculate Bus Factor Penalty
+Step 4: Calculate SPOF Percentage
+SPOF Percentage = (Number of active repos with Bus Factor <= 1) / (Total number of active repos) * 100
+
+Step 5: Calculate Bus Factor Penalty
 Bus Factor Penalty = Maximum of (0, 100 - (Average Bus Factor * 25))
 
-Step 5: Calculate Composite Risk
+Step 6: Calculate Composite Risk
 Composite Risk = (0.35 * Average Knowledge Risk)
                + (0.35 * SPOF Percentage)
                + (0.30 * Bus Factor Penalty)
 
-Step 6: Calculate Final Health Score (0 to 100)
+Step 7: Calculate Final Health Score (0 to 100)
 Health Score = 100 - Composite Risk
 ```
 
@@ -225,12 +233,23 @@ Every dashboard page, API alert, and AI query uses these exact shared tiers:
 
 ### 5.3 Detailed Breakdown of the 6 Factors
 
-#### Factor 1: Code Ownership (30% Weight)
-- **What it measures:** The engineer's maximum ownership share in any single repository they have contributed to.
-- **Formula:**
+#### Factor 1: Code Ownership with Moving Time-Decay Buckets (30% Weight)
+- **What it measures:** The engineer's maximum ownership share in any single repository they have contributed to, evaluated with moving temporal decay to prevent history distortion.
+- **Why Naive Decay Fails:** In a naive scalar decay system (`weight = e^(-λ * daysSinceLastCommit)`), a developer with 1,000 commits from 3 years ago who pushes a single 1-line typo fix today has their `lastCommitAt` reset to day 0, artificially refreshing all 1,000 dormant commits at 100% weight.
+- **Bucketed Decay Formula:**
+  To prevent distortion, Cortex buckets all commits on each `CONTRIBUTED_TO` relationship across 4 age horizons:
+  ```
+  commits30d:   Commits authored within the last 30 days   (weight = 1.0)
+  commits90d:   Commits authored between 31 and 90 days     (weight = 0.7)
+  commits180d:  Commits authored between 91 and 180 days    (weight = 0.4)
+  commitsOlder: Commits authored over 180 days ago          (weight = 0.15)
+
+  rel.weightedScore = (commits30d * 1.0) + (commits90d * 0.7) + (commits180d * 0.4) + (commitsOlder * 0.15)
+  ```
+- **Ownership Share Calculation:**
   ```
   For each repository the person contributed to:
-      Person's Share = (Person's commits on this repo) / (Total commits on this repo)
+      Person's Share = (Person's weightedScore on this repo) / (Sum of all active contributors' weightedScores on this repo)
 
   Ownership Score = Maximum of all Person's Shares across all repos
   ```
@@ -247,10 +266,13 @@ Every dashboard page, API alert, and AI query uses these exact shared tiers:
   `Score = 7 / 10 = 0.70`.
 
 #### Factor 3: Recent Activity (Inactivity Penalty) (15% Weight)
-- **What it measures:** Whether the engineer is currently active or dormant.
+- **What it measures:** Whether the engineer is currently active or dormant based on recent activity timestamps (`lastCommitAt`, `rel.updatedAt`, `rel.createdAt`).
 - **Formula:**
   ```
   Count events (commits, PRs) by this person in the last 30 days.
+  (Crucial: Evaluated using the developer's actual commit timestamp `rel.lastCommitAt`,
+   NEVER the repository creation date `e.createdAt`. An active developer committing today
+   to a 2-year-old repository is correctly credited as active.)
 
   Activity Score = Maximum of (0, 1.0 - (Recent Events / 20))
   ```
@@ -334,9 +356,11 @@ $$0.240 + 0.120 + 0.030 + 0.075 + 0.040 + 0.050 = \mathbf{0.555}$$
 ### 6.1 Purpose & Business Goal
 Answers: *"If Engineer A leaves, who is best equipped to take over their responsibilities?"*
 
-To protect engineering managers from a false sense of security, Cortex enforces **two hard rules**:
-1. **Direct Repository Rule:** A candidate who has never worked in the departing person's repository (0% repo overlap) is strictly capped at a **maximum match score of 25%** and labeled a `"Cross-Training Candidate"` (not a ready successor).
-2. **SPOF Overload Rule:** A candidate who is already the sole owner of **3 or more critical repositories** is penalized in capacity and labeled `"Not Recommended — Already Maintains 3+ Critical Repositories"`.
+To protect engineering managers from a false sense of security, Cortex enforces **four hard rules**:
+1. **Bot & Service Account Exclusion:** Automated tools (`dependabot`, `renovate`, `github-actions`, etc.) are strictly excluded from successor consideration. A bot will never be recommended as a human backup.
+2. **Alumni & Inactive Engineer Exclusion:** Departed or inactive engineers (`is_active = false` or `employment_status = 'alumni'`) are strictly excluded from candidate pools. A departed engineer cannot take over future engineering responsibilities.
+3. **Direct Repository Rule:** A candidate who has never worked in the departing person's repository (0% repo overlap) is strictly capped at a **maximum match score of 25%** and labeled a `"Cross-Training Candidate"` (not a ready successor).
+4. **SPOF Overload Rule:** A candidate who is already the sole owner of **3 or more critical repositories** is penalized in capacity and labeled `"Not Recommended — Already Maintains 3+ Critical Repositories"`.
 
 ---
 

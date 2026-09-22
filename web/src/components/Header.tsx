@@ -52,70 +52,57 @@ export const Header: React.FC<HeaderProps> = ({
   const getBadgeStyle = () => {
     if (isRefreshing) {
       return {
-        container: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300',
-        pingColor: 'bg-indigo-400',
-        dotColor: 'bg-indigo-500',
-        showPing: true,
+        container: 'bg-[var(--accent-muted)] border-[var(--accent-border)] text-indigo-300',
+        dotColor: 'bg-indigo-400',
       };
     }
     if (isStale) {
-      // Softer visual state when data sync is older than 2 minutes
       return {
-        container: 'bg-slate-800/60 border-slate-700/80 text-slate-400',
-        pingColor: '',
-        dotColor: 'bg-slate-400',
-        showPing: false,
+        container: 'bg-[var(--bg-subtle)] border-[var(--border-subtle)] text-[var(--text-muted)]',
+        dotColor: 'bg-slate-500',
       };
     }
-    // Fresh healthy state (synced within last 2 minutes)
     return {
       container: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-      pingColor: 'bg-emerald-400',
-      dotColor: 'bg-emerald-500',
-      showPing: true,
+      dotColor: 'bg-emerald-400',
     };
   };
 
   const badgeStyle = getBadgeStyle();
 
   return (
-    <header className="sticky top-0 z-20 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-8 py-4 flex items-center justify-between">
+    <header className="sticky top-0 z-20 bg-[var(--bg-app)] border-b border-[var(--border-subtle)] px-6 py-3 flex items-center justify-between">
       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+        <h2 className="text-base font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
           {title}
         </h2>
-        <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+        <p className="text-xs text-[var(--text-muted)]">{subtitle}</p>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-3">
         {onGoLanding && (
           <button
             onClick={onGoLanding}
-            className="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 text-xs font-mono text-indigo-300 transition-all cursor-pointer"
+            className="px-2.5 py-1 rounded-md bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
-            ← Back to Landing Page
+            ← Landing Page
           </button>
         )}
 
         {/* Workspace Pill */}
-        <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium text-slate-300">
+        <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-panel)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
           <Database className="h-3.5 w-3.5 text-indigo-400" />
-          <span>Workspace: <strong className="text-white font-semibold">Cortex Core</strong></span>
+          <span>Workspace: <strong className="text-[var(--text-primary)] font-medium">Cortex Core</strong></span>
         </div>
 
-        {/* Dynamic Auto-Sync Status Badge */}
+        {/* Honest Auto-Sync Status Badge */}
         <div 
-          title={lastSyncedAt ? `Auto-sync active (polling every 30s) · Last synced ${timeAgoText}` : 'Auto-sync active'}
-          className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${badgeStyle.container}`}
+          title={lastSyncedAt ? `Auto-sync active · Last synced ${timeAgoText}` : 'Auto-sync active'}
+          className={`flex items-center space-x-2 px-2.5 py-1 rounded-md text-xs font-medium border ${badgeStyle.container}`}
         >
-          <span className="relative flex h-2 w-2">
-            {badgeStyle.showPing && (
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${badgeStyle.pingColor}`}></span>
-            )}
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${badgeStyle.dotColor}`}></span>
-          </span>
-          <span className="font-semibold">{isRefreshing ? 'Syncing...' : 'Auto-Sync'}</span>
-          <span className="text-[10px] text-slate-400 border-l border-slate-700 pl-1.5 font-mono">
+          <span className={`w-1.5 h-1.5 rounded-full ${badgeStyle.dotColor}`}></span>
+          <span className="font-medium">{isRefreshing ? 'Syncing...' : 'Auto-Sync'}</span>
+          <span className="text-[10px] text-[var(--text-muted)] border-l border-[var(--border-subtle)] pl-1.5 font-mono">
             {timeAgoText}
           </span>
         </div>
@@ -125,10 +112,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all disabled:opacity-50 cursor-pointer"
+            className="p-1.5 rounded-md bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors disabled:opacity-50 cursor-pointer"
             title="Refresh Data Immediately"
           >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-indigo-400' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-indigo-400' : ''}`} />
           </button>
         )}
       </div>

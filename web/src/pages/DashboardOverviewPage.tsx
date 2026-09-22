@@ -199,21 +199,21 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   // Honest Cold-Start Empty State when no repositories or team members are indexed yet
   if (reposList.length === 0 && peopleList.length === 0 && techList.length === 0) {
     return (
-      <div className="p-8 space-y-6 bg-[#090d16] min-h-screen">
-        <div className="glass-card p-16 text-center space-y-4 max-w-2xl mx-auto my-12 border-slate-800">
-          <div className="h-16 w-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400">
-            <Database className="h-8 w-8" />
+      <div className="p-8 space-y-6 bg-[var(--bg-app)] min-h-screen">
+        <div className="cortex-card p-12 text-center space-y-4 max-w-2xl mx-auto my-12">
+          <div className="h-12 w-12 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center mx-auto text-[var(--accent-default)]">
+            <Database className="h-6 w-6" />
           </div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-bold text-white tracking-tight">No Workspace Data Ingested Yet</h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">No Workspace Data Ingested Yet</h3>
+            <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed">
               Cortex has not indexed any repositories, commits, or contributors in this workspace. Connect GitHub, Slack, or Jira webhooks to begin indexing your codebase and computing automated Bus Factor and Knowledge Risk scores.
             </p>
           </div>
           <div className="flex items-center justify-center gap-3 pt-2">
             <button
               onClick={() => fetchOverview(false)}
-              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white rounded-xl flex items-center space-x-2 transition-all cursor-pointer"
+              className="cortex-btn-secondary px-4 py-2 text-xs rounded-md flex items-center space-x-2 cursor-pointer"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               <span>Check for New Events</span>
@@ -287,42 +287,43 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   };
 
   // Health Score Color mappings
+  // Health Score Badge styling
   const getHealthBadgeStyle = (score: number) => {
-    if (score >= 80) return 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30 text-emerald-400';
-    if (score >= 70) return 'from-indigo-500/20 to-cyan-500/10 border-indigo-500/30 text-indigo-300';
-    if (score >= 50) return 'from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-400';
-    return 'from-rose-500/20 to-red-500/10 border-rose-500/30 text-rose-400';
+    if (score >= 80) return 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10';
+    if (score >= 70) return 'border-indigo-500/40 text-indigo-300 bg-indigo-500/10';
+    if (score >= 50) return 'border-amber-500/40 text-amber-400 bg-amber-500/10';
+    return 'border-rose-500/40 text-rose-400 bg-rose-500/10';
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-8 bg-[#090d16] min-h-screen">
+    <div className="p-6 md:p-8 space-y-6 bg-[var(--bg-app)] min-h-screen">
       {/* ─── ROW 1: HEADLINE HEALTH SCORE ───────────────────────────────────── */}
-      <div className="glass-card p-6 md:p-8 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900/90 via-slate-950 to-indigo-950/30 shadow-2xl relative overflow-hidden">
+      <div className="p-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)]">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           {/* Headline score visualization */}
           <div className="flex items-center space-x-6">
             <div className="relative flex items-center justify-center shrink-0">
               <div
-                className={`w-28 h-28 rounded-full border-4 flex flex-col items-center justify-center shadow-2xl bg-gradient-to-b ${getHealthBadgeStyle(
+                className={`w-24 h-24 rounded-full border-2 flex flex-col items-center justify-center ${getHealthBadgeStyle(
                   health.score
                 )}`}
               >
-                <span className="text-4xl font-black tracking-tight text-white">
+                <span className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">
                   <AnimatedNumber value={health.score} />
                 </span>
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                   Grade {health.grade}
                 </span>
               </div>
             </div>
 
-            <div className="space-y-2 max-w-xl">
-              <div className="flex items-center space-x-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
+            <div className="space-y-1.5 max-w-xl">
+              <div className="flex items-center space-x-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                   ENGINEERING HEALTH INDEX
                 </span>
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded border uppercase tracking-wider ${
                     health.score >= 80
                       ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
                       : health.score >= 70
@@ -336,7 +337,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                 </span>
               </div>
 
-              <h2 className="text-2xl font-extrabold text-white tracking-tight">
+              <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
                 {health.score >= 80
                   ? 'Your engineering organization is operating with low risk'
                   : health.score >= 70
@@ -344,31 +345,31 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                   : 'High ownership concentration requires immediate action'}
               </h2>
 
-              <p className="text-xs text-slate-300 leading-relaxed font-mono">
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-mono">
                 {health.explanation}
               </p>
             </div>
           </div>
 
           {/* Metric breakdown summary pills */}
-          <div className="flex flex-wrap lg:flex-col gap-2 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-800 pt-4 lg:pt-0 lg:pl-6 text-xs font-mono">
-            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-4">
-              <span className="text-slate-400">Avg Bus Factor:</span>
-              <span className="font-bold text-cyan-400">
+          <div className="flex flex-wrap lg:flex-col gap-2 shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] pt-4 lg:pt-0 lg:pl-6 text-xs font-mono">
+            <div className="p-2.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-between gap-4">
+              <span className="text-[var(--text-muted)]">Avg Bus Factor:</span>
+              <span className="font-semibold text-cyan-400">
                 <AnimatedNumber value={health.breakdown.avgBusFactor} decimals={1} />
               </span>
             </div>
-            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-4">
-              <span className="text-slate-400">Avg Knowledge Risk:</span>
-              <span className="font-bold text-amber-400">
+            <div className="p-2.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-between gap-4">
+              <span className="text-[var(--text-muted)]">Avg Knowledge Risk:</span>
+              <span className="font-semibold text-amber-400">
                 <AnimatedNumber value={health.breakdown.avgKnowledgeRisk} suffix="%" />
               </span>
             </div>
-            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-4">
-              <span className="text-slate-400">Single Pt of Failure Repos:</span>
-              <span className="font-bold text-rose-400 flex items-center gap-1">
+            <div className="p-2.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-between gap-4">
+              <span className="text-[var(--text-muted)]">Single Pt of Failure Repos:</span>
+              <span className="font-semibold text-rose-400 flex items-center gap-1">
                 <AnimatedNumber value={health.breakdown.spofRepoCount} />
-                <span>/ {health.breakdown.totalRepos}</span>
+                <span className="text-[var(--text-muted)]">/ {health.breakdown.totalRepos}</span>
               </span>
             </div>
           </div>
@@ -422,57 +423,57 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
       </div>
 
       {/* ─── ROW 3: RISK ALERTS (SURFACE PROBLEMS FIRST) ────────────────────── */}
-      <div className="glass-card p-6 space-y-4 border-slate-800">
+      <div className="p-5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] space-y-3.5">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-rose-400" />
+            <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-rose-400" />
               <span>Prioritized Risk Alerts ({riskAlerts.length})</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
               Top organizational risks detected from real ownership and commit data.
             </p>
           </div>
-          <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">
-            Ordered by Severity & Risk Score
+          <span className="text-[10px] font-mono text-[var(--text-muted)] bg-[var(--bg-subtle)] px-2.5 py-1 rounded border border-[var(--border-subtle)]">
+            Ordered by Severity
           </span>
         </div>
 
         {riskAlerts.length === 0 ? (
-          <div className="p-8 text-center bg-slate-900/50 rounded-xl border border-slate-800 text-slate-400 text-xs">
-            <CheckCircle2 className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
+          <div className="p-6 text-center bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)] text-[var(--text-muted)] text-xs">
+            <CheckCircle2 className="h-6 w-6 text-emerald-400 mx-auto mb-1.5" />
             No critical risk alerts identified across your organization.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {riskAlerts.map((alert) => {
               const isCritical = alert.severity === 'critical';
               const isWarning = alert.severity === 'warning';
               return (
                 <div
                   key={alert.id}
-                  className={`p-4 rounded-xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group ${
+                  className={`p-3 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-subtle)] hover:bg-[var(--bg-elevated)] transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3 ${
                     isCritical
-                      ? 'bg-gradient-to-r from-rose-950/30 via-slate-900/90 to-slate-900 border-rose-500/30 hover:border-rose-500/60 border-l-4 border-l-rose-500 shadow-md shadow-rose-950/20'
+                      ? 'border-l-2 border-l-rose-500'
                       : isWarning
-                      ? 'bg-gradient-to-r from-amber-950/20 via-slate-900/90 to-slate-900 border-amber-500/30 hover:border-amber-500/50 border-l-4 border-l-amber-500'
-                      : 'bg-slate-900/80 hover:bg-slate-900 border-slate-800 hover:border-slate-700 border-l-4 border-l-sky-500'
+                      ? 'border-l-2 border-l-amber-500'
+                      : 'border-l-2 border-l-indigo-500'
                   }`}
                 >
-                  <div className="flex items-start space-x-3.5">
+                  <div className="flex items-start space-x-3">
                     <span
-                      className={`mt-0.5 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider shrink-0 border ${
+                      className={`mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shrink-0 border ${
                         isCritical
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
                           : isWarning
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                          : 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30'
                       }`}
                     >
                       {alert.severity}
                     </span>
 
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                       <div className="flex items-center space-x-2 flex-wrap">
                         <EvidenceChip
                           label={alert.entityName}
@@ -482,7 +483,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                           onClick={() => handleAlertClick(alert)}
                         />
                       </div>
-                      <p className="text-xs text-slate-300 leading-relaxed font-mono">
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-mono">
                         {alert.whyItMatters}
                       </p>
                     </div>
@@ -490,14 +491,10 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
 
                   <button
                     onClick={() => handleAlertClick(alert)}
-                    className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center space-x-1.5 shrink-0 self-end md:self-center cursor-pointer ${
-                      isCritical
-                        ? 'bg-rose-500/20 hover:bg-rose-600 text-rose-200 hover:text-white border border-rose-500/40'
-                        : 'bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white'
-                    }`}
+                    className="px-2.5 py-1 text-xs font-medium rounded-md bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center space-x-1 shrink-0 self-end md:self-center cursor-pointer"
                   >
-                    <span>View details</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
+                    <span>Inspect</span>
+                    <ChevronRight className="h-3 w-3" />
                   </button>
                 </div>
               );
@@ -507,52 +504,51 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
       </div>
 
       {/* ─── ROW 4: ACTIVITY TREND CHART ────────────────────────────────────── */}
-      <div className="glass-card p-6 space-y-4 border-slate-800">
+      <div className="p-5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              <Activity className="h-5 w-5 text-cyan-400" />
+            <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+              <Activity className="h-4 w-4 text-cyan-400" />
               <span>Engineering Activity Trend</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
               Weekly commits and PR activity aggregated over recent weeks.
             </p>
           </div>
-          <div className="flex items-center space-x-4 text-xs font-mono text-slate-400">
+          <div className="flex items-center space-x-3 text-xs font-mono text-[var(--text-muted)]">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Commits
+              <span className="w-2 h-2 rounded-full bg-indigo-500" /> Commits
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" /> Pull Requests
+              <span className="w-2 h-2 rounded-full bg-cyan-400" /> Pull Requests
             </span>
           </div>
         </div>
 
         {activityTrend.length > 0 ? (
           <>
-            {/* Summary mini stats row */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/60 text-center">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">Total Commits</span>
-                <span className="text-lg font-extrabold text-indigo-400">
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="p-2.5 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)] text-center">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Total Commits</span>
+                <span className="text-base font-bold text-indigo-400">
                   {activityTrend.reduce((sum, w) => sum + (w.commits || 0), 0)}
                 </span>
               </div>
-              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/60 text-center">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">Total PRs</span>
-                <span className="text-lg font-extrabold text-cyan-400">
+              <div className="p-2.5 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)] text-center">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Total PRs</span>
+                <span className="text-base font-bold text-cyan-400">
                   {activityTrend.reduce((sum, w) => sum + (w.prs || 0), 0)}
                 </span>
               </div>
-              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/60 text-center">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">Trend</span>
+              <div className="p-2.5 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)] text-center">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Trend</span>
                 {(() => {
                   const last = activityTrend[activityTrend.length - 1]?.commits || 0;
                   const prev = activityTrend.length > 1 ? activityTrend[activityTrend.length - 2]?.commits || 0 : 0;
                   const trendUp = last >= prev;
                   return (
-                    <span className={`text-lg font-extrabold flex items-center justify-center gap-1 ${trendUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {trendUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                    <span className={`text-base font-bold flex items-center justify-center gap-1 ${trendUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {trendUp ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
                       {prev > 0 ? Math.abs(Math.round(((last - prev) / prev) * 100)) : 0}%
                     </span>
                   );
@@ -560,23 +556,23 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
               </div>
             </div>
 
-            <div className="h-64 w-full pt-2">
+            <div className="h-56 w-full pt-1">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={activityTrend} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+                <BarChart data={activityTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                  <XAxis dataKey="week" stroke="#64748b" tick={{ fontSize: 11 }} axisLine={{ stroke: '#1e293b' }} />
-                  <YAxis stroke="#64748b" tick={{ fontSize: 11 }} axisLine={{ stroke: '#1e293b' }} />
-                  <Tooltip content={<DarkTooltip />} cursor={{ fill: 'rgba(99, 102, 241, 0.08)' }} />
-                  <Bar dataKey="commits" name="Commits" fill="#6366f1" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="prs" name="Pull Requests" fill="#06b6d4" radius={[6, 6, 0, 0]} />
+                  <XAxis dataKey="week" stroke="#64748b" tick={{ fontSize: 10 }} axisLine={{ stroke: '#1e293b' }} />
+                  <YAxis stroke="#64748b" tick={{ fontSize: 10 }} axisLine={{ stroke: '#1e293b' }} />
+                  <Tooltip content={<DarkTooltip />} cursor={{ fill: 'rgba(99, 102, 241, 0.04)' }} />
+                  <Bar dataKey="commits" name="Commits" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="prs" name="Pull Requests" fill="#06b6d4" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </>
         ) : (
-          <div className="h-64 flex items-center justify-center text-slate-500 text-sm">
-            <div className="text-center space-y-2">
-              <BarChart3 className="h-10 w-10 mx-auto text-slate-600" />
+          <div className="h-48 flex items-center justify-center text-[var(--text-muted)] text-xs">
+            <div className="text-center space-y-1">
+              <BarChart3 className="h-8 w-8 mx-auto text-slate-600" />
               <p>No activity trend data available yet.</p>
             </div>
           </div>
@@ -584,14 +580,14 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
       </div>
 
       {/* ─── ROW 5: TEAM OVERVIEW TABLE ─────────────────────────────────────── */}
-      <div className="glass-card p-6 space-y-4 border-slate-800">
+      <div className="p-5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              <Users className="h-5 w-5 text-indigo-400" />
+            <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+              <Users className="h-4 w-4 text-indigo-400" />
               <span>Team Overview & Knowledge Risk ({peopleList.length})</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
               Sortable by knowledge risk score to surface highest-risk key persons first.
             </p>
           </div>
@@ -599,10 +595,10 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           <div className="flex items-center space-x-2 text-xs font-mono">
             <button
               onClick={() => toggleSort('risk')}
-              className={`px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center space-x-1 ${
+              className={`px-2.5 py-1 rounded-md border transition-colors cursor-pointer flex items-center space-x-1 ${
                 sortField === 'risk'
-                  ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40 font-bold'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                  ? 'bg-[var(--accent-muted)] text-[var(--text-primary)] border-[var(--accent-border)] font-semibold'
+                  : 'bg-[var(--bg-panel)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]'
               }`}
             >
               <span>Risk Score</span>
@@ -610,10 +606,10 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             </button>
             <button
               onClick={() => toggleSort('commits')}
-              className={`px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center space-x-1 ${
+              className={`px-2.5 py-1 rounded-md border transition-colors cursor-pointer flex items-center space-x-1 ${
                 sortField === 'commits'
-                  ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40 font-bold'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                  ? 'bg-[var(--accent-muted)] text-[var(--text-primary)] border-[var(--accent-border)] font-semibold'
+                  : 'bg-[var(--bg-panel)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]'
               }`}
             >
               <span>Commits</span>
@@ -623,17 +619,17 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300 border-collapse">
+          <table className="cortex-table">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
-                <th className="py-3 px-4">Person</th>
-                <th className="py-3 px-4">Primary Repos</th>
-                <th className="py-3 px-4">Knowledge Risk Score</th>
-                <th className="py-3 px-4">Commits</th>
-                <th className="py-3 px-4 text-right">Action</th>
+              <tr>
+                <th>Person</th>
+                <th>Primary Repos</th>
+                <th>Knowledge Risk Score</th>
+                <th>Commits</th>
+                <th className="text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody>
               {sortedPeople.map((person) => {
                 const personRepos = Array.isArray(person.repos)
                   ? person.repos
@@ -641,39 +637,37 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                 return (
                   <tr
                     key={person.external_id || person.person_name}
-                    className="hover:bg-slate-900/60 transition-colors group cursor-pointer"
+                    className="cursor-pointer"
                     onClick={() => onNavigate('people')}
                   >
-                    <td className="py-3.5 px-4 font-semibold text-white">
+                    <td className="font-medium text-[var(--text-primary)]">
                       <div className="flex items-center space-x-2.5">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-0.5 flex items-center justify-center font-bold text-white text-xs shrink-0">
-                          <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center">
-                            {person.person_name?.[0] || 'U'}
-                          </div>
+                        <div className="w-7 h-7 rounded-full bg-[var(--accent-muted)] border border-[var(--accent-border)] text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0">
+                          {person.person_name?.[0] || 'U'}
                         </div>
                         <div>
-                          <span className="block">{person.person_name}</span>
-                          <span className="text-[10px] text-slate-500 font-mono font-normal">ID: {person.external_id}</span>
+                          <span className="block text-xs font-semibold leading-tight">{person.person_name}</span>
+                          <span className="text-[10px] text-[var(--text-muted)] font-mono font-normal">ID: {person.external_id}</span>
                         </div>
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4">
+                    <td>
                       <div className="flex flex-wrap gap-1 max-w-xs">
                         {personRepos.length > 0 ? personRepos.slice(0, 3).map((r, i) => (
-                          <span key={i} className="text-[10px] bg-slate-800/80 text-cyan-300 border border-slate-700/60 px-2 py-0.5 rounded-md font-mono">
+                          <span key={i} className="text-[10px] bg-[var(--bg-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] px-1.5 py-0.5 rounded font-mono">
                             {r}
                           </span>
                         )) : (
-                          <span className="text-slate-500 text-[10px]">No repos</span>
+                          <span className="text-[var(--text-muted)] text-[10px]">No repos</span>
                         )}
                         {personRepos.length > 3 && (
-                          <span className="text-[10px] text-slate-500">+{personRepos.length - 3}</span>
+                          <span className="text-[10px] text-[var(--text-muted)]">+{personRepos.length - 3}</span>
                         )}
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4">
+                    <td>
                       <RiskGauge
                         score={person.risk_score}
                         size="sm"
@@ -682,25 +676,19 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                       />
                     </td>
 
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-white text-sm">{person.commit_count ?? 0}</span>
-                        <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-400"
-                            style={{ width: `${Math.min(100, ((person.commit_count ?? 0) / Math.max(...peopleList.map(p => p.commit_count ?? 1), 1)) * 100)}%` }}
-                          />
-                        </div>
+                    <td>
+                      <div className="flex items-center gap-2 font-mono text-xs">
+                        <span className="font-semibold text-[var(--text-primary)]">{person.commit_count ?? 0}</span>
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="text-right">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onNavigate('people');
                         }}
-                        className="px-3.5 py-1.5 bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white text-[11px] font-semibold rounded-lg transition-all flex items-center gap-1.5 ml-auto"
+                        className="px-2.5 py-1 bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-medium rounded-md transition-colors inline-flex items-center gap-1 cursor-pointer"
                       >
                         <span>Profile</span>
                         <ChevronRight className="h-3 w-3" />
@@ -716,65 +704,54 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
 
       {/* ─── ROW 6: TECHNOLOGY DISTRIBUTION ────────────────────────────────── */}
       {techList.length > 0 && (
-        <div className="glass-card p-6 space-y-4 border-slate-800">
+        <div className="p-5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                <Cpu className="h-5 w-5 text-purple-400" />
+              <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-indigo-400" />
                 <span>Technology Stack Distribution</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
                 Technology usage across repositories ranked by adoption.
               </p>
             </div>
             <button
               onClick={() => onNavigate('technologies')}
-              className="px-3.5 py-1.5 bg-slate-800 hover:bg-purple-600 text-slate-200 hover:text-white text-xs font-medium rounded-lg transition-all flex items-center space-x-1.5 cursor-pointer"
+              className="px-2.5 py-1 bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-medium rounded-md transition-colors inline-flex items-center space-x-1 cursor-pointer"
             >
               <span>View All</span>
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-3 w-3" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {techList.slice(0, 9).map((tech, idx) => {
               const maxUsage = Math.max(...techList.map(t => t.usage_percent || 1), 1);
               const pct = Math.round(((tech.usage_percent || 0) / maxUsage) * 100);
               const name = tech.tech_name || tech.technology_name || 'Unknown';
-              const colors = [
-                'from-indigo-500 to-purple-500',
-                'from-cyan-500 to-blue-500',
-                'from-emerald-500 to-teal-500',
-                'from-amber-500 to-orange-500',
-                'from-rose-500 to-pink-500',
-                'from-violet-500 to-fuchsia-500',
-                'from-sky-500 to-indigo-500',
-                'from-lime-500 to-emerald-500',
-                'from-orange-500 to-red-500',
-              ];
               return (
-                <div key={idx} className="p-3.5 bg-slate-950/50 rounded-xl border border-slate-800/60 space-y-2 group hover:border-slate-700 transition-all">
+                <div key={idx} className="p-3 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)] space-y-1.5 transition-colors">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-white">{name}</span>
+                    <span className="text-xs font-semibold text-[var(--text-primary)]">{name}</span>
                     <div className="flex items-center gap-2 text-[10px] font-mono">
                       {(tech.contributor_count ?? 0) > 0 && (
-                        <span className="text-slate-500">
+                        <span className="text-[var(--text-muted)]">
                           <Users className="h-3 w-3 inline mr-0.5" />{tech.contributor_count}
                         </span>
                       )}
-                      <span className="text-indigo-400 font-bold">{tech.usage_percent}%</span>
+                      <span className="text-indigo-400 font-semibold">{tech.usage_percent}%</span>
                     </div>
                   </div>
-                  <div className="w-full bg-slate-800/80 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-[var(--bg-panel)] h-1.5 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full bg-gradient-to-r ${colors[idx % colors.length]} transition-all duration-700`}
+                      className="h-full rounded-full bg-indigo-500 transition-all duration-500"
                       style={{ width: `${Math.max(6, pct)}%` }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                  <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
                     <span>{tech.repo_count ?? 0} repos</span>
                     {(tech.contributor_count ?? 0) === 1 && (
-                      <span className="text-rose-400 font-semibold flex items-center gap-0.5">
+                      <span className="text-amber-400 font-medium flex items-center gap-0.5">
                         <AlertTriangle className="h-2.5 w-2.5" /> Single Expert
                       </span>
                     )}

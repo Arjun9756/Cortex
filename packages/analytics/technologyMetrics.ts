@@ -16,13 +16,17 @@ export async function calculateAllTechnologyMetrics() {
     const session = driver.session();
     try {
         const techResult = await session.run(`MATCH (t:TECHNOLOGY) RETURN t.name AS name`);
+        
+        // P1-5: Hoist totalRepos outside the loop instead of querying N times
+        const totalRepoResult = await session.run(`MATCH (r:REPOSITORY) RETURN count(r) AS total`);
+        const totalRepos = totalRepoResult.records[0]?.get("total")?.toNumber ? totalRepoResult.records[0]?.get("total")?.toNumber() : Number(totalRepoResult.records[0]?.get("total") || 1);
 
         for (const record of techResult.records) {
             const techName = record.get("name");
 
             // Bug #6 fix: per-record try/catch so one bad technology doesn't abort the whole batch
             try {
-                const metrics = await calculateTechMetrics(session, techName);
+                const metrics = await calculateTechMetrics(session, techName, totalRepos);
 
                 await sql`
                     INSERT INTO technology_metrics
@@ -60,47 +64,48 @@ export async function calculateAllTechnologyMetrics() {
     }
 }
 
-async function calculateTechMetrics(session: any, techName: string) {
-    const repoResult = await session.run(
-        `MATCH (t {name: $techName})-[:MENTIONED_IN|USES]-(e)-[:PART_OF]->(r:REPOSITORY)
-         RETURN count(DISTINCT r) AS repoCount`,
+async function calculateTechMetrics(session: any, techName: string, totalRepos: number) {
+    // P1-5: Combined single Cypher query for repoCount, contributorCount, activities, and topExperts
+    const combinedRes = await session.run(
+        `MATCH (t:TECHNOLOGY) WHERE toLower(t.name) = toLower($techName)
+
+         OPTIONAL MATCH (t)-[:MENTIONED_IN|USES]-(e1)-[:PART_OF]->(r:REPOSITORY)
+         WITH t, count(DISTINCT r) AS repoCount
+
+         OPTIONAL MATCH (p1:PERSON)-[]-(e2)-[:MENTIONED_IN|USES]-(t)
+         WITH t, repoCount, count(DISTINCT p1) AS contributorCount
+
+         OPTIONAL MATCH (t)-[:MENTIONED_IN]-(e3)
+         WITH t, repoCount, contributorCount, labels(e3)[0] AS actType, count(e3) AS actCount
+         WITH t, repoCount, contributorCount, collect({type: actType, count: actCount}) AS activities
+
+         OPTIONAL MATCH (p2:PERSON)-[:AUTHORED|WORKS_ON|USES]-(e4)-[:MENTIONED_IN|USES]-(t)
+         WITH repoCount, contributorCount, activities, p2.name AS expertName, count(e4) AS expertScore
+         ORDER BY expertScore DESC
+         WITH repoCount, contributorCount, activities,
+              [item IN collect({name: expertName, score: expertScore}) WHERE item.name IS NOT NULL][0..5] AS topExperts
+         RETURN repoCount, contributorCount, activities, topExperts`,
         { techName }
     );
-    const repoCount = repoResult.records[0]?.get("repoCount")?.toNumber() ?? 0;
 
-    const totalRepoResult = await session.run(`MATCH (r:REPOSITORY) RETURN count(r) AS total`);
-    const totalRepos = totalRepoResult.records[0]?.get("total")?.toNumber() ?? 1;
+    const rec = combinedRes.records[0];
+    const repoCount = rec?.get("repoCount")?.toNumber ? rec?.get("repoCount")?.toNumber() : Number(rec?.get("repoCount") || 0);
+    const contributorCount = rec?.get("contributorCount")?.toNumber ? rec?.get("contributorCount")?.toNumber() : Number(rec?.get("contributorCount") || 0);
 
-    const contributorResult = await session.run(
-        `MATCH (p:PERSON)-[]-(e)-[:MENTIONED_IN|USES]-(t {name: $techName})
-         RETURN count(DISTINCT p) AS count`,
-        { techName }
-    );
-    const contributorCount = contributorResult.records[0]?.get("count")?.toNumber() ?? 0;
-
-    const activityResult = await session.run(
-        `MATCH (t {name: $techName})-[:MENTIONED_IN]-(e)
-         RETURN labels(e)[0] AS type, count(e) AS count`,
-        { techName }
-    );
     let commitCount = 0, prCount = 0, issueCount = 0;
-    activityResult.records.forEach((r: any) => {
-        const type = r.get("type");
-        const count = r.get("count")?.toNumber() ?? 0;
+    const activities = rec?.get("activities") || [];
+    for (const act of activities) {
+        const type = act.type;
+        const count = act.count?.toNumber ? act.count.toNumber() : Number(act.count || 0);
         if (type === "COMMIT") commitCount = count;
         if (type === "PULL_REQUEST") prCount = count;
         if (type === "ISSUE") issueCount = count;
-    });
+    }
 
-    const expertResult = await session.run(
-        `MATCH (p:PERSON)-[:AUTHORED]->(e)-[:MENTIONED_IN]-(t {name: $techName})
-         RETURN p.name AS name, count(e) AS score
-         ORDER BY score DESC LIMIT 5`,
-        { techName }
-    );
-    const topExperts = expertResult.records.map((r: any) => ({
-        name: r.get("name"),
-        score: r.get("score")?.toNumber() ?? 0,
+    const rawTopExperts = rec?.get("topExperts") || [];
+    const topExperts = rawTopExperts.map((r: any) => ({
+        name: r.name,
+        score: r.score?.toNumber ? r.score.toNumber() : Number(r.score || 0),
     }));
 
     return {
@@ -111,8 +116,6 @@ async function calculateTechMetrics(session: any, techName: string) {
         prCount,
         issueCount,
         topExperts,
-        // Bug #8 fix: document that this is a placeholder, not a working metric.
-        // TODO: requires time-series commit history bucketed by week/month; not yet implemented.
         trendPercent: 0,
     };
 }

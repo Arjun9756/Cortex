@@ -1,4 +1,5 @@
 import sql from '../../apps/api/config/postgres.js';
+import { neo4jSession } from '../../apps/api/config/neo4j.js';
 import { snowflake } from '../../apps/Utils/Snowflake.js';
 import { calculateNameSimilarity } from './stringSimilarity.js';
 import { createGroqChatCompletion } from '../llm/providers/groq.js';
@@ -185,16 +186,25 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
     }
 
     // Tier 2: Strong Exact Username Match (High-Confidence Auto-Merge, e.g. github:rohanverma == slack:rohanverma)
-    if (cleanUsername && isStrongUsername(cleanUsername)) {
+    // STRICT POLICY:
+    // - NO auto-merge if incoming email is a noreply address (requires explicit linking or admin confirmation)
+    // - NO auto-merge if both accounts are on the same provider with different externalIds (must have exact email in Tier 1)
+    // - NO auto-merge if incoming email and existing identity email are both non-null and differ (multi-email requires confirmation)
+    const isNoreply = cleanEmail ? (cleanEmail.includes('users.noreply.github.com') || cleanEmail.includes('noreply')) : false;
+
+    if (!isNoreply && cleanUsername && isStrongUsername(cleanUsername)) {
         try {
             const [userMatch] = await sql`
-                SELECT canonical_person_id, display_name
+                SELECT canonical_person_id, display_name, provider, email
                 FROM person_identity
                 WHERE LOWER(username) = ${cleanUsername}
                 LIMIT 1
             `;
 
-            if (userMatch) {
+            const hasEmailConflict = Boolean(cleanEmail && userMatch?.email && cleanEmail.toLowerCase() !== userMatch.email.toLowerCase());
+            const sameProviderDifferentAccount = Boolean(userMatch && userMatch.provider === provider);
+
+            if (userMatch && !hasEmailConflict && !sameProviderDifferentAccount) {
                 const canonicalId = userMatch.canonical_person_id;
                 await linkIdentityAndAudit({
                     canonicalId,
@@ -234,40 +244,86 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
         reason: 'No high-confidence email or username match; created new canonical person (name-only auto-merge prohibited)',
     });
 
-    // Audit check: If display name is similar to an existing person, log to potential_duplicates table (status = 'pending')
-    if (cleanDisplayName) {
-        try {
-            const candidateIdentities = await sql`
-                SELECT DISTINCT canonical_person_id, display_name, username, provider
-                FROM person_identity
-                WHERE display_name IS NOT NULL AND canonical_person_id != ${newCanonicalId}
-                LIMIT 100
-            `;
-
-            for (const cand of candidateIdentities) {
-                const candName = cand.display_name || cand.username || '';
-                const simScore = calculateNameSimilarity(cleanDisplayName, candName);
-
-                if (simScore >= 0.85) {
-                    await recordPotentialDuplicate({
-                        personAId: cand.canonical_person_id,
-                        personAName: candName,
-                        personAProvider: cand.provider,
-                        personAUsername: cand.username,
-                        personBId: newCanonicalId,
-                        personBName: cleanDisplayName,
-                        personBProvider: provider,
-                        personBUsername: cleanUsername,
-                        similarityScore: Number(simScore.toFixed(3)),
-                        reason: `High display name similarity (${Math.round(simScore * 100)}%) with "${candName}". Auto-merge blocked by strict identity resolution policy ("Wrong merge is worse than having 2 separate entries").`,
-                    });
-                    console.log(`[IdentityResolution] [STRICT POLICY] Blocked name-only auto-merge between "${cleanDisplayName}" and "${candName}" (similarity: ${(simScore * 100).toFixed(1)}%). Created separate canonical person ${newCanonicalId} and flagged to potential_duplicates.`);
-                    break; // Log top candidate collision
-                }
-            }
-        } catch (auditErr: any) {
-            console.warn(`[IdentityResolution] Potential duplicate audit warning: ${auditErr?.message}`);
+    // Audit check: If display name, username, or noreply email matches an existing person, log to potential_duplicates table (status = 'pending')
+    try {
+        let noreplyUsername: string | null = null;
+        if (cleanEmail && cleanEmail.includes('@users.noreply.github.com')) {
+            const local = cleanEmail.split('@')[0] || '';
+            noreplyUsername = local.includes('+') ? local.split('+')[1] || null : local;
         }
+
+        const candidateIdentities = await sql`
+            SELECT DISTINCT canonical_person_id, display_name, username, email, provider, created_at
+            FROM person_identity
+            WHERE canonical_person_id != ${newCanonicalId}
+            ORDER BY created_at DESC
+            LIMIT 250
+        `;
+
+        let bestCandidate: any = null;
+        let highestScore = 0;
+        let bestReason = '';
+
+        for (const cand of candidateIdentities) {
+            const candName = (cand.display_name || cand.username || '').trim();
+            const candUser = (cand.username || '').trim().toLowerCase();
+            const candEmail = (cand.email || '').trim().toLowerCase();
+
+            const simScore = cleanDisplayName && candName ? calculateNameSimilarity(cleanDisplayName, candName) : 0;
+            const userMatch = Boolean(
+                (cleanUsername && candUser && cleanUsername.toLowerCase() === candUser) ||
+                (noreplyUsername && candUser && noreplyUsername.toLowerCase() === candUser) ||
+                (noreplyUsername && cand.display_name && cand.display_name.trim().toLowerCase() === noreplyUsername.toLowerCase())
+            );
+            const exactDisplayNameMatch = Boolean(cleanDisplayName && candName && cleanDisplayName.toLowerCase() === candName.toLowerCase());
+            const cleanPrefix = cleanEmail ? cleanEmail.split('@')[0]?.toLowerCase() : null;
+            const candPrefix = candEmail ? candEmail.split('@')[0]?.toLowerCase() : null;
+            const prefixMatch = Boolean(cleanPrefix && candPrefix && cleanPrefix === candPrefix && cleanPrefix.length >= 4);
+
+            let effectiveScore = 0;
+            let reason = '';
+
+            if (userMatch && exactDisplayNameMatch) {
+                effectiveScore = 0.99;
+                reason = `Matching username (${cleanUsername || noreplyUsername}) and identical display name "${candName}". Flagged for admin merge confirmation.`;
+            } else if (userMatch) {
+                effectiveScore = 0.98;
+                reason = `Username match (${cleanUsername || noreplyUsername} vs ${candUser}). Kept separate under strict policy.`;
+            } else if (exactDisplayNameMatch) {
+                effectiveScore = 0.95;
+                reason = `Identical display name "${candName}". Kept separate under strict policy.`;
+            } else if (prefixMatch) {
+                effectiveScore = 0.92;
+                reason = `Email prefix collision (${cleanPrefix}). Kept separate under strict policy.`;
+            } else if (simScore >= 0.85) {
+                effectiveScore = Number(simScore.toFixed(3));
+                reason = `High display name similarity (${Math.round(simScore * 100)}%) with "${candName}". Auto-merge blocked by strict identity resolution policy.`;
+            }
+
+            if (effectiveScore > highestScore) {
+                highestScore = effectiveScore;
+                bestCandidate = cand;
+                bestReason = reason;
+            }
+        }
+
+        if (bestCandidate && highestScore >= 0.85) {
+            await recordPotentialDuplicate({
+                personAId: bestCandidate.canonical_person_id,
+                personAName: bestCandidate.display_name || bestCandidate.username || 'Unknown',
+                personAProvider: bestCandidate.provider,
+                personAUsername: bestCandidate.username,
+                personBId: newCanonicalId,
+                personBName: cleanDisplayName || cleanUsername || 'Unknown',
+                personBProvider: provider,
+                personBUsername: cleanUsername,
+                similarityScore: highestScore,
+                reason: bestReason,
+            });
+            console.log(`[IdentityResolution] [STRICT POLICY] Flagged collision to potential_duplicates: "${cleanDisplayName || cleanUsername}" vs "${bestCandidate.display_name}" (${bestReason})`);
+        }
+    } catch (auditErr: any) {
+        console.warn(`[IdentityResolution] Potential duplicate audit warning: ${auditErr?.message}`);
     }
 
     return {
@@ -447,4 +503,134 @@ INSTRUCTIONS:
     }
 
     return null;
+}
+
+/**
+ * P1-1: Safely updates the active/alumni status of a canonical person across PostgreSQL and Neo4j.
+ * Excludes inactive employees from current Bus Factor, Primary Owner, and Successor pools.
+ */
+export async function setPersonActiveStatus(
+    canonicalPersonId: string, 
+    isActive: boolean, 
+    employmentStatus: 'active' | 'alumni' = isActive ? 'active' : 'alumni'
+): Promise<{ updatedPostgres: number; updatedNeo4j: number }> {
+    // 1. Update PostgreSQL person_identity table
+    const identityResult = await sql`
+        UPDATE person_identity 
+        SET is_active = ${isActive}
+        WHERE canonical_person_id = ${canonicalPersonId}
+        RETURNING id
+    `;
+
+    // 2. Update PostgreSQL person_metrics table
+    await sql`
+        UPDATE person_metrics
+        SET is_active = ${isActive},
+            employment_status = ${employmentStatus}
+        WHERE external_id = ${canonicalPersonId}
+    `;
+
+    // 3. Update Neo4j (p:PERSON) node
+    const session = neo4jSession();
+    let updatedNeo4j = 0;
+    try {
+        const neoRes = await session.run(`
+            MATCH (p:PERSON)
+            WHERE p.canonicalPersonId = $canonicalPersonId 
+               OR p.externalId = $canonicalPersonId
+            SET p.isActive = $isActive,
+                p.employmentStatus = $employmentStatus
+            RETURN count(p) AS c
+        `, { canonicalPersonId, isActive, employmentStatus });
+        updatedNeo4j = neoRes.records[0]?.get('c')?.toNumber ? neoRes.records[0].get('c').toNumber() : Number(neoRes.records[0]?.get('c') || 0);
+    } finally {
+        await session.close();
+    }
+
+    console.log(`[IdentityResolution] setPersonActiveStatus for ${canonicalPersonId}: isActive=${isActive}, employmentStatus=${employmentStatus} (Postgres: ${identityResult.length}, Neo4j: ${updatedNeo4j})`);
+    return { updatedPostgres: identityResult.length, updatedNeo4j };
+}
+
+/**
+ * P1-3: Links two canonical person IDs into one unified identity.
+ * Merges Postgres person_identity, rewires CONTRIBUTED_TO rollup edges, and resolves potential duplicates.
+ */
+export async function linkCanonicalPersons(
+    keepCanonicalId: string,
+    mergeCanonicalId: string,
+    reason: string = 'Manual administrative link / potential duplicate resolution'
+): Promise<void> {
+    if (keepCanonicalId === mergeCanonicalId) return;
+
+    // 1. Update Postgres person_identity to point all mergeCanonicalId rows to keepCanonicalId
+    await sql`
+        UPDATE person_identity
+        SET canonical_person_id = ${keepCanonicalId}
+        WHERE canonical_person_id = ${mergeCanonicalId}
+    `;
+
+    // 2. Audit log the merge
+    const auditLogId = `merge_${snowflake.nextID()}`;
+    await sql`
+        INSERT INTO identity_merge_log (id, person_a, person_b, confidence, matched_by, reason)
+        VALUES (
+            ${auditLogId},
+            ${keepCanonicalId},
+            ${mergeCanonicalId},
+            1.0,
+            'CANONICAL_LINK',
+            ${reason}
+        )
+    `;
+
+    // 3. Mark in potential_duplicates as resolved
+    await sql`
+        UPDATE potential_duplicates
+        SET status = 'resolved',
+            resolution_reason = ${`Linked to canonical person ${keepCanonicalId}: ${reason}`}
+        WHERE (person_a_id = ${keepCanonicalId} AND person_b_id = ${mergeCanonicalId})
+           OR (person_a_id = ${mergeCanonicalId} AND person_b_id = ${keepCanonicalId})
+           OR person_a_id = ${mergeCanonicalId}
+           OR person_b_id = ${mergeCanonicalId}
+    `;
+
+    // 4. Update Neo4j:
+    // Rewire CONTRIBUTED_TO relationships from merge person to keep person, summing commitCount and weightedScore
+    const session = neo4jSession();
+    try {
+        await session.run(`
+            MATCH (keep:PERSON)
+            WHERE keep.canonicalPersonId = $keepCanonicalId OR keep.externalId = $keepCanonicalId
+            MATCH (merge:PERSON)
+            WHERE (merge.canonicalPersonId = $mergeCanonicalId OR merge.externalId = $mergeCanonicalId)
+              AND elementId(merge) <> elementId(keep)
+            
+            // Transfer CONTRIBUTED_TO relationships
+            OPTIONAL MATCH (merge)-[r:CONTRIBUTED_TO]->(repo:REPOSITORY)
+            FOREACH (_ IN CASE WHEN r IS NOT NULL THEN [1] ELSE [] END |
+                MERGE (keep)-[newR:CONTRIBUTED_TO]->(repo)
+                ON CREATE SET 
+                    newR.commitCount = COALESCE(r.commitCount, 1),
+                    newR.lastCommitAt = COALESCE(r.lastCommitAt, timestamp()),
+                    newR.weightedScore = COALESCE(r.weightedScore, r.commitCount, 1),
+                    newR.createdAt = timestamp()
+                ON MATCH SET 
+                    newR.commitCount = COALESCE(newR.commitCount, 0) + COALESCE(r.commitCount, 1),
+                    newR.weightedScore = COALESCE(newR.weightedScore, 0) + COALESCE(r.weightedScore, r.commitCount, 1),
+                    newR.lastCommitAt = CASE WHEN r.lastCommitAt > COALESCE(newR.lastCommitAt, 0) THEN r.lastCommitAt ELSE newR.lastCommitAt END,
+                    newR.updatedAt = timestamp()
+                DELETE r
+            )
+            
+            // Delete the duplicate PERSON node
+            DETACH DELETE merge
+        `, { keepCanonicalId, mergeCanonicalId });
+    } finally {
+        await session.close();
+    }
+
+    // 5. Clean up duplicate person_metrics row in Postgres
+    await sql`DELETE FROM person_metrics WHERE external_id = ${mergeCanonicalId}`;
+
+    console.log(`[IdentityResolution] Successfully linked canonical person ${mergeCanonicalId} into ${keepCanonicalId}`);
 }

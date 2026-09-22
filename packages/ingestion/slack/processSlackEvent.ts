@@ -31,21 +31,19 @@ export async function processSlackEvent(eventID: string) {
 
         // 5. Resolve canonical identity and build person metadata
         const slackUserId = rawPayload.event?.user ?? rawPayload.user ?? rawPayload.event?.user_id
-        const externalId = slackUserId ? String(slackUserId) : `slack_${normalizedPayload.author || 'unknown'}`
-        const username = rawPayload.event?.username ?? rawPayload.user_name ?? (slackUserId ? String(slackUserId) : undefined)
-        const displayName = (normalizedPayload.author && normalizedPayload.author !== 'unknown') 
-            ? normalizedPayload.author 
-            : (username || externalId)
-        const email = normalizedPayload.authorEmail ?? undefined
+        const hasValidUser = Boolean(slackUserId && slackUserId !== 'unknown' && slackUserId !== 'USLACKBOT')
+        const authorName = (normalizedPayload.author && normalizedPayload.author !== 'unknown' && normalizedPayload.author !== 'slack_unknown') ? normalizedPayload.author : null
 
-        let canonicalPersonId: string | null = null
-        const hasAuthorInfo = Boolean(
-            (slackUserId && slackUserId !== 'unknown') ||
-            email ||
-            (displayName && displayName !== 'unknown')
-        )
+        let personMetadata: PersonMetadata[] = []
 
-        if (hasAuthorInfo) {
+        if (hasValidUser || authorName || normalizedPayload.authorEmail) {
+            const externalId = slackUserId ? String(slackUserId) : `slack_${authorName || 'user'}`
+            const username = rawPayload.event?.username ?? rawPayload.user_name ?? (slackUserId ? String(slackUserId) : undefined)
+            const displayName = authorName || username || externalId
+            const email = normalizedPayload.authorEmail ?? undefined
+
+            let canonicalPersonId: string | null = null
+
             try {
                 const identityRes = await resolveIdentity({
                     provider: 'slack',
@@ -57,22 +55,22 @@ export async function processSlackEvent(eventID: string) {
                 canonicalPersonId = identityRes.canonicalPersonId
 
                 if (identityRes.matchedBy === 'NEW_PERSON') {
-                    console.log(`[IdentityResolution] [Slack] Created new canonical person: ${identityRes.canonicalPersonId} for ${displayName || username || externalId} (externalId: ${externalId})`)
+                    console.log(`[IdentityResolution] [Slack] Created new canonical person: ${identityRes.canonicalPersonId} for ${displayName} (externalId: ${externalId})`)
                 } else {
-                    console.log(`[IdentityResolution] [Slack] Linked existing canonical person: ${identityRes.canonicalPersonId} for ${displayName || username || externalId} via ${identityRes.matchedBy} (confidence: ${identityRes.confidence}, reason: ${identityRes.reason})`)
+                    console.log(`[IdentityResolution] [Slack] Linked existing canonical person: ${identityRes.canonicalPersonId} for ${displayName} via ${identityRes.matchedBy} (confidence: ${identityRes.confidence}, reason: ${identityRes.reason})`)
                 }
             } catch (idErr: any) {
                 console.warn(`[Slack Ingestion] Identity resolution warning for ${externalId}: ${idErr?.message}`)
             }
-        }
 
-        const personMetadata: PersonMetadata[] = [{
-            name: normalizedPayload.author,
-            email: normalizedPayload.authorEmail ?? null,
-            role: normalizedPayload.authorRole ?? null,
-            externalId,
-            canonicalPersonId,
-        }]
+            personMetadata = [{
+                name: displayName,
+                email: normalizedPayload.authorEmail ?? null,
+                role: normalizedPayload.authorRole ?? null,
+                externalId,
+                canonicalPersonId,
+            }]
+        }
 
         // 6. Save to Graph Database (with enriched PERSON metadata)
         await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata)

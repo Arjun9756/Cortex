@@ -76,7 +76,7 @@ export async function getDashboardOverview(req: Request, res: Response) {
         // Only real active repositories with commits should affect company health & SPOF
         const totalRepos = repos.length;
         const activeRepos = repos.filter((r: any) => 
-            r.status !== 'empty' && r.status !== 'scaffold' && Number(r.risk_score) > 0 && Number(r.bus_factor) > 0
+            r.status !== 'empty' && r.status !== 'scaffold' && Number(r.bus_factor ?? 0) > 0
         );
         const totalActiveRepos = activeRepos.length;
 
@@ -361,7 +361,7 @@ export async function getFindings(req: Request, res: Response) {
             FROM repo_metrics
             WHERE bus_factor <= ${BUS_FACTOR_CRITICAL_THRESHOLD}
               AND status NOT IN ('empty', 'scaffold')
-              AND risk_score > 0
+              AND bus_factor > 0
         `;
 
         // Ownership/risk findings deliberately use repo_metrics, the same source
@@ -553,20 +553,38 @@ export async function getRepoDetails(req: Request, res: Response) {
         try {
         const session = neo4jSession();
         try {
-        const contribsRes = await session.run(`
-            MATCH (p:PERSON)-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)
+        // 1. Contributors: Query CONTRIBUTED_TO relations first, fallback to legacy COMMIT nodes
+        const directContribsRes = await session.run(`
+            MATCH (p:PERSON)-[rel:CONTRIBUTED_TO]->(r:REPOSITORY)
             WHERE lower(r.name) = lower($repoName)
-            WITH p, count(c) AS commits
-            RETURN p.name AS name, p.email AS email, p.role AS role, commits
+            RETURN p.name AS name, p.email AS email, p.role AS role,
+                   coalesce(rel.commitCount, 1) AS commits
             ORDER BY commits DESC
         `, { repoName });
 
-        contributors = contribsRes.records.map(rec => ({
+        contributors = directContribsRes.records.map(rec => ({
             name: rec.get('name'),
             email: rec.get('email'),
             role: rec.get('role'),
             commitCount: rec.get('commits')?.toNumber?.() ?? Number(rec.get('commits'))
         }));
+
+        if (contributors.length === 0) {
+            const legacyContribsRes = await session.run(`
+                MATCH (p:PERSON)-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)
+                WHERE lower(r.name) = lower($repoName)
+                WITH p, count(c) AS commits
+                RETURN p.name AS name, p.email AS email, p.role AS role, commits
+                ORDER BY commits DESC
+            `, { repoName });
+
+            contributors = legacyContribsRes.records.map(rec => ({
+                name: rec.get('name'),
+                email: rec.get('email'),
+                role: rec.get('role'),
+                commitCount: rec.get('commits')?.toNumber?.() ?? Number(rec.get('commits'))
+            }));
+        }
 
         const techRes = await session.run(`
             MATCH (r:REPOSITORY)
@@ -609,6 +627,60 @@ export async function getRepoDetails(req: Request, res: Response) {
             graphAvailable = false;
             graphError = error?.message || 'Neo4j enrichment unavailable';
             console.warn('[RepoDetails] Neo4j enrichment unavailable:', graphError);
+        }
+
+        // If no activity in graph (e.g. commits are not stored as graph nodes), fetch from Postgres events table
+        if (recentActivity.length === 0) {
+            try {
+                const pgEvents = await sql`
+                    SELECT 
+                        id,
+                        event_type,
+                        created_at,
+                        COALESCE(
+                            payload->'pull_request'->>'title',
+                            payload->'head_commit'->>'message',
+                            payload->'commits'->0->>'message',
+                            payload->'issue'->>'title',
+                            payload->>'text',
+                            payload->>'summary',
+                            'Code update'
+                        ) AS title,
+                        COALESCE(
+                            payload->'head_commit'->>'id',
+                            payload->'commits'->0->>'id',
+                            payload->'pull_request'->>'number'::text,
+                            id::text
+                        ) AS hash,
+                        COALESCE(
+                            payload->'sender'->>'login',
+                            payload->'head_commit'->'author'->>'name',
+                            payload->'pusher'->>'name',
+                            payload->'author'->>'name',
+                            'Team Contributor'
+                        ) AS author
+                    FROM events
+                    WHERE (
+                        payload->'repository'->>'name' ILIKE ${repoName}
+                        OR payload->'repository'->>'full_name' ILIKE ${'%' + repoName}
+                    )
+                    ORDER BY created_at DESC
+                    LIMIT 10
+                `;
+
+                if (pgEvents && pgEvents.length > 0) {
+                    recentActivity = pgEvents.map((evt: any) => ({
+                        title: evt.title || 'Code contribution',
+                        hash: evt.hash,
+                        externalId: evt.id,
+                        type: evt.event_type?.toUpperCase()?.includes('PULL') ? 'PULL_REQUEST' : 'COMMIT',
+                        date: new Date(evt.created_at).toLocaleDateString(),
+                        author: evt.author || 'Team Contributor'
+                    }));
+                }
+            } catch (pgErr: any) {
+                console.warn('[RepoDetails] Postgres recent activity fallback warning:', pgErr?.message);
+            }
         }
 
         const totalCommits = contributors.reduce((acc, c) => acc + c.commitCount, 0);

@@ -3,6 +3,7 @@ import { calculateKnowledgeRisk } from "../../../analytics/knowledge.service.js"
 import { calculateSuccessorCandidates } from "../../../analytics/successor.service.js";
 import { neo4jSession } from "../../../../apps/api/config/neo4j.js";
 import sql from "../../../../apps/api/config/postgres.js";
+import { isBotAccount, CYPHER_BOT_FILTER } from "../../../shared/botDetection.js";
 
 export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
     const tStart = Date.now();
@@ -87,18 +88,39 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
         return null;
     }
 
-    // Helper: fetch all PERSON node names from graph (excludes Slack user ID nodes)
+    // Helper: fetch all PERSON node names from person_metrics with Neo4j fallback (excludes bots, Slack user IDs, and alumni)
     async function getAllPersonNames(): Promise<string[]> {
+        try {
+            const rows = await sql`
+                SELECT DISTINCT person_name
+                FROM person_metrics
+                WHERE person_name IS NOT NULL
+                  AND person_name != ''
+                  AND NOT person_name ~ '^U[A-Z0-9]{6,}$'
+                  AND (is_active IS NULL OR is_active = true)
+                ORDER BY person_name
+            `;
+            const names = rows.map(r => r.person_name).filter((n): n is string => typeof n === 'string' && Boolean(n.trim()) && !isBotAccount(n));
+            if (names.length > 0) {
+                return names;
+            }
+        } catch (e: any) {
+            console.warn(`[KnowledgeRisk] person_metrics lookup failed: ${e?.message}`);
+        }
+
         const session = neo4jSession();
         try {
             const result = await session.run(`
                 MATCH (p:PERSON)
                 WHERE p.name IS NOT NULL
                   AND NOT p.name =~ '^U[A-Z0-9]{6,}$'
+                  AND ${CYPHER_BOT_FILTER}
+                  AND COALESCE(p.isActive, true) = true
+                  AND COALESCE(p.employmentStatus, 'active') <> 'alumni'
                 RETURN DISTINCT p.name AS name
                 ORDER BY p.name
             `);
-            return result.records.map(r => r.get('name')).filter((n): n is string => typeof n === 'string' && Boolean(n.trim()));
+            return result.records.map(r => r.get('name')).filter((n): n is string => typeof n === 'string' && Boolean(n.trim()) && !isBotAccount(n));
         } catch (e: any) {
             console.warn(`[KnowledgeRisk] Failed to query all PERSON nodes: ${e?.message}`);
             return [];

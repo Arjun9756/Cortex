@@ -71,10 +71,10 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
   if (loading) {
     return (
       <div className="p-8 space-y-6 animate-pulse">
-        <div className="h-8 w-64 bg-slate-800 rounded-lg"></div>
+        <div className="h-8 w-64 bg-[var(--bg-elevated)] rounded-lg"></div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-56 bg-slate-900/80 rounded-xl border border-slate-800"></div>
+            <div key={i} className="h-56 bg-[var(--bg-panel)] rounded-xl border border-[var(--border-subtle)]"></div>
           ))}
         </div>
       </div>
@@ -84,19 +84,19 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
   if (error) {
     return (
       <div className="p-8">
-        <div className="p-6 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center justify-between">
+        <div className="p-5 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center justify-between">
           <div className="flex items-center space-x-3 text-rose-300">
-            <AlertTriangle className="h-6 w-6 text-rose-400" />
+            <AlertTriangle className="h-5 w-5 text-rose-400" />
             <div>
-              <h4 className="font-semibold text-white">Failed to Load People Metrics</h4>
+              <h4 className="font-semibold text-[var(--text-primary)] text-sm">Failed to Load People Metrics</h4>
               <p className="text-xs text-rose-300/80">{error}</p>
             </div>
           </div>
           <button
             onClick={fetchPeople}
-            className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2"
+            className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2 transition-colors cursor-pointer"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-3.5 w-3.5" />
             <span>Retry</span>
           </button>
         </div>
@@ -111,12 +111,12 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
     return (
       <div className="space-y-1">
         <div className="flex justify-between text-xs">
-          <span className="text-slate-300 font-medium capitalize">{label}</span>
-          <span className={`font-bold ${isHigh ? 'text-rose-400' : 'text-slate-400'}`}>{value.toFixed(1)}/10</span>
+          <span className="text-[var(--text-secondary)] font-medium capitalize">{label}</span>
+          <span className={`font-semibold font-mono ${isHigh ? 'text-rose-400' : 'text-[var(--text-muted)]'}`}>{value.toFixed(1)}/10</span>
         </div>
-        <div className="w-full bg-slate-800/80 h-2 rounded-full overflow-hidden">
+        <div className="w-full bg-[var(--bg-app)] h-1.5 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${isHigh ? 'bg-gradient-to-r from-rose-500 to-amber-500' : 'bg-gradient-to-r from-indigo-500 to-purple-400'}`}
+            className={`h-full rounded-full transition-all duration-300 ${isHigh ? 'bg-rose-500' : 'bg-indigo-500'}`}
             style={{ width: `${Math.max(4, pct)}%` }}
           ></div>
         </div>
@@ -125,20 +125,20 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
   };
 
   return (
-    <div className="p-8 space-y-6 relative">
+    <div className="p-8 space-y-6 relative bg-[var(--bg-app)] min-h-screen">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Users className="h-6 w-6 text-indigo-400" />
-            <span>People, Ownership & Knowledge Loss Risk</span>
+          <h3 className="text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+            <Users className="h-5 w-5 text-indigo-400" />
+            <span>People & Knowledge Loss Risk</span>
           </h3>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[var(--text-muted)] mt-1">
             Engineers ranked by Knowledge Loss Risk score, top skills, and repository contributions.
           </p>
         </div>
         <button
           onClick={fetchPeople}
-          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-white rounded-lg flex items-center space-x-2"
+          className="px-3 py-1.5 bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-xs text-[var(--text-secondary)] hover:text-white rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span>Refresh</span>
@@ -146,19 +146,20 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
       </div>
 
       {people.length === 0 ? (
-        <div className="glass-card p-12 text-center space-y-3">
-          <Users className="h-10 w-10 text-slate-500 mx-auto" />
-          <h4 className="text-base font-semibold text-slate-300">No Person Metrics Indexed Yet</h4>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
+        <div className="cortex-card p-12 text-center space-y-3">
+          <Users className="h-8 w-8 text-[var(--text-muted)] mx-auto" />
+          <h4 className="text-sm font-semibold text-[var(--text-primary)]">No Person Metrics Indexed Yet</h4>
+          <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto">
             Knowledge loss calculations run as part of the scheduled analytics job. Once team members have indexed graph data, profiles will populate here.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {people.map(person => {
             const risk = person.risk_score ?? 0;
             const isCriticalRisk = risk >= RISK_THRESHOLDS.CRITICAL;
             const isHighRisk = risk >= RISK_THRESHOLDS.HIGH;
+            const isModerateRisk = risk >= RISK_THRESHOLDS.MODERATE;
 
             const techList: Array<{ name: string; score: number }> = Array.isArray(person.top_technologies)
               ? person.top_technologies
@@ -173,29 +174,29 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
             return (
               <div
                 key={person.external_id || person.person_name}
-                className="glass-card glass-card-hover p-6 flex flex-col justify-between space-y-4"
+                className="cortex-card p-5 flex flex-col justify-between space-y-4 hover:border-[var(--border-strong)] transition-colors"
               >
                 <div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-0.5 flex items-center justify-center font-bold text-white shadow-md">
-                        <div className="h-full w-full bg-slate-950 rounded-full flex items-center justify-center">
-                          {(person?.person_name || person?.external_id || 'Person').charAt(0).toUpperCase()}
-                        </div>
+                      <div className="h-9 w-9 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-strong)] flex items-center justify-center font-bold text-xs text-[var(--text-primary)]">
+                        {(person?.person_name || person?.external_id || 'Person').charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <h4 className="text-base font-bold text-white tracking-tight">{person?.person_name || person?.external_id || 'Person'}</h4>
-                        <p className="text-[11px] text-slate-400 font-mono">ID: {person?.external_id}</p>
+                        <h4 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">{person?.person_name || person?.external_id || 'Person'}</h4>
+                        <p className="text-[11px] text-[var(--text-muted)] font-mono">ID: {person?.external_id}</p>
                       </div>
                     </div>
 
                     <span
-                      className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center space-x-1 ${
+                      className={`text-xs font-semibold px-2 py-0.5 rounded border flex items-center space-x-1 ${
                         isCriticalRisk
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
                           : isHighRisk
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          ? 'bg-orange-500/10 text-orange-300 border-orange-500/30'
+                          : isModerateRisk
+                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                          : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
                       }`}
                     >
                       <ShieldAlert className="h-3 w-3 mr-1" />
@@ -203,20 +204,20 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mt-4 p-2.5 bg-slate-950/60 rounded-lg border border-slate-800 text-xs">
+                  <div className="grid grid-cols-2 gap-2 mt-3.5 p-2 bg-[var(--bg-subtle)] rounded-lg border border-[var(--border-subtle)] text-xs">
                     <div className="flex items-center space-x-2">
-                      <GitCommit className="h-3.5 w-3.5 text-amber-400" />
-                      <span className="text-slate-400">Commits: <strong className="text-white">{person.commit_count ?? 0}</strong></span>
+                      <GitCommit className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                      <span className="text-[var(--text-secondary)]">Commits: <strong className="text-[var(--text-primary)]">{person.commit_count ?? 0}</strong></span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FolderGit2 className="h-3.5 w-3.5 text-cyan-400" />
-                      <span className="text-slate-400">Repos: <strong className="text-white">{reposList.length}</strong></span>
+                      <FolderGit2 className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                      <span className="text-[var(--text-secondary)]">Repos: <strong className="text-[var(--text-primary)]">{reposList.length}</strong></span>
                     </div>
                   </div>
 
                   {techList.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-center space-x-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <div className="mt-3.5 space-y-2">
+                      <div className="flex items-center space-x-1 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                         <Award className="h-3 w-3 text-indigo-400" />
                         <span>Top Skills & Usage</span>
                       </div>
@@ -226,12 +227,12 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                           return (
                             <div key={idx} className="space-y-0.5">
                               <div className="flex justify-between text-xs">
-                                <span className="text-slate-300 font-medium">{tech.name}</span>
-                                <span className="text-slate-500 text-[10px]">{tech.score} items</span>
+                                <span className="text-[var(--text-secondary)] font-medium">{tech.name}</span>
+                                <span className="text-[var(--text-muted)] text-[10px]">{tech.score} items</span>
                               </div>
-                              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                              <div className="w-full bg-[var(--bg-app)] h-1.5 rounded-full overflow-hidden">
                                 <div
-                                  className="bg-gradient-to-r from-indigo-500 to-purple-400 h-full rounded-full"
+                                  className="bg-indigo-500 h-full rounded-full"
                                   style={{ width: `${Math.max(8, pct)}%` }}
                                 ></div>
                               </div>
@@ -244,9 +245,9 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                 </div>
 
                 {reposList.length > 0 && (
-                  <div className="pt-3 border-t border-slate-800/80 flex flex-wrap gap-1.5">
+                  <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-wrap gap-1.5">
                     {reposList.map((r, i) => (
-                      <span key={i} className="text-[10px] bg-slate-800/80 text-slate-300 border border-slate-700 px-2 py-0.5 rounded">
+                      <span key={i} className="text-[10px] bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] px-2 py-0.5 rounded font-mono">
                         {r}
                       </span>
                     ))}
@@ -257,7 +258,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                 <button
                   onClick={() => handleSimulateDeparture(person)}
                   disabled={isSimulating}
-                  className="w-full py-2.5 bg-gradient-to-r from-rose-600/20 to-amber-600/20 hover:from-rose-600/30 hover:to-amber-600/30 border border-rose-500/30 hover:border-rose-500/50 text-xs font-semibold text-rose-200 hover:text-white rounded-xl transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full py-2 bg-[var(--bg-elevated)] hover:bg-[var(--border-subtle)] border border-[var(--border-strong)] text-xs font-medium text-[var(--text-primary)] hover:border-rose-500/40 rounded-lg transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isSimulating ? (
                     <>
@@ -266,7 +267,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                     </>
                   ) : (
                     <>
-                      <UserMinus className="h-3.5 w-3.5" />
+                      <UserMinus className="h-3.5 w-3.5 text-rose-400" />
                       <span>Simulate Departure</span>
                     </>
                   )}
@@ -279,12 +280,12 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
 
       {/* ─── Simulate Departure Impact Panel (Modal Overlay) ──────── */}
       {(simulation || simError) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto bg-[#0c1121] border border-rose-500/30 rounded-2xl shadow-2xl shadow-rose-500/10 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <div className="w-full max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-xl shadow-2xl relative">
             {/* Close button */}
             <button
               onClick={closeSimulation}
-              className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-white transition-colors z-10"
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-white transition-colors z-10 cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
@@ -292,46 +293,46 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
             {simError ? (
               <div className="p-8 space-y-4">
                 <div className="flex items-center space-x-3 text-rose-300">
-                  <AlertTriangle className="h-6 w-6 text-rose-400" />
+                  <AlertTriangle className="h-5 w-5 text-rose-400" />
                   <div>
-                    <h4 className="font-bold text-white text-lg">Simulation Failed</h4>
+                    <h4 className="font-bold text-[var(--text-primary)] text-base">Simulation Failed</h4>
                     <p className="text-xs text-rose-300/80">{simError}</p>
                   </div>
                 </div>
               </div>
             ) : simulation && (
-              <div className="p-8 space-y-6">
+              <div className="p-6 space-y-6">
                 {/* Header — visually distinct "simulation" framing */}
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <div className="p-2 rounded-lg bg-rose-500/20 border border-rose-500/30">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20">
                       <UserMinus className="h-5 w-5 text-rose-400" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">DEPARTURE SIMULATION</p>
-                      <h3 className="text-xl font-extrabold text-white tracking-tight">
-                        What if {simulation.person} left?
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">DEPARTURE IMPACT SIMULATION</p>
+                      <h3 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
+                        Impact Assessment: {simulation.person}
                       </h3>
                     </div>
                   </div>
 
                   {/* Risk score hero */}
-                  <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-rose-500/10 to-amber-500/10 rounded-xl border border-rose-500/20">
-                    <div className="text-center">
-                      <span className="text-4xl font-extrabold text-rose-400">{simulation.riskScore}%</span>
-                      <p className="text-[10px] text-slate-400 font-semibold uppercase">Knowledge Risk</p>
+                  <div className="flex items-center space-x-5 p-4 bg-[var(--bg-subtle)] rounded-lg border border-[var(--border-subtle)]">
+                    <div className="text-center pr-5 border-r border-[var(--border-subtle)]">
+                      <span className="text-3xl font-extrabold text-rose-400 font-mono">{simulation.riskScore}%</span>
+                      <p className="text-[10px] text-[var(--text-muted)] font-semibold uppercase mt-0.5">Knowledge Risk</p>
                     </div>
-                    <div className="flex-1 space-y-1 text-xs text-slate-300">
-                      <p><strong className="text-white">{simulation.details.ownedItems}</strong> owned items at risk</p>
-                      <p><strong className="text-white">{simulation.commitCount}</strong> commits authored</p>
-                      <p><strong className="text-white">{simulation.affectedRepos.length}</strong> {simulation.affectedRepos.length === 1 ? 'repository' : 'repositories'} affected</p>
+                    <div className="flex-1 space-y-1 text-xs text-[var(--text-secondary)]">
+                      <p><strong className="text-[var(--text-primary)] font-mono">{simulation.details.ownedItems}</strong> owned items at risk</p>
+                      <p><strong className="text-[var(--text-primary)] font-mono">{simulation.commitCount}</strong> commits authored</p>
+                      <p><strong className="text-[var(--text-primary)] font-mono">{simulation.affectedRepos.length}</strong> {simulation.affectedRepos.length === 1 ? 'repository' : 'repositories'} affected</p>
                     </div>
                   </div>
                 </div>
 
                 {/* 6 Risk Breakdown Bars */}
                 <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Risk Breakdown</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Risk Breakdown</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                     <BreakdownBar label="Ownership" value={simulation.breakdown?.ownership ?? 0} />
                     <BreakdownBar label="Dependency" value={simulation.breakdown?.dependency ?? 0} />
@@ -345,13 +346,13 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                 {/* Affected Repos */}
                 {(simulation.affectedRepos?.length ?? 0) > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <FolderGit2 className="h-3.5 w-3.5 text-cyan-400" />
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                      <FolderGit2 className="h-3.5 w-3.5 text-indigo-400" />
                       Affected Repositories
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {simulation.affectedRepos.map((repo, i) => (
-                        <span key={i} className="text-xs bg-rose-500/10 text-rose-300 border border-rose-500/20 px-3 py-1 rounded-lg font-medium">
+                        <span key={i} className="text-xs bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2.5 py-1 rounded font-mono">
                           {repo}
                         </span>
                       ))}
@@ -362,15 +363,15 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                 {/* Affected Technologies */}
                 {(simulation.affectedTechnologies?.length ?? 0) > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Cpu className="h-3.5 w-3.5 text-purple-400" />
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                      <Cpu className="h-3.5 w-3.5 text-indigo-400" />
                       Affected Technologies
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {simulation.affectedTechnologies.map((tech, i) => (
-                        <span key={i} className="text-xs bg-purple-500/10 text-purple-300 border border-purple-500/20 px-3 py-1 rounded-lg font-medium">
+                        <span key={i} className="text-xs bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] px-2.5 py-1 rounded font-mono">
                           {tech.name}
-                          <span className="ml-1 text-[10px] text-purple-400/60">({tech.score})</span>
+                          <span className="ml-1 text-[10px] text-[var(--text-muted)]">({tech.score})</span>
                         </span>
                       ))}
                     </div>
@@ -380,15 +381,15 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                 {/* Owned Items Evidence */}
                 {(simulation.evidence?.ownership?.length ?? 0) > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
                       <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
                       Owned Items at Risk ({simulation.evidence.ownership.length})
                     </h4>
                     <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
                       {simulation.evidence.ownership.map((item, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs p-2 bg-slate-950/60 rounded-lg border border-slate-800/60">
-                          <span className="text-slate-300 font-medium truncate">{item.name}</span>
-                          <span className="text-[10px] text-slate-500 uppercase font-mono shrink-0 ml-2">{item.type}</span>
+                        <div key={i} className="flex items-center justify-between text-xs p-2 bg-[var(--bg-subtle)] rounded-lg border border-[var(--border-subtle)]">
+                          <span className="text-[var(--text-secondary)] font-mono truncate">{item.name}</span>
+                          <span className="text-[10px] text-[var(--text-muted)] uppercase font-mono shrink-0 ml-2">{item.type}</span>
                         </div>
                       ))}
                     </div>
@@ -396,13 +397,13 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                 )}
 
                 {/* ─── SECTION: RECOMMENDED SUCCESSORS & HANDOFF PLAN ──────────────── */}
-                <div className="space-y-4 pt-4 border-t border-slate-800/90">
+                <div className="space-y-4 pt-4 border-t border-[var(--border-subtle)]">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
                       <Award className="h-4 w-4" />
                       <span>Recommended Successors & Handoff Plan</span>
                     </h4>
-                    <span className="text-[10px] text-slate-500 font-mono">
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono">
                       Per-repository deterministic candidate ranking
                     </span>
                   </div>
@@ -412,12 +413,12 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                       {simulation.successorsByRepo.map((repoPlan, rIdx) => (
                         <div
                           key={rIdx}
-                          className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-3"
+                          className="p-4 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-3"
                         >
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/70 pb-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
                             <div className="flex items-center space-x-2.5 min-w-0">
-                              <FolderGit2 className="h-4 w-4 text-cyan-400 shrink-0" />
-                              <span className="font-mono text-sm font-bold text-white truncate">
+                              <FolderGit2 className="h-4 w-4 text-indigo-400 shrink-0" />
+                              <span className="font-mono text-sm font-bold text-[var(--text-primary)] truncate">
                                 {repoPlan.repoName}
                               </span>
                               {repoPlan.busFactor !== undefined && (
@@ -425,7 +426,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                                   className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold shrink-0 ${
                                     repoPlan.busFactor <= 1
                                       ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                                      : 'bg-slate-800 text-slate-300'
+                                      : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]'
                                   }`}
                                 >
                                   Bus Factor: {repoPlan.busFactor} {repoPlan.busFactor <= 1 ? '(SPOF)' : ''}
@@ -434,7 +435,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                             </div>
 
                             <span
-                              className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border shrink-0 ${
+                              className={`text-[11px] font-medium px-2.5 py-0.5 rounded border shrink-0 ${
                                 repoPlan.hasSuccessor
                                   ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
                                   : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
@@ -444,7 +445,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                             </span>
                           </div>
 
-                          <p className="text-xs text-slate-300 italic leading-relaxed">
+                          <p className="text-xs text-[var(--text-secondary)] italic leading-relaxed">
                             {repoPlan.explanation}
                           </p>
 
@@ -464,9 +465,9 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                       ))}
                     </div>
                   ) : (
-                    <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-center text-xs text-slate-400">
+                    <div className="p-4 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-center text-xs text-[var(--text-muted)]">
                       <p>No repository-level successor candidates identified for this profile.</p>
-                      <p className="text-[10px] text-slate-500 mt-1">Cross-skilling recommended to build redundancy.</p>
+                      <p className="text-[10px] text-[var(--text-muted)] mt-1">Cross-skilling recommended to build redundancy.</p>
                     </div>
                   )}
                 </div>

@@ -1,8 +1,8 @@
 import redis from '../../config/redis.js';
 
 export const GRAPH_CACHE_CONFIG = {
-    SUMMARY_TTL_SECONDS: parseInt(process.env.GRAPH_SUMMARY_TTL_SECONDS || '90', 10),
-    NODE_TTL_SECONDS: parseInt(process.env.GRAPH_NODE_TTL_SECONDS || '60', 10),
+    SUMMARY_TTL_SECONDS: parseInt(process.env.GRAPH_SUMMARY_TTL_SECONDS || '300', 10),
+    NODE_TTL_SECONDS: parseInt(process.env.GRAPH_NODE_TTL_SECONDS || '180', 10),
 };
 
 export function buildSummaryCacheKey(workspaceId: string = 'global', filterKey: any = 'all'): string {

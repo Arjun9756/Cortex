@@ -64,11 +64,14 @@ Cortex is architected around four non-negotiable engineering tenets:
 ┌──────────────────────────────────────────┐   ┌──────────────────────────────────────────────┐
 │          NEO4J KNOWLEDGE GRAPH           │   │            QDRANT VECTOR DATABASE            │
 │  - Directed Labeled Property Graph       │   │  - Collection: cortex_events                 │
-│  - Nodes: PERSON, TECHNOLOGY, REPO,      │   │  - Model: Google Gemini embedding-2          │
-│           COMMIT, PR, ISSUE, TEAM, FILE  │   │  - Dimensions: 384 (Cosine distance)         │
-│  - Relations: AUTHORED, USES, DEPENDS_ON,│   │  - Purpose: Dense semantic retrieval for     │
+│  - Nodes: PERSON, TECHNOLOGY, REPOSITORY,│   │  - Model: Google Gemini embedding-2          │
+│           PULL_REQUEST, ISSUE, TEAM, FILE│   │  - Dimensions: 384 (Cosine distance)         │
+│  - Relations: CONTRIBUTED_TO (Rollup),   │   │  - Deterministic UUIDs: hash(eventID)        │
+│               AUTHORED, USES, DEPENDS_ON,│   │  - Purpose: Dense semantic retrieval for     │
 │               WORKS_ON, PART_OF, etc.    │   │             unstructured architectural rationale│
-│  - Injection Protection: Strict Sets     │   └──────────────────────────────────────────────┘
+│  - Commits: Compacted into CONTRIBUTED_TO│   └──────────────────────────────────────────────┘
+│    edges (commitCount, lastCommitAt)     │
+│  - Injection Protection: Strict Sets     │
 └────────────────────┬─────────────────────┘
                      │ Daily Cron @ 18:00 IST (+ immediate on server startup)
                      ▼
@@ -156,15 +159,61 @@ Raw webhook payloads are transformed into structured knowledge graphs via Groq L
   ```typescript
   const ALLOWED_ENTITY_TYPES = new Set([
     'PERSON', 'TECHNOLOGY', 'REPOSITORY', 'ISSUE', 'PULL_REQUEST',
-    'COMMIT', 'TEAM', 'FILE', 'ORGANIZATION'
+    'TEAM', 'FILE', 'ORGANIZATION'
   ]);
 
   const ALLOWED_RELATIONS = new Set([
     'USES', 'HAS_PROBLEM', 'FIXED_BY', 'REPLACED_BY', 'DEPENDS_ON',
-    'WORKS_ON', 'CREATED', 'MENTIONED_IN', 'ASSIGNED_TO', 'PART_OF', 'AUTHORED'
+    'WORKS_ON', 'CREATED', 'MENTIONED_IN', 'ASSIGNED_TO', 'PART_OF', 'AUTHORED', 'CONTRIBUTED_TO'
   ]);
   ```
   Any entity or relationship type outside these sets is rejected immediately, mathematically preventing Cypher prompt injection vulnerabilities.
+
+### 3.4 Graph Scalability & Architectural Risk Hardening
+
+To support enterprise workloads (5+ years of Git history across 20+ active repositories) without exhausting database memory or Neo4j Aura node limits, Cortex implements four core hardening mechanisms:
+
+1. **Commit Node Elimination & 6-Layer Defense-in-Depth Gatekeeper (P0-1):**
+   - **The Problem:** In a typical engineering team, 200 commits/week across 15 repos generates ~156,000 commit nodes in 2 years. Neo4j Aura Free / Starter tiers cap total nodes at 200,000, causing silent ingestion drops. Furthermore, graph traversals for bus factor and ownership were $O(\text{commits})$. Most importantly, if an LLM hallucinates individual commits or hex SHAs into the graph, the topology fragments and downstream analytics (Bus Factor, Knowledge Risk) degrade.
+   - **The 6-Layer Defense-in-Depth Architecture:**
+     1. **Layer 1 (Prompt Directive):** The extraction prompt explicitly forbids LLMs from outputting Git commit entities or SHAs. Rule 10 instructs the model to connect contributors directly to repositories (`CONTRIBUTED_TO`, `WORKS_ON`) and repositories to technologies (`USES`).
+     2. **Layer 2 (Ontology Contract):** `'COMMIT'` has been excised from `ENTITY_TYPES` in `packages/extraction/ontology.ts`.
+     3. **Layer 3 (Entity Normalization & SHA Regex Filter):** `packages/extraction/entityResolver.ts` maps all commit variations (`COMMIT`, `COMMITS`, `GIT_COMMIT`, `COMMIT_HASH`, `CHANGESET`, `REVISION`) and runs a strict hex SHA regex (`/^(commit\s*:?\s*#?|sha\s*:?\s*)?[a-f0-9]{7,40}$/i`). Any entity matching these patterns is purged from the extraction list.
+     4. **Layer 4 (Relationship Rewiring & Technical Signal Preservation):** In `packages/ingestion/github/processGithubEvent.ts`, if an LLM attached a technology to a commit (e.g. `commit_8f3b12a -> USES -> Redis`), Cortex automatically rewires the source node to the repository (`repository -> USES -> Redis`). This ensures architectural knowledge is never lost while guaranteeing zero commit nodes enter the database.
+     5. **Layer 5 (Extraction Gateway Sanity Filter):** In `packages/extraction/processExtraction.ts`, any relation with unresolved or commit-matching endpoints is discarded prior to database dispatch.
+     6. **Layer 6 (Neo4j Driver Gatekeeper):** In `packages/database/neo4j/graph.repository.ts`, `upsertEntity()` intercepts any commit entity directly at the driver level, logs a security warning, and returns `undefined`, preventing node creation. `ALLOWED_ENTITY_TYPES` strictly excludes `COMMIT`.
+   - **Topological Representation:** Developer activity is modeled as a direct rollup edge:
+     ```cypher
+     (:PERSON)-[:CONTRIBUTED_TO {
+         commitCount: 42,
+         lastCommitAt: 1718000000000,
+         evidence: "Merged 42 commits into main"
+     }]->(:REPOSITORY)
+     ```
+   - **Compaction Migration:** Existing legacy graphs are compacted via `scripts/compact_commits_to_contributions.ts` which rolls up historical `(:COMMIT)` nodes into `CONTRIBUTED_TO` edges with optional pruning (`--delete-commits`). All analytics queries feature backward-compatible fallback logic.
+   - **PostgreSQL as Commit Source of Truth:** Raw commit messages, SHAs, and file diffs remain preserved in PostgreSQL `events` table for auditability and UI timeline display, queried with date/limit bounds.
+
+2. **Single Neo4j Session per Event & Batch Cypher `UNWIND` (P0-2):**
+   - **The Problem:** Previously, `processExtraction.ts` opened and closed a new Neo4j session for every single entity and relationship in an event loop (e.g. 15 entities + 20 relations = 35 database connections per webhook), exhausting connection pools under burst traffic.
+   - **The Solution:** Ingestion now opens **exactly one** Neo4j session per webhook event. All relationship edges are grouped by type and inserted in a single roundtrip using Cypher `UNWIND`:
+     ```cypher
+     UNWIND $batch AS rel
+     MATCH (from {externalId: rel.fromID})
+     MATCH (to {externalId: rel.toID})
+     MERGE (from)-[r:CONTRIBUTED_TO]->(to)
+     SET r += rel.properties
+     ```
+
+3. **PostgreSQL Event Store Retention Policy (P0-3):**
+   - **The Problem:** The `events` table stores full webhook JSON payloads (20–100 KB per push). Storing millions of raw JSON payloads indefinitely causes disk exhaustion and slow sequential scans.
+   - **The Solution:** Automated retention worker in `packages/workers/scheduler.worker.ts` purges raw event payloads older than `EVENTS_RETENTION_DAYS` (default 90 days) via `created_at < NOW() - INTERVAL '90 days'`. All dashboard stats and reporting queries are index-bounded (30d / 90d / 180d) to prevent sequential scans.
+
+4. **Deterministic Vector UUIDs (P2-9):**
+   - **The Problem:** Using `crypto.randomUUID()` during Qdrant vector indexing caused duplicate vector points to be inserted whenever a BullMQ worker retried a failed ingestion job.
+   - **The Solution:** Vector point IDs are generated deterministically using standard RFC-4122 format derived from `eventID` (`hash(eventID) -> 8-4-4-4-12 UUID`). Retries idempotently overwrite the exact same vector point without duplicates.
+
+5. **Redis Graph Summary Cache Tuning (P2-10):**
+   - Summary cache TTL is set to `300s` (5 minutes) and node detail TTL to `180s` (3 minutes). Invalidation is strictly event-driven via `invalidateGraphCache()`, ensuring dashboards render instantaneously without hitting Neo4j on every page refresh while immediately reflecting incoming webhooks.
 
 ---
 
@@ -176,14 +225,14 @@ Neo4j maintains the topological, structural, and relational truth of the organiz
 
 **Graph Schema Overview:**
 ```
-(:PERSON)-[:AUTHORED]->(:COMMIT)-[:PART_OF]->(:REPOSITORY)
+(:PERSON)-[:CONTRIBUTED_TO {commitCount, lastCommitAt}]->(:REPOSITORY)
 (:PERSON)-[:AUTHORED]->(:PULL_REQUEST)-[:PART_OF]->(:REPOSITORY)
 (:PERSON)-[:WORKS_ON]->(:REPOSITORY)
 (:PERSON)-[:ASSIGNED_TO]->(:ISSUE)
-(:COMMIT)-[:TOUCHED]->(:FILE)
-(:COMMIT)-[:USES]->(:TECHNOLOGY)
+(:PERSON)-[:USES]->(:TECHNOLOGY)
 (:REPOSITORY)-[:DEPENDS_ON]->(:REPOSITORY)
 (:TECHNOLOGY)-[:REPLACED_BY]->(:TECHNOLOGY)
+*(Legacy COMMIT nodes are compacted into CONTRIBUTED_TO rollup edges)*
 ```
 
 **Identity Deduplication Engine:**
@@ -221,9 +270,10 @@ $$\begin{aligned}
 + &(0.10 \times \text{PendingWork})
 \end{aligned}$$
 
-- **Ownership ($w=0.30$):** Per-repository ownership calculation taking the maximum ownership share across all repositories contributed to by this person:
-  $$\text{Ownership} = \max_{r \in \text{Repos}} \left(\frac{\text{PersonCommits}(r)}{\text{TotalCommits}(r)}\right)$$
-  This guarantees that sole maintainers of repositories receive a 1.0 (100%) ownership score rather than artificially suppressed scores diluted by unrelated repositories in the enterprise graph.
+- **Ownership ($w=0.30$):** Per-repository ownership calculation evaluated directly over `CONTRIBUTED_TO` edges in $O(\text{contributors})$ time (rather than scanning hundreds of thousands of individual commits). Uses a 180-day half-life exponential time-decay:
+  $$\text{WeightedContribution} = \text{commitCount} \times e^{-0.693 \times \frac{\text{now} - \text{lastCommitAt}}{180 \text{ days}}}$$
+  $$\text{Ownership} = \max_{r \in \text{Repos}} \left(\frac{\text{WeightedContribution}(p, r)}{\sum_{p' \in \text{Contributors}(r)} \text{WeightedContribution}(p', r)}\right)$$
+  This guarantees that recent contributors receive realistic active ownership while inactive past contributors naturally decay. Sole maintainers of repositories receive a 1.0 (100%) ownership score. Full backward compatibility is preserved for legacy graphs with uncompacted `COMMIT` nodes.
 - **Dependency ($w=0.20$):** Number of external services and modules depending on code authored by this person.
 - **Activity ($w=0.15$):** Volume of contributions authored within the recent rolling window.
 - **Documentation ($w=0.15$):** Ratio of documentation and specification files authored versus code.
@@ -243,7 +293,7 @@ $$\text{Successor Score} = (0.40 \times \text{TechSimilarity}) + (0.25 \times \t
 - **Disqualification Rule:** If a candidate has $0$ shared technologies and $0$ shared repositories, they are automatically excluded from recommendations.
 
 ### 5.3 Bus Factor & Repository Risk
-- **Bus Factor:** The minimum number of distinct engineers who together account for $> 50\%$ of a repository's total commit volume.
+- **Bus Factor:** Evaluated directly over `CONTRIBUTED_TO` edges (with fallback to legacy `COMMIT` nodes). Minimum number of distinct engineers who together account for $> 50\%$ of a repository's total commit volume (`commitCount`).
 - **Risk Mapping:**
   $$\text{RepoRiskScore} = \begin{cases} 80 & \text{if } \text{BusFactor} = 0 \text{ (unindexed)} \\ \max(0, 100 - (\text{BusFactor} \times 20)) & \text{if } \text{BusFactor} \ge 1 \end{cases}$$
 

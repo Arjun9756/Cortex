@@ -126,16 +126,16 @@ export async function calculateKnowledgeRisk(personName: string): Promise<Knowle
 async function getRelationMappings(nodeLabels: string[], relationships: string[]): Promise<RelationMapping> {
     const defaultMappings: RelationMapping = {
         ownership: {
-            relation: relationships.find(r => ['AUTHORED', 'COMMITTED', 'CREATED', 'WROTE'].includes(r.toUpperCase())) || (relationships.includes('AUTHORED') ? 'AUTHORED' : null),
-            targetLabel: nodeLabels.find(l => ['COMMIT', 'PULL_REQUEST', 'FILE', 'REPOSITORY'].includes(l.toUpperCase())) || (nodeLabels.includes('COMMIT') ? 'COMMIT' : null)
+            relation: relationships.find(r => ['CONTRIBUTED_TO', 'AUTHORED', 'COMMITTED', 'CREATED', 'WROTE'].includes(r.toUpperCase())) || (relationships.includes('CONTRIBUTED_TO') ? 'CONTRIBUTED_TO' : (relationships.includes('AUTHORED') ? 'AUTHORED' : null)),
+            targetLabel: nodeLabels.find(l => ['REPOSITORY', 'PULL_REQUEST', 'FILE', 'COMMIT'].includes(l.toUpperCase())) || (nodeLabels.includes('REPOSITORY') ? 'REPOSITORY' : null)
         },
         dependency: {
             relation: relationships.find(r => ['DEPENDS_ON', 'USES', 'CALLS', 'REQUIRES'].includes(r.toUpperCase())) || (relationships.includes('USES') ? 'USES' : null),
             targetLabel: nodeLabels.find(l => ['REPOSITORY', 'SERVICE', 'PACKAGE', 'TECHNOLOGY'].includes(l.toUpperCase())) || (nodeLabels.includes('REPOSITORY') ? 'REPOSITORY' : null)
         },
         activity: {
-            relation: relationships.find(r => ['AUTHORED', 'COMMITTED', 'WORKS_ON', 'ACTIVE_IN'].includes(r.toUpperCase())) || (relationships.includes('AUTHORED') ? 'AUTHORED' : null),
-            targetLabel: nodeLabels.find(l => ['COMMIT', 'PULL_REQUEST', 'ISSUE'].includes(l.toUpperCase())) || (nodeLabels.includes('COMMIT') ? 'COMMIT' : null)
+            relation: relationships.find(r => ['CONTRIBUTED_TO', 'WORKS_ON', 'AUTHORED', 'COMMITTED', 'ACTIVE_IN'].includes(r.toUpperCase())) || (relationships.includes('CONTRIBUTED_TO') ? 'CONTRIBUTED_TO' : (relationships.includes('AUTHORED') ? 'AUTHORED' : null)),
+            targetLabel: nodeLabels.find(l => ['REPOSITORY', 'PULL_REQUEST', 'ISSUE', 'COMMIT'].includes(l.toUpperCase())) || (nodeLabels.includes('REPOSITORY') ? 'REPOSITORY' : null)
         },
         documentation: {
             relation: relationships.find(r => ['AUTHORED', 'CREATED', 'MAINTAINS'].includes(r.toUpperCase())) || (relationships.includes('AUTHORED') ? 'AUTHORED' : null),
@@ -143,7 +143,7 @@ async function getRelationMappings(nodeLabels: string[], relationships: string[]
         },
         expertise: {
             relation: relationships.find(r => ['AUTHORED', 'MAINTAINS', 'KNOWS', 'USES'].includes(r.toUpperCase())) || (relationships.includes('AUTHORED') ? 'AUTHORED' : null),
-            targetLabel: nodeLabels.find(l => ['COMMIT', 'REPOSITORY', 'TECHNOLOGY', 'FILE'].includes(l.toUpperCase())) || (nodeLabels.includes('COMMIT') ? 'COMMIT' : null)
+            targetLabel: nodeLabels.find(l => ['REPOSITORY', 'TECHNOLOGY', 'FILE', 'COMMIT'].includes(l.toUpperCase())) || (nodeLabels.includes('REPOSITORY') ? 'REPOSITORY' : null)
         },
         pendingWork: {
             relation: relationships.find(r => ['ASSIGNED_TO', 'AUTHORED', 'OPENED', 'REPORTED'].includes(r.toUpperCase())) || (relationships.includes('ASSIGNED_TO') ? 'ASSIGNED_TO' : (relationships.includes('AUTHORED') ? 'AUTHORED' : null)),

@@ -4,7 +4,6 @@ export const ENTITY_TYPES = [
     'REPOSITORY',
     'ISSUE',
     'PULL_REQUEST',
-    'COMMIT',
     'TEAM',
     'FILE',
     'ORGANIZATION'
@@ -21,5 +20,6 @@ export const RELATION_TYPES = [
     'MENTIONED_IN',
     'ASSIGNED_TO',
     'PART_OF',
-    'AUTHORED'
-]as const
+    'AUTHORED',
+    'CONTRIBUTED_TO'
+] as const

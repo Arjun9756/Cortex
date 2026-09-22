@@ -1,4 +1,5 @@
 import { eventTypes } from './eventTypes.js'
+import { isBotAccount } from '../../shared/botDetection.js'
 
 const IGNORED_PATTERNS = [
   /node_modules/,
@@ -27,7 +28,23 @@ export type CleanGithubEvent = {
   /** Role is not available from GitHub webhook payloads — always null. */
   authorRole: null,
   timestamp: string,
+  isBot?: boolean,
   [key: string]: any
+}
+
+export function parseCoAuthors(message?: string): Array<{ name: string; email: string }> {
+  if (!message) return [];
+  const coAuthors: Array<{ name: string; email: string }> = [];
+  const regex = /^Co-authored-by:\s*([^<]+)<([^>]+)>/gmi;
+  let match;
+  while ((match = regex.exec(message)) !== null) {
+    const name = match[1]?.trim() || '';
+    const email = match[2]?.trim().toLowerCase() || '';
+    if (name && email && !coAuthors.some(c => c.email === email)) {
+      coAuthors.push({ name, email });
+    }
+  }
+  return coAuthors;
 }
 
 function normalizePush(payload: any): CleanGithubEvent {
@@ -39,19 +56,31 @@ function normalizePush(payload: any): CleanGithubEvent {
   const authorEmail: string | null =
     payload.pusher?.email ?? payload.head_commit?.author?.email ?? null
 
+  const author = payload.pusher?.name ?? payload.sender?.login ?? 'unknown';
+  const isBot = isBotAccount(author, authorEmail, payload.sender?.login);
+
   return {
     provider: "github",
     eventType: "push",
-    repository: payload.repository?.name ?? 'unknown',
+    repository: payload.repository?.full_name ?? payload.repository?.name ?? 'unknown',
     branch: (payload.ref ?? '').replace("refs/heads/", ""),
-    author: payload.pusher?.name ?? payload.sender?.login ?? 'unknown',
+    author,
     authorEmail,
     authorRole: null,
+    isBot,
     timestamp: payload.head_commit?.timestamp ?? new Date().toISOString(),
     commits: commits.map((c: any) => ({
       id: c.id,
       message: c.message,
       filesChanged: c.modified,
+      author: c.author ? {
+        name: c.author.name,
+        email: c.author.email,
+        username: c.author.username,
+      } : null,
+      coAuthors: parseCoAuthors(c.message),
+      timestamp: c.timestamp,
+      isBot: isBotAccount(c.author?.name, c.author?.email, c.author?.username),
     })),
     filesChanged: relevantFiles.slice(0, 5), // max 5 files, noise filtered
     totalFilesChanged: allModifiedFiles.length, // total count, context ke liye
@@ -60,14 +89,17 @@ function normalizePush(payload: any): CleanGithubEvent {
 
 function normalizePullRequest(payload: any): CleanGithubEvent {
   const pr = payload.pull_request ?? {};
+  const author = pr.user?.login ?? payload.sender?.login ?? 'unknown';
+  const authorEmail = pr.user?.email ?? payload.sender?.email ?? null;
   return {
     provider: "github",
     eventType: "pull_request",
     action: payload.action, // opened, closed, merged, etc.
-    repository: payload.repository?.name ?? 'unknown',
-    author: pr.user?.login ?? payload.sender?.login ?? 'unknown',
-    authorEmail: pr.user?.email ?? payload.sender?.email ?? null,
+    repository: payload.repository?.full_name ?? payload.repository?.name ?? 'unknown',
+    author,
+    authorEmail,
     authorRole: null,
+    isBot: isBotAccount(author, authorEmail, pr.user?.login),
     timestamp: pr.created_at ?? new Date().toISOString(),
     title: pr.title ?? '',
     body: pr.body ?? '',
@@ -77,14 +109,17 @@ function normalizePullRequest(payload: any): CleanGithubEvent {
 
 function normalizeIssue(payload: any): CleanGithubEvent {
   const issue = payload.issue ?? {};
+  const author = issue.user?.login ?? payload.sender?.login ?? 'unknown';
+  const authorEmail = issue.user?.email ?? payload.sender?.email ?? null;
   return {
     provider: "github",
     eventType: "issues",
     action: payload.action, // opened, closed, labeled, etc.
-    repository: payload.repository?.name ?? 'unknown',
-    author: issue.user?.login ?? payload.sender?.login ?? 'unknown',
-    authorEmail: issue.user?.email ?? payload.sender?.email ?? null,
+    repository: payload.repository?.full_name ?? payload.repository?.name ?? 'unknown',
+    author,
+    authorEmail,
     authorRole: null,
+    isBot: isBotAccount(author, authorEmail, issue.user?.login),
     timestamp: issue.created_at ?? new Date().toISOString(),
     title: issue.title ?? '',
     body: issue.body ?? '',
@@ -93,13 +128,16 @@ function normalizeIssue(payload: any): CleanGithubEvent {
 
 function normalizeIssueComment(payload: any): CleanGithubEvent {
   const comment = payload.comment ?? {};
+  const author = comment.user?.login ?? payload.sender?.login ?? 'unknown';
+  const authorEmail = comment.user?.email ?? payload.sender?.email ?? null;
   return {
     provider: "github",
     eventType: "issue_comment",
-    repository: payload.repository?.name ?? 'unknown',
-    author: comment.user?.login ?? payload.sender?.login ?? 'unknown',
-    authorEmail: comment.user?.email ?? payload.sender?.email ?? null,
+    repository: payload.repository?.full_name ?? payload.repository?.name ?? 'unknown',
+    author,
+    authorEmail,
     authorRole: null,
+    isBot: isBotAccount(author, authorEmail, comment.user?.login),
     timestamp: comment.created_at ?? new Date().toISOString(),
     body: comment.body ?? '',
     relatedIssue: payload.issue?.title ?? '',

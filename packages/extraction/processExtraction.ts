@@ -1,5 +1,6 @@
-import { resolveEntity } from "./entityResolver.js";
-import { upsertEntity , upsertRelation } from "../database/neo4j/graph.repository.js";
+import { resolveEntity, isCommitEntity } from "./entityResolver.js";
+import { upsertEntity, upsertRelation, batchUpsertRelations } from "../database/neo4j/graph.repository.js";
+import { driver } from "../../apps/api/config/neo4j.js";
 
 export interface PersonMetadata {
     name: string
@@ -7,6 +8,7 @@ export interface PersonMetadata {
     role?: string | null
     externalId?: string | null
     canonicalPersonId?: string | null
+    isBot?: boolean
 }
 
 export interface EntityMetadata {
@@ -16,6 +18,7 @@ export interface EntityMetadata {
 
 /**
  * Saves LLM-extracted entities + relationships to the Neo4j graph.
+ * P0-2: Opens a SINGLE Neo4j session per event and batches entity and relationship upserts.
  *
  * @param entities        Entities with known types
  * @param newEntities     Entities with suggested types
@@ -44,6 +47,7 @@ export async function saveExtractionToGraph(
             if (person.role != null) extras.role = person.role
             if (person.externalId != null) extras.externalId = person.externalId
             if (person.canonicalPersonId != null) extras.canonicalPersonId = person.canonicalPersonId
+            if (person.isBot != null) extras.isBot = person.isBot
             if (Object.keys(extras).length > 0) {
                 extraPropertiesMap[person.name] = extras
             }
@@ -61,29 +65,61 @@ export async function saveExtractionToGraph(
         }
     }
 
-    // 1. Entities Resolve + Insert
-    const idMap = await resolveEntity(entities, newEntities, extraPropertiesMap)
+    // P0-2: Open exactly ONE Neo4j session for the entire event extraction
+    const session = driver.session()
+    try {
+        // 1. Entities Resolve + Insert in this session
+        const idMap = await resolveEntity(entities, newEntities, extraPropertiesMap, session)
 
-    // 2.Relation Combine
-    const allRelations = [
-        ...relation,
-        ...newRelations.map((r)=>{
-            return {from:r.from , to:r.to , type:r.suggestedType , evidence:r.evidence}
-        })
-    ]
+        // 2. Relation Combine
+        const allRelations = [
+            ...relation,
+            ...newRelations.map((r) => {
+                return { from: r.from, to: r.to, type: r.suggestedType, evidence: r.evidence, properties: (r as any).properties }
+            })
+        ]
 
-    for(const rel of allRelations){
-        const fromID = idMap[rel.from]
-        const toID = idMap[rel.to]
+        const preparedRelations: Array<{
+            fromID: string;
+            toID: string;
+            type: string;
+            evidence?: string | undefined;
+            metadata?: any;
+        }> = []
 
-        if(!fromID || !toID){
-            console.warn('Skipping Relation - Entity Not Found in Graph Database')
-            continue
+        for (const rel of allRelations) {
+            // Defense-in-depth: drop any relations referencing commit names, aliases, or hashes
+            if (isCommitEntity(rel.from) || isCommitEntity(rel.to)) {
+                continue
+            }
+
+            const fromID = idMap[rel.from]
+            const toID = idMap[rel.to]
+
+            if (!fromID || !toID) {
+                continue
+            }
+
+            preparedRelations.push({
+                fromID,
+                toID,
+                type: rel.type,
+                evidence: rel.evidence,
+                metadata: {
+                    sourceEventId: options?.sourceEventId ?? null,
+                    confidence: options?.confidence ?? 1.0,
+                    commitCount: (rel as any).commitCount ?? (rel as any).properties?.commitCount,
+                    lastCommitAt: (rel as any).lastCommitAt ?? (rel as any).properties?.lastCommitAt,
+                    properties: (rel as any).properties
+                }
+            })
         }
 
-        await upsertRelation(fromID , toID , rel.type , rel.evidence, {
-            sourceEventId: options?.sourceEventId ?? null,
-            confidence: options?.confidence ?? 1.0
-        })
+        // 3. Batch upsert relations with UNWIND in the single session
+        if (preparedRelations.length > 0) {
+            await batchUpsertRelations(preparedRelations, session)
+        }
+    } finally {
+        await session.close()
     }
 }

@@ -29,7 +29,25 @@ export function normalizeEntityType(type: string): string {
     if (['ISSUE', 'BUG', 'TICKET'].includes(upper)) {
         return 'ISSUE';
     }
+    if (['COMMIT', 'COMMITS', 'GIT_COMMIT', 'GITCOMMIT', 'COMMIT_HASH', 'CHANGESET', 'REVISION'].includes(upper)) {
+        return 'COMMIT';
+    }
     return upper;
+}
+
+/**
+ * Checks if an entity represents a Git commit (by label, alias, or hash pattern)
+ * so it can be strictly excluded from becoming a standalone graph node.
+ */
+export function isCommitEntity(name: string, type?: string): boolean {
+    if (type) {
+        const normalized = normalizeEntityType(type);
+        if (normalized === 'COMMIT') return true;
+    }
+    const clean = (name || '').trim();
+    if (/^(commit\s*:?\s*#?|sha\s*:?\s*)?[a-f0-9]{7,40}$/i.test(clean)) return true;
+    if (/^commit\s+[a-z0-9_-]+$/i.test(clean)) return true;
+    return false;
 }
 
 /**
@@ -42,12 +60,14 @@ export function normalizeEntityType(type: string): string {
 export async function resolveEntity(
     entities: ExtractedEntity[],
     newEntity: NewEntities[],
-    extraPropertiesMap?: Record<string, Record<string, any>>
+    extraPropertiesMap?: Record<string, Record<string, any>>,
+    existingSession?: any
 ) {
+    // P0-1: Filter out COMMIT entities so individual git commits are never stored as standalone nodes in Neo4j
     const allEntities = [
         ...entities.map(e => ({ name: e.name, type: normalizeEntityType(e.type) })),
         ...newEntity.map(e => ({ name: e.name, type: normalizeEntityType(e.suggestedType) }))
-    ]
+    ].filter(e => !isCommitEntity(e.name, e.type))
 
     const idMap: Record<string, string> = {}
     for (const entity of allEntities) {
@@ -70,7 +90,7 @@ export async function resolveEntity(
                 }
             }
 
-            const realID = await upsertEntity(entity.name, entity.type, extras)
+            const realID = await upsertEntity(entity.name, entity.type, extras, existingSession)
             if (realID) {
                 idMap[entity.name] = realID
             } else {

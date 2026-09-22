@@ -1,5 +1,6 @@
 import sql from '../../config/postgres.js';
 import { driver } from '../../config/neo4j.js';
+import { RISK_THRESHOLDS } from '../../../../packages/shared/riskThresholds.js';
 export interface GraphSummaryFilters {
     repository?: string;
     personExternalId?: string;
@@ -458,7 +459,7 @@ async function resolvePersonDetail(identifier: string) {
     const identities = await sql`SELECT provider, external_id, username, email, display_name FROM person_identity WHERE canonical_person_id = ${canonicalId}`;
 
     const riskScore = person.risk_score || 0;
-    const riskTier = riskScore >= 70 ? 'Critical' : riskScore >= 40 ? 'Moderate' : 'Low';
+    const riskTier = riskScore >= RISK_THRESHOLDS.CRITICAL ? 'Critical' : riskScore >= RISK_THRESHOLDS.HIGH ? 'High' : riskScore >= RISK_THRESHOLDS.MODERATE ? 'Moderate' : 'Low';
 
     const neighbors = [
         ...enrichedRepos.map(r => ({ id: r.name, name: r.name, type: 'REPOSITORY', relation: 'WORKS_ON' })),

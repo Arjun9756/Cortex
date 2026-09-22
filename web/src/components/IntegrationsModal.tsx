@@ -88,74 +88,55 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
   const currentIntegration = integrations ? integrations[activeTab] : null;
 
   const providerIcons = {
-    github: <GitCommit className="h-5 w-5 text-emerald-400" />,
-    slack: <MessageSquare className="h-5 w-5 text-purple-400" />,
-    jira: <AlertCircle className="h-5 w-5 text-sky-400" />,
-  };
-
-  const providerTheme = {
-    github: {
-      badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-      activeTab: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300',
-      accent: 'emerald',
-    },
-    slack: {
-      badge: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-      activeTab: 'bg-purple-500/15 border-purple-500/30 text-purple-300',
-      accent: 'purple',
-    },
-    jira: {
-      badge: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-      activeTab: 'bg-sky-500/15 border-sky-500/30 text-sky-300',
-      accent: 'sky',
-    },
+    github: <GitCommit className="h-4 w-4 text-emerald-400" />,
+    slack: <MessageSquare className="h-4 w-4 text-[var(--accent-default)]" />,
+    jira: <AlertCircle className="h-4 w-4 text-sky-400" />,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="relative w-full max-w-2xl bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800 bg-slate-950/40">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-              <Sparkles className="h-5 w-5 text-indigo-400" />
+            <div className="p-2 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
+              <Sparkles className="h-4 w-4 text-[var(--accent-default)]" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">Integrate Webhooks & Secret Keys</h3>
-              <p className="text-xs text-slate-400">Connect event webhooks for automated engineering risk analysis</p>
+              <h3 className="text-base font-semibold text-[var(--text-primary)] tracking-tight">Integrate Webhooks & Secret Keys</h3>
+              <p className="text-xs text-[var(--text-secondary)]">Connect event webhooks for automated engineering risk analysis</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Tab Selection Bar */}
-        <div className="flex border-b border-slate-800 bg-slate-950/20 px-6 pt-3 space-x-2">
+        <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-6 pt-2 space-x-1">
           {(['github', 'slack', 'jira'] as const).map(provider => {
             const item = integrations?.[provider];
             const isActive = activeTab === provider;
-            const theme = providerTheme[provider];
 
             return (
               <button
                 key={provider}
                 onClick={() => setActiveTab(provider)}
-                className={`flex items-center space-x-2 px-4 py-2.5 rounded-t-xl text-xs font-semibold border-t border-x transition-all ${
+                className={`flex items-center space-x-2 px-3.5 py-2 text-xs font-medium border-b-2 transition-colors cursor-pointer ${
                   isActive
-                    ? `${theme.activeTab} border-b-transparent font-bold`
-                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                    ? 'border-[var(--accent-default)] text-[var(--text-primary)] bg-[var(--bg-elevated)] rounded-t'
+                    : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel)] rounded-t'
                 }`}
               >
                 {providerIcons[provider]}
                 <span className="capitalize">{provider}</span>
                 {item?.isConfigured ? (
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-500/50" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 ) : (
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                 )}
               </button>
             );
@@ -163,17 +144,17 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        <div className="p-6 overflow-y-auto space-y-5 flex-1">
           {statusMessage && (
             <div
-              className={`p-3 rounded-xl text-xs font-medium border flex items-center justify-between ${
+              className={`p-3 rounded-md text-xs font-medium border flex items-center justify-between ${
                 statusMessage.type === 'success'
                   ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
                   : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
               }`}
             >
               <span>{statusMessage.text}</span>
-              <button onClick={() => setStatusMessage(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setStatusMessage(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -183,43 +164,43 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
             <div className="flex flex-col items-center justify-center py-12 space-y-3 text-center">
               <AlertCircle className="h-6 w-6 text-rose-400" />
               <p className="text-xs text-rose-300">{loadError}</p>
-              <button onClick={fetchStatus} className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-200">Retry</button>
+              <button onClick={fetchStatus} className="cortex-btn-secondary px-3 py-1.5 text-xs rounded-md">Retry</button>
             </div>
           ) : loading ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-3">
-              <RefreshCw className="h-6 w-6 text-indigo-400 animate-spin" />
-              <p className="text-xs text-slate-400">Loading integration status...</p>
+              <RefreshCw className="h-5 w-5 text-[var(--accent-default)] animate-spin" />
+              <p className="text-xs text-[var(--text-secondary)]">Loading integration status...</p>
             </div>
           ) : !currentIntegration ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-3 text-center">
-              <AlertCircle className="h-6 w-6 text-slate-500" />
-              <p className="text-xs text-slate-400">No integration status available for {activeTab}.</p>
-              <button onClick={fetchStatus} className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-200">Retry</button>
+              <AlertCircle className="h-6 w-6 text-[var(--text-muted)]" />
+              <p className="text-xs text-[var(--text-secondary)]">No integration status available for {activeTab}.</p>
+              <button onClick={fetchStatus} className="cortex-btn-secondary px-3 py-1.5 text-xs rounded-md">Retry</button>
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4">
               {/* Integration Status Card */}
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+              <div className="p-4 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   {providerIcons[activeTab]}
                   <div>
-                    <h4 className="text-sm font-semibold text-white capitalize">{currentIntegration.name} Integration</h4>
-                    <p className="text-xs text-slate-400">
-                      Signature Security: <code className="text-indigo-300">{currentIntegration.signatureHeader}</code>
+                    <h4 className="text-sm font-semibold text-[var(--text-primary)] capitalize">{currentIntegration.name} Integration</h4>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      Signature Security: <code className="text-[var(--accent-default)] font-mono">{currentIntegration.signatureHeader}</code>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3">
                   <div className="text-right">
-                    <span className="text-xs text-slate-400 block">Events Ingested</span>
-                    <span className="text-xs font-bold text-indigo-300">
-                      {currentIntegration.eventCount > 0 ? `${currentIntegration.eventCount} total` : '0 (Waiting for webhooks)'}
+                    <span className="text-[11px] text-[var(--text-muted)] block">Events Ingested</span>
+                    <span className="text-xs font-semibold text-[var(--text-primary)] font-mono">
+                      {currentIntegration.eventCount > 0 ? `${currentIntegration.eventCount} total` : '0 (Waiting)'}
                     </span>
                   </div>
 
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${
+                    className={`px-2.5 py-1 rounded text-xs font-medium border flex items-center gap-1.5 ${
                       currentIntegration.isConfigured
                         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                         : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
@@ -233,17 +214,17 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
 
               {/* Webhook Endpoint Copy Block */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                <label className="text-xs font-medium text-[var(--text-secondary)] flex items-center justify-between">
                   <span>Webhook Listener URL</span>
-                  <span className="text-[11px] text-slate-400">Provide this URL to {currentIntegration.name} Webhook Settings</span>
+                  <span className="text-[11px] text-[var(--text-muted)]">Provide this URL to {currentIntegration.name} Webhook Settings</span>
                 </label>
                 <div className="flex items-center space-x-2">
-                  <div className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-indigo-300 truncate">
+                  <div className="flex-1 px-3 py-2 rounded-md bg-[var(--bg-app)] border border-[var(--border-strong)] font-mono text-xs text-[var(--accent-default)] truncate">
                     {window.location.origin}{currentIntegration.webhookUrl}
                   </div>
                   <button
                     onClick={() => handleCopy(currentIntegration.webhookUrl, `url-${activeTab}`)}
-                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-medium transition-all flex items-center space-x-1.5"
+                    className="cortex-btn-secondary px-3 py-2 rounded-md text-xs font-medium flex items-center space-x-1.5 cursor-pointer shrink-0"
                   >
                     {copiedField === `url-${activeTab}` ? (
                       <>
@@ -252,7 +233,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
                       </>
                     ) : (
                       <>
-                        <Copy className="h-3.5 w-3.5 text-slate-400" />
+                        <Copy className="h-3.5 w-3.5 text-[var(--text-muted)]" />
                         <span>Copy URL</span>
                       </>
                     )}
@@ -262,12 +243,12 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
 
               {/* Secret Key Input & Save */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                <label className="text-xs font-medium text-[var(--text-secondary)] flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Key className="h-3.5 w-3.5 text-amber-400" />
                     Secret Key / Signing Token
                   </span>
-                  <span className="text-[11px] font-normal text-slate-400">
+                  <span className="text-[11px] text-[var(--text-muted)] font-mono">
                     Current: {currentIntegration.secretMasked || 'None'}
                   </span>
                 </label>
@@ -279,21 +260,21 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
                       value={secretsInput[activeTab]}
                       onChange={e => setSecretsInput({ ...secretsInput, [activeTab]: e.target.value })}
                       placeholder={`Enter new ${currentIntegration.name} Secret Key...`}
-                      className="w-full px-3.5 py-2 pr-10 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all font-mono"
+                      className="w-full px-3 py-2 pr-9 rounded-md bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--border-focus)] transition-colors font-mono"
                     />
                     <button
                       type="button"
                       onClick={() => setShowSecret({ ...showSecret, [activeTab]: !showSecret[activeTab] })}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
                     >
-                      {showSecret[activeTab] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showSecret[activeTab] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                     </button>
                   </div>
 
                   <button
                     onClick={() => handleSaveSecret(activeTab)}
                     disabled={savingProvider === activeTab || !secretsInput[activeTab]}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium text-xs transition-all shadow-lg shadow-indigo-600/20 flex items-center space-x-1.5"
+                    className="cortex-btn-primary px-3.5 py-2 rounded-md text-xs font-medium disabled:opacity-50 flex items-center space-x-1.5 shrink-0 cursor-pointer"
                   >
                     {savingProvider === activeTab ? (
                       <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -306,14 +287,14 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
               </div>
 
               {/* Instructions Box */}
-              <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/80 space-y-2">
-                <h5 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                  <ExternalLink className="h-3.5 w-3.5 text-indigo-400" />
+              <div className="p-4 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-2">
+                <h5 className="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+                  <ExternalLink className="h-3.5 w-3.5 text-[var(--accent-default)]" />
                   How to setup in {currentIntegration.name}:
                 </h5>
 
                 {activeTab === 'github' && (
-                  <ol className="list-decimal list-inside text-xs text-slate-400 space-y-1 leading-relaxed">
+                  <ol className="list-decimal list-inside text-xs text-[var(--text-secondary)] space-y-1 leading-relaxed">
                     <li>Open your GitHub repository → <strong>Settings</strong> → <strong>Webhooks</strong> → <strong>Add Webhook</strong>.</li>
                     <li>Paste the <strong>Webhook Listener URL</strong> in the <em>Payload URL</em> field.</li>
                     <li>Set Content type to <code>application/json</code>.</li>
@@ -323,8 +304,8 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
                 )}
 
                 {activeTab === 'slack' && (
-                  <ol className="list-decimal list-inside text-xs text-slate-400 space-y-1 leading-relaxed">
-                    <li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noreferrer" className="text-indigo-400 underline">Slack API Apps</a> → Create or select your App.</li>
+                  <ol className="list-decimal list-inside text-xs text-[var(--text-secondary)] space-y-1 leading-relaxed">
+                    <li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noreferrer" className="text-[var(--accent-default)] underline">Slack API Apps</a> → Create or select your App.</li>
                     <li>Under <strong>Event Subscriptions</strong>, toggle On and paste the <strong>Webhook Listener URL</strong>.</li>
                     <li>Copy your App’s <strong>Signing Secret</strong> from Basic Information.</li>
                     <li>Paste that Signing Secret into the Secret Key input above and click <strong>Save Secret</strong>.</li>
@@ -332,7 +313,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
                 )}
 
                 {activeTab === 'jira' && (
-                  <ol className="list-decimal list-inside text-xs text-slate-400 space-y-1 leading-relaxed">
+                  <ol className="list-decimal list-inside text-xs text-[var(--text-secondary)] space-y-1 leading-relaxed">
                     <li>Go to Jira System Administration → <strong>System</strong> → <strong>Webhooks</strong>.</li>
                     <li>Click <strong>Create a Webhook</strong> and paste the <strong>Webhook Listener URL</strong>.</li>
                     <li>Configure the shared secret in the <code>X-Jira-Webhook-Secret</code> request header; never place it in the URL.</li>
@@ -346,10 +327,10 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-800 bg-slate-950/40 flex justify-end">
+        <div className="px-6 py-3 border-t border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all"
+            className="cortex-btn-secondary px-4 py-1.5 rounded-md text-xs font-medium cursor-pointer"
           >
             Done
           </button>

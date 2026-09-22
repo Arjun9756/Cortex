@@ -1,6 +1,7 @@
 import { neo4jSession } from "../../apps/api/config/neo4j.js";
 import { calculateKnowledgeRisk } from "./knowledge.service.js";
 import sql from "../../apps/api/config/postgres.js";
+import { CYPHER_BOT_FILTER, isBotAccount } from "../shared/botDetection.js";
 
 /**
  * Interface representing a consolidated Canonical Person across all providers.
@@ -13,6 +14,7 @@ interface CanonicalPersonGroup {
     usernames: Set<string>;
     externalIds: Set<string>;
     aliases: Set<string>; // set of all names, usernames, externalIds, emails
+    isActive: boolean;
 }
 
 const SLACK_ID_PATTERN = /^U[A-Z0-9]{6,}$/i;
@@ -49,7 +51,7 @@ export async function calculateAllPersonMetrics() {
         let identityRows: any[] = [];
         try {
             identityRows = await sql`
-                SELECT canonical_person_id, provider, external_id, username, email, display_name
+                SELECT canonical_person_id, provider, external_id, username, email, display_name, is_active
                 FROM person_identity
             `;
         } catch (dbErr: any) {
@@ -73,8 +75,13 @@ export async function calculateAllPersonMetrics() {
                     usernames: new Set<string>(),
                     externalIds: new Set<string>(),
                     aliases: new Set<string>(),
+                    isActive: row.is_active !== false,
                 };
                 canonicalGroupsMap.set(cId, group);
+            }
+
+            if (row.is_active === false) {
+                group.isActive = false;
             }
 
             if (row.display_name) {
@@ -95,9 +102,11 @@ export async function calculateAllPersonMetrics() {
             }
         }
 
-        // Step 2: Fetch all PERSON nodes from Neo4j to ensure complete coverage
+        // Step 2: Fetch all PERSON nodes from Neo4j to ensure complete coverage (excluding bots)
         const neo4jPersons = await session.run(
-            `MATCH (p:PERSON) RETURN p.name AS name, p.externalId AS externalId, p.email AS email, p.provider AS provider, p.canonicalPersonId AS canonicalPersonId`
+            `MATCH (p:PERSON)
+             WHERE ${CYPHER_BOT_FILTER}
+             RETURN p.name AS name, p.externalId AS externalId, p.email AS email, p.provider AS provider, p.canonicalPersonId AS canonicalPersonId, p.isActive AS isActive`
         );
 
         for (const record of neo4jPersons.records) {
@@ -172,88 +181,113 @@ export async function calculateAllPersonMetrics() {
             group.primaryName = chooseBestDisplayName(Array.from(group.names));
         }
 
+        await session.close();
+
+        // Step 3: Compute aggregated metrics for each canonical person group in parallel batches
         const validCanonicalIds: string[] = [];
+        const groups = Array.from(canonicalGroupsMap.values());
+        const CONCURRENCY = 6;
 
-        // Step 3: Compute aggregated metrics for each canonical person group
-        for (const group of canonicalGroupsMap.values()) {
-            const { canonicalId, primaryName } = group;
-            const externalIds = Array.from(group.externalIds);
-            const emails = Array.from(group.emails);
-            const names = Array.from(group.names);
+        for (let i = 0; i < groups.length; i += CONCURRENCY) {
+            const batch = groups.slice(i, i + CONCURRENCY);
+            const batchResults = await Promise.all(batch.map(async (group) => {
+                const { canonicalId, primaryName } = group;
+                const externalIds = Array.from(group.externalIds);
+                const emails = Array.from(group.emails);
+                const names = Array.from(group.names);
+                const usernames = Array.from(group.usernames);
 
-            try {
-                // 3a. Aggregated Repositories across all provider aliases
-                const repoResult = await session.run(
-                    `MATCH (p:PERSON)-[]-(e)-[:PART_OF]->(r:REPOSITORY)
-                     WHERE (p.canonicalPersonId IS NOT NULL AND p.canonicalPersonId = $canonicalId)
-                        OR (p.externalId IS NOT NULL AND p.externalId IN $externalIds)
-                        OR (p.email IS NOT NULL AND toLower(p.email) IN $emails)
-                        OR (p.canonicalPersonId IS NULL AND p.externalId IS NULL AND p.email IS NULL AND p.name IN $names)
-                     RETURN DISTINCT r.name AS repo`,
-                    { canonicalId, externalIds, emails, names }
-                );
-                const repos = repoResult.records.map((r: any) => r.get("repo"));
+                const itemSession = neo4jSession();
+                try {
+                    // P1-4 & P0-1: Single combined query for repos, commit count (CONTRIBUTED_TO + legacy), and top technologies
+                    const metricsRes = await itemSession.run(
+                        `MATCH (p:PERSON)
+                         WHERE (p.canonicalPersonId IS NOT NULL AND p.canonicalPersonId = $canonicalId)
+                            OR (p.externalId IS NOT NULL AND p.externalId IN $externalIds)
+                            OR (p.email IS NOT NULL AND toLower(p.email) IN $emails)
+                            OR (p.canonicalPersonId IS NULL AND p.externalId IS NULL AND p.email IS NULL AND p.name IN $names)
+                         WITH collect(DISTINCT p) AS matchedPeople
+                         WHERE size(matchedPeople) > 0
 
-                // 3b. Aggregated Commit Count across all provider aliases
-                const commitResult = await session.run(
-                    `MATCH (p:PERSON)-[:AUTHORED]->(c:COMMIT)
-                     WHERE (p.canonicalPersonId IS NOT NULL AND p.canonicalPersonId = $canonicalId)
-                        OR (p.externalId IS NOT NULL AND p.externalId IN $externalIds)
-                        OR (p.email IS NOT NULL AND toLower(p.email) IN $emails)
-                        OR (p.canonicalPersonId IS NULL AND p.externalId IS NULL AND p.email IS NULL AND p.name IN $names)
-                     RETURN count(DISTINCT c) AS count`,
-                    { canonicalId, externalIds, emails, names }
-                );
-                const commitCount = commitResult.records[0]?.get("count")?.toNumber() ?? 0;
+                         UNWIND matchedPeople AS pContrib
+                         OPTIONAL MATCH (pContrib)-[rel:CONTRIBUTED_TO]->(r1:REPOSITORY)
+                         OPTIONAL MATCH (pContrib)-[:WORKS_ON]->(r2:REPOSITORY)
+                         OPTIONAL MATCH (pContrib)-[]-(:PULL_REQUEST|ISSUE|COMMIT)-[:PART_OF]->(r3:REPOSITORY)
+                         WITH matchedPeople,
+                              collect(DISTINCT r1.name) + collect(DISTINCT r2.name) + collect(DISTINCT r3.name) AS rawRepos,
+                              sum(COALESCE(rel.commitCount, 1)) AS contribCommits
 
-                // 3c. Filter out ghost users with zero real activity (0 commits + 0 repos)
-                if (commitCount === 0 && repos.length === 0) {
-                    console.log(`[PersonMetrics] Skipping ghost/inactive identity: "${primaryName}" (${canonicalId})`);
-                    continue;
+                         UNWIND matchedPeople AS pLegacy
+                         OPTIONAL MATCH (pLegacy)-[:AUTHORED]->(c:COMMIT)
+                         WITH rawRepos, contribCommits, count(DISTINCT c) AS legacyCommits, matchedPeople
+
+                         UNWIND matchedPeople AS pTech
+                         OPTIONAL MATCH (pTech)-[]-(e)-[:MENTIONED_IN|USES]-(t:TECHNOLOGY)
+                         WITH [r IN rawRepos WHERE r IS NOT NULL] AS cleanRepos,
+                              (contribCommits + legacyCommits) AS totalCommits,
+                              t.name AS tech, count(e) AS techScore
+                         ORDER BY techScore DESC
+                         WITH cleanRepos, totalCommits,
+                              [item IN collect({name: tech, score: techScore}) WHERE item.name IS NOT NULL][0..5] AS topTechnologies
+                         RETURN cleanRepos AS repos, totalCommits AS commitCount, topTechnologies`,
+                        { canonicalId, externalIds, emails, names }
+                    );
+
+                    const metricsRec = metricsRes.records[0];
+                    const repos: string[] = [...new Set((metricsRec?.get("repos") || []).filter(Boolean))] as string[];
+                    const commitCount: number = metricsRec?.get("commitCount")?.toNumber ? metricsRec?.get("commitCount")?.toNumber() : Number(metricsRec?.get("commitCount") || 0);
+                    const rawTopTechs = metricsRec?.get("topTechnologies") || [];
+                    const topTechnologies = rawTopTechs.map((t: any) => ({
+                        name: t.name,
+                        score: t.score?.toNumber ? t.score.toNumber() : Number(t.score || 0)
+                    }));
+
+                    // 3c. Filter out bots and ghost users with zero real activity (0 commits + 0 repos)
+                    if (isBotAccount(primaryName, emails[0], usernames[0], canonicalId)) {
+                        return null;
+                    }
+                    if (commitCount === 0 && repos.length === 0) {
+                        return null;
+                    }
+
+                    // 3e. 6-Factor Knowledge Risk Calculation on the canonical person
+                    const risk = await calculateKnowledgeRisk(primaryName);
+                    const riskScore = Math.round(risk.totalRisk * 100);
+
+                    // 3f. Upsert exactly ONE canonical record in person_metrics
+                    const isActive = group.isActive ?? true;
+                    const employmentStatus = isActive ? 'active' : 'alumni';
+
+                    await sql`
+                        INSERT INTO person_metrics
+                            (external_id, person_name, risk_score, top_technologies, repos, commit_count, is_active, employment_status, computed_at)
+                        VALUES
+                            (${canonicalId}, ${primaryName}, ${riskScore}, ${sql.json(topTechnologies)},
+                             ${sql.json(repos)}, ${commitCount}, ${isActive}, ${employmentStatus}, now())
+                        ON CONFLICT (external_id)
+                        DO UPDATE SET
+                            person_name      = EXCLUDED.person_name,
+                            risk_score       = EXCLUDED.risk_score,
+                            top_technologies = EXCLUDED.top_technologies,
+                            repos            = EXCLUDED.repos,
+                            commit_count     = EXCLUDED.commit_count,
+                            is_active        = EXCLUDED.is_active,
+                            employment_status= EXCLUDED.employment_status,
+                            computed_at      = EXCLUDED.computed_at
+                    `;
+
+                    console.log(`[PersonMetrics] Canonical: "${primaryName}" (${canonicalId}): risk=${riskScore}%, repos=[${repos.join(', ')}], commits=${commitCount}, active=${isActive}`);
+                    return canonicalId;
+                } catch (personError: any) {
+                    console.error(`[PersonMetrics] Failed for canonical person "${primaryName}": ${personError?.message}`);
+                    return null;
+                } finally {
+                    await itemSession.close();
                 }
+            }));
 
-                // 3d. Aggregated Top Technologies across all provider aliases
-                const techResult = await session.run(
-                    `MATCH (p:PERSON)-[]-(e)-[:MENTIONED_IN|USES]-(t:TECHNOLOGY)
-                     WHERE (p.canonicalPersonId IS NOT NULL AND p.canonicalPersonId = $canonicalId)
-                        OR (p.externalId IS NOT NULL AND p.externalId IN $externalIds)
-                        OR (p.email IS NOT NULL AND toLower(p.email) IN $emails)
-                        OR (p.canonicalPersonId IS NULL AND p.externalId IS NULL AND p.email IS NULL AND p.name IN $names)
-                     RETURN t.name AS tech, count(*) AS score
-                     ORDER BY score DESC
-                     LIMIT 5`,
-                    { canonicalId, externalIds, emails, names }
-                );
-                const topTechnologies = techResult.records.map((r: any) => ({
-                    name: r.get("tech"),
-                    score: r.get("score")?.toNumber() ?? 0,
-                }));
-
-                // 3e. 6-Factor Knowledge Risk Calculation on the canonical person
-                const risk = await calculateKnowledgeRisk(primaryName);
-                const riskScore = Math.round(risk.totalRisk * 100);
-
-                // 3f. Upsert exactly ONE canonical record in person_metrics
-                await sql`
-                    INSERT INTO person_metrics
-                        (external_id, person_name, risk_score, top_technologies, repos, commit_count, computed_at)
-                    VALUES
-                        (${canonicalId}, ${primaryName}, ${riskScore}, ${sql.json(topTechnologies)},
-                         ${sql.json(repos)}, ${commitCount}, now())
-                    ON CONFLICT (external_id)
-                    DO UPDATE SET
-                        person_name      = EXCLUDED.person_name,
-                        risk_score       = EXCLUDED.risk_score,
-                        top_technologies = EXCLUDED.top_technologies,
-                        repos            = EXCLUDED.repos,
-                        commit_count     = EXCLUDED.commit_count,
-                        computed_at      = EXCLUDED.computed_at
-                `;
-
-                validCanonicalIds.push(canonicalId);
-                console.log(`[PersonMetrics] Canonical: "${primaryName}" (${canonicalId}): risk=${riskScore}%, repos=[${repos.join(', ')}], commits=${commitCount}`);
-            } catch (personError: any) {
-                console.error(`[PersonMetrics] Failed for canonical person "${primaryName}": ${personError?.message}`);
+            for (const cid of batchResults) {
+                if (cid) validCanonicalIds.push(cid);
             }
         }
 
@@ -269,7 +303,5 @@ export async function calculateAllPersonMetrics() {
         console.log(`=== Person Metrics Computed: ${validCanonicalIds.length} Active Canonical People ===`);
     } catch (error: any) {
         console.error(`[PersonMetrics] Fatal error: ${error?.message}`);
-    } finally {
-        await session.close();
     }
 }

@@ -7,7 +7,7 @@ async function testRecentActivity() {
     // 1. Direct Query Test
     console.log('[TEST 1] Testing runSafeQuery for generic recent_activity...');
     try {
-        const teamResults = await runSafeQuery('recent_activity', { limit: 3 });
+        const teamResults = await runSafeQuery('recent_activity', { limit: 3 }) as any[];
         console.log(`Team-wide recent_activity returned ${teamResults.length} records:`);
         for (const item of teamResults) {
             console.log(`  - [${item.formatted_date}] ${item.author} -> ${item.event_type} in "${item.repository}": "${item.summary?.slice(0, 60)}"`);
@@ -20,7 +20,7 @@ async function testRecentActivity() {
     // 2. Query with Author (including partial/typo)
     console.log('[TEST 2] Testing runSafeQuery with author name...');
     try {
-        const authorResults = await runSafeQuery('recent_activity', { author: 'Rohan Verma', limit: 3 });
+        const authorResults = await runSafeQuery('recent_activity', { author: 'Rohan Verma', limit: 3 }) as any[];
         console.log(`Author recent_activity returned ${authorResults.length} records.`);
         for (const item of authorResults) {
             console.log(`  - [${item.formatted_date}] ${item.author} -> ${item.event_type}: "${item.summary?.slice(0, 60)}"`);

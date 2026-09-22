@@ -103,13 +103,14 @@ export async function aggregateDailyReportData(): Promise<DailyReportData> {
             LIMIT 8
         `;
 
-        // 5. Activity Events in last 24 hours (or all recent events if local seed)
+        // 5. Activity Events in last 30 days (P0-3: time-bounded query prevents full-table scan on growing events table)
         const [eventStat] = await sql`
             SELECT 
                 count(*) FILTER (WHERE event_type ILIKE '%commit%' OR event_type ILIKE '%push%')::int AS commits,
                 count(*) FILTER (WHERE event_type ILIKE '%pr%' OR event_type ILIKE '%pull%')::int AS prs,
                 count(*) FILTER (WHERE event_type ILIKE '%issue%')::int AS issues
             FROM events
+            WHERE created_at >= NOW() - INTERVAL '30 days'
         `;
 
         // 6. Active contributors from Neo4j

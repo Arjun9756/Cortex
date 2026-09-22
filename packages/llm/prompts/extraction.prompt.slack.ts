@@ -40,6 +40,7 @@ ${RELATION_TYPES.join(", ")}
     - A person AUTHORED/REPORTED/DECIDED something → from: person, to: thing
     - Technology X is REPLACED_BY technology Y → from: X (old), to: Y (new)
     - A person WORKS_ON a repository/technology → from: person, to: repository/technology
+    (Note: Do NOT extract individual Git commit hashes as entities).
 
 ## OUTPUT FORMAT (strict JSON):
 {

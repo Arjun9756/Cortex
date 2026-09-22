@@ -32,10 +32,12 @@ ${RELATION_TYPES.join(", ")}
 
 9. Return ONLY valid JSON. No markdown, no explanation, no code fences.
 
-10. For relationship direction, always use the natural "subject performs action on object" order:
-    - A person AUTHORED a commit → from: person, to: commit (NOT commit → person)
-    - A commit is PART_OF a repository → from: commit, to: repository
-    - A person WORKS_ON a repository → from: person, to: repository
+10. CRITICAL: Do NOT extract individual Git commits, commit messages, or commit SHAs as entities. Commits are stored in PostgreSQL relational tables, not as knowledge graph nodes. Instead, connect people, repositories, technologies, and pull requests directly:
+    - A person CONTRIBUTED_TO or WORKS_ON a repository → from: person, to: repository
+    - A person or repository USES a technology → from: person/repository, to: technology
+    - A pull request is PART_OF a repository → from: pull_request, to: repository
+    - A person AUTHORED a pull request → from: person, to: pull_request
+    - An issue is FIXED_BY a pull request → from: issue, to: pull_request
     - Technology X is REPLACED_BY technology Y → from: X (old), to: Y (new)
 
 11. If the event data includes "totalFilesChanged" that is significantly larger than the number of files listed in "filesChanged", 

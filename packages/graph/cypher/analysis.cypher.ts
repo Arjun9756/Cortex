@@ -180,9 +180,12 @@ export async function searchEntityCandidates(searchTerm: string, limit = 5): Pro
     try {
         const result = await session.run(`
             MATCH (entity)
-            WHERE toLower(entity.name) CONTAINS toLower($searchTerm)
-               OR (entity.email IS NOT NULL AND toLower(entity.email) CONTAINS toLower($searchTerm))
-               OR (entity.externalId IS NOT NULL AND toLower(entity.externalId) CONTAINS toLower($searchTerm))
+            WHERE (entity:PERSON OR entity:REPOSITORY OR entity:TECHNOLOGY OR entity:ISSUE OR entity:PULL_REQUEST)
+              AND (
+                toLower(entity.name) CONTAINS toLower($searchTerm)
+                OR (entity.email IS NOT NULL AND toLower(entity.email) CONTAINS toLower($searchTerm))
+                OR (entity.externalId IS NOT NULL AND toLower(entity.externalId) CONTAINS toLower($searchTerm))
+              )
             RETURN entity.name AS name, labels(entity)[0] AS type,
                    entity.email AS email, entity.role AS role, entity.externalId AS externalId
             ORDER BY CASE WHEN toLower(entity.name) = toLower($searchTerm) THEN 0 ELSE 1 END, entity.name
@@ -204,7 +207,8 @@ export async function searchEntityCandidates(searchTerm: string, limit = 5): Pro
         if (tokens.length > 0) {
             const tokenResult = await session.run(`
                 MATCH (entity)
-                WHERE ANY(token IN $tokens WHERE toLower(entity.name) CONTAINS token OR (entity.email IS NOT NULL AND toLower(entity.email) CONTAINS token))
+                WHERE (entity:PERSON OR entity:REPOSITORY OR entity:TECHNOLOGY OR entity:ISSUE OR entity:PULL_REQUEST)
+                  AND ANY(token IN $tokens WHERE toLower(entity.name) CONTAINS token OR (entity.email IS NOT NULL AND toLower(entity.email) CONTAINS token))
                 RETURN entity.name AS name, labels(entity)[0] AS type,
                        entity.email AS email, entity.role AS role, entity.externalId AS externalId
                 ORDER BY entity.name

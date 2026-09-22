@@ -138,7 +138,7 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
                                         WHERE display_name ILIKE ${'%' + resolved + '%'}
                                            OR username ILIKE ${'%' + resolved + '%'}
                                     `;
-                                    if (identities.length > 0) {
+                                    if (identities.length > 0 && identities[0]) {
                                         const canonicalId = identities[0].canonical_person_id;
                                         const validExternalIds = new Set(identities.map((i: any) => String(i.external_id || '').toLowerCase()));
                                         const validUsernames = new Set(identities.map((i: any) => String(i.username || '').toLowerCase()));
@@ -218,7 +218,7 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
                         const relation = args.relation || '';
 
                         const direct = await listNodes(resolved, targetLabel, relation);
-                        let result = direct;
+                        let result: any = direct;
                         if (direct.count === 0 || targetLabel === 'TECHNOLOGY') {
                             const multiHop = await listNodesMultiHop(resolved, targetLabel, relation);
                             if (multiHop.count > 0) result = multiHop;
@@ -239,7 +239,7 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
                                         targetLabel: 'TECHNOLOGY',
                                         relation: relation || 'USES',
                                         count: techs.length,
-                                        items: techs.map((t: string) => ({ name: t, type: 'TECHNOLOGY' })),
+                                        items: techs.map((t: string) => ({ name: t, type: 'TECHNOLOGY', relation: relation || 'USES' })),
                                         source: 'person_metrics'
                                     };
                                 }
@@ -254,14 +254,14 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
                                     SELECT repos FROM person_metrics 
                                     WHERE person_name ILIKE ${'%' + resolved + '%'}
                                     LIMIT 1
-                                `;
+                                    `;
                                 if (pm?.repos && Array.isArray(pm.repos) && pm.repos.length > 0) {
                                     result = {
                                         entity: resolved,
                                         targetLabel: 'REPOSITORY',
                                         relation: relation || 'WORKS_ON',
                                         count: pm.repos.length,
-                                        items: pm.repos.map((r: string) => ({ name: r, type: 'REPOSITORY' })),
+                                        items: pm.repos.map((r: string) => ({ name: r, type: 'REPOSITORY', relation: relation || 'WORKS_ON' })),
                                         source: 'person_metrics'
                                     };
                                 }

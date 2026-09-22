@@ -10,7 +10,6 @@ import {
   ShieldAlert,
   Terminal,
   Bot,
-  User,
   RefreshCw,
   GitCommit,
   Layers,
@@ -200,18 +199,18 @@ function renderFormattedMessageContent(text: string, isStreaming?: boolean) {
         const bodyRows = dataRows.slice(1).map(row => row.split('|').slice(1, -1).map(c => c.trim()));
 
         elements.push(
-          <div key={`table-${i}`} className="my-4 overflow-x-auto rounded-xl border border-slate-700/60 bg-[#070c18] shadow-xl">
+          <div key={`table-${i}`} className="my-3 overflow-x-auto rounded-md border border-[var(--border-subtle)] bg-[var(--bg-app)]">
             <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-gradient-to-r from-[#0f172a] to-[#131b2e] text-indigo-300 font-mono uppercase tracking-wider text-[10px] border-b-2 border-indigo-500/20">
+              <thead className="bg-[var(--bg-subtle)] text-[var(--text-secondary)] font-mono uppercase tracking-wider text-[10px] border-b border-[var(--border-subtle)]">
                 <tr>
                   {headerCells.map((h, hIdx) => (
-                    <th key={hIdx} className="px-4 py-3 font-bold border-r border-slate-800/40 last:border-0 whitespace-nowrap">{h}</th>
+                    <th key={hIdx} className="px-3.5 py-2.5 font-semibold border-r border-[var(--border-subtle)] last:border-0 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="text-slate-200">
+              <tbody className="text-[var(--text-primary)]">
                 {bodyRows.map((row, rIdx) => (
-                  <tr key={rIdx} className={`border-b border-slate-800/30 transition-colors hover:bg-indigo-500/5 ${rIdx % 2 === 0 ? 'bg-slate-950/30' : 'bg-slate-900/20'}`}>
+                  <tr key={rIdx} className="border-b border-[var(--border-subtle)] last:border-0 transition-colors hover:bg-[var(--bg-elevated)]">
                     {row.map((cell, cIdx) => {
                       const isPercent = /^\d+\.?\d*%$/.test(cell.replace(/[*`]/g, '').trim());
                       const isNumber = /^\d+\.?\d*$/.test(cell.replace(/[*`]/g, '').trim());
@@ -258,21 +257,21 @@ function renderFormattedMessageContent(text: string, isStreaming?: boolean) {
 
       if (hashCount === 1) {
         elements.push(
-          <h3 key={`header-${i}`} className="text-base font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300 uppercase font-mono tracking-wider pt-4 pb-2 border-b border-indigo-500/20 flex items-center space-x-2">
-            <span className="w-1 h-5 bg-indigo-500 rounded-full" />
+          <h3 key={`header-${i}`} className="text-sm font-bold text-[var(--text-primary)] tracking-tight pt-3.5 pb-1.5 border-b border-[var(--border-subtle)] flex items-center space-x-2">
+            <span className="w-1 h-4 bg-indigo-500 rounded-full" />
             <span>{headerText}</span>
           </h3>
         );
       } else if (hashCount === 2) {
         elements.push(
-          <h4 key={`header-${i}`} className="text-sm font-extrabold text-indigo-300 uppercase font-mono tracking-wider pt-3 pb-1.5 border-b border-slate-800/60 flex items-center space-x-2">
-            <span className="w-0.5 h-4 bg-indigo-500/60 rounded-full" />
+          <h4 key={`header-${i}`} className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider pt-2.5 pb-1 flex items-center space-x-2">
+            <span className="w-0.5 h-3 bg-indigo-500/60 rounded-full" />
             <span>{headerText}</span>
           </h4>
         );
       } else {
         elements.push(
-          <h5 key={`header-${i}`} className="text-xs font-bold text-slate-300 uppercase tracking-wider pt-2 pb-1 flex items-center space-x-1.5">
+          <h5 key={`header-${i}`} className="text-xs font-semibold text-[var(--text-secondary)] tracking-wider pt-2 pb-1 flex items-center space-x-1.5">
             <span className="text-indigo-400">›</span>
             <span>{headerText}</span>
           </h5>
@@ -290,7 +289,7 @@ function renderFormattedMessageContent(text: string, isStreaming?: boolean) {
         i++;
       }
       elements.push(
-        <div key={`quote-${i}`} className="my-3 p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/5 border-l-4 border-indigo-500 text-indigo-200 text-xs font-semibold backdrop-blur-sm shadow-inner space-y-1">
+        <div key={`quote-${i}`} className="my-2.5 p-3.5 rounded-lg bg-[var(--bg-subtle)] border-l-2 border-indigo-500 text-[var(--text-secondary)] text-xs space-y-1">
           {quoteLines.map((ql, qi) => (
             <div key={qi}>{renderInlineFormattedText(ql)}</div>
           ))}
@@ -671,12 +670,12 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
   };
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-65px)] bg-[#060a12] font-sans antialiased text-slate-100">
+    <div className="relative flex flex-col h-[calc(100vh-65px)] bg-[var(--bg-app)] font-sans antialiased text-[var(--text-primary)]">
       {/* Top Action Utility Bar */}
       <div className="absolute top-3.5 right-6 z-30 flex items-center space-x-2">
         <button
           onClick={handleExportTranscript}
-          className="text-xs text-slate-400 hover:text-white bg-[#090f1d]/90 hover:bg-slate-800 border border-slate-800/80 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all shadow-md backdrop-blur-md cursor-pointer"
+          className="text-xs text-[var(--text-secondary)] hover:text-white bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-strong)] px-2.5 py-1 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
           title="Download full chat session transcript as Markdown"
         >
           <Download className="h-3.5 w-3.5 text-indigo-400" />
@@ -685,13 +684,13 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
         <button
           onClick={handleCopyTranscript}
-          className="text-xs text-slate-400 hover:text-white bg-[#090f1d]/90 hover:bg-slate-800 border border-slate-800/80 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all shadow-md backdrop-blur-md cursor-pointer"
+          className="text-xs text-[var(--text-secondary)] hover:text-white bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-strong)] px-2.5 py-1 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
           title="Copy session transcript to clipboard"
         >
           {copiedTranscript ? (
             <>
               <Check className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="text-emerald-400 font-medium">Copied!</span>
+              <span className="text-emerald-400 font-medium">Copied</span>
             </>
           ) : (
             <>
@@ -703,7 +702,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
         <button
           onClick={handleClearChat}
-          className="text-xs text-slate-400 hover:text-rose-300 bg-[#090f1d]/90 hover:bg-rose-950/40 border border-slate-800/80 hover:border-rose-500/40 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all shadow-md backdrop-blur-md cursor-pointer"
+          className="text-xs text-[var(--text-secondary)] hover:text-rose-300 bg-[var(--bg-panel)] hover:bg-rose-950/30 border border-[var(--border-strong)] hover:border-rose-500/40 px-2.5 py-1 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
           title="Clear all messages in this conversation"
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -730,31 +729,31 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
               className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-4xl ${isUser ? 'ml-auto' : 'mr-auto'} w-full scroll-mt-6`}
             >
               {/* Message Header Tag */}
-              <div className="flex items-center space-x-2 text-xs text-slate-400 mb-1.5 px-1">
+              <div className="flex items-center space-x-2 text-xs text-[var(--text-muted)] mb-1.5 px-1">
                 {isUser ? (
                   <>
-                    <span className="font-semibold text-slate-300">You</span>
-                    <div className="p-1 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                      <User className="h-3 w-3" />
+                    <span className="font-semibold text-[var(--text-secondary)]">You</span>
+                    <div className="h-5 w-5 rounded bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-[var(--text-primary)] flex items-center justify-center font-semibold text-[10px]">
+                      U
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="p-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                    <div className="h-5 w-5 rounded bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-indigo-400 flex items-center justify-center">
                       <Bot className="h-3 w-3" />
                     </div>
-                    <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">
+                    <span className="font-semibold text-xs text-[var(--text-primary)]">
                       Cortex Intelligence Agent
                     </span>
                     {msg.isStreaming && (
-                      <span className="flex items-center space-x-1.5 text-[10px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/30 animate-pulse">
+                      <span className="flex items-center space-x-1.5 text-[10px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/30">
                         <RefreshCw className="h-2.5 w-2.5 animate-spin text-indigo-400" />
-                        <span>streaming answer</span>
+                        <span>streaming</span>
                       </span>
                     )}
                   </>
                 )}
-                <span className="text-[10px] text-slate-500">• {msg.timestamp}</span>
+                <span className="text-[10px] text-[var(--text-muted)]">&bull; {msg.timestamp}</span>
               </div>
 
               {/* Collapsible Agent Reasoning Steps (Bot Messages) */}
@@ -762,27 +761,26 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                 <div className="mb-2 w-full max-w-2xl">
                   <button
                     onClick={() => toggleReasoning(msg.id)}
-                    className="flex items-center space-x-2 text-xs text-indigo-400 hover:text-indigo-300 bg-[#090f1d] hover:bg-slate-900 border border-indigo-500/20 px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm"
+                    className="flex items-center space-x-2 text-xs text-[var(--text-secondary)] hover:text-white bg-[var(--bg-subtle)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
                   >
-                    <Terminal className="h-3.5 w-3.5" />
-                    <span>Agent Reasoning Trace ({msg.agentSteps?.length} steps)</span>
-                    {msg.isStreaming && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />}
+                    <Terminal className="h-3.5 w-3.5 text-indigo-400" />
+                    <span>Reasoning Trace ({msg.agentSteps?.length} steps)</span>
                     {reasoningOpen ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
                   </button>
 
                   {reasoningOpen && (
-                    <div className="mt-2 p-3.5 bg-[#090f1d] border border-indigo-500/20 rounded-xl space-y-2 text-xs animate-in fade-in duration-200">
+                    <div className="mt-2 p-3 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-lg space-y-1.5 text-xs animate-in fade-in">
                       {msg.agentSteps?.map((step, sIdx) => (
-                        <div key={sIdx} className="flex items-center space-x-2.5 text-slate-300">
+                        <div key={sIdx} className="flex items-center space-x-2 text-[var(--text-secondary)]">
                           {step.done ? (
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                           ) : (
                             <RefreshCw className="h-3.5 w-3.5 text-indigo-400 animate-spin shrink-0" />
                           )}
-                          <span className={`font-mono text-xs ${step.done ? 'text-slate-300' : 'text-indigo-200 font-semibold'}`}>
+                          <span className={`font-mono text-xs ${step.done ? 'text-[var(--text-secondary)]' : 'text-indigo-300 font-semibold'}`}>
                             {step.step}
                           </span>
-                          <span className="text-[10px] text-slate-500 ml-auto font-mono">{step.timestamp}</span>
+                          <span className="text-[10px] text-[var(--text-muted)] ml-auto font-mono">{step.timestamp}</span>
                         </div>
                       ))}
                     </div>
@@ -792,18 +790,18 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
               {/* Message Bubble or Error Card */}
               {msg.error ? (
-                <div className="w-full bg-[#18090f] border border-rose-500/40 rounded-2xl p-5 shadow-2xl space-y-4 animate-in fade-in duration-300">
+                <div className="w-full bg-rose-950/20 border border-rose-500/30 rounded-xl p-4 space-y-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                        <AlertTriangle className="h-5 w-5" />
+                      <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                        <AlertTriangle className="h-4 w-4" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-sm text-white">Agent Execution Error</h4>
+                        <h4 className="font-bold text-sm text-[var(--text-primary)]">Agent Execution Error</h4>
                         <p className="text-xs text-rose-300/90 mt-0.5">{msg.error.message}</p>
                       </div>
                     </div>
-                    <span className="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase">
                       Failed
                     </span>
                   </div>
@@ -812,10 +810,10 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                     <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-rose-500/20">
                       <button
                         onClick={() => handleSend(msg.error!.retryQuery!)}
-                        className="px-3.5 py-1.5 rounded-lg bg-rose-500/25 hover:bg-rose-500/35 border border-rose-500/40 text-xs font-semibold text-rose-100 flex items-center space-x-1.5 transition-all shadow-sm cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-xs font-semibold text-rose-100 flex items-center space-x-1.5 transition-colors cursor-pointer"
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
-                        <span>Retry Question</span>
+                        <span>Retry</span>
                       </button>
 
                       <button
@@ -823,33 +821,28 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                           setQuery(msg.error!.retryQuery!);
                           textareaRef.current?.focus();
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-300 flex items-center space-x-1.5 transition-all cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--bg-panel)] border border-[var(--border-strong)] text-xs font-medium text-[var(--text-secondary)] flex items-center space-x-1.5 transition-colors cursor-pointer"
                       >
                         <CornerDownLeft className="h-3.5 w-3.5" />
-                        <span>Edit in Input</span>
+                        <span>Edit Query</span>
                       </button>
                     </div>
                   )}
                 </div>
               ) : (
                 <div
-                  className={`p-5 rounded-2xl text-sm leading-relaxed ${isUser
-                      ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-tr-none shadow-lg shadow-indigo-600/20 border border-indigo-400/20'
-                      : 'bg-[#0b1120] border border-slate-800 text-slate-100 rounded-tl-none shadow-xl backdrop-blur-md'
+                  className={`p-4 rounded-xl text-sm leading-relaxed ${isUser
+                      ? 'bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-[var(--text-primary)] rounded-tr-none shadow-sm max-w-2xl'
+                      : 'bg-[var(--bg-panel)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-tl-none shadow-sm w-full'
                     }`}
                 >
                   <div className="space-y-2">
                     {msg.text && msg.text.trim() ? (
                       renderFormattedMessageContent(msg.text, msg.isStreaming)
                     ) : (
-                      <div className="flex items-center space-x-3 text-indigo-300 text-xs py-1">
-                        <RefreshCw className="h-4 w-4 text-indigo-400 animate-spin" />
-                        <span>Synthesizing verified response from graph evidence...</span>
-                        <span className="flex space-x-1.5 ml-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </span>
+                      <div className="flex items-center space-x-2 text-indigo-400 text-xs py-1">
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        <span>Synthesizing response from verified evidence...</span>
                       </div>
                     )}
                   </div>
@@ -858,37 +851,33 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
               {/* Grounded Source Citations Pill Bar (Bot Messages with grounded sources) */}
               {!isUser && res && ((res.sources && res.sources.length > 0) || (res.structuredEvidence && res.structuredEvidence.length > 0)) && (
-                <div className="mt-3 w-full bg-[#080d1a] border border-slate-800/80 rounded-xl p-3.5 space-y-2">
+                <div className="mt-2.5 w-full bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 text-xs font-semibold text-slate-300">
+                    <div className="flex items-center space-x-1.5 text-xs font-semibold text-[var(--text-secondary)]">
                       <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-                      <span>Grounded Knowledge Sources & Evidence</span>
+                      <span>Grounded Knowledge Sources</span>
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      {res.sources?.length || res.structuredEvidence?.length || 0} Grounded Artifacts
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                      {res.sources?.length || res.structuredEvidence?.length || 0} Sources
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 pt-1">
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
                     {res.sources?.slice(0, 4).map((src: any, sIdx: number) => {
                       const provider = src.provider?.toLowerCase() || 'github';
                       return (
                         <div
                           key={sIdx}
                           onClick={() => toggleTab(msg.id, 'sources')}
-                          className="flex items-center space-x-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/40 px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer group"
+                          className="flex items-center space-x-2 bg-[var(--bg-elevated)] hover:bg-[var(--bg-panel)] border border-[var(--border-subtle)] hover:border-indigo-500/40 px-2.5 py-1 rounded text-xs transition-colors cursor-pointer group"
                         >
-                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${
-                            provider === 'github' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                            : provider === 'slack' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                            : 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-                          }`}>
+                          <span className="text-[10px] font-semibold uppercase px-1.5 py-0.2 rounded bg-[var(--bg-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] font-mono">
                             {provider}
                           </span>
-                          <span className="text-slate-300 group-hover:text-white font-mono text-[11px] truncate max-w-[200px]">
+                          <span className="text-[var(--text-secondary)] group-hover:text-white font-mono text-[11px] truncate max-w-[200px]">
                             {src.eventId || src.repository || src.channel ? `#${src.channel || src.repository || src.eventId}` : (src.summary || 'Citation')}
                           </span>
-                          <ExternalLink className="h-3 w-3 text-slate-500 group-hover:text-indigo-400" />
+                          <ExternalLink className="h-3 w-3 text-[var(--text-muted)] group-hover:text-indigo-400" />
                         </div>
                       );
                     })}
@@ -898,9 +887,9 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
               {/* Welcome State Cards (Shown ONLY when chat just started) */}
               {!isUser && msg.id === 'welcome' && messages.length === 1 && (
-                <div className="mt-6 w-full max-w-3xl space-y-4 animate-in fade-in duration-500">
-                  <div className="flex items-center space-x-2 text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                    <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                <div className="mt-6 w-full max-w-3xl space-y-4 animate-in fade-in duration-300">
+                  <div className="flex items-center space-x-2 text-xs text-[var(--text-secondary)] font-semibold uppercase tracking-wider">
+                    <Sparkles className="h-3.5 w-3.5 text-[var(--accent-default)]" />
                     <span>Suggested Starter Intelligence Prompts:</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -908,18 +897,18 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                       <button
                         key={pIdx}
                         onClick={() => handleSend(p.desc)}
-                        className="p-4 bg-[#090f1d] hover:bg-[#0e172c] border border-slate-800/80 hover:border-indigo-500/40 rounded-xl text-left transition-all duration-200 group flex items-start justify-between shadow-sm cursor-pointer"
+                        className="p-3.5 bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] rounded-lg text-left transition-colors duration-150 group flex items-start justify-between cursor-pointer"
                       >
                         <div className="space-y-1.5">
                           <div className="flex items-center space-x-2">
-                            <span className="text-xs font-bold text-slate-200 group-hover:text-indigo-300 block">{p.title}</span>
-                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                            <span className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-indigo-300 block">{p.title}</span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] text-[var(--accent-default)] border border-[var(--border-subtle)]">
                               {p.badge}
                             </span>
                           </div>
-                          <span className="text-xs text-slate-400 block font-mono">"{p.desc}"</span>
+                          <span className="text-xs text-[var(--text-secondary)] block font-mono">"{p.desc}"</span>
                         </div>
-                        <ArrowUpRight className="h-4 w-4 text-slate-500 group-hover:text-indigo-400 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shrink-0 ml-2" />
+                        <ArrowUpRight className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--accent-default)] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shrink-0 ml-2" />
                       </button>
                     ))}
                   </div>
@@ -928,21 +917,21 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
               {/* Interactive Telemetry & Visual Evidence Component (Bot Responses Only) */}
               {!isUser && res && (
-                <div className="mt-3 w-full bg-[#090e1a] border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl animate-in fade-in duration-300">
+                <div className="mt-3 w-full bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-lg overflow-hidden animate-in fade-in duration-200">
                   {/* Navigation Tab Bar */}
-                  <div className={`flex items-center justify-between bg-[#0d1527] px-2 overflow-x-auto ${activeTab ? 'border-b border-slate-800/80' : ''}`}>
+                  <div className={`flex items-center justify-between bg-[var(--bg-subtle)] px-2 overflow-x-auto ${activeTab ? 'border-b border-[var(--border-subtle)]' : ''}`}>
                     <div className="flex items-center space-x-1">
                       {krList.length > 0 && (
                         <button
                           onClick={() => toggleTab(msg.id, 'risk')}
-                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all cursor-pointer ${activeTab === 'risk'
+                          className={`px-3.5 py-2.5 text-xs font-medium flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${activeTab === 'risk'
                               ? 'border-rose-500 text-rose-400 bg-rose-500/10'
-                              : 'border-transparent text-slate-400 hover:text-slate-200'
+                              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                             }`}
                         >
                           <ShieldAlert className="h-3.5 w-3.5" />
                           <span>Knowledge Risk Model</span>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20">
                             {krList.length} Person{krList.length > 1 ? 's' : ''}
                           </span>
                         </button>
@@ -950,14 +939,14 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
                       <button
                         onClick={() => toggleTab(msg.id, 'chain')}
-                        className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all cursor-pointer ${activeTab === 'chain'
-                            ? 'border-indigo-500 text-indigo-300 bg-indigo-500/10'
-                            : 'border-transparent text-slate-400 hover:text-slate-200'
+                        className={`px-3.5 py-2.5 text-xs font-medium flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${activeTab === 'chain'
+                            ? 'border-[var(--accent-default)] text-[var(--text-primary)] bg-[var(--bg-elevated)]'
+                            : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                           }`}
                       >
                         <Terminal className="h-3.5 w-3.5" />
                         <span>Execution Chain & Tools</span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] font-mono">
                           {res.execution?.tools?.length || 0} Tools
                         </span>
                       </button>
@@ -965,14 +954,14 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                       {res.sources && res.sources.length > 0 && (
                         <button
                           onClick={() => toggleTab(msg.id, 'sources')}
-                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all cursor-pointer ${activeTab === 'sources'
-                              ? 'border-purple-500 text-purple-300 bg-purple-500/10'
-                              : 'border-transparent text-slate-400 hover:text-slate-200'
+                          className={`px-3.5 py-2.5 text-xs font-medium flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${activeTab === 'sources'
+                              ? 'border-[var(--accent-default)] text-[var(--text-primary)] bg-[var(--bg-elevated)]'
+                              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                             }`}
                         >
                           <FileText className="h-3.5 w-3.5" />
                           <span>Vector Sources</span>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] font-mono">
                             {res.sources.length} Docs
                           </span>
                         </button>
@@ -981,9 +970,9 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                       {res.graphContext && res.graphContext.length > 0 && (
                         <button
                           onClick={() => toggleTab(msg.id, 'graph')}
-                          className={`px-4 py-3 text-xs font-semibold flex items-center space-x-2 border-b-2 transition-all cursor-pointer ${activeTab === 'graph'
-                              ? 'border-emerald-500 text-emerald-300 bg-emerald-500/10'
-                              : 'border-transparent text-slate-400 hover:text-slate-200'
+                          className={`px-3.5 py-2.5 text-xs font-medium flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${activeTab === 'graph'
+                              ? 'border-[var(--accent-default)] text-[var(--text-primary)] bg-[var(--bg-elevated)]'
+                              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                             }`}
                         >
                           <Network className="h-3.5 w-3.5" />
@@ -992,18 +981,18 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                       )}
                     </div>
 
-                    <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 font-mono px-3 shrink-0">
-                      <span className="hidden sm:inline">{activeTab ? 'Click to collapse' : 'Click to inspect telemetry'}</span>
-                      {activeTab ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-indigo-400" />}
+                    <div className="flex items-center space-x-1.5 text-[11px] text-[var(--text-muted)] font-mono px-3 shrink-0">
+                      <span className="hidden sm:inline">{activeTab ? 'Collapse' : 'Inspect telemetry'}</span>
+                      {activeTab ? <ChevronUp className="h-3.5 w-3.5 text-[var(--text-secondary)]" /> : <ChevronDown className="h-3.5 w-3.5 text-[var(--text-secondary)]" />}
                     </div>
                   </div>
 
                   {/* Tab Body Contents */}
                   {activeTab && (
-                    <div className="p-6 border-t border-slate-800/60 animate-in fade-in duration-200">
+                    <div className="p-5 border-t border-[var(--border-subtle)] animate-in fade-in duration-150">
                       {/* TAB 1: Animated Knowledge Loss Risk Gauges & Breakdown */}
                       {activeTab === 'risk' && krList.length > 0 && (
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                           {krList.map((kr, krIdx) => {
                             if (!kr || !kr.breakdown) return null;
                             const b = kr.breakdown || {};
@@ -1012,77 +1001,77 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                             const totalPct = Math.round((kr.totalRisk ?? 0) * 100);
                             const severity = getSeverityBadge(totalPct);
 
-                            const radius = 42;
+                            const radius = 40;
                             const circumference = 2 * Math.PI * radius;
                             const strokeDashoffset = circumference - (totalPct / 100) * circumference;
 
                             return (
                               <div
                                 key={krIdx}
-                                className="bg-[#0b1222] border border-slate-800/80 rounded-xl p-6 space-y-6 shadow-xl"
+                                className="bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-lg p-5 space-y-5"
                               >
-                                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-slate-800/80">
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-5 pb-5 border-b border-[var(--border-subtle)]">
                                   <div className="flex items-center space-x-4">
                                     <div className="relative">
-                                      <svg className="w-24 h-24 transform -rotate-90">
+                                      <svg className="w-20 h-20 transform -rotate-90">
                                         <circle
-                                          cx="48"
-                                          cy="48"
+                                          cx="40"
+                                          cy="40"
                                           r={radius}
-                                          className="text-slate-900"
-                                          strokeWidth="8"
+                                          className="text-[var(--border-subtle)]"
+                                          strokeWidth="6"
                                           stroke="currentColor"
                                           fill="transparent"
                                         />
                                         <circle
-                                          cx="48"
-                                          cy="48"
+                                          cx="40"
+                                          cy="40"
                                           r={radius}
-                                          strokeWidth="8"
+                                          strokeWidth="6"
                                           stroke={severity.stroke}
                                           strokeDasharray={circumference}
                                           strokeDashoffset={strokeDashoffset}
                                           strokeLinecap="round"
                                           fill="transparent"
-                                          className="transition-all duration-1000 ease-out"
+                                          className="transition-all duration-700 ease-out"
                                         />
                                       </svg>
                                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                                        <span className="text-xl font-extrabold text-white">{totalPct}%</span>
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase">RISK</span>
+                                        <span className="text-lg font-bold text-[var(--text-primary)]">{totalPct}%</span>
+                                        <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">RISK</span>
                                       </div>
                                     </div>
 
                                     <div className="space-y-1">
                                       <div className="flex items-center space-x-2">
-                                        <h4 className="font-bold text-lg text-white">{kr.person}</h4>
-                                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${severity.bg}`}>
+                                        <h4 className="font-semibold text-base text-[var(--text-primary)]">{kr.person}</h4>
+                                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${severity.bg}`}>
                                           {severity.label}
                                         </span>
                                       </div>
-                                      <p className="text-xs text-slate-400">
-                                        6-Factor Weighted Departure Loss Risk Score & Concrete Codebase Evidence
+                                      <p className="text-xs text-[var(--text-secondary)]">
+                                        6-Factor Weighted Departure Loss Risk Score & Codebase Evidence
                                       </p>
                                     </div>
                                   </div>
 
-                                  <div className="grid grid-cols-3 gap-3 text-center w-full sm:w-auto">
-                                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800">
-                                      <span className="text-xs text-slate-400 block">Owned Items</span>
-                                      <span className="text-sm font-bold text-indigo-400">{details.ownedItems ?? 0}</span>
+                                  <div className="grid grid-cols-3 gap-2.5 text-center w-full sm:w-auto">
+                                    <div className="p-2 bg-[var(--bg-elevated)] rounded border border-[var(--border-subtle)]">
+                                      <span className="text-[11px] text-[var(--text-muted)] block">Owned Items</span>
+                                      <span className="text-xs font-semibold text-[var(--text-primary)]">{details.ownedItems ?? 0}</span>
                                     </div>
-                                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800">
-                                      <span className="text-xs text-slate-400 block">Dependents</span>
-                                      <span className="text-sm font-bold text-purple-400">{details.criticalDependencies ?? 0}</span>
+                                    <div className="p-2 bg-[var(--bg-elevated)] rounded border border-[var(--border-subtle)]">
+                                      <span className="text-[11px] text-[var(--text-muted)] block">Dependents</span>
+                                      <span className="text-xs font-semibold text-[var(--text-primary)]">{details.criticalDependencies ?? 0}</span>
                                     </div>
-                                    <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800">
-                                      <span className="text-xs text-slate-400 block">Sole Skills</span>
-                                      <span className="text-sm font-bold text-rose-400">{details.uniqueSkills ?? 0}</span>
+                                    <div className="p-2 bg-[var(--bg-elevated)] rounded border border-[var(--border-subtle)]">
+                                      <span className="text-[11px] text-[var(--text-muted)] block">Sole Skills</span>
+                                      <span className="text-xs font-semibold text-[var(--text-primary)]">{details.uniqueSkills ?? 0}</span>
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                   {[
                                     { label: 'Ownership Concentration', val: Math.round((b.ownership ?? 0) * 10), weight: '30%', icon: GitCommit, desc: `${details.ownedItems ?? 0} codebase commits/files owned` },
                                     { label: 'Critical Dependents', val: Math.round((b.dependency ?? 0) * 10), weight: '20%', icon: Layers, desc: `${details.criticalDependencies ?? 0} dependent components` },
@@ -1091,40 +1080,40 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                                     { label: 'Sole-Contributor Expertise', val: Math.round((b.expertise ?? 0) * 10), weight: '10%', icon: Award, desc: `${details.uniqueSkills ?? 0} sole-maintained items` },
                                     { label: 'Assigned Pending Work', val: Math.round((b.pendingWork ?? 0) * 10), weight: '10%', icon: AlertCircle, desc: `${details.assignedWork ?? 0} assigned open issues` },
                                   ].map((item, idx) => (
-                                    <div key={idx} className="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800/80 space-y-2">
+                                    <div key={idx} className="p-3 bg-[var(--bg-panel)] rounded-lg border border-[var(--border-subtle)] space-y-1.5">
                                       <div className="flex justify-between items-center text-xs">
-                                        <span className="font-semibold text-slate-200 flex items-center gap-2">
-                                          <item.icon className="h-4 w-4 text-indigo-400" />
+                                        <span className="font-medium text-[var(--text-secondary)] flex items-center gap-1.5">
+                                          <item.icon className="h-3.5 w-3.5 text-[var(--accent-default)]" />
                                           {item.label}
-                                          <span className="text-[10px] font-normal text-slate-500">({item.weight} weight)</span>
+                                          <span className="text-[10px] text-[var(--text-muted)] font-mono">({item.weight})</span>
                                         </span>
-                                        <span className="font-extrabold text-indigo-300">{item.val}%</span>
+                                        <span className="font-semibold text-[var(--text-primary)] font-mono">{item.val}%</span>
                                       </div>
-                                      <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                                      <div className="w-full bg-[var(--bg-app)] h-1.5 rounded-full overflow-hidden">
                                         <div
-                                          className="bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500 h-full rounded-full transition-all duration-700 ease-out"
-                                          style={{ width: `${Math.max(3, item.val)}%` }}
-                                        ></div>
+                                          className="bg-[var(--accent-default)] h-full rounded-full transition-all duration-500 ease-out"
+                                          style={{ width: `${Math.max(2, item.val)}%` }}
+                                        />
                                       </div>
-                                      <span className="text-[11px] text-slate-500 block">{item.desc}</span>
+                                      <span className="text-[11px] text-[var(--text-muted)] block">{item.desc}</span>
                                     </div>
                                   ))}
                                 </div>
 
                                 {evidence.expertise && evidence.expertise.length > 0 && (
-                                  <div className="pt-3 space-y-3">
-                                    <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
-                                      <UserCheck className="h-4 w-4 text-emerald-400" />
+                                  <div className="pt-2 space-y-2.5">
+                                    <h5 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider flex items-center space-x-2">
+                                      <UserCheck className="h-3.5 w-3.5 text-emerald-400" />
                                       <span>Single-Contributor Codebase Evidence</span>
                                     </h5>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                       {evidence.expertise.map((ev: any, idx: number) => (
-                                        <div key={idx} className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-xs flex items-center justify-between">
+                                        <div key={idx} className="p-2.5 bg-[var(--bg-panel)] rounded-lg border border-[var(--border-subtle)] text-xs flex items-center justify-between">
                                           <div>
-                                            <span className="text-indigo-300 font-semibold">{ev.name}</span>
-                                            <span className="text-[11px] text-slate-400 block">{ev.reason}</span>
+                                            <span className="text-[var(--text-primary)] font-medium">{ev.name}</span>
+                                            <span className="text-[11px] text-[var(--text-muted)] block">{ev.reason}</span>
                                           </div>
-                                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shrink-0 ml-2 uppercase">
+                                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--bg-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] shrink-0 ml-2 uppercase">
                                             {ev.type}
                                           </span>
                                         </div>
@@ -1140,15 +1129,15 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
                       {/* TAB 2: Agent Execution Chain & Tools Telemetry Timeline */}
                       {activeTab === 'chain' && (
-                        <div className="space-y-6">
-                          <div className="p-4 bg-[#0b1222] border border-indigo-500/30 rounded-xl flex items-center justify-between">
+                        <div className="space-y-4">
+                          <div className="p-3.5 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-lg flex items-center justify-between">
                             <div className="flex items-center space-x-3">
-                              <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                                <Zap className="h-5 w-5" />
+                              <div className="p-1.5 rounded bg-[var(--bg-elevated)] text-[var(--accent-default)] border border-[var(--border-subtle)]">
+                                <Zap className="h-4 w-4" />
                               </div>
                               <div>
-                                <h4 className="font-bold text-white text-sm">Execution Telemetry & Routing Path</h4>
-                                <p className="text-xs text-slate-400">
+                                <h4 className="font-semibold text-[var(--text-primary)] text-xs">Execution Telemetry & Routing Path</h4>
+                                <p className="text-[11px] text-[var(--text-muted)]">
                                   {res.execution?.tools?.length === 0
                                     ? 'Direct LLM Knowledge Synthesis'
                                     : res.execution?.tools?.length === 1
@@ -1157,20 +1146,20 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                                 </p>
                               </div>
                             </div>
-                            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                              {res.execution?.tools?.length || 0} Tool Call{res.execution?.tools?.length !== 1 ? 's' : ''} Executed
+                            <span className="px-2.5 py-0.5 rounded text-[11px] font-mono bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
+                              {res.execution?.tools?.length || 0} Tool Call{res.execution?.tools?.length !== 1 ? 's' : ''}
                             </span>
                           </div>
 
-                          <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-800">
+                          <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-px before:bg-[var(--border-subtle)]">
                             {/* Step 1: Query Input */}
-                            <div className="relative flex items-start space-x-4">
-                              <div className="absolute -left-6 p-1 rounded-full bg-slate-900 border border-slate-700 text-slate-400">
+                            <div className="relative flex items-start space-x-3">
+                              <div className="absolute -left-6 p-1 rounded-full bg-[var(--bg-app)] border border-[var(--border-subtle)] text-[var(--text-muted)]">
                                 <Search className="h-3 w-3" />
                               </div>
-                              <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-xs w-full">
-                                <span className="font-bold text-slate-400 uppercase text-[10px] block">Step 1: User Query Received</span>
-                                <span className="text-slate-200 font-mono">
+                              <div className="p-3 bg-[var(--bg-subtle)] rounded-lg border border-[var(--border-subtle)] text-xs w-full">
+                                <span className="font-semibold text-[var(--text-muted)] uppercase text-[10px] block">Step 1: User Query Received</span>
+                                <span className="text-[var(--text-secondary)] font-mono">
                                   "{res.query || res.execution?.query || messages.slice(0, messages.findIndex(m => m.id === msg.id)).reverse().find(m => m.sender === 'user')?.text || 'Query'}"
                                 </span>
                               </div>
@@ -1178,15 +1167,15 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
                             {/* Step 2: Tools Fired */}
                             {res.execution?.tools?.map((tool, idx) => (
-                              <div key={idx} className="relative flex items-start space-x-4">
-                                <div className="absolute -left-6 p-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-400">
+                              <div key={idx} className="relative flex items-start space-x-3">
+                                <div className="absolute -left-6 p-1 rounded-full bg-[var(--bg-app)] border border-[var(--border-strong)] text-[var(--accent-default)]">
                                   <Cpu className="h-3 w-3" />
                                 </div>
-                                <div className="p-3.5 bg-slate-900/90 rounded-xl border border-slate-800 text-xs w-full space-y-2">
+                                <div className="p-3 bg-[var(--bg-subtle)] rounded-lg border border-[var(--border-subtle)] text-xs w-full space-y-2">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-2">
-                                      <span className="font-bold text-slate-400 uppercase text-[10px]">Step {idx + 2}: Tool Invoked</span>
-                                      <span className={`px-2.5 py-0.5 rounded text-xs font-mono font-bold border ${getToolBadgeColor(tool)}`}>
+                                      <span className="font-semibold text-[var(--text-muted)] uppercase text-[10px]">Step {idx + 2}: Tool Invoked</span>
+                                      <span className={`px-2 py-0.5 rounded text-xs font-mono font-medium border ${getToolBadgeColor(tool)}`}>
                                         {tool}
                                       </span>
                                     </div>
@@ -1197,16 +1186,16 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                                   </div>
 
                                   {tool === 'graph_search' && (
-                                    <div className="text-[11px] text-slate-400 space-y-1 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 font-mono">
+                                    <div className="text-[11px] text-[var(--text-secondary)] space-y-1 bg-[var(--bg-app)] p-2.5 rounded border border-[var(--border-subtle)] font-mono">
                                       <div>Action: <span className="text-emerald-400">{res.execution.graphAction || 'describeEntity'}</span></div>
                                       <div>Entities: <span className="text-indigo-300">{JSON.stringify(res.execution.graphEntities || [])}</span></div>
-                                      {res.execution.graphTarget && <div>Target Label: <span className="text-purple-300">{res.execution.graphTarget}</span></div>}
+                                      {res.execution.graphTarget && <div>Target Label: <span className="text-slate-300">{res.execution.graphTarget}</span></div>}
                                     </div>
                                   )}
 
                                   {tool === 'vector_search' && res.execution.vectorQuery && (
-                                    <div className="text-[11px] text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 font-mono">
-                                      Sub-Question Embedded: <span className="text-purple-300">"{res.execution.vectorQuery}"</span>
+                                    <div className="text-[11px] text-[var(--text-secondary)] bg-[var(--bg-app)] p-2.5 rounded border border-[var(--border-subtle)] font-mono">
+                                      Sub-Question Embedded: <span className="text-indigo-300">"{res.execution.vectorQuery}"</span>
                                     </div>
                                   )}
                                 </div>
@@ -1214,13 +1203,13 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                             ))}
 
                             {/* Step 3: Synthesis */}
-                            <div className="relative flex items-start space-x-4">
-                              <div className="absolute -left-6 p-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400">
+                            <div className="relative flex items-start space-x-3">
+                              <div className="absolute -left-6 p-1 rounded-full bg-[var(--bg-app)] border border-emerald-500/40 text-emerald-400">
                                 <CheckCircle2 className="h-3 w-3" />
                               </div>
-                              <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-xs w-full">
-                                <span className="font-bold text-slate-400 uppercase text-[10px] block">Final Step: Answer Synthesized</span>
-                                <span className="text-slate-300">Grounded evidence consolidated from graph and vector collections and synthesized into enterprise report.</span>
+                              <div className="p-3 bg-[var(--bg-subtle)] rounded-lg border border-[var(--border-subtle)] text-xs w-full">
+                                <span className="font-semibold text-[var(--text-muted)] uppercase text-[10px] block">Final Step: Answer Synthesized</span>
+                                <span className="text-[var(--text-secondary)]">Grounded evidence consolidated from graph and vector collections and synthesized into enterprise report.</span>
                               </div>
                             </div>
                           </div>
@@ -1230,26 +1219,26 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                       {/* TAB 3: Semantic Vector Sources */}
                       {activeTab === 'sources' && res.sources && (
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                            <h5 className="font-semibold text-slate-200 text-xs flex items-center space-x-2">
-                              <FileText className="h-4 w-4 text-purple-400" />
+                          <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
+                            <h5 className="font-semibold text-[var(--text-secondary)] text-xs flex items-center space-x-2">
+                              <FileText className="h-3.5 w-3.5 text-[var(--accent-default)]" />
                               <span>Qdrant Hybrid Vector Documents ({res.sources.length})</span>
                             </h5>
-                            <span className="text-[10px] text-slate-500">Collection: cortex_events</span>
+                            <span className="text-[10px] text-[var(--text-muted)] font-mono">Collection: cortex_events</span>
                           </div>
 
-                          <div className="space-y-3">
+                          <div className="space-y-2">
                             {res.sources.map((src, i) => (
-                              <div key={i} className="p-4 bg-slate-950/90 rounded-xl border border-slate-800 text-xs space-y-2">
-                                <div className="flex items-center justify-between text-slate-400">
-                                  <span className="font-bold text-purple-300 uppercase bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                              <div key={i} className="p-3 bg-[var(--bg-panel)] rounded-lg border border-[var(--border-subtle)] text-xs space-y-1.5">
+                                <div className="flex items-center justify-between text-[var(--text-muted)]">
+                                  <span className="font-mono text-[10px] font-semibold uppercase bg-[var(--bg-subtle)] text-[var(--text-secondary)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)]">
                                     {src.provider || 'GitHub'}
                                   </span>
-                                  <span className="text-[11px]">{src.author || 'Author'} • {src.timestamp || ''}</span>
+                                  <span className="text-[11px] font-mono">{src.author || 'Author'} • {src.timestamp || ''}</span>
                                 </div>
-                                <p className="text-slate-200 leading-relaxed font-sans">{src.summary || src.text}</p>
+                                <p className="text-[var(--text-secondary)] leading-relaxed font-sans">{src.summary || src.text}</p>
                                 {src.eventId && (
-                                  <div className="flex items-center space-x-2 text-[10px] text-slate-500 font-mono pt-1">
+                                  <div className="flex items-center space-x-2 text-[10px] text-[var(--text-muted)] font-mono pt-0.5">
                                     <span>Event ID: {src.eventId}</span>
                                     {src.channel && <span>• Channel: #{src.channel}</span>}
                                     {src.repository && <span>• Repo: {src.repository}</span>}
@@ -1264,13 +1253,13 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                       {/* TAB 4: Neo4j Graph Subgraph */}
                       {activeTab === 'graph' && res.graphContext && (
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                            <h5 className="font-semibold text-slate-200 text-xs flex items-center space-x-2">
-                              <Network className="h-4 w-4 text-emerald-400" />
+                          <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
+                            <h5 className="font-semibold text-[var(--text-secondary)] text-xs flex items-center space-x-2">
+                              <Network className="h-3.5 w-3.5 text-[var(--accent-default)]" />
                               <span>Neo4j Graph Database Subgraph & Relationships</span>
                             </h5>
                           </div>
-                          <pre className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-xs text-emerald-400 font-mono overflow-x-auto">
+                          <pre className="p-3.5 bg-[var(--bg-app)] rounded-lg border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] font-mono overflow-x-auto">
                             {JSON.stringify(res.graphContext, null, 2)}
                           </pre>
                         </div>
@@ -1285,56 +1274,49 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
         {/* Loading / Agent Active Progress Indicator (shown whenever waiting for first tokens) */}
         {loading && (!streamingMsgId || !messages.some(m => m.id === streamingMsgId && m.text && m.text.trim().length > 0)) && (
-          <div className="flex flex-col items-start max-w-2xl mr-auto space-y-3 animate-in fade-in duration-300 w-full">
-            <div className="flex items-center space-x-2 text-xs text-indigo-400 font-semibold px-1">
-              <div className="p-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                <Bot className="h-4 w-4 animate-bounce" />
+          <div className="flex flex-col items-start max-w-2xl mr-auto space-y-2.5 animate-in fade-in duration-200 w-full">
+            <div className="flex items-center space-x-2 text-xs text-[var(--text-secondary)] font-medium px-1">
+              <div className="p-1 rounded bg-[var(--bg-elevated)] text-[var(--accent-default)] border border-[var(--border-subtle)]">
+                <Bot className="h-3.5 w-3.5" />
               </div>
-              <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">
+              <span className="font-semibold text-[var(--text-primary)]">
                 Cortex Intelligence Agent
               </span>
-              <span className="flex items-center space-x-1.5 text-[11px] text-indigo-400 font-mono bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/30">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                </span>
+              <span className="flex items-center space-x-1.5 text-[11px] text-[var(--text-muted)] font-mono bg-[var(--bg-subtle)] px-2 py-0.5 rounded border border-[var(--border-subtle)]">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--accent-default)]" />
                 <span>Reasoning across knowledge graph...</span>
               </span>
             </div>
 
-            <div className="bg-[#0b1120] p-5 rounded-2xl rounded-tl-none space-y-3.5 text-xs text-slate-300 border border-indigo-500/30 shadow-2xl backdrop-blur-md w-full">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-                <div className="flex items-center space-x-2 text-xs font-semibold text-indigo-300">
-                  <Sparkles className="h-4 w-4 text-indigo-400 animate-spin" style={{ animationDuration: '4s' }} />
+            <div className="bg-[var(--bg-panel)] p-4 rounded-lg rounded-tl-none space-y-3 text-xs text-[var(--text-secondary)] border border-[var(--border-subtle)] w-full">
+              <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
+                <div className="flex items-center space-x-2 text-xs font-semibold text-[var(--text-primary)]">
+                  <RefreshCw className="h-3.5 w-3.5 text-[var(--accent-default)] animate-spin" />
                   <span>Multi-Agent LangGraph Pipeline Active</span>
                 </div>
-                <div className="flex items-center space-x-1.5">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
+                <span className="text-[10px] font-mono text-[var(--text-muted)]">STREAMING</span>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {currentSteps.map((step, sIdx) => (
-                  <div key={sIdx} className="flex items-center space-x-2.5">
+                  <div key={sIdx} className="flex items-center space-x-2">
                     {step.done ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                     ) : (
-                      <RefreshCw className="h-4 w-4 text-indigo-400 animate-spin shrink-0" />
+                      <RefreshCw className="h-3.5 w-3.5 text-[var(--accent-default)] animate-spin shrink-0" />
                     )}
-                    <span className={`font-mono ${step.done ? 'text-slate-400' : 'text-indigo-200 font-semibold'}`}>
+                    <span className={`font-mono ${step.done ? 'text-[var(--text-muted)]' : 'text-[var(--text-primary)] font-medium'}`}>
                       {step.step}
                     </span>
-                    <span className="text-[10px] text-slate-500 ml-auto font-mono">{step.timestamp}</span>
+                    <span className="text-[10px] text-[var(--text-muted)] ml-auto font-mono">{step.timestamp}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="pt-2 space-y-2 border-t border-slate-800/60">
-                <div className="h-3 bg-gradient-to-r from-indigo-500/20 via-purple-500/10 to-indigo-500/20 rounded-full animate-pulse w-3/4" />
-                <div className="h-3 bg-gradient-to-r from-indigo-500/15 via-purple-500/10 to-indigo-500/15 rounded-full animate-pulse w-5/6" style={{ animationDelay: '200ms' }} />
-                <div className="h-3 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 rounded-full animate-pulse w-1/2" style={{ animationDelay: '400ms' }} />
+              <div className="pt-2 space-y-1.5 border-t border-[var(--border-subtle)]">
+                <div className="h-2 bg-[var(--bg-elevated)] rounded-full animate-pulse w-3/4" />
+                <div className="h-2 bg-[var(--bg-elevated)] rounded-full animate-pulse w-5/6" />
+                <div className="h-2 bg-[var(--bg-elevated)] rounded-full animate-pulse w-1/2" />
               </div>
             </div>
           </div>
@@ -1342,7 +1324,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
       </div>
 
       {/* Docked Multi-Line Input Bar */}
-      <div className="p-4 bg-[#060a12] border-t border-slate-800/80 shadow-2xl">
+      <div className="p-4 bg-[var(--bg-panel)] border-t border-[var(--border-subtle)]">
         <form
           onSubmit={e => {
             e.preventDefault();
@@ -1362,17 +1344,17 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                     handleSend();
                   }
                 }}
-                placeholder="Write a message..."
+                placeholder="Ask Cortex about codebase knowledge, SPOF, risk, or dependencies..."
                 disabled={loading}
                 rows={1}
-                style={{ height: '48px', minHeight: '48px', maxHeight: '160px' }}
-                className={`w-full bg-[#0b1120] border border-slate-800/90 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/50 rounded-xl pl-4 ${query ? 'pr-16' : 'pr-4'} py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner resize-none leading-relaxed overflow-hidden scrollbar-thin scrollbar-thumb-slate-800`}
+                style={{ height: '44px', minHeight: '44px', maxHeight: '160px' }}
+                className={`w-full bg-[var(--bg-app)] border border-[var(--border-strong)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] rounded-md pl-3.5 ${query ? 'pr-16' : 'pr-3.5'} py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none transition-colors resize-none leading-relaxed overflow-hidden scrollbar-thin scrollbar-thumb-slate-800`}
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery('')}
-                  className="absolute right-3 top-3 text-slate-500 hover:text-slate-300 text-xs font-medium bg-slate-900/80 hover:bg-slate-800 px-2 py-0.5 rounded border border-slate-800 transition-colors"
+                  className="absolute right-3 top-2.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-medium bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] px-2 py-0.5 rounded border border-[var(--border-subtle)] transition-colors"
                 >
                   Clear
                 </button>
@@ -1382,16 +1364,16 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
             <button
               type="submit"
               disabled={!query.trim() || loading}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/25 disabled:opacity-50 transition-all flex items-center space-x-2 shrink-0 h-[48px] cursor-pointer"
+              className="cortex-btn-primary px-5 py-2.5 text-xs font-semibold rounded-md disabled:opacity-50 transition-colors flex items-center space-x-2 shrink-0 h-[44px] cursor-pointer"
             >
               {loading ? (
                 <>
-                  <RefreshCw className="h-4 w-4 animate-spin text-indigo-200" />
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                   <span>Reasoning...</span>
                 </>
               ) : (
                 <>
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5" />
                   <span>Send</span>
                 </>
               )}

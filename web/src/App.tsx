@@ -142,7 +142,7 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex">
+    <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)] flex">
       {/* Navigation Sidebar */}
       <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} />
 

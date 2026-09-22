@@ -3,12 +3,13 @@ import neo4j from 'neo4j-driver'
 
 const ALLOWED_RELATIONS = new Set([
     'USES', 'HAS_PROBLEM', 'FIXED_BY', 'REPLACED_BY', 'DEPENDS_ON',
-    'WORKS_ON', 'CREATED', 'MENTIONED_IN', 'ASSIGNED_TO', 'PART_OF', 'AUTHORED'
+    'WORKS_ON', 'CREATED', 'MENTIONED_IN', 'ASSIGNED_TO', 'PART_OF', 'AUTHORED',
+    'CONTRIBUTED_TO'
 ])
 
 const ALLOWED_ENTITY_TYPES = new Set([
     'PERSON', 'TECHNOLOGY', 'REPOSITORY', 'ISSUE', 'PULL_REQUEST',
-    'COMMIT', 'TEAM', 'FILE', 'ORGANIZATION'
+    'TEAM', 'FILE', 'ORGANIZATION'
 ])
 
 /**
@@ -26,8 +27,7 @@ export async function ensureIndexes(): Promise<void> {
         await session.run(`CREATE INDEX entity_person_name IF NOT EXISTS FOR (n:PERSON) ON (n.name)`)
         await session.run(`CREATE INDEX entity_repo_name IF NOT EXISTS FOR (n:REPOSITORY) ON (n.name)`)
         await session.run(`CREATE INDEX entity_tech_name IF NOT EXISTS FOR (n:TECHNOLOGY) ON (n.name)`)
-        await session.run(`CREATE INDEX entity_commit_createdat IF NOT EXISTS FOR (n:COMMIT) ON (n.createdAt)`)
-        console.log('[Graph] Neo4j indexes ensured (PERSON: canonicalPersonId, name, email, externalId; REPOSITORY: name, externalId; TECHNOLOGY: name; COMMIT: createdAt)')
+        console.log('[Graph] Neo4j indexes ensured (PERSON: canonicalPersonId, name, email, externalId; REPOSITORY: name, externalId; TECHNOLOGY: name)')
     } catch (error: any) {
         console.error('[Graph] Failed to ensure indexes:', error.message)
     } finally {
@@ -42,16 +42,28 @@ export async function ensureIndexes(): Promise<void> {
  *
  * @param name             Display name — the fallback key
  * @param type             Node label (e.g. PERSON, REPOSITORY)
- * @param extraProperties  Optional { email, role, externalId, avatarUrl }
+ * @param extraProperties  Optional { email, role, externalId, avatarUrl, canonicalPersonId }
+ * @param existingSession  Optional caller-managed session to prevent connection churn
  */
 export async function upsertEntity(
     name: string,
     type: string,
-    extraProperties?: Record<string, any>
+    extraProperties?: Record<string, any>,
+    existingSession?: any
 ): Promise<string | undefined> {
-    const session = driver.session()
+    const session = existingSession || driver.session()
+    const shouldClose = !existingSession
     try {
         const normalizedType = type.toUpperCase()
+        // Defense-in-depth gatekeeper: Reject any attempt to upsert COMMIT nodes
+        if (
+            normalizedType === 'COMMIT' ||
+            ['COMMITS', 'GIT_COMMIT', 'GITCOMMIT', 'COMMIT_HASH', 'CHANGESET', 'REVISION'].includes(normalizedType) ||
+            /^(commit\s*:?\s*#?|sha\s*:?\s*)?[a-f0-9]{7,40}$/i.test((name || '').trim())
+        ) {
+            console.warn(`[Graph] Blocked attempt to upsert COMMIT entity: "${name}" (${type}). Commits are strictly excluded from graph nodes.`)
+            return undefined
+        }
         if (!ALLOWED_ENTITY_TYPES.has(normalizedType)) {
             throw new Error(`Invalid entity type: ${type}`)
         }
@@ -73,50 +85,26 @@ export async function upsertEntity(
 
         let result;
         if (normalizedType === 'PERSON') {
-            let matchedId: string | null = null;
+            // P1-6 & P0-2: Collapse multi-probe into a single prioritized match query:
+            // Priority order: canonicalPersonId > email > externalId.
+            // Strict identity resolution: name-only matching is strictly disabled.
+            params.canonicalPersonId = extraProperties?.canonicalPersonId ?? null
+            params.email = extraProperties?.email ?? null
+            params.externalId = extraProperties?.externalId ?? null
 
-            // Step 0: Match by canonicalPersonId if present (highest priority identity anchor)
-            if (extraProperties?.canonicalPersonId) {
-                params.canonicalPersonId = extraProperties.canonicalPersonId;
-                const canMatch = await session.run(`
-                    MATCH (e:PERSON)
-                    WHERE e.canonicalPersonId IS NOT NULL AND e.canonicalPersonId = $canonicalPersonId
-                    RETURN elementId(e) AS id LIMIT 1
-                `, params);
-                if (canMatch.records.length > 0 && canMatch.records[0]) {
-                    matchedId = canMatch.records[0].get('id');
-                }
-            }
+            const probeMatch = await session.run(`
+                OPTIONAL MATCH (p1:PERSON) 
+                WHERE $canonicalPersonId IS NOT NULL AND p1.canonicalPersonId = $canonicalPersonId
+                OPTIONAL MATCH (p2:PERSON) 
+                WHERE p1 IS NULL AND $email IS NOT NULL AND toLower(p2.email) = toLower($email)
+                OPTIONAL MATCH (p3:PERSON) 
+                WHERE p1 IS NULL AND p2 IS NULL AND $externalId IS NOT NULL AND p3.externalId = $externalId
+                WITH coalesce(p1, p2, p3) AS matched
+                RETURN elementId(matched) AS id
+                LIMIT 1
+            `, params)
 
-            // Step 1: Match by Email if present
-            if (!matchedId && extraProperties?.email) {
-                params.email = extraProperties.email;
-                const emailMatch = await session.run(`
-                    MATCH (e:PERSON)
-                    WHERE e.email IS NOT NULL AND e.email = $email
-                    RETURN elementId(e) AS id LIMIT 1
-                `, params);
-                if (emailMatch.records.length > 0 && emailMatch.records[0]) {
-                    matchedId = emailMatch.records[0].get('id');
-                }
-            }
-
-            // Step 2: Match by externalId if present and no email match
-            if (!matchedId && extraProperties?.externalId) {
-                params.externalId = extraProperties.externalId;
-                const extMatch = await session.run(`
-                    MATCH (e:PERSON)
-                    WHERE e.externalId IS NOT NULL AND e.externalId = $externalId
-                    RETURN elementId(e) AS id LIMIT 1
-                `, params);
-                if (extMatch.records.length > 0 && extMatch.records[0]) {
-                    matchedId = extMatch.records[0].get('id');
-                }
-            }
-
-            // NOTE: Strict Identity Resolution Policy:
-            // "Wrong merge is worse than having 2 separate entries."
-            // Name-only matching for PERSON is strictly disabled to prevent auto-merging distinct people with identical/similar names.
+            const matchedId = probeMatch.records[0]?.get('id') || null
 
             // Update existing or create distinct person node
             if (matchedId) {
@@ -190,21 +178,30 @@ export async function upsertEntity(
         console.log(`Error While Upsert of Entity in Graph: ${error?.message}`)
     }
     finally {
-        await session.close()
+        if (shouldClose) await session.close()
     }
 }
 
-export async function upsertCanonicalPersonNode(person: { id: string; name: string; email?: string | undefined }) {
-    return await upsertEntity(person.name, 'PERSON', { email: person.email, canonicalPersonId: person.id, externalId: person.id });
+export async function upsertCanonicalPersonNode(person: { id: string; name: string; email?: string | undefined; isActive?: boolean; employmentStatus?: string }, session?: any) {
+    return await upsertEntity(person.name, 'PERSON', { 
+        email: person.email, 
+        canonicalPersonId: person.id, 
+        externalId: person.id,
+        isActive: person.isActive ?? true,
+        employmentStatus: person.employmentStatus ?? (person.isActive === false ? 'alumni' : 'active')
+    }, session);
 }
 
-export async function upsertIdentityNode(identity: { provider: string; externalId: string; username: string; displayName: string; canonicalPersonId: string }) {
-    return await upsertEntity(identity.displayName || identity.username, 'PERSON', { externalId: identity.externalId, provider: identity.provider, canonicalPersonId: identity.canonicalPersonId });
+export async function upsertIdentityNode(identity: { provider: string; externalId: string; username: string; displayName: string; canonicalPersonId: string }, session?: any) {
+    return await upsertEntity(identity.displayName || identity.username, 'PERSON', { externalId: identity.externalId, provider: identity.provider, canonicalPersonId: identity.canonicalPersonId }, session);
 }
 
 export interface RelationMetadata {
     sourceEventId?: string | null;
     confidence?: number | null;
+    commitCount?: number | null;
+    lastCommitAt?: number | null;
+    properties?: Record<string, any>;
 }
 
 export async function upsertRelation(
@@ -212,10 +209,11 @@ export async function upsertRelation(
     toID: string,
     type: string,
     evidence?: string,
-    metadata?: RelationMetadata
+    metadata?: RelationMetadata,
+    existingSession?: any
 ) {
-    const session = driver.session()
-    console.log(`Upsert Relation ${evidence}`)
+    const session = existingSession || driver.session()
+    const shouldClose = !existingSession
     try {
         const normalizedType = type.toUpperCase()
         if (!ALLOWED_RELATIONS.has(normalizedType)) {
@@ -224,9 +222,11 @@ export async function upsertRelation(
 
         const sourceEventId = metadata?.sourceEventId ?? null;
         const confidence = metadata?.confidence != null ? metadata.confidence : 1.0;
+        const commitCount = metadata?.commitCount ?? (metadata?.properties?.commitCount ?? 1);
+        const lastCommitAt = metadata?.lastCommitAt ?? (metadata?.properties?.lastCommitAt ?? Date.now());
 
-        const result = (normalizedType === 'ASSIGNED_TO')
-            ? await session.run(`
+        if (normalizedType === 'ASSIGNED_TO') {
+            await session.run(`
                 MATCH (a) WHERE elementId(a) = $fromID
                 MATCH (b) WHERE elementId(b) = $toID
                 OPTIONAL MATCH (a)-[oldRel:ASSIGNED_TO]->(other) WHERE elementId(other) <> elementId(b)
@@ -234,20 +234,194 @@ export async function upsertRelation(
                 MERGE (a)-[r:ASSIGNED_TO]->(b)
                 ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence, r.sourceEventId = $sourceEventId, r.confidence = $confidence
                 ON MATCH SET r.updatedAt = timestamp(), r.evidence = $evidence, r.sourceEventId = COALESCE($sourceEventId, r.sourceEventId), r.confidence = COALESCE($confidence, r.confidence)
-            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence })
-            : await session.run(`
+            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence });
+        } else if (normalizedType === 'CONTRIBUTED_TO') {
+            await session.run(`
+                MATCH (a) WHERE elementId(a) = $fromID
+                MATCH (b) WHERE elementId(b) = $toID
+                MERGE (a)-[r:CONTRIBUTED_TO]->(b)
+                ON CREATE SET 
+                    r.commitCount = COALESCE($commitCount, 1),
+                    r.lastCommitAt = COALESCE($lastCommitAt, timestamp()),
+                    r.weightedScore = toFloat(COALESCE($commitCount, 1)),
+                    r.commits30d = COALESCE($commitCount, 1),
+                    r.commits90d = COALESCE($commitCount, 1),
+                    r.commits180d = COALESCE($commitCount, 1),
+                    r.commitsOlder = 0,
+                    r.createdAt = timestamp(),
+                    r.evidence = $evidence,
+                    r.sourceEventId = $sourceEventId,
+                    r.processedEventIds = CASE WHEN $sourceEventId IS NOT NULL THEN [$sourceEventId] ELSE [] END,
+                    r.confidence = $confidence
+                ON MATCH SET 
+                    r.commitCount = CASE 
+                        WHEN $sourceEventId IS NOT NULL AND $sourceEventId IN COALESCE(r.processedEventIds, []) 
+                        THEN r.commitCount 
+                        ELSE COALESCE(r.commitCount, 0) + COALESCE($commitCount, 1) 
+                    END,
+                    r.weightedScore = CASE 
+                        WHEN $sourceEventId IS NOT NULL AND $sourceEventId IN COALESCE(r.processedEventIds, []) 
+                        THEN r.weightedScore 
+                        ELSE 
+                            COALESCE(r.weightedScore, toFloat(COALESCE(r.commitCount, 1))) * 
+                            exp(-0.693 * (CASE WHEN $lastCommitAt IS NOT NULL AND $lastCommitAt > COALESCE(r.lastCommitAt, 0) THEN (toFloat($lastCommitAt) - toFloat(COALESCE(r.lastCommitAt, 0))) ELSE 0.0 END) / (180.0 * 86400000.0)) + 
+                            toFloat(COALESCE($commitCount, 1))
+                    END,
+                    r.commits30d = CASE 
+                        WHEN $sourceEventId IS NOT NULL AND $sourceEventId IN COALESCE(r.processedEventIds, []) 
+                        THEN r.commits30d 
+                        ELSE COALESCE(r.commits30d, 0) + COALESCE($commitCount, 1) 
+                    END,
+                    r.processedEventIds = CASE 
+                        WHEN $sourceEventId IS NOT NULL AND NOT ($sourceEventId IN COALESCE(r.processedEventIds, [])) 
+                        THEN (COALESCE(r.processedEventIds, []) + [$sourceEventId])[-50..]
+                        ELSE r.processedEventIds
+                    END,
+                    r.lastCommitAt = CASE WHEN $lastCommitAt IS NOT NULL AND $lastCommitAt > COALESCE(r.lastCommitAt, 0) THEN $lastCommitAt ELSE r.lastCommitAt END,
+                    r.updatedAt = timestamp(),
+                    r.evidence = $evidence,
+                    r.sourceEventId = COALESCE($sourceEventId, r.sourceEventId),
+                    r.confidence = COALESCE($confidence, r.confidence)
+            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence, commitCount, lastCommitAt });
+        } else {
+            await session.run(`
                 MATCH (a) WHERE elementId(a) = $fromID
                 MATCH (b) WHERE elementId(b) = $toID
                 MERGE (a)-[r:${normalizedType}]->(b)
                 ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence, r.sourceEventId = $sourceEventId, r.confidence = $confidence
                 ON MATCH SET r.updatedAt = timestamp(), r.evidence = $evidence, r.sourceEventId = COALESCE($sourceEventId, r.sourceEventId), r.confidence = COALESCE($confidence, r.confidence)
             `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence });
+        }
     }
     catch (error: any) {
         console.log(`Error While Upsert of Relation in Graph ${error?.message}`)
     }
     finally {
-        await session.close()
+        if (shouldClose) await session.close()
+    }
+}
+
+/**
+ * P0-2: Batch upsert relations in a single Cypher session using UNWIND grouping.
+ * Replaces O(relations) sequential session creations with 1 fixed session.
+ */
+export async function batchUpsertRelations(
+    relations: Array<{
+        fromID: string;
+        toID: string;
+        type: string;
+        evidence?: string | undefined;
+        metadata?: RelationMetadata | undefined;
+    }>,
+    existingSession?: any
+): Promise<void> {
+    if (!relations || relations.length === 0) return;
+    const session = existingSession || driver.session();
+    const shouldClose = !existingSession;
+
+    try {
+        const byType = new Map<string, any[]>();
+        for (const rel of relations) {
+            const normalizedType = rel.type.toUpperCase();
+            if (!ALLOWED_RELATIONS.has(normalizedType)) {
+                console.warn(`[GraphBatch] Skipping unknown relation type: ${rel.type}`);
+                continue;
+            }
+            if (!rel.fromID || !rel.toID) {
+                console.warn(`[GraphBatch] Skipping relation with missing endpoint: from=${rel.fromID}, to=${rel.toID}`);
+                continue;
+            }
+            if (!byType.has(normalizedType)) {
+                byType.set(normalizedType, []);
+            }
+            byType.get(normalizedType)!.push({
+                fromID: rel.fromID,
+                toID: rel.toID,
+                evidence: rel.evidence ?? null,
+                sourceEventId: rel.metadata?.sourceEventId ?? null,
+                confidence: rel.metadata?.confidence != null ? rel.metadata.confidence : 1.0,
+                commitCount: rel.metadata?.commitCount ?? (rel.metadata?.properties?.commitCount ?? 1),
+                lastCommitAt: rel.metadata?.lastCommitAt ?? (rel.metadata?.properties?.lastCommitAt ?? Date.now())
+            });
+        }
+
+        for (const [relType, batch] of byType.entries()) {
+            if (relType === 'ASSIGNED_TO') {
+                await session.run(`
+                    UNWIND $batch AS item
+                    MATCH (a) WHERE elementId(a) = item.fromID
+                    MATCH (b) WHERE elementId(b) = item.toID
+                    OPTIONAL MATCH (a)-[oldRel:ASSIGNED_TO]->(other) WHERE elementId(other) <> elementId(b)
+                    DELETE oldRel
+                    MERGE (a)-[r:ASSIGNED_TO]->(b)
+                    ON CREATE SET r.createdAt = timestamp(), r.evidence = item.evidence, r.sourceEventId = item.sourceEventId, r.confidence = item.confidence
+                    ON MATCH SET r.updatedAt = timestamp(), r.evidence = item.evidence, r.sourceEventId = COALESCE(item.sourceEventId, r.sourceEventId), r.confidence = COALESCE(item.confidence, r.confidence)
+                `, { batch });
+            } else if (relType === 'CONTRIBUTED_TO') {
+                await session.run(`
+                    UNWIND $batch AS item
+                    MATCH (a) WHERE elementId(a) = item.fromID
+                    MATCH (b) WHERE elementId(b) = item.toID
+                    MERGE (a)-[r:CONTRIBUTED_TO]->(b)
+                    ON CREATE SET 
+                        r.commitCount = COALESCE(item.commitCount, 1),
+                        r.lastCommitAt = COALESCE(item.lastCommitAt, timestamp()),
+                        r.weightedScore = toFloat(COALESCE(item.commitCount, 1)),
+                        r.commits30d = COALESCE(item.commitCount, 1),
+                        r.commits90d = COALESCE(item.commitCount, 1),
+                        r.commits180d = COALESCE(item.commitCount, 1),
+                        r.commitsOlder = 0,
+                        r.createdAt = timestamp(),
+                        r.evidence = item.evidence,
+                        r.sourceEventId = item.sourceEventId,
+                        r.processedEventIds = CASE WHEN item.sourceEventId IS NOT NULL THEN [item.sourceEventId] ELSE [] END,
+                        r.confidence = item.confidence
+                    ON MATCH SET 
+                        r.commitCount = CASE 
+                            WHEN item.sourceEventId IS NOT NULL AND item.sourceEventId IN COALESCE(r.processedEventIds, []) 
+                            THEN r.commitCount 
+                            ELSE COALESCE(r.commitCount, 0) + COALESCE(item.commitCount, 1) 
+                        END,
+                        r.weightedScore = CASE 
+                            WHEN item.sourceEventId IS NOT NULL AND item.sourceEventId IN COALESCE(r.processedEventIds, []) 
+                            THEN r.weightedScore 
+                            ELSE 
+                                COALESCE(r.weightedScore, toFloat(COALESCE(r.commitCount, 1))) * 
+                                exp(-0.693 * (CASE WHEN item.lastCommitAt IS NOT NULL AND item.lastCommitAt > COALESCE(r.lastCommitAt, 0) THEN (toFloat(item.lastCommitAt) - toFloat(COALESCE(r.lastCommitAt, 0))) ELSE 0.0 END) / (180.0 * 86400000.0)) + 
+                                toFloat(COALESCE(item.commitCount, 1))
+                        END,
+                        r.commits30d = CASE 
+                            WHEN item.sourceEventId IS NOT NULL AND item.sourceEventId IN COALESCE(r.processedEventIds, []) 
+                            THEN r.commits30d 
+                            ELSE COALESCE(r.commits30d, 0) + COALESCE(item.commitCount, 1) 
+                        END,
+                        r.processedEventIds = CASE 
+                            WHEN item.sourceEventId IS NOT NULL AND NOT (item.sourceEventId IN COALESCE(r.processedEventIds, [])) 
+                            THEN (COALESCE(r.processedEventIds, []) + [item.sourceEventId])[-50..]
+                            ELSE r.processedEventIds
+                        END,
+                        r.lastCommitAt = CASE WHEN item.lastCommitAt IS NOT NULL AND item.lastCommitAt > COALESCE(r.lastCommitAt, 0) THEN item.lastCommitAt ELSE r.lastCommitAt END,
+                        r.updatedAt = timestamp(),
+                        r.evidence = item.evidence,
+                        r.sourceEventId = COALESCE(item.sourceEventId, r.sourceEventId),
+                        r.confidence = COALESCE(item.confidence, r.confidence)
+                `, { batch });
+            } else {
+                await session.run(`
+                    UNWIND $batch AS item
+                    MATCH (a) WHERE elementId(a) = item.fromID
+                    MATCH (b) WHERE elementId(b) = item.toID
+                    MERGE (a)-[r:${relType}]->(b)
+                    ON CREATE SET r.createdAt = timestamp(), r.evidence = item.evidence, r.sourceEventId = item.sourceEventId, r.confidence = item.confidence
+                    ON MATCH SET r.updatedAt = timestamp(), r.evidence = item.evidence, r.sourceEventId = COALESCE(item.sourceEventId, r.sourceEventId), r.confidence = COALESCE(item.confidence, r.confidence)
+                `, { batch });
+            }
+        }
+    } catch (err: any) {
+        console.error(`[GraphBatch] batchUpsertRelations failed:`, err?.message);
+        throw err;
+    } finally {
+        if (shouldClose) await session.close();
     }
 }
 
@@ -339,11 +513,15 @@ export async function searchEntitiesByProperty(
 ): Promise<Array<{ name: string; type: string; email: string | null; externalId: string | null }>> {
     const session = driver.session()
     try {
+        // P1-11: Restrict search labels to core entities (never scan unbounded COMMIT nodes)
         const result = await session.run(`
             MATCH (n)
-            WHERE toLower(n.name) CONTAINS toLower($searchTerm)
-               OR (n.email IS NOT NULL AND toLower(n.email) CONTAINS toLower($searchTerm))
-               OR (n.externalId IS NOT NULL AND toLower(n.externalId) CONTAINS toLower($searchTerm))
+            WHERE (n:PERSON OR n:REPOSITORY OR n:TECHNOLOGY OR n:ISSUE OR n:PULL_REQUEST)
+              AND (
+                toLower(n.name) CONTAINS toLower($searchTerm)
+                OR (n.email IS NOT NULL AND toLower(n.email) CONTAINS toLower($searchTerm))
+                OR (n.externalId IS NOT NULL AND toLower(n.externalId) CONTAINS toLower($searchTerm))
+              )
             RETURN n.name AS name, labels(n)[0] AS type,
                    n.email AS email, n.externalId AS externalId
             ORDER BY
@@ -366,7 +544,8 @@ export async function searchEntitiesByProperty(
         if (tokens.length > 0) {
             const tokenResult = await session.run(`
                 MATCH (n)
-                WHERE ANY(token IN $tokens WHERE toLower(n.name) CONTAINS token OR (n.email IS NOT NULL AND toLower(n.email) CONTAINS token))
+                WHERE (n:PERSON OR n:REPOSITORY OR n:TECHNOLOGY OR n:ISSUE OR n:PULL_REQUEST)
+                  AND ANY(token IN $tokens WHERE toLower(n.name) CONTAINS token OR (n.email IS NOT NULL AND toLower(n.email) CONTAINS token))
                 RETURN n.name AS name, labels(n)[0] AS type,
                        n.email AS email, n.externalId AS externalId
                 ORDER BY n.name
@@ -437,12 +616,15 @@ export async function getGraphSubgraph(
         const params: Record<string, any> = { limit: neo4j.int(cappedLimit) }
 
         if (filters.repository) {
+            // P1-7: Directed relationships with label filters; exclude COMMIT explosion
             cypher = `
                 MATCH (repo:REPOSITORY)
                 WHERE toLower(repo.name) = toLower($repository)
                 MATCH (n)-[r]-(m)
-                WHERE (n)-[:PART_OF|AUTHORED|WORKS_ON|CREATED|MENTIONED_IN*1..2]-(repo)
-                   OR n = repo OR m = repo
+                WHERE (n:PERSON OR n:REPOSITORY OR n:TECHNOLOGY OR n:ISSUE OR n:PULL_REQUEST)
+                  AND (m:PERSON OR m:REPOSITORY OR m:TECHNOLOGY OR m:ISSUE OR m:PULL_REQUEST)
+                  AND NOT n:COMMIT AND NOT m:COMMIT
+                  AND ((n)-[:PART_OF|WORKS_ON|CONTRIBUTED_TO|CREATED|MENTIONED_IN|USES|DEPENDS_ON]-(repo) OR n = repo OR m = repo)
                 RETURN DISTINCT
                     n.name AS sourceName, labels(n)[0] AS sourceType, n.externalId AS sourceExtId,
                     m.name AS targetName, labels(m)[0] AS targetType, m.externalId AS targetExtId,
@@ -455,6 +637,7 @@ export async function getGraphSubgraph(
                 MATCH (person:PERSON)
                 WHERE person.externalId = $personExternalId
                 MATCH (person)-[r]-(neighbor)
+                WHERE NOT neighbor:COMMIT
                 RETURN DISTINCT
                     person.name AS sourceName, labels(person)[0] AS sourceType, person.externalId AS sourceExtId,
                     neighbor.name AS targetName, labels(neighbor)[0] AS targetType, neighbor.externalId AS targetExtId,
@@ -465,6 +648,9 @@ export async function getGraphSubgraph(
         } else {
             cypher = `
                 MATCH (n)-[r]-(m)
+                WHERE (n:PERSON OR n:REPOSITORY OR n:TECHNOLOGY)
+                  AND (m:PERSON OR m:REPOSITORY OR m:TECHNOLOGY)
+                  AND NOT n:COMMIT AND NOT m:COMMIT
                 RETURN DISTINCT
                     n.name AS sourceName, labels(n)[0] AS sourceType, n.externalId AS sourceExtId,
                     m.name AS targetName, labels(m)[0] AS targetType, m.externalId AS targetExtId,
