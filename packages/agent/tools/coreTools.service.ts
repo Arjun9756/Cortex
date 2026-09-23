@@ -50,7 +50,7 @@ export async function executeGetCommitCount(input: GetCommitCountInput): Promise
 
     try {
         // Case A: Specific Repository (with optional person)
-        if (rawRepo) {
+        if (rawRepo && rawRepo.toUpperCase() !== 'ALL') {
             const normalizedRepo = normalizeName(rawRepo);
 
             // 1. Query Neo4j CONTRIBUTED_TO rollup edges (where commits are stored post-compaction)
@@ -173,48 +173,163 @@ export async function executeGetCommitCount(input: GetCommitCountInput): Promise
                 }
             }
 
-            const totalCommits = Math.max(pmCommits, neo4jTotal);
+            const allTimeTotal = Math.max(pmCommits, neo4jTotal);
 
             // If breakdown is empty but we know total and repos, create breakdown entries
             if (breakdown.length === 0 && pmRepos.length > 0) {
                 for (const r of pmRepos) {
-                    breakdown.push({ name: r, commits: Math.round(totalCommits / pmRepos.length) || 1 });
+                    breakdown.push({ name: r, commits: Math.round(allTimeTotal / pmRepos.length) || 1 });
                 }
             }
 
+            // 3. Timeframe / "today" handling if date_range is requested
+            const rawDateRange = input.date_range?.trim();
+            if (rawDateRange) {
+                const normRange = rawDateRange.toLowerCase();
+                let timeframeCommits = 0;
+                let timeframeBreakdown: Array<{ name: string; commits: number }> = [];
+
+                try {
+                    let interval = '1 day';
+                    if (normRange.includes('today') || normRange.includes('24h') || normRange.includes('day')) {
+                        interval = '1 day';
+                    } else if (normRange.includes('7d') || normRange.includes('week')) {
+                        interval = '7 days';
+                    } else if (normRange.includes('30d') || normRange.includes('month')) {
+                        interval = '30 days';
+                    }
+
+                    const tfRows = await sql`
+                        SELECT 
+                            COALESCE(payload->'repository'->>'name', payload->>'repository', 'Unknown') as repo_name,
+                            COUNT(*) as commit_count
+                        FROM events
+                        WHERE (event_type = 'push' OR payload ? 'commits')
+                          AND (
+                              payload->'head_commit'->'author'->>'name' ILIKE ${'%' + rawPerson + '%'}
+                              OR payload->>'author' ILIKE ${'%' + rawPerson + '%'}
+                              OR payload->'pusher'->>'name' ILIKE ${'%' + rawPerson + '%'}
+                              OR payload->'sender'->>'login' ILIKE ${'%' + rawPerson + '%'}
+                          )
+                          AND created_at >= NOW() - (${interval})::INTERVAL
+                        GROUP BY repo_name
+                    `;
+                    for (const r of tfRows) {
+                        const count = Number(r.commit_count || 0);
+                        if (count > 0) {
+                            timeframeBreakdown.push({ name: r.repo_name, commits: count });
+                            timeframeCommits += count;
+                        }
+                    }
+                } catch (e: any) {
+                    console.warn(`[executeGetCommitCount] timeframe query error: ${e?.message}`);
+                }
+
+                return {
+                    totalCommits: timeframeCommits,
+                    person: canonicalName,
+                    timeframe: rawDateRange,
+                    allTimeCommits: allTimeTotal,
+                    breakdown: timeframeCommits > 0 ? timeframeBreakdown : breakdown,
+                    source: timeframeCommits > 0
+                        ? `PostgreSQL events verified ${timeframeCommits} commits for timeframe "${rawDateRange}"`
+                        : `PostgreSQL events verified 0 commits for timeframe "${rawDateRange}" (All-time verified total: ${allTimeTotal} commits across ${breakdown.map(b => b.name).join(', ') || 'repositories'})`,
+                };
+            }
+
             return {
-                totalCommits,
+                totalCommits: allTimeTotal,
                 person: canonicalName,
                 breakdown,
                 source: 'PostgreSQL person_metrics & Neo4j CONTRIBUTED_TO rollup',
             };
         }
 
-        // Case C: Global total commits across organization
-        const res = await session.run(`
+        // Case C: Global total commits across organization (all repositories and top contributor rankings)
+        // 1. Repository commit ranking & total
+        const repoRes = await session.run(`
             MATCH (p:PERSON)-[rel:CONTRIBUTED_TO]->(r:REPOSITORY)
             WHERE ${CYPHER_BOT_FILTER}
             RETURN r.name AS repoName, sum(rel.commitCount) AS commits
             ORDER BY commits DESC
         `);
 
-        const breakdown: Array<{ name: string; commits: number }> = [];
+        const repoRankings: Array<{ name: string; commits: number }> = [];
         let totalCommits = 0;
 
-        for (const record of res.records) {
+        for (const record of repoRes.records) {
             const rName = record.get('repoName');
             const countVal = record.get('commits');
             const commits = countVal?.toNumber ? countVal.toNumber() : Number(countVal || 0);
             if (commits > 0) {
-                breakdown.push({ name: rName, commits });
+                repoRankings.push({ name: rName, commits });
                 totalCommits += commits;
             }
         }
 
+        // 2. Person commit ranking from Neo4j
+        const personRes = await session.run(`
+            MATCH (p:PERSON)-[rel:CONTRIBUTED_TO]->(r:REPOSITORY)
+            WHERE ${CYPHER_BOT_FILTER}
+            RETURN p.name AS personName, sum(rel.commitCount) AS commits, collect(DISTINCT r.name) AS repos
+            ORDER BY commits DESC
+            LIMIT 25
+        `);
+
+        const contributorMap = new Map<string, { name: string; commits: number; repos: string[] }>();
+
+        for (const record of personRes.records) {
+            const pName = record.get('personName');
+            if (!pName || pName.toLowerCase().includes('bot') || pName.toLowerCase() === 'unknown') continue;
+            const countVal = record.get('commits');
+            const commits = countVal?.toNumber ? countVal.toNumber() : Number(countVal || 0);
+            const repos = record.get('repos') || [];
+            if (commits > 0) {
+                contributorMap.set(pName.toLowerCase(), { name: pName, commits, repos });
+            }
+        }
+
+        // 3. Complement with PostgreSQL person_metrics (handles aliases and canonical records)
+        try {
+            const pmRows = await sql`
+                SELECT person_name, commit_count, repos
+                FROM person_metrics
+                WHERE commit_count > 0
+                  AND NOT (person_name ILIKE '%bot%' OR person_name ILIKE 'U_%' OR person_name ILIKE 'U0%' OR person_name ILIKE 'U1%' OR person_name ILIKE 'U2%' OR person_name ILIKE 'U3%' OR person_name ILIKE 'U4%' OR person_name ILIKE 'U5%' OR person_name ILIKE 'U6%' OR person_name ILIKE 'U7%' OR person_name ILIKE 'U8%' OR person_name ILIKE 'U9%')
+                ORDER BY commit_count DESC
+                LIMIT 25
+            `;
+            for (const row of pmRows) {
+                const name = row.person_name;
+                const key = name.toLowerCase();
+                const commits = Number(row.commit_count || 0);
+                const repos = Array.isArray(row.repos) ? row.repos : [];
+                const existing = contributorMap.get(key);
+                if (existing) {
+                    existing.commits = Math.max(existing.commits, commits);
+                    if (repos.length > 0 && existing.repos.length === 0) existing.repos = repos;
+                } else if (commits > 0) {
+                    contributorMap.set(key, { name, commits, repos });
+                }
+            }
+        } catch (e: any) {
+            console.warn(`[executeGetCommitCount] person_metrics ranking error: ${e?.message}`);
+        }
+
+        const topContributors = Array.from(contributorMap.values())
+            .sort((a, b) => b.commits - a.commits);
+
+        const highestRepository = repoRankings[0] || { name: 'None', commits: 0 };
+        const highestContributor = topContributors[0] || { name: 'None', commits: 0 };
+
         return {
             totalCommits,
-            breakdown,
-            source: 'Organization-wide Neo4j CONTRIBUTED_TO rollup',
+            breakdown: repoRankings,
+            repoRankings,
+            topContributors,
+            highestRepository,
+            highestContributor,
+            source: 'Organization-wide Neo4j CONTRIBUTED_TO rollup and PostgreSQL person_metrics',
         };
     } finally {
         await session.close();
@@ -861,3 +976,21 @@ export async function executeGetPersonIdentity(input: GetPersonIdentityInput): P
         technologies,
     };
 }
+
+/**
+ * 11. executeGetPrCycleTime
+ * Returns verified PR Review Cycle Time, Lead Time, distributions, and size context.
+ */
+export async function executeGetPrCycleTime(input: {
+    repo?: string;
+    days?: number;
+    includeBots?: boolean;
+}): Promise<any> {
+    const { calculatePrMetrics } = await import('../../analytics/prMetrics.service.js');
+    return calculatePrMetrics({
+        repoName: input.repo,
+        timeframeDays: input.days,
+        includeBots: input.includeBots,
+    });
+}
+

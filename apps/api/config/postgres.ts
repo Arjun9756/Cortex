@@ -16,7 +16,8 @@ const sql = postgres({
     password: env.POSTGRES_PASSWORD!,
     database: env.POSTGRES_DATABASE!,
     user: env.POSTGRES_USER!,
-    max: 20,
+    max: 5,
+    idle_timeout: 5,
     connect_timeout: 30,
     ssl: hasPem
         ? { rejectUnauthorized: true, ca: fs.readFileSync(pemPath, 'utf-8') }

@@ -161,8 +161,8 @@ export async function runSuite(): Promise<{ total: number; passed: number; faile
 
             if (item.expectedChecks.mustMention) {
                 for (const m of item.expectedChecks.mustMention) {
-                    const normAnswer = answer.toLowerCase().replace(/[-_]/g, ' ').replace(/\u202f/g, ' ').replace(/\s*%/g, '%');
-                    const normM = m.toLowerCase().replace(/[-_]/g, ' ').replace(/\u202f/g, ' ').replace(/\s*%/g, '%');
+                    const normAnswer = answer.toLowerCase().replace(/[\p{Pd}\-_]/gu, ' ').replace(/[\u202f\s]+/g, ' ').replace(/\s*%/g, '%');
+                    const normM = m.toLowerCase().replace(/[\p{Pd}\-_]/gu, ' ').replace(/[\u202f\s]+/g, ' ').replace(/\s*%/g, '%');
                     if (!normAnswer.includes(normM)) {
                         ok = false;
                         failures.push(`Expected mention of "${m}" not found in answer.`);

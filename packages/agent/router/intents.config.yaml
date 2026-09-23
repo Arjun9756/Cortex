@@ -85,10 +85,11 @@ intents:
         threshold: 1
 
   - id: REPOSITORY_RISK_AND_METRICS_QUERY
-    description: "User asks about repository risk, highest/higher risk repo, repository comparison, bus factor, single point of failure, or repo health stats"
     patterns:
-      - "which repo"
-      - "which repository"
+      - "which repo is riskiest"
+      - "which repo has highest risk"
+      - "which repository is riskiest"
+      - "which repository has highest risk"
       - "higher risk"
       - "highest risk"
       - "most risky"
@@ -160,7 +161,6 @@ intents:
       - "total number of"
       - "how many members"
       - "how many contributors"
-      - "how many commits"
       - "count of repositories"
       - "number of engineers"
       - "show all engineers"

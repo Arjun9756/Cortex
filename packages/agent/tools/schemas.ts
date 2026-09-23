@@ -15,9 +15,9 @@ export interface ToolResultEnvelope<T = any> {
 
 // 1. get_commit_count
 export const GetCommitCountInputSchema = z.object({
-    repo: z.string().optional().describe('Repository name to filter commits (e.g. "billing-engine", "core-platform-gateway")'),
-    person: z.string().optional().describe('Person / engineer name to filter commits (e.g. "priyasharma", "michaelchen")'),
-    date_range: z.string().optional().describe('Optional time window (e.g. "30d", "90d", "last year")'),
+    repo: z.string().optional().describe('Repository name to filter commits (e.g. "billing-engine", "core-platform-gateway"). If omitted or "ALL", returns total commits across all repositories along with repository rankings.'),
+    person: z.string().optional().describe('Person / engineer name to filter commits (e.g. "priyasharma", "michaelchen", "Arjun"). If omitted, returns rankings of top contributors across repositories.'),
+    date_range: z.string().optional().describe('Optional time window or relative day filter (e.g. "today", "yesterday", "7d", "30d", "90d", "last year").'),
 });
 export type GetCommitCountInput = z.infer<typeof GetCommitCountInputSchema>;
 
@@ -25,10 +25,29 @@ export const GetCommitCountOutputSchema = z.object({
     totalCommits: z.number().int().min(0),
     repository: z.string().optional(),
     person: z.string().optional(),
+    timeframe: z.string().optional(),
+    allTimeCommits: z.number().int().optional(),
     breakdown: z.array(z.object({
         name: z.string(),
         commits: z.number().int().min(0),
     })),
+    repoRankings: z.array(z.object({
+        name: z.string(),
+        commits: z.number().int().min(0),
+    })).optional(),
+    topContributors: z.array(z.object({
+        name: z.string(),
+        commits: z.number().int().min(0),
+        repos: z.array(z.string()).optional(),
+    })).optional(),
+    highestRepository: z.object({
+        name: z.string(),
+        commits: z.number().int().min(0),
+    }).optional(),
+    highestContributor: z.object({
+        name: z.string(),
+        commits: z.number().int().min(0),
+    }).optional(),
     source: z.string(),
 });
 export type GetCommitCountOutput = z.infer<typeof GetCommitCountOutputSchema>;
@@ -229,6 +248,78 @@ export const GetPersonIdentityOutputSchema = z.object({
     technologies: z.array(z.string()),
 });
 export type GetPersonIdentityOutput = z.infer<typeof GetPersonIdentityOutputSchema>;
+
+// 11. get_pr_cycle_time
+export const GetPrCycleTimeInputSchema = z.object({
+    repo: z.string().optional().describe('Optional repository name to filter PR cycle time (e.g. "billing-engine")'),
+    days: z.number().int().min(1).max(365).optional().default(90).describe('Timeframe in days (default 90)'),
+    includeBots: z.boolean().optional().default(false).describe('Whether to include automated bot PRs (default false)'),
+});
+export type GetPrCycleTimeInput = z.infer<typeof GetPrCycleTimeInputSchema>;
+
+export const GetPrCycleTimeOutputSchema = z.object({
+    repoName: z.string().optional(),
+    timeframeDays: z.number().optional(),
+    sampleSize: z.number(),
+    dataCompleteness: z.enum(['complete', 'partial']),
+    warning: z.string().optional(),
+    reviewCycleTime: z.object({
+        headlineHours: z.number(),
+        metricName: z.string(),
+        definition: z.string(),
+        businessHours: z.object({
+            median: z.number(),
+            p90: z.number(),
+            p75: z.number(),
+            p25: z.number(),
+            min: z.number(),
+            max: z.number(),
+            average: z.number(),
+        }),
+        wallClockHours: z.object({
+            median: z.number(),
+            p90: z.number(),
+            p75: z.number(),
+            p25: z.number(),
+            min: z.number(),
+            max: z.number(),
+            average: z.number(),
+        }),
+        unit: z.literal('business_hours'),
+    }),
+    totalLeadTime: z.object({
+        headlineHours: z.number(),
+        metricName: z.string(),
+        definition: z.string(),
+        wallClockHours: z.object({
+            median: z.number(),
+            p90: z.number(),
+            p75: z.number(),
+            p25: z.number(),
+            min: z.number(),
+            max: z.number(),
+            average: z.number(),
+        }),
+        unit: z.literal('wall_clock_hours'),
+    }),
+    counts: z.object({
+        totalEvaluated: z.number(),
+        mergedHumanPrs: z.number(),
+        mergedBotPrs: z.number(),
+        openPrs: z.number(),
+        closedUnmergedPrs: z.number(),
+        staleOutliersCount: z.number(),
+    }),
+    sizeContext: z.object({
+        totalAdditions: z.number(),
+        totalDeletions: z.number(),
+        totalFilesChanged: z.number(),
+        averageLinesPerPr: z.number(),
+        qualification: z.string(),
+    }),
+    transparencyTooltip: z.string(),
+});
+export type GetPrCycleTimeOutput = z.infer<typeof GetPrCycleTimeOutputSchema>;
 
 
 // ─────────────────────────────────────────────────────────────────────────────

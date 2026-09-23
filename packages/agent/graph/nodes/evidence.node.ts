@@ -161,8 +161,31 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
 
         const sqlText = state.sqlResult.map((item: any) => {
             if (item?.type === 'commit_count') {
-                const breakdownStr = (item.breakdown || []).map((b: any) => `${b.name}: ${b.commits} commits`).join(', ') || 'None';
-                return `[VERIFIED COMMIT COUNT] Repository: "${item.repo || 'All'}" | Person: "${item.person || 'All'}" | Total Commits: ${item.totalCommits} | Breakdown: [${breakdownStr}] | Source: ${item.source}`;
+                const lines: string[] = [];
+                const targetRepo = item.repo || 'All Repositories';
+                const targetPerson = item.person || 'All Contributors';
+                lines.push(`[VERIFIED COMMIT COUNT] Target Repository: "${targetRepo}" | Target Person: "${targetPerson}" | Total Verified Commits: ${item.totalCommits}${item.timeframe ? ` (Timeframe: ${item.timeframe})` : ''} | Source: ${item.source}`);
+                if (item.allTimeCommits !== undefined) {
+                    lines.push(`  - All-Time Verified Commits: ${item.allTimeCommits}`);
+                }
+                if (item.highestRepository) {
+                    lines.push(`  - Highest Repository by Commits: "${item.highestRepository.name}" (${item.highestRepository.commits} commits)`);
+                }
+                if (item.highestContributor) {
+                    lines.push(`  - Highest Contributor by Commits: "${item.highestContributor.name}" (${item.highestContributor.commits} commits)`);
+                }
+                if (item.topContributors && item.topContributors.length > 0) {
+                    const topStr = item.topContributors.slice(0, 10).map((c: any) => `${c.name}: ${c.commits} commits`).join(', ');
+                    lines.push(`  - Top Contributors Ranked: [${topStr}]`);
+                }
+                if (item.repoRankings && item.repoRankings.length > 0) {
+                    const repoStr = item.repoRankings.slice(0, 10).map((r: any) => `${r.name}: ${r.commits} commits`).join(', ');
+                    lines.push(`  - Repository Commit Breakdown: [${repoStr}]`);
+                } else if (item.breakdown && item.breakdown.length > 0) {
+                    const breakdownStr = item.breakdown.map((b: any) => `${b.name}: ${b.commits} commits`).join(', ');
+                    lines.push(`  - Breakdown: [${breakdownStr}]`);
+                }
+                return lines.join('\n');
             }
             if (item?.type === 'successor_recommendation') {
                 const succName = item.recommendedSuccessor?.name || 'None';

@@ -78,8 +78,14 @@ export async function retrievalPlannerNode(state: AgentStateType): Promise<Parti
                             type: 'commit_count',
                             repo: res.data.repository,
                             person: res.data.person,
+                            timeframe: res.data.timeframe,
+                            allTimeCommits: res.data.allTimeCommits,
                             totalCommits: res.data.totalCommits,
                             breakdown: res.data.breakdown,
+                            repoRankings: res.data.repoRankings,
+                            topContributors: res.data.topContributors,
+                            highestRepository: res.data.highestRepository,
+                            highestContributor: res.data.highestContributor,
                             source: res.data.source,
                         });
                     } else if (call.name === 'get_successor_recommendation') {

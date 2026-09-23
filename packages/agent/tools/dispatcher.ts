@@ -120,6 +120,16 @@ export async function dispatchCoreTool(toolName: string, rawArgs: any): Promise<
                 return { toolName, args, success: true, data, summary, latencyMs: Date.now() - tStart };
             }
 
+            case 'get_pr_cycle_time': {
+                const { GetPrCycleTimeInputSchema } = await import('./schemas.js');
+                const { executeGetPrCycleTime } = await import('./coreTools.service.js');
+                const parsed = GetPrCycleTimeInputSchema.parse(args);
+                const data = await executeGetPrCycleTime(parsed);
+                const subject = parsed.repo ? `repository "${parsed.repo}"` : 'organization';
+                const summary = `PR Review Cycle Time for ${subject}: Median ${data.reviewCycleTime.headlineHours} business hours (p90: ${data.reviewCycleTime.businessHours.p90}h, Wall-clock p50: ${data.reviewCycleTime.wallClockHours.median}h). Total lead time median: ${data.totalLeadTime.headlineHours}h. Analyzed ${data.counts.mergedHumanPrs} human PRs, ${data.counts.staleOutliersCount} stale outliers (>30d).`;
+                return { toolName, args, success: true, data, summary, latencyMs: Date.now() - tStart };
+            }
+
             default:
                 throw new Error(`Tool "${toolName}" is not a recognized core tool.`);
         }
@@ -150,5 +160,6 @@ export function isCoreTool(name: string): boolean {
         'get_related_entities',
         'search_evidence',
         'get_person_identity',
+        'get_pr_cycle_time',
     ].includes(name);
 }

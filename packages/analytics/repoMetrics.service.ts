@@ -108,15 +108,35 @@ export async function calculateAllRepoMetrics() {
     }
 }
 
+export interface ContributorShare {
+    person: string;
+    commits: number;
+    percentage: number;
+}
+
+export interface BusFactorResult {
+    busFactor: number;
+    primaryOwner: string | null;
+    totalCommits: number;
+    contributors: ContributorShare[];
+    status: 'empty' | 'fragile' | 'concentrated' | 'healthy';
+    riskScore: number;
+    definition: string;
+    qualification: string;
+}
+
 /**
  * Calculates the bus factor (minimum contributors covering >=50% of commits)
  * and identifies the primary owner (top committer by commit count).
  * P0-1: Queries CONTRIBUTED_TO rollup edges with fallback to legacy COMMIT nodes.
  */
-async function calculateBusFactorAndOwner(
+export async function calculateBusFactorAndOwner(
     session: any, 
     repoName: string
-): Promise<{ busFactor: number; primaryOwner: string | null; totalCommits: number }> {
+): Promise<BusFactorResult> {
+    const definition = "Bus Factor represents the minimum number of engineers whose combined contributions account for >= 50% of the repository's commit volume.";
+    const qualification = "Engineering Activity (Not a measure of individual productivity or output).";
+
     try {
         // 1. Primary path: query CONTRIBUTED_TO relationship rollup
         const contribRes = await session.run(
@@ -168,13 +188,40 @@ async function calculateBusFactorAndOwner(
             }
         }
 
-        if (rows.length === 0) return { busFactor: 0, primaryOwner: null, totalCommits: 0 };
-
-        // Primary owner = top committer (first record, already sorted DESC)
-        const primaryOwner = rows[0]?.person ?? null;
+        if (rows.length === 0) {
+            return {
+                busFactor: 0,
+                primaryOwner: null,
+                totalCommits: 0,
+                contributors: [],
+                status: 'empty',
+                riskScore: 0,
+                definition,
+                qualification
+            };
+        }
 
         const total = rows.reduce((a: number, b: { commits: number }) => a + b.commits, 0);
-        if (total === 0) return { busFactor: 0, primaryOwner, totalCommits: 0 };
+        if (total === 0) {
+            return {
+                busFactor: 0,
+                primaryOwner: rows[0]?.person ?? null,
+                totalCommits: 0,
+                contributors: [],
+                status: 'empty',
+                riskScore: 0,
+                definition,
+                qualification
+            };
+        }
+
+        const contributors: ContributorShare[] = rows.map(r => ({
+            person: r.person,
+            commits: r.commits,
+            percentage: Math.round((r.commits / total) * 1000) / 10
+        }));
+
+        const primaryOwner = rows[0]?.person ?? null;
 
         let covered = 0, count = 0;
         for (const row of rows) {
@@ -182,9 +229,31 @@ async function calculateBusFactorAndOwner(
             count++;
             if (covered / total >= 0.5) break;
         }
-        return { busFactor: count, primaryOwner, totalCommits: total };
+
+        const riskScore = Math.max(0, 100 - count * 20);
+        const status = riskScore >= 80 ? 'fragile' : riskScore > 50 ? 'concentrated' : 'healthy';
+
+        return {
+            busFactor: count,
+            primaryOwner,
+            totalCommits: total,
+            contributors,
+            status,
+            riskScore,
+            definition,
+            qualification
+        };
     } catch (error: any) {
         console.error(`[RepoMetrics] calculateBusFactorAndOwner failed for ${repoName}: ${error?.message}`);
-        return { busFactor: 0, primaryOwner: null, totalCommits: 0 };
+        return {
+            busFactor: 0,
+            primaryOwner: null,
+            totalCommits: 0,
+            contributors: [],
+            status: 'empty',
+            riskScore: 0,
+            definition,
+            qualification
+        };
     }
 }

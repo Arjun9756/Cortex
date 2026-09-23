@@ -825,3 +825,28 @@ export async function updateIntegrationSecret(req: Request, res: Response) {
         error: `Dynamic secret updating is not supported by runtime. Please set ${providerKey}_SECRET in your server .env file.`
     });
 }
+
+
+/**
+ * GET /api/dashboard/pr-metrics
+ * Fetches verified PR review cycle time and lead time metrics.
+ */
+export async function getPrCycleTimeMetrics(req: Request, res: Response) {
+    try {
+        const repo = req.query.repo as string | undefined;
+        const days = req.query.days ? parseInt(req.query.days as string, 10) : 90;
+        const includeBots = req.query.includeBots === 'true';
+
+        const { calculatePrMetrics } = await import('../../../../packages/analytics/prMetrics.service.js');
+        const metrics = await calculatePrMetrics({
+            repoName: repo,
+            timeframeDays: isNaN(days) ? 90 : days,
+            includeBots
+        });
+
+        res.json({ status: true, metrics });
+    } catch (err: any) {
+        console.error('[getPrCycleTimeMetrics] Error:', err?.message);
+        res.status(500).json({ status: false, error: 'Failed to compute PR metrics', message: err?.message });
+    }
+}

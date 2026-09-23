@@ -3,3 +3,4 @@ node_modules
 postgresql.pem
 .agent
 neural_docs_cortex.txt
+scratch/

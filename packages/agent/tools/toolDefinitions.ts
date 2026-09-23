@@ -13,21 +13,21 @@ export const CORE_TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'get_commit_count',
-            description: 'Get verified commit counts for a repository, a specific engineer/person, or both. MANDATORY for ANY question asking "how many commits in <repo>", "how many commits in this repo", "how many commits did <person> make", or total commit contributions. Reads from compacted CONTRIBUTED_TO rollups and PostgreSQL metrics.',
+            description: 'Get verified commit counts for a repository, a specific engineer/person, all repositories, or top contributor rankings. MANDATORY for ANY question asking "how many commits in <repo>", "how many commits did <person> make", "how many commits done by <person> today", "how many commits in all repo", "which repo has highest commits", or "who has made the highest commits" / "which person has made highest commit". Reads from compacted CONTRIBUTED_TO rollups, PostgreSQL events, and person_metrics.',
             parameters: {
                 type: 'object',
                 properties: {
                     repo: {
                         type: 'string',
-                        description: 'Repository name to filter commits (e.g. "billing-engine", "core-platform-gateway", "payment-gateway-v2").',
+                        description: 'Repository name to filter commits (e.g. "billing-engine", "core-platform-gateway", "payment-gateway-v2"). Omit or pass "ALL" to get total commits across all repositories along with repository rankings.',
                     },
                     person: {
                         type: 'string',
-                        description: 'Engineer/person name to filter commits (e.g. "priyasharma", "michaelchen", "Arjun9756").',
+                        description: 'Engineer/person name to filter commits (e.g. "priyasharma", "michaelchen", "Arjun9756"). Omit to get contributor rankings across the organization.',
                     },
                     date_range: {
                         type: 'string',
-                        description: 'Optional date range filter (e.g. "30d", "90d").',
+                        description: 'Optional date range / time window filter (e.g. "today", "yesterday", "7d", "30d", "90d", "last year").',
                     },
                 },
             },
@@ -219,6 +219,32 @@ export const CORE_TOOL_DEFINITIONS = [
                     },
                 },
                 required: ['alias'],
+            },
+        },
+    },
+
+    // ─── 11. get_pr_cycle_time ────────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_pr_cycle_time',
+            description: 'Get verified PR Review Cycle Time and Total Lead Time metrics for a repository or whole organization. Computes median (p50) business hours (Mon-Fri 09:00-18:00, weekends excluded), p90, distribution, size context, and segregates >30d outliers. Grounded in /docs/metrics-definitions.md.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    repo: {
+                        type: 'string',
+                        description: 'Optional repository name (e.g. "billing-engine", "notification-service"). Omit for company-wide PR metrics.',
+                    },
+                    days: {
+                        type: 'number',
+                        description: 'Number of days to evaluate (default 90).',
+                    },
+                    includeBots: {
+                        type: 'boolean',
+                        description: 'Whether to include automated bot PRs (default false).',
+                    },
+                },
             },
         },
     },

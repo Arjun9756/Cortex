@@ -21,6 +21,13 @@
     "postgres": "^3.4.9"
   },
   "type": "module",
+  "scripts": {
+    "test": "npx tsx scripts/check_metrics_docs_sync.ts && npx tsx scripts/verify_metrics_golden_dataset.ts && npx tsx scripts/test_metrics_stress_scenarios.ts",
+    "test:metrics:sync": "npx tsx scripts/check_metrics_docs_sync.ts",
+    "test:metrics:golden": "npx tsx scripts/verify_metrics_golden_dataset.ts",
+    "test:metrics:stress": "npx tsx scripts/test_metrics_stress_scenarios.ts",
+    "test:agent": "npx tsx scripts/test_generalized_agent_suite.ts"
+  },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/node": "^26.1.1",
