@@ -15,6 +15,10 @@ export async function reflectionNode(state: AgentStateType): Promise<Partial<Age
     console.log(`[Timing] [reflectionNode] (Self-Verification Pass #${passCount}) Started at ${startIso}`);
 
     try {
+        if (state.answer) {
+            return { needMoreSearch: false, pendingTools: [], iterationCount: passCount };
+        }
+
         // If there are already pending tools queued up, continue executing them
         if (state.pendingTools && state.pendingTools.length > 0) {
             return { needMoreSearch: true, pendingTools: state.pendingTools, iterationCount: passCount };
@@ -70,14 +74,19 @@ Missing Ask: "${askText}"
 Available Graph Labels: [${schemaLabels.join(', ')}]
 
 AVAILABLE TOOLS:
+- "get_commit_count": {"repo": "<repo>", "person": "<person>"}
+- "get_successor_recommendation": {"repo": "<repo>", "person": "<person>"}
+- "get_bus_factor": {"repo": "<repo>"}
+- "get_ownership": {"repo": "<repo>"}
+- "get_repo_contributors": {"repo": "<repo>"}
+- "get_person_activity": {"person": "<person>"}
+- "get_recent_changes": {"repo": "<repo>", "days": 30}
+- "get_person_identity": {"alias": "<alias>"}
+- "search_evidence": {"query": "<query>"}
+- "get_related_entities": {"entity": "<name>"}
 - "graph_describe_entity": {"entity": "<name>"}
-- "graph_count_by_label": {"label": "REPOSITORY"|"TECHNOLOGY"|"PERSON"}
 - "graph_list_nodes": {"entity": "<name>", "relation": "USES"|"WORKS_ON", "targetLabel": "TECHNOLOGY"|"REPOSITORY"}
-- "graph_repository_summary": {"repositoryName": "<repo>"|"ALL"}
-- "graph_traverse": {"startEntities": ["<name>"], "relations": ["AUTHORED", "DEPENDS_ON", "USES"], "depth": {"min": 1, "max": 3}, "direction": "both"}
-- "sql_search": {"queryType": "repos_by_bus_factor"|"repo_risk"|"recent_events", "params": {...}}
 - "knowledge_risk": {"personName": "<name>"|"ALL"}
-- "vector_search": {"query": "<broader semantic query>"}
 
 Return JSON format only:
 {"call": {"name": "tool_name", "args": {...}}}`;

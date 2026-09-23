@@ -1,5 +1,6 @@
 import { AgentStateType, ToolCall, SubGoal } from "../state.js";
-import { createGroqChatCompletion, DECOMPOSE_MODEL, PLANNER_MODEL } from "../../../llm/providers/groq.js";
+import { executeAgentTurnWithToolCalling, isDataQuestion, createGroqChatCompletion, DECOMPOSE_MODEL } from "../../../llm/providers/groq.js";
+import { TOOL_DEFINITIONS } from "../../tools/toolDefinitions.js";
 import { getGraphSchema } from '../../../database/neo4j/schemaCache.js';
 
 export function deduplicateToolCalls(calls: ToolCall[]): ToolCall[] {
@@ -16,42 +17,47 @@ export function deduplicateToolCalls(calls: ToolCall[]): ToolCall[] {
 }
 
 async function decomposeQuery(query: string): Promise<string[]> {
-    const response = await createGroqChatCompletion({
-        model: DECOMPOSE_MODEL,
-        temperature: 0,
-        max_completion_tokens: 2048,
-        response_format: { type: 'json_object' },
-        messages: [
-            {
-                role: 'system',
-                content: `You are a precision query decomposition engine for an engineering knowledge graph.
+    try {
+        const response = await createGroqChatCompletion({
+            model: DECOMPOSE_MODEL,
+            temperature: 0,
+            max_completion_tokens: 1024,
+            response_format: { type: 'json_object' },
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are a precision query decomposition engine for an engineering knowledge graph.
 Enumerate EVERY distinct, independently answerable sub-question or ask embedded in the user query as a JSON array of strings.
-Do NOT artificially cap the number of asks — if the query contains 1, 3, 6, or 10 distinct questions/clauses joined by "and", commas, or separate sentences, identify and output ALL of them.
-CRITICAL RULE: Never combine multiple entity types, targets, or resources (e.g. "repositories and technologies" or "Elena and Marcus") into a single ask — always split them into separate distinct asks (e.g. "How many total repositories are there?" and "How many total technologies are there?").
-Preserve exact entity names and specific conditions. For queries in Hindi/Hinglish (e.g. "rohan ne latest kya kra h abhi date ke sath"), translate or preserve the core ask accurately (e.g. "What did Rohan Verma do recently and on what date?").
+Do NOT artificially cap the number of asks — if the query contains multiple distinct questions/clauses joined by "and", commas, or separate sentences, identify and output ALL of them.
+CRITICAL RULE: Never combine multiple entity types, targets, or resources into a single ask — always split them into separate distinct asks.
+Preserve exact entity names and specific conditions. For queries in Hindi/Hinglish, translate or preserve the core ask accurately.
 Return JSON only: {"asks":["ask 1", "ask 2", ...]}`
-            },
-            { role: 'user', content: query },
-        ],
-    });
-    const raw = response.choices[0]?.message?.content ?? '{}';
-    const parsed = JSON.parse(raw);
-    const asks = Array.isArray(parsed?.asks)
-        ? parsed.asks.filter((ask: unknown): ask is string => typeof ask === 'string' && ask.trim().length > 0).map((ask: string) => ask.trim())
-        : [];
-    if (asks.length === 0) throw new Error('Decomposer returned empty asks array');
-    console.log(`[Planner] DECOMPOSED_ASKS_JSON (${asks.length} asks): ${JSON.stringify(asks)}`);
-    return asks;
+                },
+                { role: 'user', content: query },
+            ],
+        });
+        const raw = response.choices[0]?.message?.content ?? '{}';
+        const parsed = JSON.parse(raw);
+        const asks = Array.isArray(parsed?.asks)
+            ? parsed.asks.filter((ask: unknown): ask is string => typeof ask === 'string' && ask.trim().length > 0).map((ask: string) => ask.trim())
+            : [];
+        if (asks.length > 0) {
+            console.log(`[Planner] DECOMPOSED_ASKS_JSON (${asks.length} asks): ${JSON.stringify(asks)}`);
+            return asks;
+        }
+    } catch (e: any) {
+        console.warn(`[Planner] Decomposer warning: ${e?.message}`);
+    }
+    return [query];
 }
 
 /**
  * Maps each tool name to the SubGoal type that best describes its purpose.
  */
 function toolNameToSubgoalType(toolName: string): SubGoal['type'] {
-    if (toolName.startsWith('graph_')) return 'entity_lookup';
-    if (toolName === 'vector_search') return 'semantic_explanation';
-    if (toolName === 'sql_search' || toolName === 'recent_activity') return 'metric_count';
-    if (toolName === 'knowledge_risk') return 'risk_analysis';
+    if (toolName === 'get_commit_count' || toolName === 'get_bus_factor' || toolName === 'get_ownership' || toolName === 'sql_search' || toolName === 'recent_activity' || toolName === 'get_recent_changes') return 'metric_count';
+    if (toolName === 'get_successor_recommendation' || toolName === 'knowledge_risk') return 'risk_analysis';
+    if (toolName === 'search_evidence' || toolName === 'vector_search') return 'semantic_explanation';
     return 'entity_lookup';
 }
 
@@ -59,17 +65,34 @@ function toolNameToSubgoalType(toolName: string): SubGoal['type'] {
  * Maps tool name to the source preference for subgoal tracking.
  */
 function toolNameToSource(toolName: string): ('graph' | 'vector' | 'sql' | 'analytics') {
-    if (toolName.startsWith('graph_')) return 'graph';
-    if (toolName === 'vector_search') return 'vector';
-    if (toolName === 'sql_search' || toolName === 'recent_activity') return 'sql';
-    if (toolName === 'knowledge_risk') return 'analytics';
-    return 'graph';
+    if (toolName.startsWith('graph_') || toolName === 'get_related_entities') return 'graph';
+    if (toolName === 'vector_search' || toolName === 'search_evidence') return 'vector';
+    if (toolName === 'knowledge_risk' || toolName === 'get_successor_recommendation') return 'analytics';
+    return 'sql';
 }
 
 export async function plannerNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
     const tStart = Date.now();
     const startIso = new Date().toISOString();
     console.log(`[Timing] [plannerNode] Started at ${startIso}`);
+
+    // 1. Check for Out-of-Scope / purely conversational non-data query
+    if (!isDataQuestion(state.query)) {
+        console.log(`[Planner] Non-data / out-of-scope query detected: "${state.query}". Returning polite decline.`);
+        const declineAnswer = "I am Cortex, an engineering knowledge intelligence assistant. I can only answer questions about your organization's codebases, repositories, commits, developers, architecture, dependencies, and risk.";
+        return {
+            answer: declineAnswer,
+            pendingTools: [],
+            plan: [],
+            subgoals: [],
+            clarificationQuestion: '',
+            entities: [],
+            metrics: {
+                ...state.metrics,
+                plannerLatencyMs: Date.now() - tStart,
+            }
+        };
+    }
 
     let pendingToolCalls: ToolCall[] = [];
     const entitiesSet = new Set<string>();
@@ -79,98 +102,24 @@ export async function plannerNode(state: AgentStateType): Promise<Partial<AgentS
     try {
         console.log(`[Planner] Processing query: "${state.query}"`);
 
-        // Fetch live schema
-        let labels: string[] = [];
-        let relations: string[] = [];
+        // Fetch live schema (best effort)
         try {
             const schema = await getGraphSchema();
-            labels = schema.nodeLabels;
-            relations = schema.relationshipTypes;
-            console.log(`[Planner] Live schema: ${labels.length} labels [${labels.join(', ')}], ${relations.length} relations`);
-        } catch (schemaError: any) {
-            console.warn(`[Planner] Schema fetch warning: ${schemaError?.message}`);
-        }
+            console.log(`[Planner] Live schema: ${schema.nodeLabels.length} labels, ${schema.relationshipTypes.length} relations`);
+        } catch {}
 
-        // 1. Decompose into distinct asks
-        try {
-            decomposedAsks = await decomposeQuery(state.query);
-        } catch (error: any) {
-            console.warn(`[Planner] Decomposer fallback: ${error?.message}`);
-            decomposedAsks = [state.query];
-        }
+        // Decompose into distinct asks
+        decomposedAsks = await decomposeQuery(state.query);
         const asks = decomposedAsks;
 
-        // 2. Plan tool calls for each ask independently
-        const schemaContext = (labels.length > 0)
-            ? `\nLIVE GRAPH LABELS: [${labels.join(', ')}]\nLIVE GRAPH RELATIONS: [${relations.join(', ')}]`
-            : '';
+        // 2. Call Groq with native tool-calling, retries, and fallback cascade
+        const planningResult = await executeAgentTurnWithToolCalling(state.query, TOOL_DEFINITIONS);
 
-        const systemPrompt = `You are the Cortex Retrieval Planner.
-Your job is to plan the exact retrieval tool calls needed to gather verified evidence for EVERY decomposed ask.
-
-${schemaContext}
-
-AVAILABLE TOOLS & RULES:
-1. "graph_count_by_label": {"label": "REPOSITORY"|"TECHNOLOGY"|"PERSON"|"COMMIT"} -> Use for counting total number of repositories, technologies, or people.
-2. "sql_search":
-   - {"queryType": "repo_details", "params": {"repo": "<repo_name>"}} -> MANDATORY for "Who is the primary owner of <repo>?", "What is the bus factor of <repo>?", or risk of a single repository. ALWAYS query repo_metrics.
-   - {"queryType": "healthy_vs_fragile"} -> MANDATORY for "Show healthy vs fragile repositories", comparing good vs fragile repos.
-   - {"queryType": "repos_by_bus_factor", "params": {"threshold": 1}} -> Use for repositories with bus factor <= 1, Single Point of Failure (SPOF) repos.
-   - {"queryType": "repo_risk"} -> Use for overall repository risk ranking.
-   - {"queryType": "jira_tickets", "params": {"priority": "high"}} -> MANDATORY for "Show all high priority Jira tickets and who is working on them". Combine with vector_search.
-   - {"queryType": "slack_search", "params": {"searchTerm": "<keywords>"}} -> MANDATORY for "Which Slack discussions are related to <topic/incident e.g. AWS KMS key rotation>?". Combine with vector_search.
-   - {"queryType": "person_repos", "params": {"person": "<name>"}} -> Use for which repos a person works on. Combine with graph_list_nodes.
-   - {"queryType": "person_profile", "params": {"person": "<name>"}} -> Use for verified person identity, email, and accounts.
-3. "knowledge_risk": {"personName": "<name>"|"ALL"} -> MANDATORY for BOTH departure questions ("What happens if X leaves?") AND takeover/successor questions ("Who can take over X's repositories if he resigns?", "Successors for X", "Who will replace X").
-4. "graph_list_nodes": {"entity": "<name>", "relation": "USES"|"WORKS_ON", "targetLabel": "TECHNOLOGY"|"REPOSITORY"} -> Use for what technologies an engineer uses or which repos an engineer works on.
-5. "graph_describe_entity": {"entity": "<name>"} -> Use for entity profile, email, role, description in the graph.
-6. "vector_search": {"query": "<search query>"} -> Use for semantic/architectural rationale ("why was X replaced with Y and when?", decisions, Slack discussions, incident reasons).
-7. "graph_repository_summary": {"repositoryName": "<repo>"|"ALL"} -> Use for repository contributors, tech stack mapping, and repository-to-technology mappings.
-8. "graph_dependency_analysis": {"entity": "<service>"} -> Use for service/repo dependency trees.
-9. "graph_impact_analysis": {"entity": "<service>"} -> Use for blast radius of changes.
-10. "graph_shortest_path": {"from": "<A>", "to": "<B>"} -> Use for shortest path/connections between 2 entities.
-11. "graph_expertise_analysis": {"entity": "<tech/topic>"} -> Use for who is the top expert / who knows the most about a topic.
-12. "recent_activity": {"author": "<name>", "repository": "<repo>", "limit": 5} -> MANDATORY for ANY question asking what an engineer/person recently did, latest commits/PRs/issues by a person, when someone made changes, or recent repository/team activity.
-
-INSTRUCTIONS:
-- For EACH ask listed below, plan one or more tool calls that directly answer it.
-- Return JSON strictly in this format:
-{"calls": [
-  {"subgoalId": "subgoal_1", "name": "tool_name", "args": {...}},
-  {"subgoalId": "subgoal_2", "name": "tool_name", "args": {...}}
-]}
-- Ensure EVERY ask has its own corresponding tool call(s) with the correct "subgoalId".
-- Do not omit or merge asks.
-
-DECOMPOSED ASKS:
-${asks.map((ask, i) => `subgoal_${i + 1}: "${ask}"`).join('\n')}`;
-
-        const planningResponse = await createGroqChatCompletion({
-            model: PLANNER_MODEL,
-            temperature: 0,
-            response_format: { type: 'json_object' },
-            max_completion_tokens: 4096,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: state.query },
-            ],
-        });
-
-        const message = planningResponse.choices[0]?.message;
-        let jsonPlan: any = {};
-        try {
-            const rawContent = message?.content || '{}';
-            const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
-            jsonPlan = JSON.parse(jsonMatch ? jsonMatch[0] : rawContent);
-        } catch (error: any) {
-            console.error(`[Planner] Plan JSON parse failed: ${error?.message}`);
-        }
-
-        const rawCalls: any[] = Array.isArray(jsonPlan.calls) ? jsonPlan.calls : [];
-        console.log(`[Planner] Planned ${rawCalls.length} tool call(s) for ${asks.length} decomposed ask(s)`);
+        const rawCalls = planningResult.toolCalls || [];
+        console.log(`[Planner] Planned ${rawCalls.length} tool call(s) for query "${state.query}" using model (${planningResult.modelUsed})`);
 
         if (rawCalls.length === 0) {
-            const textContent = message?.content?.trim() ?? '';
+            const textContent = planningResult.content?.trim() ?? '';
             if (textContent.includes('?') && textContent.length < 200) {
                 return { clarificationQuestion: textContent };
             }
@@ -182,12 +131,9 @@ ${asks.map((ask, i) => `subgoal_${i + 1}: "${ask}"`).join('\n')}`;
 
                 const toolName = callItem.name;
                 const args = (typeof callItem.args === 'object' && callItem.args !== null) ? callItem.args : {};
-                
+
                 // Match or assign subgoalId
-                let subgoalId = callItem.subgoalId;
-                if (!subgoalId || !asks.some((_, idx) => subgoalId === `subgoal_${idx + 1}`)) {
-                    subgoalId = `subgoal_${Math.min(i + 1, asks.length)}`;
-                }
+                let subgoalId = `subgoal_${Math.min(i + 1, asks.length)}`;
 
                 console.log(`[Planner] Call [${subgoalId}] -> ${toolName}(${JSON.stringify(args)})`);
                 pendingToolCalls.push({
@@ -197,39 +143,21 @@ ${asks.map((ask, i) => `subgoal_${i + 1}: "${ask}"`).join('\n')}`;
                     args,
                 });
 
-                // Entity extraction for state tracking
-                if (typeof args.entity === 'string' && args.entity.trim()) {
-                    entitiesSet.add(args.entity.trim());
-                }
-                if (Array.isArray(args.startEntities)) {
-                    for (const e of args.startEntities) {
-                        if (typeof e === 'string' && e.trim()) entitiesSet.add(e.trim());
-                    }
-                }
-                if (Array.isArray(args.entities)) {
-                    for (const e of args.entities) {
-                        if (typeof e === 'string' && e.trim()) entitiesSet.add(e.trim());
-                    }
-                }
-                if (typeof args.from === 'string' && args.from.trim()) entitiesSet.add(args.from.trim());
-                if (typeof args.to === 'string' && args.to.trim()) entitiesSet.add(args.to.trim());
+                // Extract entities for state tracking
+                if (typeof args.repo === 'string' && args.repo.trim()) entitiesSet.add(args.repo.trim());
+                if (typeof args.repository === 'string' && args.repository.trim()) entitiesSet.add(args.repository.trim());
+                if (typeof args.person === 'string' && args.person.trim()) entitiesSet.add(args.person.trim());
                 if (typeof args.personName === 'string' && args.personName.trim() && args.personName.toUpperCase() !== 'ALL') {
                     entitiesSet.add(args.personName.trim());
                 }
-                if (typeof args.searchTerm === 'string' && args.searchTerm.trim()) entitiesSet.add(args.searchTerm.trim());
-                if (toolName === 'vector_search' && typeof args.query === 'string' && args.query.trim()) {
-                    vectorQuery = args.query.trim();
-                }
+                if (typeof args.alias === 'string' && args.alias.trim()) entitiesSet.add(args.alias.trim());
+                if (typeof args.entity === 'string' && args.entity.trim()) entitiesSet.add(args.entity.trim());
+                if (typeof args.query === 'string' && args.query.trim()) vectorQuery = args.query.trim();
             }
         }
 
         const entities = Array.from(entitiesSet);
         pendingToolCalls = deduplicateToolCalls(pendingToolCalls);
-
-        if (!vectorQuery) {
-            const vCall = pendingToolCalls.find(c => c.name === 'vector_search');
-            if (vCall) vectorQuery = vCall.args?.query || state.query;
-        }
 
         // Construct SubGoal tracking array
         const subgoals: SubGoal[] = asks.map((ask, idx) => {
@@ -237,10 +165,10 @@ ${asks.map((ask, i) => `subgoal_${i + 1}: "${ask}"`).join('\n')}`;
             return {
                 id: `subgoal_${idx + 1}`,
                 description: ask,
-                type: callsForAsk[0] ? toolNameToSubgoalType(callsForAsk[0].name) : 'semantic_explanation',
+                type: callsForAsk[0] ? toolNameToSubgoalType(callsForAsk[0].name) : 'metric_count',
                 targetSourcePreference: callsForAsk.length > 0
                     ? [...new Set(callsForAsk.map(call => toolNameToSource(call.name)))]
-                    : ['graph', 'vector', 'sql', 'analytics'],
+                    : ['sql', 'graph', 'analytics', 'vector'],
                 status: 'pending',
                 requiredEntities: entities,
                 retries: 0,
@@ -262,18 +190,17 @@ ${asks.map((ask, i) => `subgoal_${i + 1}: "${ask}"`).join('\n')}`;
         };
     } catch (error: any) {
         console.error(`[Planner] Error in plannerNode: ${error?.message}`);
-        const failedSubgoals: SubGoal[] = decomposedAsks.map((description, index) => ({
-            id: `subgoal_${index + 1}`,
-            description,
-            type: 'semantic_explanation',
-            targetSourcePreference: [],
-            status: 'unreachable',
-            retries: 0,
-        }));
         return {
             plan: [],
             pendingTools: [],
-            subgoals: failedSubgoals,
+            subgoals: decomposedAsks.map((d, i) => ({
+                id: `subgoal_${i + 1}`,
+                description: d,
+                type: 'semantic_explanation',
+                targetSourcePreference: [],
+                status: 'unreachable',
+                retries: 0,
+            })),
             clarificationQuestion: '',
             entities: [],
             vectorQuery: state.query,

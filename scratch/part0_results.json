@@ -1,0 +1,810 @@
+{
+  "how many commits in this repo": {
+    "query": "how many commits in this repo",
+    "subgoals": [
+      {
+        "id": "subgoal_1",
+        "description": "how many commits in this repo",
+        "type": "metric_count",
+        "targetSourcePreference": [
+          "sql",
+          "graph",
+          "analytics",
+          "vector"
+        ],
+        "status": "pending",
+        "requiredEntities": [],
+        "retries": 0
+      }
+    ],
+    "coveredGoals": [
+      "subgoal_1"
+    ],
+    "missingGoals": [],
+    "structuredEvidence": [
+      {
+        "id": "core_1790145771060_search_evidence_nvjlu",
+        "subgoalId": "subgoal_1",
+        "toolCallId": "retry_subgoal_1_1_1",
+        "sourceType": "vector",
+        "confidence": 1,
+        "summary": "Search query \"how many commits in this repository\" found 5 matching text and discussion evidence snippet(s).",
+        "rawPayload": {
+          "query": "how many commits in this repository",
+          "matches": [
+            {
+              "source": "Vector Store (github)",
+              "text": "Three commits were pushed to the payment-gateway-v2 repository on main: Priya Sharma added Stripe webhook retry handling and idempotency, Rohan Verma added a gRPC client pooler with health checks, and Arjun Kumar added OpenTelemetry tracing and a PCI audit log exporter, modifying five core source fi",
+              "author": "Priya Sharma",
+              "date": "2026-09-15T07:25:32.941Z",
+              "score": 0.6917105
+            },
+            {
+              "source": "Vector Store (github)",
+              "text": "Alice PilotAuthor and Bob Colleague each made commits to the repository pilot-org/multi-author-repo-1790090379406 on the main branch.",
+              "author": "Alice PilotAuthor",
+              "date": "2026-09-22T15:19:46.058Z",
+              "score": 0.6887665
+            },
+            {
+              "source": "Vector Store (github)",
+              "text": "Lead developer and Partner Dev co-authored a feature commit implementing resilient co-authoring in the repository.",
+              "author": "lead_dev_1790087525312",
+              "date": "2026-09-22T14:32:34.330Z",
+              "score": 0.6812489
+            },
+            {
+              "source": "Vector Store (github)",
+              "text": "Lead developer and Partner Dev co-authored a new feature commit implementing resilient co-authoring in the repository.",
+              "author": "lead_dev_1790087473175",
+              "date": "2026-09-22T14:31:38.597Z",
+              "score": 0.66300964
+            },
+            {
+              "source": "Vector Store (github)",
+              "text": "Implemented Docker multi-stage builds and Kubernetes health probes, added Supavisor connection pooling, circuit breaker middleware, and chaos latency injection tests across five commits in the core-platform-gateway repository.",
+              "author": "Michael Chen",
+              "date": "2026-09-13T07:25:32.941Z",
+              "score": 0.6586267
+            }
+          ]
+        },
+        "entitiesFound": [],
+        "queryExplanation": "search_evidence({\"query\":\"how many commits in this repository\"})"
+      }
+    ],
+    "evidenceConfidence": 1,
+    "plan": [],
+    "pendingTools": [],
+    "pendingToolBatches": [],
+    "executedTools": [
+      "search_evidence"
+    ],
+    "clarificationQuestion": "",
+    "entities": [],
+    "resolvedEntities": {},
+    "vectorQuery": "how many commits in this repo",
+    "vectorResult": [
+      {
+        "payload": {
+          "summary": "Three commits were pushed to the payment-gateway-v2 repository on main: Priya Sharma added Stripe webhook retry handling and idempotency, Rohan Verma added a gRPC client pooler with health checks, and Arjun Kumar added OpenTelemetry tracing and a PCI audit log exporter, modifying five core source fi",
+          "text": "Three commits were pushed to the payment-gateway-v2 repository on main: Priya Sharma added Stripe webhook retry handling and idempotency, Rohan Verma added a gRPC client pooler with health checks, and Arjun Kumar added OpenTelemetry tracing and a PCI audit log exporter, modifying five core source fi",
+          "author": "Priya Sharma",
+          "timestamp": "2026-09-15T07:25:32.941Z",
+          "provider": "Vector Store (github)"
+        }
+      },
+      {
+        "payload": {
+          "summary": "Alice PilotAuthor and Bob Colleague each made commits to the repository pilot-org/multi-author-repo-1790090379406 on the main branch.",
+          "text": "Alice PilotAuthor and Bob Colleague each made commits to the repository pilot-org/multi-author-repo-1790090379406 on the main branch.",
+          "author": "Alice PilotAuthor",
+          "timestamp": "2026-09-22T15:19:46.058Z",
+          "provider": "Vector Store (github)"
+        }
+      },
+      {
+        "payload": {
+          "summary": "Lead developer and Partner Dev co-authored a feature commit implementing resilient co-authoring in the repository.",
+          "text": "Lead developer and Partner Dev co-authored a feature commit implementing resilient co-authoring in the repository.",
+          "author": "lead_dev_1790087525312",
+          "timestamp": "2026-09-22T14:32:34.330Z",
+          "provider": "Vector Store (github)"
+        }
+      },
+      {
+        "payload": {
+          "summary": "Lead developer and Partner Dev co-authored a new feature commit implementing resilient co-authoring in the repository.",
+          "text": "Lead developer and Partner Dev co-authored a new feature commit implementing resilient co-authoring in the repository.",
+          "author": "lead_dev_1790087473175",
+          "timestamp": "2026-09-22T14:31:38.597Z",
+          "provider": "Vector Store (github)"
+        }
+      },
+      {
+        "payload": {
+          "summary": "Implemented Docker multi-stage builds and Kubernetes health probes, added Supavisor connection pooling, circuit breaker middleware, and chaos latency injection tests across five commits in the core-platform-gateway repository.",
+          "text": "Implemented Docker multi-stage builds and Kubernetes health probes, added Supavisor connection pooling, circuit breaker middleware, and chaos latency injection tests across five commits in the core-platform-gateway repository.",
+          "author": "Michael Chen",
+          "timestamp": "2026-09-13T07:25:32.941Z",
+          "provider": "Vector Store (github)"
+        }
+      }
+    ],
+    "graphResult": [],
+    "sqlResult": [],
+    "webQuery": "",
+    "WebQueryResult": [],
+    "knowledgeRiskResult": null,
+    "evidence": "#VERIFIED TOOL EVIDENCE\n[VECTOR VERIFIED EVIDENCE] Search query \"how many commits in this repository\" found 5 matching text and discussion evidence snippet(s).\nDetails: {\"query\":\"how many commits in this repository\",\"matches\":[{\"source\":\"Vector Store (github)\",\"text\":\"Three commits were pushed to the payment-gateway-v2 repository on main: Priya Sharma added Stripe webhook retry handling and idempotency, Rohan Verma added a gRPC client pooler with health checks, and Arjun Kumar added OpenTelemetry tracing and a PCI audit log exporter, modifying five core source fi\",\"author\":\"Priya Sharma\",\"date\":\"2026-09-15T07:25:32.941Z\",\"score\":0.6917105},{\"source\":\"Vector Store (github)\",\"text\":\"Alice PilotAuthor and Bob Colleague each made commits to the repository pilot-org/multi-author-repo-1790090379406 on the main branch.\",\"author\":\"Alice PilotAuthor\",\"date\":\"2026-09-22T15:19:46.058Z\",\"score\":0.6887665},{\"source\":\"Vector Store (github)\",\"text\":\"Lead developer and Partner Dev co-authored a feature commit implementing resilient co-authoring in the repository.\",\"author\":\"lead_dev_1790087525312\",\"date\":\"2026-09-22T14:32:34.330Z\",\"score\":0.6812489},{\"source\":\"Vector Store (github)\",\"text\":\"Lead developer and Partner Dev co-authored a new feature commit implementing resilient co-authoring in the repository.\",\"author\":\"lead_dev_1790087473175\",\"date\":\"2026-09-22T14:31:38.597Z\",\"score\":0.66300964},{\"source\":\"Vector Store (github)\",\"text\":\"Implemented Docker multi-stage builds and Kubernetes health probes, added Supavisor connection pooling, circuit breaker middleware, and chaos latency injection tests across five commits in the core-platform-gateway repository.\",\"author\":\"Michael Chen\",\"date\":\"2026-09-13T07:25:32.941Z\",\"score\":0.6586267}]}\n\n#RELEVANT EVENTS\n[provider: unknown] Summary: \n[provider: unknown] Summary: \n[provider: unknown] Summary: \n[provider: unknown] Summary: \n[provider: unknown] Summary: \n\n#RELEVANT RELATION\n\n\n#RELEVANT SQL\n\n\n#KNOWLEDGE RISK DATA",
+    "needMoreSearch": false,
+    "iterationCount": 2,
+    "metrics": {
+      "totalLatencyMs": 0,
+      "plannerLatencyMs": 4676,
+      "toolLatencies": {
+        "search_evidence": 1542
+      },
+      "toolOrder": [
+        "search_evidence"
+      ],
+      "parallelBatches": 1,
+      "iterationCount": 0,
+      "evidenceConfidence": 1,
+      "llmTokensUsed": 0
+    },
+    "answer": "### 📊 Commit Count for the Referenced Repository\n\n> **⚡ Total Commits:** **3** commits have been pushed to the `payment-gateway-v2` repository on the `main` branch.\n\n#### 📋 Repository‑Level Detail\n\n| Repository | Branch | Commits |\n|------------|--------|---------|\n| `payment-gateway-v2` | `main` | **3** |\n\n*Source: Verified vector store entry stating “Three commits were pushed to the payment-gateway-v2 repository on main…”*"
+  },
+  "how many commits in billing-engine": {
+    "query": "how many commits in billing-engine",
+    "subgoals": [
+      {
+        "id": "subgoal_1",
+        "description": "how many commits in billing-engine",
+        "type": "metric_count",
+        "targetSourcePreference": [
+          "sql"
+        ],
+        "status": "pending",
+        "requiredEntities": [
+          "billing-engine"
+        ],
+        "retries": 0
+      }
+    ],
+    "coveredGoals": [
+      "subgoal_1"
+    ],
+    "missingGoals": [],
+    "structuredEvidence": [
+      {
+        "id": "core_1790145807572_get_commit_count_g7gz9c",
+        "subgoalId": "subgoal_1",
+        "toolCallId": "call_subgoal_1_1",
+        "sourceType": "sql",
+        "confidence": 1,
+        "summary": "Commit count for repo \"billing-engine\": 4 total commits (Neo4j CONTRIBUTED_TO rollup & PostgreSQL events).",
+        "rawPayload": {
+          "totalCommits": 4,
+          "repository": "billing-engine",
+          "breakdown": [
+            {
+              "name": "priyasharma",
+              "commits": 4
+            }
+          ],
+          "source": "Neo4j CONTRIBUTED_TO rollup & PostgreSQL events"
+        },
+        "entitiesFound": [
+          "billing-engine"
+        ],
+        "queryExplanation": "get_commit_count({\"repo\":\"billing-engine\"})"
+      }
+    ],
+    "evidenceConfidence": 1,
+    "plan": [
+      {
+        "id": "call_subgoal_1_1",
+        "subgoalId": "subgoal_1",
+        "name": "get_commit_count",
+        "args": {
+          "repo": "billing-engine"
+        }
+      }
+    ],
+    "pendingTools": [],
+    "pendingToolBatches": [],
+    "executedTools": [
+      "get_commit_count"
+    ],
+    "clarificationQuestion": "",
+    "entities": [
+      "billing-engine"
+    ],
+    "resolvedEntities": {},
+    "vectorQuery": "how many commits in billing-engine",
+    "vectorResult": [],
+    "graphResult": [],
+    "sqlResult": [
+      {
+        "type": "commit_count",
+        "repo": "billing-engine",
+        "totalCommits": 4,
+        "breakdown": [
+          {
+            "name": "priyasharma",
+            "commits": 4
+          }
+        ],
+        "source": "Neo4j CONTRIBUTED_TO rollup & PostgreSQL events"
+      }
+    ],
+    "webQuery": "",
+    "WebQueryResult": [],
+    "knowledgeRiskResult": null,
+    "evidence": "#VERIFIED TOOL EVIDENCE\n[SQL VERIFIED EVIDENCE] Commit count for repo \"billing-engine\": 4 total commits (Neo4j CONTRIBUTED_TO rollup & PostgreSQL events).\nDetails: {\"totalCommits\":4,\"repository\":\"billing-engine\",\"breakdown\":[{\"name\":\"priyasharma\",\"commits\":4}],\"source\":\"Neo4j CONTRIBUTED_TO rollup & PostgreSQL events\"}\n\n#RELEVANT EVENTS\n\n\n#RELEVANT RELATION\n\n\n#RELEVANT SQL\n[VERIFIED COMMIT COUNT] Repository: \"billing-engine\" | Person: \"All\" | Total Commits: 4 | Breakdown: [priyasharma: 4 commits] | Source: Neo4j CONTRIBUTED_TO rollup & PostgreSQL events\n\n#KNOWLEDGE RISK DATA",
+    "needMoreSearch": false,
+    "iterationCount": 1,
+    "metrics": {
+      "totalLatencyMs": 0,
+      "plannerLatencyMs": 20833,
+      "toolLatencies": {
+        "get_commit_count": 216
+      },
+      "toolOrder": [
+        "get_commit_count"
+      ],
+      "parallelBatches": 1,
+      "iterationCount": 0,
+      "evidenceConfidence": 1,
+      "llmTokensUsed": 0
+    },
+    "answer": "### 📊 Commit Summary for `billing-engine`\n\n> **⚡ Total Commits:** **4**  \n\nThe repository `billing-engine` has a verified commit count of **4** commits.\n\n#### 🗂️ Detailed Commit Breakdown\n\n| Contributor | Commits |\n|-------------|--------|\n| `priyasharma` | 4 |\n| **Total** | **4** |\n\n*Source: Verified commit count from Neo4j `CONTRIBUTED_TO` rollup & PostgreSQL events.*"
+  },
+  "how many commits did priyasharma make": {
+    "query": "how many commits did priyasharma make",
+    "subgoals": [
+      {
+        "id": "subgoal_1",
+        "description": "how many commits did priyasharma make",
+        "type": "metric_count",
+        "targetSourcePreference": [
+          "sql"
+        ],
+        "status": "pending",
+        "requiredEntities": [
+          "priyasharma"
+        ],
+        "retries": 0
+      }
+    ],
+    "coveredGoals": [
+      "subgoal_1"
+    ],
+    "missingGoals": [],
+    "structuredEvidence": [
+      {
+        "id": "core_1790145839261_get_commit_count_90sbmf",
+        "subgoalId": "subgoal_1",
+        "toolCallId": "call_subgoal_1_1",
+        "sourceType": "sql",
+        "confidence": 1,
+        "summary": "Commit count for engineer \"priyasharma\": 9 total commits (PostgreSQL person_metrics & Neo4j CONTRIBUTED_TO rollup).",
+        "rawPayload": {
+          "totalCommits": 9,
+          "person": "priyasharma",
+          "breakdown": [
+            {
+              "name": "billing-engine",
+              "commits": 4
+            },
+            {
+              "name": "payment-gateway-v2",
+              "commits": 3
+            },
+            {
+              "name": "notification-service",
+              "commits": 2
+            }
+          ],
+          "source": "PostgreSQL person_metrics & Neo4j CONTRIBUTED_TO rollup"
+        },
+        "entitiesFound": [
+          "priyasharma"
+        ],
+        "queryExplanation": "get_commit_count({\"person\":\"priyasharma\"})"
+      }
+    ],
+    "evidenceConfidence": 1,
+    "plan": [
+      {
+        "id": "call_subgoal_1_1",
+        "subgoalId": "subgoal_1",
+        "name": "get_commit_count",
+        "args": {
+          "person": "priyasharma"
+        }
+      }
+    ],
+    "pendingTools": [],
+    "pendingToolBatches": [],
+    "executedTools": [
+      "get_commit_count"
+    ],
+    "clarificationQuestion": "",
+    "entities": [
+      "priyasharma"
+    ],
+    "resolvedEntities": {},
+    "vectorQuery": "how many commits did priyasharma make",
+    "vectorResult": [],
+    "graphResult": [],
+    "sqlResult": [
+      {
+        "type": "commit_count",
+        "person": "priyasharma",
+        "totalCommits": 9,
+        "breakdown": [
+          {
+            "name": "billing-engine",
+            "commits": 4
+          },
+          {
+            "name": "payment-gateway-v2",
+            "commits": 3
+          },
+          {
+            "name": "notification-service",
+            "commits": 2
+          }
+        ],
+        "source": "PostgreSQL person_metrics & Neo4j CONTRIBUTED_TO rollup"
+      }
+    ],
+    "webQuery": "",
+    "WebQueryResult": [],
+    "knowledgeRiskResult": null,
+    "evidence": "#VERIFIED TOOL EVIDENCE\n[SQL VERIFIED EVIDENCE] Commit count for engineer \"priyasharma\": 9 total commits (PostgreSQL person_metrics & Neo4j CONTRIBUTED_TO rollup).\nDetails: {\"totalCommits\":9,\"person\":\"priyasharma\",\"breakdown\":[{\"name\":\"billing-engine\",\"commits\":4},{\"name\":\"payment-gateway-v2\",\"commits\":3},{\"name\":\"notification-service\",\"commits\":2}],\"source\":\"PostgreSQL person_metrics & Neo4j CONTRIBUTED_TO rollup\"}\n\n#RELEVANT EVENTS\n\n\n#RELEVANT RELATION\n\n\n#RELEVANT SQL\n[VERIFIED COMMIT COUNT] Repository: \"All\" | Person: \"priyasharma\" | Total Commits: 9 | Breakdown: [billing-engine: 4 commits, payment-gateway-v2: 3 commits, notification-service: 2 commits] | Source: PostgreSQL person_metrics & Neo4j CONTRIBUTED_TO rollup\n\n#KNOWLEDGE RISK DATA",
+    "needMoreSearch": false,
+    "iterationCount": 1,
+    "metrics": {
+      "totalLatencyMs": 0,
+      "plannerLatencyMs": 18116,
+      "toolLatencies": {
+        "get_commit_count": 500
+      },
+      "toolOrder": [
+        "get_commit_count"
+      ],
+      "parallelBatches": 1,
+      "iterationCount": 0,
+      "evidenceConfidence": 1,
+      "llmTokensUsed": 0
+    },
+    "answer": "### 📊 Commit Summary for **priyasharma**\n\n> **Total Commits:** **9**  \n\nThe commit activity is distributed across three repositories as follows:\n\n| Repository            | Commits |\n|-----------------------|---------|\n| `billing-engine`      | 4 |\n| `payment-gateway-v2`  | 3 |\n| `notification-service`| 2 |\n\n*Source: PostgreSQL person_metrics & Neo4j CONTRIBUTED_TO rollup.*"
+  },
+  "who is the best successor for this repo": {
+    "query": "who is the best successor for this repo",
+    "subgoals": [
+      {
+        "id": "subgoal_1",
+        "description": "who is the best successor for this repo",
+        "type": "metric_count",
+        "targetSourcePreference": [
+          "sql",
+          "graph",
+          "analytics",
+          "vector"
+        ],
+        "status": "pending",
+        "requiredEntities": [],
+        "retries": 0
+      }
+    ],
+    "coveredGoals": [
+      "subgoal_1"
+    ],
+    "missingGoals": [],
+    "structuredEvidence": [
+      {
+        "id": "core_1790145895297_search_evidence_6khfx",
+        "subgoalId": "subgoal_1",
+        "toolCallId": "retry_subgoal_1_1_1",
+        "sourceType": "vector",
+        "confidence": 1,
+        "summary": "Search query \"best successor for this repository\" found 5 matching text and discussion evidence snippet(s).",
+        "rawPayload": {
+          "query": "best successor for this repository",
+          "matches": [
+            {
+              "source": "Vector Store (github)",
+              "text": "Lead developer and Partner Dev co-authored a feature commit implementing resilient co-authoring in the repository.",
+              "author": "lead_dev_1790087525312",
+              "date": "2026-09-22T14:32:34.330Z",
+              "score": 0.658839
+            },
+            {
+              "source": "Vector Store (slack)",
+              "text": "STREAM-401 completed in realtime-stream-engine: ClickHouse + Apache Flink streaming pipeline is live! Columnar compression reduced disk usage by 75% compared to Elasticsearch.",
+              "author": "U111NEHA5",
+              "date": "1789712670.098000",
+              "score": 0.65575516
+            },
+            {
+              "source": "Vector Store (slack)",
+              "text": "🎉 TEAM ANNOUNCEMENT: Our engineering resilience initiative is a complete success! Across payment-gateway-v2, auth-token-vault, and realtime-stream-engine, we have paired up and eliminated every single point of failure (SPOF). Company Bus Factor is now above 2.5 across all active repositories!",
+              "author": "U0987654321",
+              "date": "1789716341.183000",
+              "score": 0.6511407
+            },
+            {
+              "source": "Vector Store (github)",
+              "text": "Arjun Kumar migrated the Redis driver to the Valkey client, Vikram Patel hardened Cypher query validation, and Neha Gupta added Qdrant vector indexing, all in the Cortex repository.",
+              "author": "Arjun Kumar",
+              "date": "2026-09-12T07:25:32.941Z",
+              "score": 0.65084356
+            },
+            {
+              "source": "Vector Store (slack)",
+              "text": "SEC-701 deployed in auth-token-vault: Rust WebCrypto zero-knowledge token verification with Keycloak federation is active. Average validation latency is 0.4ms.",
+              "author": "U999VIKRAM4",
+              "date": "1789712666.364000",
+              "score": 0.65018225
+            }
+          ]
+        },
+        "entitiesFound": [],
+        "queryExplanation": "search_evidence({\"query\":\"best successor for this repository\"})"
+      }
+    ],
+    "evidenceConfidence": 1,
+    "plan": [],
+    "pendingTools": [],
+    "pendingToolBatches": [],
+    "executedTools": [
+      "search_evidence"
+    ],
+    "clarificationQuestion": "",
+    "entities": [],
+    "resolvedEntities": {},
+    "vectorQuery": "who is the best successor for this repo",
+    "vectorResult": [
+      {
+        "payload": {
+          "summary": "Lead developer and Partner Dev co-authored a feature commit implementing resilient co-authoring in the repository.",
+          "text": "Lead developer and Partner Dev co-authored a feature commit implementing resilient co-authoring in the repository.",
+          "author": "lead_dev_1790087525312",
+          "timestamp": "2026-09-22T14:32:34.330Z",
+          "provider": "Vector Store (github)"
+        }
+      },
+      {
+        "payload": {
+          "summary": "STREAM-401 completed in realtime-stream-engine: ClickHouse + Apache Flink streaming pipeline is live! Columnar compression reduced disk usage by 75% compared to Elasticsearch.",
+          "text": "STREAM-401 completed in realtime-stream-engine: ClickHouse + Apache Flink streaming pipeline is live! Columnar compression reduced disk usage by 75% compared to Elasticsearch.",
+          "author": "U111NEHA5",
+          "timestamp": "1789712670.098000",
+          "provider": "Vector Store (slack)"
+        }
+      },
+      {
+        "payload": {
+          "summary": "🎉 TEAM ANNOUNCEMENT: Our engineering resilience initiative is a complete success! Across payment-gateway-v2, auth-token-vault, and realtime-stream-engine, we have paired up and eliminated every single point of failure (SPOF). Company Bus Factor is now above 2.5 across all active repositories!",
+          "text": "🎉 TEAM ANNOUNCEMENT: Our engineering resilience initiative is a complete success! Across payment-gateway-v2, auth-token-vault, and realtime-stream-engine, we have paired up and eliminated every single point of failure (SPOF). Company Bus Factor is now above 2.5 across all active repositories!",
+          "author": "U0987654321",
+          "timestamp": "1789716341.183000",
+          "provider": "Vector Store (slack)"
+        }
+      },
+      {
+        "payload": {
+          "summary": "Arjun Kumar migrated the Redis driver to the Valkey client, Vikram Patel hardened Cypher query validation, and Neha Gupta added Qdrant vector indexing, all in the Cortex repository.",
+          "text": "Arjun Kumar migrated the Redis driver to the Valkey client, Vikram Patel hardened Cypher query validation, and Neha Gupta added Qdrant vector indexing, all in the Cortex repository.",
+          "author": "Arjun Kumar",
+          "timestamp": "2026-09-12T07:25:32.941Z",
+          "provider": "Vector Store (github)"
+        }
+      },
+      {
+        "payload": {
+          "summary": "SEC-701 deployed in auth-token-vault: Rust WebCrypto zero-knowledge token verification with Keycloak federation is active. Average validation latency is 0.4ms.",
+          "text": "SEC-701 deployed in auth-token-vault: Rust WebCrypto zero-knowledge token verification with Keycloak federation is active. Average validation latency is 0.4ms.",
+          "author": "U999VIKRAM4",
+          "timestamp": "1789712666.364000",
+          "provider": "Vector Store (slack)"
+        }
+      }
+    ],
+    "graphResult": [],
+    "sqlResult": [],
+    "webQuery": "",
+    "WebQueryResult": [],
+    "knowledgeRiskResult": null,
+    "evidence": "#VERIFIED TOOL EVIDENCE\n[VECTOR VERIFIED EVIDENCE] Search query \"best successor for this repository\" found 5 matching text and discussion evidence snippet(s).\nDetails: {\"query\":\"best successor for this repository\",\"matches\":[{\"source\":\"Vector Store (github)\",\"text\":\"Lead developer and Partner Dev co-authored a feature commit implementing resilient co-authoring in the repository.\",\"author\":\"lead_dev_1790087525312\",\"date\":\"2026-09-22T14:32:34.330Z\",\"score\":0.658839},{\"source\":\"Vector Store (slack)\",\"text\":\"STREAM-401 completed in realtime-stream-engine: ClickHouse + Apache Flink streaming pipeline is live! Columnar compression reduced disk usage by 75% compared to Elasticsearch.\",\"author\":\"U111NEHA5\",\"date\":\"1789712670.098000\",\"score\":0.65575516},{\"source\":\"Vector Store (slack)\",\"text\":\"🎉 TEAM ANNOUNCEMENT: Our engineering resilience initiative is a complete success! Across payment-gateway-v2, auth-token-vault, and realtime-stream-engine, we have paired up and eliminated every single point of failure (SPOF). Company Bus Factor is now above 2.5 across all active repositories!\",\"author\":\"U0987654321\",\"date\":\"1789716341.183000\",\"score\":0.6511407},{\"source\":\"Vector Store (github)\",\"text\":\"Arjun Kumar migrated the Redis driver to the Valkey client, Vikram Patel hardened Cypher query validation, and Neha Gupta added Qdrant vector indexing, all in the Cortex repository.\",\"author\":\"Arjun Kumar\",\"date\":\"2026-09-12T07:25:32.941Z\",\"score\":0.65084356},{\"source\":\"Vector Store (slack)\",\"text\":\"SEC-701 deployed in auth-token-vault: Rust WebCrypto zero-knowledge token verification with Keycloak federation is active. Average validation latency is 0.4ms.\",\"author\":\"U999VIKRAM4\",\"date\":\"1789712666.364000\",\"score\":0.65018225}]}\n\n#RELEVANT EVENTS\n[provider: unknown] Summary: \n[provider: unknown] Summary: \n[provider: unknown] Summary: \n[provider: unknown] Summary: \n[provider: unknown] Summary: \n\n#RELEVANT RELATION\n\n\n#RELEVANT SQL\n\n\n#KNOWLEDGE RISK DATA",
+    "needMoreSearch": false,
+    "iterationCount": 2,
+    "metrics": {
+      "totalLatencyMs": 0,
+      "plannerLatencyMs": 37593,
+      "toolLatencies": {
+        "search_evidence": 1227
+      },
+      "toolOrder": [
+        "search_evidence"
+      ],
+      "parallelBatches": 1,
+      "iterationCount": 0,
+      "evidenceConfidence": 1,
+      "llmTokensUsed": 0
+    },
+    "answer": "### 🛠️ Recommended Successor\n\n> **I don't have data for that**.  \n\nChecked: repo_metrics (PostgreSQL), Neo4j knowledge graph, events database, and vector index (Qdrant). No matching successor recommendation found."
+  },
+  "who is the best successor for billing-engine": {
+    "query": "who is the best successor for billing-engine",
+    "subgoals": [
+      {
+        "id": "subgoal_1",
+        "description": "who is the best successor for billing-engine",
+        "type": "risk_analysis",
+        "targetSourcePreference": [
+          "analytics"
+        ],
+        "status": "pending",
+        "requiredEntities": [
+          "billing-engine"
+        ],
+        "retries": 0
+      }
+    ],
+    "coveredGoals": [
+      "subgoal_1"
+    ],
+    "missingGoals": [],
+    "structuredEvidence": [
+      {
+        "id": "core_1790145935341_get_successor_recommendation_o6oohk",
+        "subgoalId": "subgoal_1",
+        "toolCallId": "call_subgoal_1_1",
+        "sourceType": "analytics",
+        "confidence": 1,
+        "summary": "Successor analysis for repository \"billing-engine\": Top recommended successor is rohanverma (25% match). No direct successor with repository experience found for billing-engine. Top cross-training candidate is rohanverma (25% match, capped at 25% due to 0% repository overlap). No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.",
+        "rawPayload": {
+          "target": "billing-engine",
+          "targetType": "repository",
+          "primaryOwner": "priyasharma",
+          "busFactor": 1,
+          "hasSuccessor": false,
+          "explanation": "No direct successor with repository experience found for billing-engine. Top cross-training candidate is rohanverma (25% match, capped at 25% due to 0% repository overlap). No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.",
+          "recommendedSuccessor": {
+            "name": "rohanverma",
+            "score": 25,
+            "sharedTechnologies": [
+              "twilio sms",
+              "sendgrid email",
+              "rabbitmq"
+            ],
+            "sharedRepositories": [],
+            "capacityScore": 38,
+            "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.",
+            "isOverloaded": false
+          },
+          "candidates": [
+            {
+              "name": "rohanverma",
+              "score": 25,
+              "sharedTechnologies": [
+                "twilio sms",
+                "sendgrid email",
+                "rabbitmq"
+              ],
+              "sharedRepositories": [],
+              "capacityScore": 38,
+              "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.",
+              "isOverloaded": false
+            },
+            {
+              "name": "Kavita Reddy",
+              "score": 25,
+              "sharedTechnologies": [
+                "twilio sms",
+                "sendgrid email"
+              ],
+              "sharedRepositories": [],
+              "capacityScore": 55,
+              "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 2 technologies (twilio sms, sendgrid email) with 67% stack similarity. Existing workload: 15% risk, maintains 2 SPOF repos.",
+              "isOverloaded": false
+            },
+            {
+              "name": "Priya Sharma",
+              "score": 24,
+              "sharedTechnologies": [
+                "twilio sms",
+                "sendgrid email"
+              ],
+              "sharedRepositories": [],
+              "capacityScore": 56,
+              "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 2 technologies (twilio sms, sendgrid email) with 40% stack similarity. Existing workload: 14% risk, maintains 2 SPOF repos.",
+              "isOverloaded": false
+            }
+          ]
+        },
+        "entitiesFound": [
+          "billing-engine"
+        ],
+        "queryExplanation": "get_successor_recommendation({\"repo\":\"billing-engine\"})"
+      }
+    ],
+    "evidenceConfidence": 1,
+    "plan": [
+      {
+        "id": "call_subgoal_1_1",
+        "subgoalId": "subgoal_1",
+        "name": "get_successor_recommendation",
+        "args": {
+          "repo": "billing-engine"
+        }
+      }
+    ],
+    "pendingTools": [],
+    "pendingToolBatches": [],
+    "executedTools": [
+      "get_successor_recommendation"
+    ],
+    "clarificationQuestion": "",
+    "entities": [
+      "billing-engine"
+    ],
+    "resolvedEntities": {},
+    "vectorQuery": "who is the best successor for billing-engine",
+    "vectorResult": [],
+    "graphResult": [],
+    "sqlResult": [
+      {
+        "type": "successor_recommendation",
+        "target": "billing-engine",
+        "targetType": "repository",
+        "primaryOwner": "priyasharma",
+        "hasSuccessor": false,
+        "recommendedSuccessor": {
+          "name": "rohanverma",
+          "score": 25,
+          "sharedTechnologies": [
+            "twilio sms",
+            "sendgrid email",
+            "rabbitmq"
+          ],
+          "sharedRepositories": [],
+          "capacityScore": 38,
+          "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.",
+          "isOverloaded": false
+        },
+        "explanation": "No direct successor with repository experience found for billing-engine. Top cross-training candidate is rohanverma (25% match, capped at 25% due to 0% repository overlap). No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.",
+        "candidates": [
+          {
+            "name": "rohanverma",
+            "score": 25,
+            "sharedTechnologies": [
+              "twilio sms",
+              "sendgrid email",
+              "rabbitmq"
+            ],
+            "sharedRepositories": [],
+            "capacityScore": 38,
+            "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.",
+            "isOverloaded": false
+          },
+          {
+            "name": "Kavita Reddy",
+            "score": 25,
+            "sharedTechnologies": [
+              "twilio sms",
+              "sendgrid email"
+            ],
+            "sharedRepositories": [],
+            "capacityScore": 55,
+            "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 2 technologies (twilio sms, sendgrid email) with 67% stack similarity. Existing workload: 15% risk, maintains 2 SPOF repos.",
+            "isOverloaded": false
+          },
+          {
+            "name": "Priya Sharma",
+            "score": 24,
+            "sharedTechnologies": [
+              "twilio sms",
+              "sendgrid email"
+            ],
+            "sharedRepositories": [],
+            "capacityScore": 56,
+            "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 2 technologies (twilio sms, sendgrid email) with 40% stack similarity. Existing workload: 14% risk, maintains 2 SPOF repos.",
+            "isOverloaded": false
+          }
+        ]
+      }
+    ],
+    "webQuery": "",
+    "WebQueryResult": [],
+    "knowledgeRiskResult": {
+      "person": "priyasharma",
+      "totalRisk": 0.8,
+      "hasSuccessor": false,
+      "successors": [
+        {
+          "name": "rohanverma",
+          "score": 25,
+          "sharedTechnologies": [
+            "twilio sms",
+            "sendgrid email",
+            "rabbitmq"
+          ],
+          "sharedRepositories": [],
+          "capacityScore": 38,
+          "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.",
+          "isOverloaded": false
+        },
+        {
+          "name": "Kavita Reddy",
+          "score": 25,
+          "sharedTechnologies": [
+            "twilio sms",
+            "sendgrid email"
+          ],
+          "sharedRepositories": [],
+          "capacityScore": 55,
+          "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 2 technologies (twilio sms, sendgrid email) with 67% stack similarity. Existing workload: 15% risk, maintains 2 SPOF repos.",
+          "isOverloaded": false
+        },
+        {
+          "name": "Priya Sharma",
+          "score": 24,
+          "sharedTechnologies": [
+            "twilio sms",
+            "sendgrid email"
+          ],
+          "sharedRepositories": [],
+          "capacityScore": 56,
+          "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 2 technologies (twilio sms, sendgrid email) with 40% stack similarity. Existing workload: 14% risk, maintains 2 SPOF repos.",
+          "isOverloaded": false
+        }
+      ],
+      "successorRecommendation": {
+        "name": "rohanverma",
+        "score": 25,
+        "sharedTechnologies": [
+          "twilio sms",
+          "sendgrid email",
+          "rabbitmq"
+        ],
+        "sharedRepositories": [],
+        "capacityScore": 38,
+        "rationale": "No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.",
+        "isOverloaded": false
+      },
+      "explanation": "No direct successor with repository experience found for billing-engine. Top cross-training candidate is rohanverma (25% match, capped at 25% due to 0% repository overlap). No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.",
+      "affectedRepositories": [
+        {
+          "repo_name": "billing-engine",
+          "bus_factor": 1,
+          "risk_score": 80,
+          "isSPOF": true
+        }
+      ]
+    },
+    "evidence": "#VERIFIED TOOL EVIDENCE\n[ANALYTICS VERIFIED EVIDENCE] Successor analysis for repository \"billing-engine\": Top recommended successor is rohanverma (25% match). No direct successor with repository experience found for billing-engine. Top cross-training candidate is rohanverma (25% match, capped at 25% due to 0% repository overlap). No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.\nDetails: {\"target\":\"billing-engine\",\"targetType\":\"repository\",\"primaryOwner\":\"priyasharma\",\"busFactor\":1,\"hasSuccessor\":false,\"explanation\":\"No direct successor with repository experience found for billing-engine. Top cross-training candidate is rohanverma (25% match, capped at 25% due to 0% repository overlap). No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.\",\"recommendedSuccessor\":{\"name\":\"rohanverma\",\"score\":25,\"sharedTechnologies\":[\"twilio sms\",\"sendgrid email\",\"rabbitmq\"],\"sharedRepositories\":[],\"capacityScore\":38,\"rationale\":\"No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.\",\"isOverloaded\":false},\"candidates\":[{\"name\":\"rohanverma\",\"score\":25,\"sharedTechnologies\":[\"twilio sms\",\"sendgrid email\",\"rabbitmq\"],\"sharedRepositories\":[],\"capacityScore\":38,\"rationale\":\"No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.\",\"isOverloaded\":false},{\"name\":\"Kavita Reddy\",\"score\":25,\"sharedTechnologies\":[\"twilio sms\",\"sendgrid email\"],\"sharedRepositories\":[],\"capacityScore\":55,\"rationale\":\"No prior commits to billing-engine (cross-training candidate). Shares 2 technologies (twilio sms, sendgrid email) with 67% stack similarity. Existing workload: 15% risk, maintains 2 SPOF repos.\",\"isOverloaded\":false},{\"name\":\"Priya Sharma\",\"score\":24,\"sharedTechnologies\":[\"twilio sms\",\"sendgrid email\"],\"sharedRepositories\":[],\"capacityScore\":56,\"rationale\":\"No prior commits to billing-engine (cross-training candidate). Shares 2 technologies (twilio sms, sendgrid email) with 40% stack similarity. Existing workload: 14% risk, maintains 2 SPOF repos.\",\"isOverloaded\":false}]}\n\n#RELEVANT EVENTS\n\n\n#RELEVANT RELATION\n\n\n#RELEVANT SQL\n[SUCCESSOR RECOMMENDATION] Target repository: \"billing-engine\" | Primary Owner: \"priyasharma\" | Recommended Successor: rohanverma (25% match) | Shared Techs: [twilio sms, sendgrid email, rabbitmq] | Shared Repos: [None] | Explanation: No direct successor with repository experience found for billing-engine. Top cross-training candidate is rohanverma (25% match, capped at 25% due to 0% repository overlap). No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.\n\n#KNOWLEDGE RISK DATA\n[KNOWLEDGE RISK] Person: priyasharma\nTotal Risk: 80% (0–100 scale)\nBreakdown (each 0–100%): ownership=0%, dependency=0%, activity=0%, documentation=0%, expertise=0% (sole-maintained items score), pendingWork=0%\nDetails: ownedItems=0, criticalDependencies=0, recentActivity=0, documentationGaps=0, soleMaintainedItems=0, assignedWork=0\nConcrete Evidence: {}\n[AFFECTED REPOSITORIES & BUS FACTOR] Repositories affected if priyasharma departs:\n  - Repository: \"billing-engine\" | Bus Factor: 1 (SPOF) | Risk: 80% | Owner: Unknown | Contributors: 1\n[SUCCESSOR RECOMMENDATION] Best Recommended Successor: rohanverma (25% composite match score)\n  - Candidate: rohanverma | Score: 25% (Tech=0%, Repos=0%, Activity=0%, Capacity=0%) | Shared Techs: [none] | Shared Repos: [none] | Activity: active | Existing Risk: 0% | Rationale: No prior commits to billing-engine (cross-training candidate). Shares 3 technologies (twilio sms, sendgrid email, rabbitmq) with 30% stack similarity. Highly active recently (5d ago). Existing workload: 32% risk, maintains 2 SPOF repos.\n  - Candidate: Kavita Reddy | Score: 25% (Tech=0%, Repos=0%, Activity=0%, Capacity=0%) | Shared Techs: [none] | Shared Repos: [none] | Activity: active | Existing Risk: 0% | Rationale: No prior commits to billing-engine (cross-training candidate). Shares 2 technologies (twilio sms, sendgrid email) with 67% stack similarity. Existing workload: 15% risk, maintains 2 SPOF repos.\n  - Candidate: Priya Sharma | Score: 24% (Tech=0%, Repos=0%, Activity=0%, Capacity=0%) | Shared Techs: [none] | Shared Repos: [none] | Activity: active | Existing Risk: 0% | Rationale: No prior commits to billing-engine (cross-training candidate). Shares 2 technologies (twilio sms, sendgrid email) with 40% stack similarity. Existing workload: 14% risk, maintains 2 SPOF repos.\nNote: \"expertise\" counts sole-maintained items (commits/PRs/issues with only 1 author), NOT technology node count.",
+    "needMoreSearch": false,
+    "iterationCount": 1,
+    "metrics": {
+      "totalLatencyMs": 0,
+      "plannerLatencyMs": 21746,
+      "toolLatencies": {
+        "get_successor_recommendation": 687
+      },
+      "toolOrder": [
+        "get_successor_recommendation"
+      ],
+      "parallelBatches": 1,
+      "iterationCount": 0,
+      "evidenceConfidence": 1,
+      "llmTokensUsed": 0
+    },
+    "answer": "### 🛠️ Recommended Successor for `billing-engine`\n\n> ⚡ **Best Successor:** `rohanverma` – **25 % composite match**  \n\n**Why rohanverma?**  \n- No engineer has prior commits to `billing-engine`; rohanverma is the top cross‑training candidate.  \n- Shares **three** core technologies with the repository: **twilio sms**, **sendgrid email**, **rabbitmq** (≈ 30 % stack similarity).  \n- Recently active (last activity **5 days ago**).  \n- Current workload shows **32 % risk** and he already maintains **2 SPOF repos**, but **is not overloaded** (capacity score 38).  \n\n#### 📋 Primary Owner & Successor Summary\n\n| Repository | Primary Owner | Recommended Successor | Match Score | Shared Technologies | Shared Repositories | Capacity Score | Overloaded? |\n|------------|---------------|----------------------|------------|---------------------|---------------------|----------------|------------|\n| `billing-engine` | `priyasharma` | `rohanverma` | **25 %** | twilio sms, sendgrid email, rabbitmq | — (none) | **38** | **No** |\n\n#### 🔎 Successor Rationale (excerpt)\n\n- **No direct successor** with repository experience was found.  \n- rohanverma’s **30 % stack similarity** and recent activity make him the most viable cross‑training candidate.  \n- Although he has **no prior commits** to `billing-engine`, his familiarity with the same tech stack reduces onboarding risk.  \n- His **existing workload** (32 % risk) is within safe limits, and he does **not** exceed capacity thresholds.\n\n---\n\n**Conclusion:** Based on the verified successor analysis, **rohanverma** is the optimal candidate to take over `billing-engine` should the current primary owner (`priyasharma`) depart."
+  }
+}

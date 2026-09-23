@@ -160,6 +160,25 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
         }).join('\n');
 
         const sqlText = state.sqlResult.map((item: any) => {
+            if (item?.type === 'commit_count') {
+                const breakdownStr = (item.breakdown || []).map((b: any) => `${b.name}: ${b.commits} commits`).join(', ') || 'None';
+                return `[VERIFIED COMMIT COUNT] Repository: "${item.repo || 'All'}" | Person: "${item.person || 'All'}" | Total Commits: ${item.totalCommits} | Breakdown: [${breakdownStr}] | Source: ${item.source}`;
+            }
+            if (item?.type === 'successor_recommendation') {
+                const succName = item.recommendedSuccessor?.name || 'None';
+                const score = item.recommendedSuccessor?.score || 0;
+                const techs = (item.recommendedSuccessor?.sharedTechnologies || []).join(', ') || 'None';
+                const repos = (item.recommendedSuccessor?.sharedRepositories || []).join(', ') || 'None';
+                return `[SUCCESSOR RECOMMENDATION] Target ${item.targetType}: "${item.target}" | Primary Owner: "${item.primaryOwner || 'N/A'}" | Recommended Successor: ${succName} (${score}% match) | Shared Techs: [${techs}] | Shared Repos: [${repos}] | Explanation: ${item.explanation}`;
+            }
+            if (item?.type === 'ownership') {
+                const breakdown = (item.ownershipBreakdown || []).map((o: any) => `${o.person}: ${o.percentage}% (${o.commits} commits${o.isPrimaryOwner ? ', Primary Owner' : ''})`).join(', ') || 'None';
+                return `[REPOSITORY OWNERSHIP BREAKDOWN] Repository: "${item.repo_name}" | Primary Owner: "${item.primary_owner || 'Unknown'}" | Bus Factor: ${item.bus_factor} | Total Commits: ${item.totalCommits} | Breakdown: [${breakdown}]`;
+            }
+            if (item?.type === 'repo_contributors') {
+                const contribs = (item.contributors || []).map((c: any) => `${c.name} (${c.commits} commits)`).join(', ') || 'None';
+                return `[REPOSITORY CONTRIBUTORS] Repository: "${item.repo_name}" | Primary Owner: "${item.primary_owner || 'Unknown'}" | Bus Factor: ${item.bus_factor} | Contributor Count: ${item.contributor_count} | Contributors: [${contribs}]`;
+            }
             if (item?.healthy_repositories || item?.fragile_repositories) {
                 const hLines = (item.healthy_repositories || []).map((r: any) => `  - [HEALTHY] "${r.repo_name}" | Bus Factor: ${r.bus_factor} | Risk: ${r.risk_score}% | Owner: ${r.primary_owner} | Contributors: ${r.contributor_count}`);
                 const fLines = (item.fragile_repositories || []).map((r: any) => `  - [FRAGILE] "${r.repo_name}" | Bus Factor: ${r.bus_factor} (SPOF) | Risk: ${r.risk_score}% | Owner: ${r.primary_owner} | Contributors: ${r.contributor_count}`);
@@ -200,11 +219,18 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
 
         const riskText = buildRiskText(state.knowledgeRiskResult);
 
+        const structuredEvidenceText = (state.structuredEvidence || []).map(ev => {
+            return `[${ev.sourceType.toUpperCase()} VERIFIED EVIDENCE] ${ev.summary}\nDetails: ${JSON.stringify(ev.rawPayload)}`;
+        }).join('\n\n');
+
         const clarificationText = state.clarificationQuestion
             ? `\n#PENDING CLARIFICATION\n${state.clarificationQuestion}\nNote: One part of the query could not be resolved. Answer what you can from the evidence above, then include this clarification question for the remaining part.`
             : '';
 
         const evidence = `
+#VERIFIED TOOL EVIDENCE
+${structuredEvidenceText}
+
 #RELEVANT EVENTS
 ${vectorText}
 

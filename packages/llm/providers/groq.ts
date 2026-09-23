@@ -159,3 +159,186 @@ export async function callLLMEntityExtract(prompt: string) {
         throw new Error(`Entity extraction failed: ${error?.message ?? "unknown error"}`);
     }
 }
+
+export const SYSTEM_TOOL_MANDATE = `You are Cortex's engineering knowledge intelligence assistant.
+CRITICAL MANDATE: For ANY question that could be answered from data (counts, ownership, successors, risk, history, people, technologies), you MUST call a tool. Never answer numeric or factual questions from your own knowledge or memory.
+Always choose the most specific tool from the provided definitions:
+- "get_commit_count": For commit counts in a repository or by an engineer.
+- "get_successor_recommendation": For who replaces an engineer or who is the best successor / backup owner for a repository.
+- "get_bus_factor": For repository bus factors, SPOF status, and risk ranking.
+- "get_ownership": For repository code ownership % breakdown.
+- "get_repo_contributors": For listing contributors on a codebase.
+- "get_person_activity": For recent commits, PRs, and actions by an engineer.
+- "get_recent_changes": For changes in a repository over recent days.
+- "get_person_identity": For resolving canonical names, emails, and aliases.
+- "get_related_entities": For tech stack and dependency connections.
+- "search_evidence": For Slack discussions, migration rationale ("why was X replaced"), or Jira tickets.`;
+
+export function isDataQuestion(query: string): boolean {
+    const q = query.toLowerCase().trim();
+
+    const outOfScopePatterns = [
+        /\bweather\b/i,
+        /\bforecast\b/i,
+        /\bjoke\b/i,
+        /\bpoem\b/i,
+        /\bfootball\b/i,
+        /\bcricket\b/i,
+        /\bmovie\b/i,
+        /\bcapital of\b/i,
+        /\bwho is the president\b/i,
+        /\bwho won the\b/i,
+    ];
+    if (outOfScopePatterns.some(p => p.test(q)) && !/\b(repo|commit|code|cortex|engineer|bug|pr|jira|slack|successor|bus factor)\b/i.test(q)) {
+        return false;
+    }
+
+    const dataIndicators = [
+        'repo', 'repository', 'repositories', 'codebase', 'project',
+        'commit', 'commits', 'pr', 'pull request', 'issue', 'ticket', 'jira',
+        'contributor', 'contributors', 'maintainer', 'owner', 'primary owner',
+        'engineer', 'developer', 'person', 'people', 'team', 'author', 'user',
+        'successor', 'successors', 'replace', 'replacement', 'take over', 'backup', 'depart', 'resign', 'leave',
+        'bus factor', 'spof', 'fragile', 'risk', 'score', 'health', 'metric', 'metrics',
+        'technology', 'technologies', 'tech', 'stack', 'react', 'redis', 'valkey', 'kafka', 'python', 'go', 'node', 'postgres',
+        'slack', 'incident', 'kms', 'rotation', 'change', 'changes', 'activity', 'recent',
+        'how many', 'who', 'which', 'what', 'list', 'show', 'compare', 'find', 'count',
+        'kitne', 'kaun', 'kisko', 'kisne', 'kya', 'kiska', 'batao', 'dikhao'
+    ];
+
+    return dataIndicators.some(kw => q.includes(kw));
+}
+
+export interface AgentTurnTelemetry {
+    question: string;
+    modelUsed: string;
+    toolsCalled: Array<{ name: string; args: any }>;
+    rawResponse: string;
+    latencyMs: number;
+    tokensUsed: number;
+    retries: number;
+}
+
+/**
+ * Executes a tool-calling planning turn with Groq.
+ * Features:
+ * 1. Strict tool calling mandate for data questions.
+ * 2. Plain-text retry: if the model returns plain text for a data question, retries with an explicit nudge.
+ * 3. Fallback cascade: if primary model (gpt-oss-120b) fails twice to call tools, falls back to qwen3.6-27b.
+ * 4. Logs turn telemetry (question, model, tools, latency, cost).
+ */
+export async function executeAgentTurnWithToolCalling(
+    query: string,
+    tools: any[],
+    contextMessages: Array<{ role: string; content: string }> = []
+): Promise<{
+    toolCalls: Array<{ id: string; name: string; args: any }>;
+    content: string;
+    modelUsed: string;
+    telemetry: AgentTurnTelemetry;
+}> {
+    const tStart = Date.now();
+    const needsData = isDataQuestion(query);
+
+    const messages: any[] = [
+        { role: 'system', content: SYSTEM_TOOL_MANDATE },
+        ...contextMessages,
+        { role: 'user', content: query }
+    ];
+
+    let currentModel = PRIMARY_MODEL;
+    let retries = 0;
+    let chosenToolCalls: Array<{ id: string; name: string; args: any }> = [];
+    let chosenContent = '';
+
+    const modelsToTry = [PRIMARY_MODEL, 'qwen/qwen3.6-27b'];
+
+    for (const modelCandidate of modelsToTry) {
+        currentModel = modelCandidate;
+
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const payload: Record<string, any> = {
+                model: currentModel,
+                temperature: 0,
+                max_completion_tokens: 2048,
+                messages,
+                tools,
+                tool_choice: needsData ? 'auto' : 'auto',
+            };
+
+            try {
+                const response = await createGroqChatCompletion(payload, currentModel);
+                const msg = response.choices[0]?.message;
+                const rawContent = msg?.content || '';
+                const rawTools = msg?.tool_calls || [];
+
+                if (rawTools && rawTools.length > 0) {
+                    chosenToolCalls = rawTools.map((tc: any, idx: number) => {
+                        let parsedArgs = {};
+                        try {
+                            parsedArgs = typeof tc.function?.arguments === 'string'
+                                ? JSON.parse(tc.function.arguments)
+                                : (tc.function?.arguments || {});
+                        } catch (e: any) {
+                            console.warn(`[GroqAgent] Failed to parse tool arguments for ${tc.function?.name}: ${e?.message}`);
+                        }
+                        return {
+                            id: tc.id || `call_${idx + 1}`,
+                            name: tc.function?.name,
+                            args: parsedArgs,
+                        };
+                    });
+                    chosenContent = rawContent;
+                    break;
+                }
+
+                // If query requires data and model returned plain text with no tool call
+                if (needsData) {
+                    console.warn(`[GroqAgent] Model ${currentModel} returned plain text without calling tools for data query "${query}" (attempt ${attempt + 1}). Retrying with explicit nudge...`);
+                    retries++;
+                    messages.push({ role: 'assistant', content: rawContent });
+                    messages.push({
+                        role: 'user',
+                        content: `CRITICAL MANDATE: Your previous response contained no tool calls. This is a factual engineering data question. You MUST call one or more tools (such as get_commit_count, get_successor_recommendation, get_bus_factor, etc.) to fetch verified data before answering.`
+                    });
+                    continue;
+                } else {
+                    // Non-data question (e.g. conversational/out-of-scope)
+                    chosenContent = rawContent;
+                    break;
+                }
+            } catch (err: any) {
+                console.warn(`[GroqAgent] Execution attempt failed on ${currentModel}: ${err?.message}`);
+                retries++;
+            }
+        }
+
+        if (chosenToolCalls.length > 0 || !needsData) {
+            break;
+        }
+
+        console.warn(`[GroqAgent] Primary model ${currentModel} failed to invoke tools. Cascading to fallback model...`);
+    }
+
+    const latencyMs = Date.now() - tStart;
+    const tokensUsed = Math.round((query.length + chosenContent.length) / 4) + (chosenToolCalls.length * 50);
+
+    const telemetry: AgentTurnTelemetry = {
+        question: query,
+        modelUsed: currentModel,
+        toolsCalled: chosenToolCalls.map(t => ({ name: t.name, args: t.args })),
+        rawResponse: chosenContent,
+        latencyMs,
+        tokensUsed,
+        retries,
+    };
+
+    console.log(`[GroqAgent:Telemetry] Turn completed in ${latencyMs}ms using ${currentModel}. Tools called: ${chosenToolCalls.length}. Retries: ${retries}.`);
+
+    return {
+        toolCalls: chosenToolCalls,
+        content: chosenContent,
+        modelUsed: currentModel,
+        telemetry,
+    };
+}

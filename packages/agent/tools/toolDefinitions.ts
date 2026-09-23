@@ -1,21 +1,238 @@
 /**
- * Expanded Tool Definitions for LLM-Driven Query Pipeline.
+ * Enhanced Tool Definitions for Autonomous Generalized Agent Query Pipeline.
  *
- * Each existing graph function is exposed as its own distinctly-named tool
- * so the LLM planner can choose the optimal function for each query.
- * A new `graph_traverse` tool handles open-ended exploration.
+ * Exposes 10 core data retrieval tools covering the full graph/relational/vector space,
+ * plus specialized analytical and traversal tools.
  *
- * NO regex-based intent routing exists here — the LLM selects tools
- * via native function-calling with rich, capability-based descriptions.
+ * Each tool has strict JSON schemas and rich capability docstrings for native LLM function-calling on Groq.
  */
 
+export const CORE_TOOL_DEFINITIONS = [
+    // ─── 1. get_commit_count ──────────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_commit_count',
+            description: 'Get verified commit counts for a repository, a specific engineer/person, or both. MANDATORY for ANY question asking "how many commits in <repo>", "how many commits in this repo", "how many commits did <person> make", or total commit contributions. Reads from compacted CONTRIBUTED_TO rollups and PostgreSQL metrics.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    repo: {
+                        type: 'string',
+                        description: 'Repository name to filter commits (e.g. "billing-engine", "core-platform-gateway", "payment-gateway-v2").',
+                    },
+                    person: {
+                        type: 'string',
+                        description: 'Engineer/person name to filter commits (e.g. "priyasharma", "michaelchen", "Arjun9756").',
+                    },
+                    date_range: {
+                        type: 'string',
+                        description: 'Optional date range filter (e.g. "30d", "90d").',
+                    },
+                },
+            },
+        },
+    },
+
+    // ─── 2. get_repo_contributors ─────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_repo_contributors',
+            description: 'Get all contributors, contributor count, primary owner, bus factor, and health status for a repository. MANDATORY for questions asking who contributes to a repo, list contributors for a repo, or who works on a repository.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    repo: {
+                        type: 'string',
+                        description: 'Repository name (e.g. "billing-engine", "auth-token-vault").',
+                    },
+                },
+                required: ['repo'],
+            },
+        },
+    },
+
+    // ─── 3. get_person_activity ───────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_person_activity',
+            description: 'Get the recent activity history (commits, pull requests, issues, Slack discussions) for a specific engineer. MANDATORY for questions asking what an engineer recently did, their latest work, or recent activity with dates.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    person: {
+                        type: 'string',
+                        description: 'Engineer/person name (e.g. "rohanverma", "Priya Sharma").',
+                    },
+                    limit: {
+                        type: 'number',
+                        description: 'Maximum events to return (default 10).',
+                    },
+                },
+                required: ['person'],
+            },
+        },
+    },
+
+    // ─── 4. get_ownership ─────────────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_ownership',
+            description: 'Calculate code ownership percentages per contributor for a repository based on commit contribution distribution. MANDATORY for questions asking about repository ownership breakdown, who owns what percentage of a repo, or code distribution.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    repo: {
+                        type: 'string',
+                        description: 'Repository name (e.g. "billing-engine", "customer-portal-next").',
+                    },
+                },
+                required: ['repo'],
+            },
+        },
+    },
+
+    // ─── 5. get_bus_factor ────────────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_bus_factor',
+            description: 'Get bus factor, risk score, primary owner, contributor count, and SPOF status for one or all repositories from the verified risk scoring pipeline. MANDATORY for questions asking about bus factor, single point of failure (SPOF) repos, fragile repos, or repository risk ranking.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    repo: {
+                        type: 'string',
+                        description: 'Repository name to check (e.g. "billing-engine"), or omit / pass "ALL" to list all repositories.',
+                    },
+                },
+            },
+        },
+    },
+
+    // ─── 6. get_successor_recommendation ──────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_successor_recommendation',
+            description: 'Calculate successor engineer recommendations and backup maintainers for a repository or person using the EXACT 4-factor scoring engine used in the dashboard. MANDATORY for ANY question asking "who is the best successor for <repo>", "who is the best successor for this repo", "who will replace <person>", "backup maintainer for <repo>", or who can take over a repository if someone departs.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    repo: {
+                        type: 'string',
+                        description: 'Repository name to find successors/backup owners for (e.g. "billing-engine", "core-platform-gateway").',
+                    },
+                    person: {
+                        type: 'string',
+                        description: 'Engineer/person name whose departure requires successors (e.g. "priyasharma", "michaelchen").',
+                    },
+                },
+            },
+        },
+    },
+
+    // ─── 7. get_recent_changes ────────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_recent_changes',
+            description: 'Get recent changes, commits, PRs, and events in a repository over the last N days. MANDATORY for questions asking what changed recently in a repo or repository history over the last N days.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    repo: {
+                        type: 'string',
+                        description: 'Repository name (e.g. "billing-engine", "realtime-stream-engine").',
+                    },
+                    days: {
+                        type: 'number',
+                        description: 'Number of days to look back (default 30).',
+                    },
+                },
+                required: ['repo'],
+            },
+        },
+    },
+
+    // ─── 8. get_related_entities ──────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_related_entities',
+            description: 'Find related entities, technologies, repositories, and dependencies connected to a given technology, module, or service in the knowledge graph. Use for questions like "What technologies are used with React?", "What is related to Kafka?", or "Dependencies of billing-engine".',
+            parameters: {
+                type: 'object',
+                properties: {
+                    entity: {
+                        type: 'string',
+                        description: 'Name of the technology, service, repository, or person (e.g. "Kafka", "PostgreSQL", "React").',
+                    },
+                    relationType: {
+                        type: 'string',
+                        description: 'Optional relation type to filter (e.g. "USES", "DEPENDS_ON", "WORKS_ON").',
+                    },
+                },
+                required: ['entity'],
+            },
+        },
+    },
+
+    // ─── 9. search_evidence ───────────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'search_evidence',
+            description: 'Semantic vector search and text evidence retrieval across Slack discussions, architectural decisions, Jira tickets, and incident notes. MANDATORY for questions asking "why" a migration or replacement happened, Slack discussion references, or architectural rationales.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: {
+                        type: 'string',
+                        description: 'Search phrase or keywords (e.g. "why was redis replaced with valkey", "AWS KMS key rotation discussion").',
+                    },
+                    limit: {
+                        type: 'number',
+                        description: 'Maximum matches to return (default 5).',
+                    },
+                },
+                required: ['query'],
+            },
+        },
+    },
+
+    // ─── 10. get_person_identity ──────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_person_identity',
+            description: 'Resolve an engineer\'s verified canonical person identity, email, username, aliases, commit counts, and owned repositories. Use for identifying people, finding emails, or resolving aliases (e.g. "Arjun9756" -> Arjun Kumar).',
+            parameters: {
+                type: 'object',
+                properties: {
+                    alias: {
+                        type: 'string',
+                        description: 'Name, alias, GitHub username, or email to resolve (e.g. "Arjun9756", "priyasharma").',
+                    },
+                },
+                required: ['alias'],
+            },
+        },
+    },
+];
+
 export const TOOL_DEFINITIONS = [
-    // ─── Knowledge Risk ───────────────────────────────────────────────
+    ...CORE_TOOL_DEFINITIONS,
+
+    // ─── Knowledge Risk (Full Breakdown) ──────────────────────────────
     {
         type: 'function' as const,
         function: {
             name: 'knowledge_risk',
-            description: 'Engineering Knowledge Loss, Departure Risk & Successor Recommendation Calculator. Evaluates human single-point-of-failure dependencies, departure impact, and calculates recommended successor candidates based on 4-factor scoring (shared technologies, shared repositories, recent activity, and current workload capacity). MANDATORY for ANY question asking about what happens if someone leaves/departs/resigns, what breaks if an engineer leaves, backup maintainers upon departure, unowned components if someone quits, replacement engineers, or who is the best successor for an engineer. Examples: "What happens if Priya leaves?", "If Arjun Kumar leaves what breaks and who\'s the best successor?", "Who is the best successor for Elena?", "If Priya Sharma leaves tomorrow, which repositories have no backup maintainer?", "Who is the most critical person to retain?", "Break down knowledge risk across the team". Pass personName="ALL" for whole-team analysis.',
+            description: 'Comprehensive Knowledge Loss, Departure Risk & 6-Factor Risk Breakdown Calculator. Evaluates human single-point-of-failure dependencies, departure impact, and team-wide risk scores. Pass personName="ALL" for whole-team analysis.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -29,23 +246,23 @@ export const TOOL_DEFINITIONS = [
         },
     },
 
-    // ─── SQL Search ───────────────────────────────────────────────────
+    // ─── SQL Search (Relational Templates) ─────────────────────────────
     {
         type: 'function' as const,
         function: {
             name: 'sql_search',
-            description: 'PostgreSQL Relational Engineering Metrics & Risk Tables. Queries computed codebase health metrics, bus factors, repository risk rankings, contributor event counts, and raw event records. MANDATORY for ANY question mentioning "bus factor", "SPOF repos", "repository risk scores", "contributor event counts". Examples: "Which repos have bus factor 1?", "Rank repos by risk score", "Show active contributors per repo", "Which repositories with Bus Factor = 1 also have open issues?". Use queryType="unsupported" if the question cannot be answered by the available query types.',
+            description: 'PostgreSQL Relational Engineering Metrics & Risk Tables. Queries computed codebase health metrics, bus factors, repository risk rankings, contributor event counts, and raw event records.',
             parameters: {
                 type: 'object',
                 properties: {
                     queryType: {
                         type: 'string',
-                        enum: ['repos_by_bus_factor', 'repo_risk', 'recent_events', 'count_by_provider', 'events_by_author', 'event_by_id', 'active_engineers', 'unsupported'],
-                        description: 'Query template: "repos_by_bus_factor" for SPOF repos (params.threshold), "repo_risk" for risk scores, "active_engineers" for contributor counts, "event_by_id" for raw event inspection, "unsupported" if no template fits.',
+                        enum: ['repos_by_bus_factor', 'repo_risk', 'recent_events', 'count_by_provider', 'events_by_author', 'event_by_id', 'active_engineers', 'repo_details', 'healthy_vs_fragile', 'jira_tickets', 'slack_search', 'person_repos', 'person_profile', 'unsupported'],
+                        description: 'Query template type.',
                     },
                     params: {
                         type: 'object',
-                        description: 'Query parameters, e.g. { threshold: 1 } for repos_by_bus_factor, { eventId: "..." } for event_by_id, { author: "..." } for events_by_author.',
+                        description: 'Query parameters.',
                     },
                 },
                 required: ['queryType'],
@@ -58,13 +275,13 @@ export const TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'graph_describe_entity',
-            description: 'Get full details, properties, and all connections of a specific entity in the knowledge graph. Returns the entity\'s name, type, email, role, and every relationship it has. Use for questions like: "What is Arjun\'s email?", "Tell me about Priya Sharma", "Who is Vikram Patel?", "What role does Neha have?", "Show me details about checkout-service". For listing ALL people/engineers, pass entity="people" or entity="engineers".',
+            description: 'Get full details, properties, and all connections of a specific entity in the knowledge graph. Returns the entity\'s name, type, email, role, and every relationship it has.',
             parameters: {
                 type: 'object',
                 properties: {
                     entity: {
                         type: 'string',
-                        description: 'Entity name to describe (e.g. "Priya Sharma", "checkout-service", "React"). For listing all people, pass "people" or "engineers".',
+                        description: 'Entity name to describe (e.g. "Priya Sharma", "checkout-service", "React").',
                     },
                 },
                 required: ['entity'],
@@ -77,17 +294,17 @@ export const TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'graph_count_by_label',
-            description: 'Count how many entities exist in the knowledge graph matching a label and/or search term. Use for questions like: "How many developers do we have?" (label="PERSON"), "How many repositories exist?" (label="REPOSITORY"), "How many technologies are in use?" (label="TECHNOLOGY"), "How many commits mention Kafka?" (searchTerm="Kafka").',
+            description: 'Count how many entities exist in the knowledge graph matching a label (REPOSITORY, TECHNOLOGY, PERSON). Note: for commits, always use get_commit_count.',
             parameters: {
                 type: 'object',
                 properties: {
                     searchTerm: {
                         type: 'string',
-                        description: 'Optional text to filter entity names (e.g. "Kafka", "Priya"). Empty string for total count.',
+                        description: 'Optional text to filter entity names.',
                     },
                     label: {
                         type: 'string',
-                        description: 'Node label to count (e.g. "PERSON", "REPOSITORY", "TECHNOLOGY", "COMMIT", "ISSUE", "PULL_REQUEST"). Empty string to count all labels.',
+                        description: 'Node label to count ("PERSON", "REPOSITORY", "TECHNOLOGY").',
                     },
                 },
                 required: ['label'],
@@ -100,21 +317,21 @@ export const TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'graph_list_nodes',
-            description: 'List entities connected to a source entity, optionally filtered by relationship type and target label. Automatically falls back to multi-hop (2-hop) if 1-hop returns no results. Use for questions like: "What repos does Priya work on?" (entity="Priya", targetLabel="REPOSITORY"), "What technologies does Vikram use?" (entity="Vikram", relation="USES", targetLabel="TECHNOLOGY"), "Show connections of auth-gateway".',
+            description: 'List nodes of a specific target label connected to an entity via a relationship.',
             parameters: {
                 type: 'object',
                 properties: {
                     entity: {
                         type: 'string',
-                        description: 'Source entity name (e.g. "Priya Sharma", "checkout-service").',
+                        description: 'Starting entity name.',
                     },
                     targetLabel: {
                         type: 'string',
-                        description: 'Optional target node label filter (e.g. "REPOSITORY", "TECHNOLOGY", "PERSON").',
+                        description: 'Target node label ("REPOSITORY", "TECHNOLOGY", "PERSON").',
                     },
                     relation: {
                         type: 'string',
-                        description: 'Optional relationship type filter (e.g. "AUTHORED", "USES", "PART_OF", "DEPENDS_ON", "WORKS_ON").',
+                        description: 'Relationship type ("USES", "WORKS_ON", "CONTRIBUTED_TO").',
                     },
                 },
                 required: ['entity'],
@@ -127,15 +344,16 @@ export const TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'graph_repository_summary',
-            description: 'Get a comprehensive summary of one or all repositories, including contributors (with emails/roles), work item counts, recent entities, and ALL TECHNOLOGIES used in/by each repository (technology stack per repository). Use for questions like: "every repo their corresponding technology", "what technologies are used in checkout-service?", "show tech stack for each repository", "Show me repos and who is responsible for each", "List all repositories with their contributors", "Who are the contributors to billing-service?".',
+            description: 'Get summary for repository including contributors, work items, and technologies.',
             parameters: {
                 type: 'object',
                 properties: {
                     repositoryName: {
                         type: 'string',
-                        description: 'Specific repository name (e.g. "checkout-service"), or empty/"ALL" for all repositories.',
+                        description: 'Repository name or "ALL".',
                     },
                 },
+                required: ['repositoryName'],
             },
         },
     },
@@ -145,178 +363,14 @@ export const TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'graph_shortest_path',
-            description: 'Find the shortest path between two entities in the knowledge graph. Returns all nodes and relationships along the path. Use for questions like: "How is auth-gateway connected to billing-service?", "What is the shortest path between Priya and checkout-service?", "Show the dependency path from X to Y".',
+            description: 'Find shortest path connecting two entities in the knowledge graph.',
             parameters: {
                 type: 'object',
                 properties: {
-                    from: {
-                        type: 'string',
-                        description: 'Source entity name.',
-                    },
-                    to: {
-                        type: 'string',
-                        description: 'Target entity name.',
-                    },
+                    from: { type: 'string', description: 'Starting entity.' },
+                    to: { type: 'string', description: 'Destination entity.' },
                 },
                 required: ['from', 'to'],
-            },
-        },
-    },
-
-    // ─── Graph: Dependency Analysis ───────────────────────────────────
-    {
-        type: 'function' as const,
-        function: {
-            name: 'graph_dependency_analysis',
-            description: 'Analyze upstream dependencies (what this entity depends on) and downstream dependents (what depends on this entity) up to 3 hops. Use for questions like: "What does checkout-service depend on?", "What services depend on auth-gateway?", "Show the dependency tree of billing-service".',
-            parameters: {
-                type: 'object',
-                properties: {
-                    entity: {
-                        type: 'string',
-                        description: 'Entity name to analyze dependencies for.',
-                    },
-                },
-                required: ['entity'],
-            },
-        },
-    },
-
-    // ─── Graph: Impact Analysis ───────────────────────────────────────
-    {
-        type: 'function' as const,
-        function: {
-            name: 'graph_impact_analysis',
-            description: 'Analyze the impact/blast radius if an entity changes or fails — what upstream and downstream systems are affected. Use for questions like: "What would be impacted if auth-gateway goes down?", "What is the blast radius of changes to billing-service?".',
-            parameters: {
-                type: 'object',
-                properties: {
-                    entity: {
-                        type: 'string',
-                        description: 'Entity name to analyze impact for.',
-                    },
-                },
-                required: ['entity'],
-            },
-        },
-    },
-
-    // ─── Graph: Expertise Analysis ────────────────────────────────────
-    {
-        type: 'function' as const,
-        function: {
-            name: 'graph_expertise_analysis',
-            description: 'Find who has expertise or domain knowledge about a specific entity, ranked by evidence count (authored work, related commits). Use for questions like: "Who knows the most about Kafka?", "Who is the expert on checkout-service?", "Who has worked with Redis the most?".',
-            parameters: {
-                type: 'object',
-                properties: {
-                    entity: {
-                        type: 'string',
-                        description: 'Entity name to find experts for (e.g. "Kafka", "checkout-service", "React").',
-                    },
-                },
-                required: ['entity'],
-            },
-        },
-    },
-
-    // ─── Graph: Count Connected Nodes ─────────────────────────────────
-    {
-        type: 'function' as const,
-        function: {
-            name: 'graph_count_nodes',
-            description: 'Count how many nodes of a specific type are connected to an entity via a specific relationship. Use for questions like: "How many repos has Priya authored?", "How many commits does Vikram have in billing-service?".',
-            parameters: {
-                type: 'object',
-                properties: {
-                    entity: {
-                        type: 'string',
-                        description: 'Source entity name.',
-                    },
-                    targetLabel: {
-                        type: 'string',
-                        description: 'Label of target nodes to count (e.g. "REPOSITORY", "COMMIT").',
-                    },
-                    relation: {
-                        type: 'string',
-                        description: 'Relationship type (e.g. "AUTHORED"). Defaults to "AUTHORED".',
-                    },
-                    scopeName: {
-                        type: 'string',
-                        description: 'Optional scope filter (e.g. repository name to scope count within).',
-                    },
-                },
-                required: ['entity'],
-            },
-        },
-    },
-
-    // ─── Graph: Search Entity Candidates ──────────────────────────────
-    {
-        type: 'function' as const,
-        function: {
-            name: 'graph_search_candidates',
-            description: 'Fuzzy-search for entity candidates in the knowledge graph by name, email, or external ID. Returns matching entities with their type, email, and role. Use when you need to disambiguate or verify whether an entity exists before querying it, or for questions like: "Is there someone named Priya in the system?", "Find entities matching checkout".',
-            parameters: {
-                type: 'object',
-                properties: {
-                    searchTerm: {
-                        type: 'string',
-                        description: 'Search term to match against entity names/emails (e.g. "Priya", "checkout").',
-                    },
-                    limit: {
-                        type: 'number',
-                        description: 'Maximum number of candidates to return. Defaults to 5.',
-                    },
-                },
-                required: ['searchTerm'],
-            },
-        },
-    },
-
-    // ─── Graph: Open-Ended Traversal ──────────────────────────────────
-    {
-        type: 'function' as const,
-        function: {
-            name: 'graph_traverse',
-            description: 'Open-ended knowledge graph traversal with LLM-specified depth, relations, direction, and target labels. Use this when NO existing specialized graph tool fits — for example: exploring multi-hop chains across diverse relationship types, finding indirect connections, or custom-depth exploration. The relations, depth range, and limit are all decided by YOU based on the query. ONLY use relation types and labels from the live schema provided in the system context.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    startEntities: {
-                        type: 'array',
-                        items: { type: 'string' },
-                        description: 'Entity names to start the traversal from.',
-                    },
-                    relations: {
-                        type: 'array',
-                        items: { type: 'string' },
-                        description: 'Relationship types to traverse (from the live schema). Empty array = any relation.',
-                    },
-                    depth: {
-                        type: 'object',
-                        properties: {
-                            min: { type: 'number', description: 'Minimum traversal depth (default 1).' },
-                            max: { type: 'number', description: 'Maximum traversal depth (default 3). Use higher (4-6) for deep chain exploration.' },
-                        },
-                        description: 'Depth range for traversal. Shallow (1-2) for direct connections, deep (3-6) for chain analysis.',
-                    },
-                    limit: {
-                        type: 'number',
-                        description: 'Maximum number of results to return (default 20).',
-                    },
-                    direction: {
-                        type: 'string',
-                        enum: ['outgoing', 'incoming', 'both'],
-                        description: 'Traversal direction: "outgoing" follows edges away from start, "incoming" follows edges toward start, "both" follows both.',
-                    },
-                    targetLabels: {
-                        type: 'array',
-                        items: { type: 'string' },
-                        description: 'Optional filter: only return nodes with these labels (from the live schema).',
-                    },
-                },
-                required: ['startEntities'],
             },
         },
     },
@@ -326,71 +380,13 @@ export const TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'vector_search',
-            description: 'Qdrant Semantic Unstructured Knowledge Search. Searches embeddings of Slack conversations, PR descriptions, architectural decisions (ADRs), RFCs, incident postmortems, and Jira ticket discussions. Use for "why" questions, rationale behind technical decisions, incident causes, migration reasoning, or searching for specific text/issues/breaking changes in PRs and messages. Do NOT use for departure risk (use knowledge_risk) or structured metrics/bus factor (use sql_search) or dependency graphs (use graph tools). Examples: "Why was Redis replaced with Valkey?", "What caused the auth-gateway latency issue?", "Tell me about the backend architecture rationale", "Find PRs mentioning breaking changes".',
+            description: 'Search semantic vector embeddings for commit messages, discussions, and technical rationale.',
             parameters: {
                 type: 'object',
                 properties: {
-                    query: {
-                        type: 'string',
-                        description: 'Semantic search phrase targeting the core technical topic, issue, incident, or rationale.',
-                    },
+                    query: { type: 'string', description: 'Search query.' },
                 },
                 required: ['query'],
-            },
-        },
-    },
-
-    // ─── Web Search ───────────────────────────────────────────────────
-    {
-        type: 'function' as const,
-        function: {
-            name: 'web_search',
-            description: 'External Web Search. Use for external public documentation, third-party libraries, CVE vulnerability advisories, or internet technical references.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    query: {
-                        type: 'string',
-                        description: 'Web search query.',
-                    },
-                },
-                required: ['query'],
-            },
-        },
-    },
-
-    // ─── Recent Engineering Activity & Timeline ──────────────────────
-    {
-        type: 'function' as const,
-        function: {
-            name: 'recent_activity',
-            description: 'Query recent engineering activities, latest commits, pull requests, issues, and messages across ANY engineer/person, repository, or workspace. Returns events ordered by timestamp (most recent first) with exact human-readable dates, times, author, event type, repository name, and commit/PR/issue summary. MANDATORY for ANY question asking what an engineer/person recently did, latest work of someone, when someone last made changes, what commits or PRs a person authored recently, or latest activities in a repo or workspace. Examples: "What did Rohan Verma do recently and on what date?", "rohan ne latest kya kra h abhi", "Show recent commits by Priya", "What was Elena\'s recent PR and when?", "Show latest activity in checkout-service", "What are the recent changes across the team?".',
-            parameters: {
-                type: 'object',
-                properties: {
-                    author: {
-                        type: 'string',
-                        description: 'Name, email, or username of the person/engineer (e.g. "Rohan Verma", "Priya Sharma", "Elena", "Arjun"). Optional if querying repository or team-wide.',
-                    },
-                    repository: {
-                        type: 'string',
-                        description: 'Optional repository name to filter activities (e.g. "checkout-service", "payment-service").',
-                    },
-                    eventType: {
-                        type: 'string',
-                        enum: ['commit', 'pull_request', 'issue', 'message', 'all'],
-                        description: 'Optional event type filter. Defaults to "all".',
-                    },
-                    provider: {
-                        type: 'string',
-                        enum: ['github', 'jira', 'slack', 'all'],
-                        description: 'Optional provider platform filter.',
-                    },
-                    limit: {
-                        type: 'number',
-                        description: 'Maximum number of recent events to retrieve (default 5).',
-                    },
-                },
             },
         },
     },

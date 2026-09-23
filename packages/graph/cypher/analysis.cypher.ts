@@ -314,6 +314,25 @@ export async function countByLabel(searchTerm: string, label: string) {
             return { searchTerm: searchTerm || '*', label: 'PERSON', total, people, names }
         }
 
+        if (['COMMIT', 'COMMITS'].includes(normalizedLabel)) {
+            // Cortex architecture eliminates individual COMMIT nodes (Aura 150k node limit).
+            // Commits are compacted into CONTRIBUTED_TO rollup edges with commitCount properties.
+            const commitCypher = `
+                MATCH ()-[rel:CONTRIBUTED_TO]->(r:REPOSITORY)
+                ${trimmedSearch ? 'WHERE toLower(r.name) CONTAINS toLower($searchTerm)' : ''}
+                RETURN sum(coalesce(rel.commitCount, 1)) AS total
+            `
+            const commitResult = await session.run(commitCypher, { searchTerm: trimmedSearch })
+            const record = commitResult.records[0]
+            const total = neo4j.integer.toNumber(record?.get('total') ?? neo4j.int(0))
+            return {
+                searchTerm: searchTerm || '*',
+                label: 'COMMIT',
+                total,
+                note: 'Commit nodes are compacted into CONTRIBUTED_TO rollup edges to prevent Neo4j Aura node limit exhaustion. Total reflects aggregated commitCount on CONTRIBUTED_TO edges.'
+            }
+        }
+
         let cypher: string
         if (normalizedLabel && searchTerm) {
             cypher = `MATCH (n:${normalizedLabel}) WHERE toLower(n.name) CONTAINS toLower($searchTerm) RETURN count(n) AS total, collect(n.name)[0..50] AS names`
