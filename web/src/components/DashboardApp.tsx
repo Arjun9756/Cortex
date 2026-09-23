@@ -8,6 +8,7 @@ import { BusFactorPage } from '../pages/BusFactorPage';
 import { TechnologiesPage } from '../pages/TechnologiesPage';
 import { TimelinePage } from '../pages/TimelinePage';
 import { AnalyticsPage } from '../pages/AnalyticsPage';
+import { PullRequestsPage } from '../pages/PullRequestsPage';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 
 interface DashboardAppProps {
@@ -43,6 +44,8 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({ onGoToLanding }) => 
         return <TimelinePage />;
       case 'analytics':
         return <AnalyticsPage />;
+      case 'pull-requests':
+        return <PullRequestsPage />;
       default:
         return <DashboardOverviewPage onNavigate={handleNavigate} />;
     }

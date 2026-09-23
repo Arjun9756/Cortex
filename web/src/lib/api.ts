@@ -642,3 +642,92 @@ export async function getGraphNodeDetail(id: string, type?: string): Promise<Gra
     const endpoint = '/api/graph/node/' + encodeURIComponent(id) + (queryString ? ('?' + queryString) : '');
     return fetchJson<GraphNodeDetail>(endpoint);
 }
+
+// ─── PR & Delivery Metrics ──────────────────────────────────────────
+
+export interface DistributionStats {
+    median: number;
+    p90: number;
+    p75: number;
+    p25: number;
+    min: number;
+    max: number;
+    average: number;
+}
+
+export interface StaleOutlierPr {
+    prId: string;
+    title: string;
+    durationDays: number;
+    author: string;
+}
+
+export interface PrMetricsReport {
+    repoName?: string;
+    timeframeDays?: number;
+    sampleSize: number;
+    dataCompleteness: 'complete' | 'partial';
+    warning?: string;
+    reviewCycleTime: {
+        headlineHours: number;
+        metricName: string;
+        definition: string;
+        wallClockHours: DistributionStats;
+        unit: 'wall_clock_hours';
+    };
+    totalLeadTime: {
+        headlineHours: number;
+        metricName: string;
+        definition: string;
+        wallClockHours: DistributionStats;
+        unit: 'wall_clock_hours';
+    };
+    counts: {
+        totalEvaluated: number;
+        mergedHumanPrs: number;
+        mergedBotPrs: number;
+        openPrs: number;
+        closedUnmergedPrs: number;
+        staleOutliersCount: number;
+    };
+    sizeContext: {
+        totalAdditions: number;
+        totalDeletions: number;
+        totalFilesChanged: number;
+        averageLinesPerPr: number;
+        qualification: string;
+    };
+    staleOutliers: StaleOutlierPr[];
+    botActivity: {
+        filteredCount: number;
+        suspectBotsCount: number;
+        suspectBotAuthors: string[];
+        warning?: string;
+    };
+    transparencyTooltip: string;
+}
+
+export interface PrMetricsResponse {
+    status: boolean;
+    metrics: PrMetricsReport;
+    repoBreakdown?: PrMetricsReport[];
+}
+
+export interface GetPrMetricsOptions {
+    repo?: string;
+    days?: number;
+    includeBots?: boolean;
+    breakdown?: boolean;
+}
+
+export async function getPrMetrics(options?: GetPrMetricsOptions): Promise<PrMetricsResponse> {
+    const params = new URLSearchParams();
+    if (options?.repo) params.set('repo', options.repo);
+    if (options?.days !== undefined) params.set('days', options.days.toString());
+    if (options?.includeBots) params.set('includeBots', 'true');
+    if (options?.breakdown) params.set('breakdown', 'true');
+
+    const qs = params.toString();
+    const endpoint = `/api/dashboard/pr-metrics${qs ? `?${qs}` : ''}`;
+    return fetchJson<PrMetricsResponse>(endpoint);
+}

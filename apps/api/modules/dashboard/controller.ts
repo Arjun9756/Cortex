@@ -836,6 +836,7 @@ export async function getPrCycleTimeMetrics(req: Request, res: Response) {
         const repo = req.query.repo as string | undefined;
         const days = req.query.days ? parseInt(req.query.days as string, 10) : 90;
         const includeBots = req.query.includeBots === 'true';
+        const includeBreakdown = req.query.breakdown === 'true';
 
         const { calculatePrMetrics } = await import('../../../../packages/analytics/prMetrics.service.js');
         const metrics = await calculatePrMetrics({
@@ -844,7 +845,32 @@ export async function getPrCycleTimeMetrics(req: Request, res: Response) {
             includeBots
         });
 
-        res.json({ status: true, metrics });
+        let repoBreakdown: any[] | undefined = undefined;
+        if (includeBreakdown) {
+            const repoRows = await sql`
+                SELECT DISTINCT repo_name
+                FROM repo_metrics
+                WHERE status NOT IN ('empty', 'scaffold')
+                ORDER BY repo_name ASC
+            `;
+            const repoList = repoRows.map(r => r.repo_name);
+
+            const targetRepos = repoList.length > 0 ? repoList : (await sql`
+                SELECT DISTINCT COALESCE(payload->'repository'->>'name', payload->>'repository') as repo_name
+                FROM events
+                WHERE provider = 'github' AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
+            `).map(r => r.repo_name).filter(Boolean);
+
+            repoBreakdown = await Promise.all(
+                targetRepos.map((rName: string) => calculatePrMetrics({
+                    repoName: rName,
+                    timeframeDays: isNaN(days) ? 90 : days,
+                    includeBots
+                }))
+            );
+        }
+
+        res.json({ status: true, metrics, repoBreakdown });
     } catch (err: any) {
         console.error('[getPrCycleTimeMetrics] Error:', err?.message);
         res.status(500).json({ status: false, error: 'Failed to compute PR metrics', message: err?.message });

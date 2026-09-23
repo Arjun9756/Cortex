@@ -12,6 +12,7 @@ import { BusFactorPage } from './pages/BusFactorPage';
 import { TechnologiesPage } from './pages/TechnologiesPage';
 import { TimelinePage } from './pages/TimelinePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { PullRequestsPage } from './pages/PullRequestsPage';
 
 import { isDemoEnabled } from './config';
 
@@ -55,6 +56,8 @@ export function App() {
         return 'Activity Timeline Feed';
       case 'analytics':
         return 'Intelligence & Analytics';
+      case 'pull-requests':
+        return 'Pull Requests & Delivery Velocity';
       default:
         return 'Dashboard';
     }
@@ -116,6 +119,12 @@ export function App() {
           <AnalyticsPage 
             key={refreshKey} 
             onSyncUpdated={(date) => setLastSyncedAt(date)}
+          />
+        );
+      case 'pull-requests':
+        return (
+          <PullRequestsPage 
+            key={refreshKey}
           />
         );
       default:

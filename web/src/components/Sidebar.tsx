@@ -7,7 +7,8 @@ import {
   Cpu, 
   History,
   BarChart3,
-  FolderGit2
+  FolderGit2,
+  GitPullRequest
 } from 'lucide-react';
 import { CortexLogo } from './CortexLogo';
 
@@ -19,7 +20,8 @@ export type NavTab =
   | 'bus-factor' 
   | 'technologies' 
   | 'timeline'
-  | 'analytics';
+  | 'analytics'
+  | 'pull-requests';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -56,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
     {
       title: 'RISK & INTELLIGENCE',
       items: [
+        { id: 'pull-requests', label: 'Pull Requests & Delivery', icon: GitPullRequest, badge: 'New', badgeVariant: 'primary' },
         { id: 'timeline', label: 'Activity Timeline', icon: History },
         { id: 'analytics', label: 'Intelligence Metrics', icon: BarChart3 },
       ],
