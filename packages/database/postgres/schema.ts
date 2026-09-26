@@ -188,6 +188,30 @@ export async function ensurePostgresTables(): Promise<void> {
             )
         `;
 
+        // 9b. Integrations Table (Real OAuth tokens, scoping rules, and connection state)
+        await sql`
+            CREATE TABLE IF NOT EXISTS integrations (
+                id SERIAL PRIMARY KEY,
+                provider VARCHAR(50) NOT NULL UNIQUE,
+                status VARCHAR(50) NOT NULL DEFAULT 'not_connected',
+                access_token TEXT,
+                refresh_token TEXT,
+                token_expires_at TIMESTAMPTZ,
+                scopes TEXT[],
+                account_id VARCHAR(255),
+                account_name VARCHAR(255),
+                account_email VARCHAR(255),
+                account_avatar VARCHAR(500),
+                metadata JSONB DEFAULT '{}'::jsonb,
+                scope_rules JSONB DEFAULT '{"allMonitored": true, "monitoredItems": ["*"]}'::jsonb,
+                webhook_secret VARCHAR(255),
+                webhook_registered BOOLEAN DEFAULT false,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+        await sql`CREATE UNIQUE INDEX IF NOT EXISTS integrations_provider_idx ON integrations(provider)`;
+
         // Existing deployments cannot safely infer origin from provider or timestamps.
         // Quarantine all legacy rows as untrusted before enforcing source at the DB layer.
         const provenanceTables = [

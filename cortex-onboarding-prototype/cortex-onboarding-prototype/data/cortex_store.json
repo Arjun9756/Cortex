@@ -1,0 +1,145 @@
+{
+  "connectors": {
+    "github": {
+      "provider": "github",
+      "name": "GitHub",
+      "status": "connected",
+      "accessToken": "gho_simulated_1790427354318",
+      "refreshToken": "refresh-simulated-1790427354318",
+      "tokenExpiresAt": 1793019354318,
+      "lastTokenCheck": 1790427354318,
+      "lastError": null,
+      "scopeRules": {
+        "allMonitored": true,
+        "monitoredItems": [
+          "*"
+        ]
+      },
+      "webhookConfig": {
+        "registered": true,
+        "webhookUrl": "http://localhost:3000/api/github/webhook",
+        "signatureHeader": "x-hub-signature-256",
+        "externalWebhookId": "wh_sub_github_1790427354318",
+        "secretMasked": "••••••••",
+        "registeredAt": 1790427354318
+      },
+      "eventCount": 0,
+      "updatedAt": 1790427354318
+    },
+    "slack": {
+      "provider": "slack",
+      "name": "Slack",
+      "status": "connected",
+      "accessToken": "xoxb-simulated-1790427369168",
+      "refreshToken": "refresh-simulated-1790427369168",
+      "tokenExpiresAt": 1793019369168,
+      "lastTokenCheck": 1790427369168,
+      "lastError": null,
+      "scopeRules": {
+        "allMonitored": true,
+        "monitoredItems": [
+          "*"
+        ]
+      },
+      "webhookConfig": {
+        "registered": true,
+        "webhookUrl": "http://localhost:3000/api/slack/webhook",
+        "signatureHeader": "x-slack-signature",
+        "externalWebhookId": "wh_sub_slack_1790427369168",
+        "secretMasked": "••••••••",
+        "registeredAt": 1790427369168
+      },
+      "eventCount": 0,
+      "updatedAt": 1790427373266
+    },
+    "jira": {
+      "provider": "jira",
+      "name": "Jira",
+      "status": "connected",
+      "accessToken": "jira-simulated-1790427383003",
+      "refreshToken": "refresh-simulated-1790427383003",
+      "tokenExpiresAt": 1793019383003,
+      "lastTokenCheck": 1790427383003,
+      "lastError": null,
+      "scopeRules": {
+        "allMonitored": true,
+        "monitoredItems": [
+          "*"
+        ]
+      },
+      "webhookConfig": {
+        "registered": true,
+        "webhookUrl": "http://localhost:3000/api/jira/webhook",
+        "signatureHeader": "x-jira-webhook-secret",
+        "externalWebhookId": "wh_sub_jira_1790427383003",
+        "secretMasked": "••••••••",
+        "registeredAt": 1790427383003
+      },
+      "eventCount": 0,
+      "updatedAt": 1790427386618
+    }
+  },
+  "persons": {},
+  "events": [],
+  "auditLogs": [
+    {
+      "id": "audit_1790427386620_tofyo",
+      "timestamp": 1790427386620,
+      "provider": "jira",
+      "eventType": "SCOPE_RULES_UPDATED",
+      "message": "Updated monitoring scope for JIRA: All items",
+      "metadata": {
+        "allMonitored": true,
+        "monitoredItems": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "audit_1790427383005_ord6o",
+      "timestamp": 1790427383005,
+      "provider": "jira",
+      "eventType": "CONNECTOR_AUTHORIZED",
+      "message": "Successfully authorized JIRA connector and auto-registered webhook",
+      "metadata": {
+        "webhookUrl": "http://localhost:3000/api/jira/webhook",
+        "allMonitored": true
+      }
+    },
+    {
+      "id": "audit_1790427373267_93zu5",
+      "timestamp": 1790427373267,
+      "provider": "slack",
+      "eventType": "SCOPE_RULES_UPDATED",
+      "message": "Updated monitoring scope for SLACK: All items",
+      "metadata": {
+        "allMonitored": true,
+        "monitoredItems": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "audit_1790427369170_c0jqp",
+      "timestamp": 1790427369170,
+      "provider": "slack",
+      "eventType": "CONNECTOR_AUTHORIZED",
+      "message": "Successfully authorized SLACK connector and auto-registered webhook",
+      "metadata": {
+        "webhookUrl": "http://localhost:3000/api/slack/webhook",
+        "allMonitored": true
+      }
+    },
+    {
+      "id": "audit_1790427354320_o3dxa",
+      "timestamp": 1790427354320,
+      "provider": "github",
+      "eventType": "CONNECTOR_AUTHORIZED",
+      "message": "Successfully authorized GITHUB connector and auto-registered webhook",
+      "metadata": {
+        "webhookUrl": "http://localhost:3000/api/github/webhook",
+        "allMonitored": true
+      }
+    }
+  ]
+}

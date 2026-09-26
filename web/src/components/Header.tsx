@@ -8,6 +8,7 @@ interface HeaderProps {
   isRefreshing?: boolean;
   lastSyncedAt?: Date | null;
   onGoLanding?: () => void;
+  onGoOnboarding?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,7 +17,8 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
   isRefreshing = false,
   lastSyncedAt,
-  onGoLanding
+  onGoLanding,
+  onGoOnboarding,
 }) => {
   const [timeAgoText, setTimeAgoText] = useState<string>('Just now');
   const [isStale, setIsStale] = useState<boolean>(false);
@@ -86,6 +88,16 @@ export const Header: React.FC<HeaderProps> = ({
             className="px-2.5 py-1 rounded-md bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
             ← Landing Page
+          </button>
+        )}
+
+        {onGoOnboarding && (
+          <button
+            onClick={onGoOnboarding}
+            className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-xs font-medium text-indigo-300 hover:text-indigo-200 transition-colors cursor-pointer"
+          >
+            <span>⚡</span>
+            <span>Connect Tools</span>
           </button>
         )}
 

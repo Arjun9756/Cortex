@@ -12,6 +12,7 @@ import { jiraRouter } from '../modules/jira/router.js'
 import { graphRouter } from '../modules/graph/router.js'
 import { dashboardRouter } from '../modules/dashboard/router.js'
 import { analyticsRouter } from '../modules/analytics/router.js'
+import { integrationsRouter } from '../modules/integrations/router.js'
 import { updateIntegrationSecret } from '../modules/dashboard/controller.js'
 import { licenseGuard, getLicenseState } from '../../../packages/license/index.js'
 
@@ -68,6 +69,7 @@ app.use('/api/chat' , chatRouter)
 app.use('/api/graph' , graphRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/analytics', analyticsRouter)
+app.use('/api/integrations', integrationsRouter)
 app.post('/api/:provider/secret', updateIntegrationSecret)
 
 export default app

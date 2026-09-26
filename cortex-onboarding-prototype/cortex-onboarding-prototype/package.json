@@ -1,0 +1,30 @@
+{
+  "name": "cortex-onboarding-prototype",
+  "version": "1.0.0",
+  "description": "Cortex BYOC Client Onboarding & Ongoing-Ingestion Prototype (OAuth, Scoping, Webhook Auto-Registration, Token Expiry, and Email-Based Identity Resolution)",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && node dist/server.js",
+    "dev": "node --loader ts-node/esm src/server.ts",
+    "verify": "node --loader ts-node/esm scripts/verify.ts",
+    "test": "node --loader ts-node/esm scripts/verify.ts",
+    "test:hardcore": "npx ts-node scripts/hardcore_test.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

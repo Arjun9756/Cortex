@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Cortex BYOC Client Onboarding — Connect GitHub, Slack, and Jira for automated team activity ingestion." />
+  <title>Cortex — Connect Your Tools</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Ambient background blobs -->
+    <div class="ambient-bg">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading-screen" class="loading-screen">
+      <div class="spinner"></div>
+      <p class="loading-text">Initializing Cortex…</p>
+    </div>
+
+    <!-- ═══════════════════ FIRST-RUN SETUP SCREEN ═══════════════════ -->
+    <div id="setup-screen" class="screen hidden">
+      <header class="setup-header">
+        <div class="logo-mark">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="18" stroke="url(#logo-grad)" stroke-width="3" />
+            <circle cx="20" cy="20" r="8" fill="url(#logo-grad)" />
+            <defs>
+              <linearGradient id="logo-grad" x1="0" y1="0" x2="40" y2="40">
+                <stop offset="0%" stop-color="#818cf8" />
+                <stop offset="100%" stop-color="#c084fc" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1 class="setup-title">Connect your tools</h1>
+        <p class="setup-subtitle">Link your team's GitHub, Slack, and Jira accounts to begin tracking activity across your engineering organization.</p>
+      </header>
+
+      <div class="connector-cards" id="connector-cards">
+        <!-- GitHub Card -->
+        <div class="connector-card" id="card-github" data-provider="github">
+          <div class="card-status-badge" id="badge-github">Not connected</div>
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+          </div>
+          <h3 class="card-title">GitHub</h3>
+          <p class="card-desc">Track commits, PRs, reviews, and code activity across your repositories.</p>
+          <button class="btn btn-connect" id="btn-connect-github" onclick="connectProvider('github')">
+            <span class="btn-icon">⚡</span> Connect GitHub
+          </button>
+          <div class="scope-section hidden" id="scope-github">
+            <label class="scope-label">Monitor Repositories</label>
+            <div class="scope-toggle">
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-github-all" checked onchange="toggleScopeAll('github')" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-text">All repos in this org</span>
+            </div>
+            <div class="scope-input-group hidden" id="scope-input-github">
+              <input type="text" class="scope-input" id="input-github-repos" placeholder="e.g. acme/api, acme/web-app" />
+              <button class="btn btn-sm" onclick="saveScopeRules('github')">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slack Card -->
+        <div class="connector-card" id="card-slack" data-provider="slack">
+          <div class="card-status-badge" id="badge-slack">Not connected</div>
+          <div class="card-icon slack-icon">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
+              <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.124 2.521a2.528 2.528 0 0 1 2.52-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.52V8.834zm-1.271 0a2.528 2.528 0 0 1-2.521 2.521 2.528 2.528 0 0 1-2.521-2.521V2.522A2.528 2.528 0 0 1 15.165 0a2.528 2.528 0 0 1 2.522 2.522v6.312zm-2.522 10.124a2.528 2.528 0 0 1 2.522 2.52A2.528 2.528 0 0 1 15.165 24a2.528 2.528 0 0 1-2.521-2.522v-2.52h2.521zm0-1.271a2.528 2.528 0 0 1-2.521-2.521 2.528 2.528 0 0 1 2.521-2.521h6.313A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.522h-6.313z"/>
+            </svg>
+          </div>
+          <h3 class="card-title">Slack</h3>
+          <p class="card-desc">Monitor conversations, decisions, and team interactions in your workspace channels.</p>
+          <button class="btn btn-connect" id="btn-connect-slack" onclick="connectProvider('slack')">
+            <span class="btn-icon">⚡</span> Connect Slack
+          </button>
+          <div class="scope-section hidden" id="scope-slack">
+            <label class="scope-label">Monitor Channels</label>
+            <div class="scope-toggle">
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-slack-all" checked onchange="toggleScopeAll('slack')" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-text">All channels bot is invited to</span>
+            </div>
+            <div class="scope-input-group hidden" id="scope-input-slack">
+              <input type="text" class="scope-input" id="input-slack-channels" placeholder="e.g. #engineering, #incidents" />
+              <button class="btn btn-sm" onclick="saveScopeRules('slack')">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Jira Card -->
+        <div class="connector-card" id="card-jira" data-provider="jira">
+          <div class="card-status-badge" id="badge-jira">Not connected</div>
+          <div class="card-icon jira-icon">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
+              <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23 .248H11.443a5.218 5.218 0 0 0 5.214 5.217h2.129v2.054A5.22 5.22 0 0 0 24 12.735V1.249A1.001 1.001 0 0 0 23 .248z"/>
+            </svg>
+          </div>
+          <h3 class="card-title">Jira</h3>
+          <p class="card-desc">Track issues, sprints, and project progress across your Atlassian workspace.</p>
+          <button class="btn btn-connect" id="btn-connect-jira" onclick="connectProvider('jira')">
+            <span class="btn-icon">⚡</span> Connect Jira
+          </button>
+          <div class="scope-section hidden" id="scope-jira">
+            <label class="scope-label">Monitor Projects</label>
+            <div class="scope-toggle">
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-jira-all" checked onchange="toggleScopeAll('jira')" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-text">All projects</span>
+            </div>
+            <div class="scope-input-group hidden" id="scope-input-jira">
+              <input type="text" class="scope-input" id="input-jira-projects" placeholder="e.g. ENG, OPS, INFRA" />
+              <button class="btn btn-sm" onclick="saveScopeRules('jira')">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-footer" id="setup-footer">
+        <button class="btn btn-primary btn-lg hidden" id="btn-continue" onclick="goToDashboard()">
+          Continue to Dashboard →
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ DASHBOARD SCREEN ═══════════════════ -->
+    <div id="dashboard-screen" class="screen hidden">
+      <nav class="dashboard-nav">
+        <div class="nav-brand">
+          <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="18" stroke="url(#logo-grad2)" stroke-width="3" />
+            <circle cx="20" cy="20" r="8" fill="url(#logo-grad2)" />
+            <defs>
+              <linearGradient id="logo-grad2" x1="0" y1="0" x2="40" y2="40">
+                <stop offset="0%" stop-color="#818cf8" />
+                <stop offset="100%" stop-color="#c084fc" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span class="nav-title">Cortex</span>
+        </div>
+        <div class="nav-actions">
+          <button class="btn btn-ghost" onclick="checkAllTokens()">🔄 Check Tokens</button>
+          <button class="btn btn-ghost btn-danger-ghost" onclick="resetAll()">↺ Reset</button>
+        </div>
+      </nav>
+
+      <main class="dashboard-main">
+        <!-- Status Cards Row -->
+        <section class="status-row" id="status-row">
+          <!-- Populated by JS -->
+        </section>
+
+        <!-- Tabs -->
+        <div class="tab-bar">
+          <button class="tab active" data-tab="events" onclick="switchTab('events')">📥 Events</button>
+          <button class="tab" data-tab="persons" onclick="switchTab('persons')">👥 People</button>
+          <button class="tab" data-tab="audit" onclick="switchTab('audit')">📋 Audit Log</button>
+          <button class="tab" data-tab="test" onclick="switchTab('test')">🧪 Test Panel</button>
+        </div>
+
+        <!-- Tab Panels -->
+        <div class="tab-panel active" id="panel-events">
+          <div class="panel-header">
+            <h2>Ingested Events</h2>
+            <button class="btn btn-sm btn-ghost" onclick="refreshDashboard()">Refresh</button>
+          </div>
+          <div class="events-list" id="events-list">
+            <p class="empty-state">No events ingested yet. Send a webhook to get started.</p>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="panel-persons">
+          <div class="panel-header">
+            <h2>Canonical People</h2>
+          </div>
+          <div class="persons-list" id="persons-list">
+            <p class="empty-state">No people resolved yet.</p>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="panel-audit">
+          <div class="panel-header">
+            <h2>Audit Log</h2>
+          </div>
+          <div class="audit-list" id="audit-list">
+            <p class="empty-state">No audit entries.</p>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="panel-test">
+          <div class="panel-header">
+            <h2>Test Panel</h2>
+            <p class="panel-desc">Simulate webhook events and test token expiry handling.</p>
+          </div>
+          <div class="test-grid">
+            <!-- Simulate webhook events -->
+            <div class="test-card">
+              <h3>📤 Send Test GitHub Push</h3>
+              <p>Simulate a GitHub push event with commit author email.</p>
+              <button class="btn btn-primary" onclick="sendTestGitHubPush()">Send GitHub Push</button>
+            </div>
+            <div class="test-card">
+              <h3>💬 Send Test Slack Message</h3>
+              <p>Simulate a Slack message event (triggers email-fetch via API).</p>
+              <button class="btn btn-primary" onclick="sendTestSlackMessage()">Send Slack Message</button>
+            </div>
+            <div class="test-card">
+              <h3>🎫 Send Test Jira Issue</h3>
+              <p>Simulate a Jira issue_updated event (triggers email-fetch via API).</p>
+              <button class="btn btn-primary" onclick="sendTestJiraIssue()">Send Jira Issue</button>
+            </div>
+            <!-- Token invalidation -->
+            <div class="test-card test-card-warn">
+              <h3>⚠️ Invalidate Slack Token</h3>
+              <p>Deliberately expire the Slack token to test "Needs re-auth" flow.</p>
+              <button class="btn btn-warn" onclick="invalidateToken('slack')">Invalidate Slack</button>
+            </div>
+            <div class="test-card test-card-warn">
+              <h3>⚠️ Invalidate Jira Token</h3>
+              <p>Deliberately expire the Jira token to test silent refresh fallback.</p>
+              <button class="btn btn-warn" onclick="invalidateToken('jira')">Invalidate Jira</button>
+            </div>
+            <div class="test-card test-card-warn">
+              <h3>⚠️ Invalidate GitHub Token</h3>
+              <p>Deliberately expire the GitHub token.</p>
+              <button class="btn btn-warn" onclick="invalidateToken('github')">Invalidate GitHub</button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Toast container -->
+      <div id="toast-container"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

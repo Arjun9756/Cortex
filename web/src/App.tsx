@@ -13,13 +13,15 @@ import { TechnologiesPage } from './pages/TechnologiesPage';
 import { TimelinePage } from './pages/TimelinePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { PullRequestsPage } from './pages/PullRequestsPage';
+import { OnboardingPage } from './onboarding/OnboardingPage';
 
 import { isDemoEnabled } from './config';
 
 export function App() {
-  const [viewMode, setViewMode] = useState<'landing' | 'dashboard' | 'pricing' | 'request'>(() => {
+  const [viewMode, setViewMode] = useState<'landing' | 'dashboard' | 'pricing' | 'request' | 'onboarding'>(() => {
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view');
+    if (view === 'onboarding' || window.location.pathname === '/onboarding') return 'onboarding';
     if (view === 'request' || window.location.pathname === '/request') return 'request';
     if (view === 'pricing' || window.location.pathname === '/pricing') return 'pricing';
     if ((view === 'dashboard' || window.location.pathname === '/dashboard') && isDemoEnabled) return 'dashboard';
@@ -138,6 +140,15 @@ export function App() {
     }
   };
 
+  if (viewMode === 'onboarding') {
+    return (
+      <OnboardingPage 
+        onComplete={() => setViewMode('dashboard')}
+        onBackToLanding={() => setViewMode('landing')}
+      />
+    );
+  }
+
   if (viewMode === 'request') {
     return <RequestPage onGoBack={() => setViewMode('landing')} onLaunchDemo={() => setViewMode('dashboard')} />;
   }
@@ -160,6 +171,7 @@ export function App() {
         <Header 
           title={getPageTitle(activeTab)} 
           onGoLanding={() => setViewMode('landing')}
+          onGoOnboarding={() => setViewMode('onboarding')}
           onRefresh={handleManualRefresh}
           isRefreshing={isRefreshing}
           lastSyncedAt={lastSyncedAt}
