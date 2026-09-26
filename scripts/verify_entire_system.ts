@@ -1,3 +1,6 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
+
 /**
  * verify_entire_system.ts
  *
@@ -64,7 +67,7 @@ async function testIdentityResolution() {
     const resultsMap = new Map<string, string>();
 
     for (const u of testUsers) {
-        const res = await resolveIdentity(u);
+        const res = await resolveIdentity({ ...u, source: seedSource });
         resultsMap.set(`${u.provider}:${u.username}`, res.canonicalPersonId);
         console.log(`   Resolved [${u.provider.padEnd(6)}] ${u.displayName.padEnd(15)} -> Canonical ID: ${res.canonicalPersonId}`);
     }

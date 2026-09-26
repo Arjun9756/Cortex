@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { driver } from '../apps/api/config/neo4j.js';
 import sql from '../apps/api/config/postgres.js';
 import { calculateAllTechnologyMetrics } from '../packages/analytics/technologyMetrics.js';
@@ -120,10 +122,10 @@ async function migrateDuplicateNodes() {
     mergedDetails.forEach(d => console.log(` - ${d}`));
 
     console.log('\n🔄 Re-running analytics calculations across all metrics...');
-    await calculateAllPersonMetrics();
-    await calculateAllRepoMetrics();
-    await calculateAllTechnologyMetrics();
-    await calculateWorkspaceMetrics();
+    await calculateAllPersonMetrics(seedSource);
+    await calculateAllRepoMetrics(seedSource);
+    await calculateAllTechnologyMetrics(seedSource);
+    await calculateWorkspaceMetrics(seedSource);
     console.log('✅ Graph node deduplication and metrics recalculation completed successfully!');
   } catch (err: any) {
     console.error('Migration failed:', err?.message);

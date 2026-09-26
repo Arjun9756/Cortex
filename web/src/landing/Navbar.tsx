@@ -17,7 +17,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
 
-      const sectionIds = ['proof', 'how-it-works', 'differentiation', 'security', 'pricing', 'faq'];
+      const sectionIds = [
+        'proof',
+        'how-it-works',
+        'metrics-defined',
+        'guarantees',
+        'use-cases',
+        'security',
+        'pricing',
+        'faq'
+      ];
       const scrollPosition = window.scrollY + 120;
 
       for (const id of sectionIds) {
@@ -49,9 +58,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
   };
 
   const navItems = [
-    { id: 'proof', label: 'Product Proof' },
+    { id: 'proof', label: 'Proof' },
     { id: 'how-it-works', label: 'How It Works' },
-    { id: 'differentiation', label: 'Architecture & Math' },
+    { id: 'metrics-defined', label: 'Metrics, Defined' },
+    { id: 'guarantees', label: 'Guarantees' },
+    { id: 'use-cases', label: 'Use Cases' },
     { id: 'security', label: 'Security & BYOC' },
     { id: 'pricing', label: 'Pricing' },
     { id: 'faq', label: 'FAQ' },
@@ -68,7 +79,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Left: Brand Logo */}
         <div
-          className="flex items-center space-x-3 cursor-pointer group rounded-lg focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none p-1"
+          className="flex items-center space-x-3 cursor-pointer group rounded-lg focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none p-1 shrink-0"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           tabIndex={0}
           onKeyDown={(e) => {
@@ -82,21 +93,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
             <span className="text-base font-bold tracking-tight text-white font-sans">
               Cortex
             </span>
-            <span className="hidden sm:inline-block text-[11px] font-mono text-slate-400">
+            <span className="hidden xl:inline-block text-[11px] font-mono text-slate-400">
               engineering intelligence
             </span>
           </div>
         </div>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden lg:flex items-center space-x-7 text-xs font-medium text-slate-300">
+        <nav className="hidden lg:flex items-center space-x-5 xl:space-x-6 text-xs font-medium text-slate-300">
           {navItems.map((item) => {
             const isActive = activeSection === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => scrollToSection(item.id)}
-                className={`transition-colors py-1 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded ${
+                className={`transition-colors py-1 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded whitespace-nowrap ${
                   isActive
                     ? 'text-white font-semibold'
                     : 'text-slate-400 hover:text-white'
@@ -109,11 +120,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
         </nav>
 
         {/* Right Action CTAs */}
-        <div className="hidden sm:flex items-center space-x-3">
+        <div className="hidden sm:flex items-center space-x-3 shrink-0">
           {onLaunchDemo && isDemoEnabled && (
             <button
               onClick={onLaunchDemo}
-              className="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#12181F] hover:bg-[#1A222D] border border-white/10 rounded-lg transition-colors cursor-pointer"
+              className="px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#12181F] hover:bg-[#1A222D] border border-white/10 rounded-lg transition-colors cursor-pointer"
             >
               Interactive Demo
             </button>
@@ -121,7 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
 
           <button
             onClick={onOpenContact}
-            className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-400"
+            className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors shadow-sm cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-400 whitespace-nowrap"
           >
             Request Walkthrough
           </button>
@@ -148,7 +159,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#0E131A] border-b border-white/10 px-4 pt-3 pb-6 space-y-2 text-sm text-slate-300 animate-in fade-in duration-150">
+        <div className="lg:hidden bg-[#0E131A] border-b border-white/10 px-4 pt-3 pb-6 space-y-1 text-sm text-slate-300 animate-in fade-in duration-150 max-h-[85vh] overflow-y-auto">
           {navItems.map((item) => (
             <button
               key={item.id}

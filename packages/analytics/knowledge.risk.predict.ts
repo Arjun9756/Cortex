@@ -2,6 +2,7 @@ import { driver } from "../../apps/api/config/neo4j.js";
 import sql from "../../apps/api/config/postgres.js";
 import { toReadableTimestamp } from "../database/neo4j/neo4jUtils.js";
 import { CYPHER_BOT_FILTER } from "../shared/botDetection.js";
+import { DISPLAYABLE_SOURCES, type DataSource } from '../database/provenance.js';
 
 export interface KnowledgeRiskScore {
     person: string;
@@ -43,9 +44,10 @@ export interface CanonicalPersonContext {
 const personContextCache = new Map<string, { ctx: CanonicalPersonContext; expiresAt: number }>();
 const CACHE_TTL_MS = 60 * 1000; // 1 minute cache
 
-export async function resolvePersonContext(session: any, rawName: string): Promise<CanonicalPersonContext> {
+export async function resolvePersonContext(session: any, rawName: string, source?: DataSource): Promise<CanonicalPersonContext> {
+    const readSources = source ? [source] : [...DISPLAYABLE_SOURCES];
     const raw = (rawName || '').trim();
-    const cacheKey = raw.toLowerCase();
+    const cacheKey = `${source || 'trusted'}:${raw.toLowerCase()}`;
     const cached = personContextCache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) {
         return cached.ctx;
@@ -66,20 +68,22 @@ export async function resolvePersonContext(session: any, rawName: string): Promi
         const identities = await sql`
             SELECT canonical_person_id, display_name, username, email, external_id
             FROM person_identity
-            WHERE canonical_person_id = ${raw}
+            WHERE source IN ${sql(readSources)}
+              AND (canonical_person_id = ${raw}
                OR toLower(display_name) = toLower(${raw})
                OR toLower(username) = toLower(${raw})
                OR toLower(email) = toLower(${raw})
-               OR toLower(external_id) = toLower(${raw})
+               OR toLower(external_id) = toLower(${raw}))
             LIMIT 5
         `;
 
         if (identities.length > 0) {
-            canonicalPersonId = identities[0].canonical_person_id;
+            canonicalPersonId = identities[0]?.canonical_person_id ?? null;
             const allLinked = await sql`
                 SELECT canonical_person_id, display_name, username, email, external_id
                 FROM person_identity
-                WHERE canonical_person_id = ${canonicalPersonId}
+                WHERE source IN ${sql(readSources)}
+                  AND canonical_person_id = ${canonicalPersonId}
             `;
             for (const row of allLinked) {
                 if (row.display_name) {
@@ -98,11 +102,13 @@ export async function resolvePersonContext(session: any, rawName: string): Promi
             const metrics = await sql`
                 SELECT person_name
                 FROM person_metrics
-                WHERE toLower(person_name) = toLower(${raw})
+                WHERE source IN ${sql(readSources)}
+                  AND toLower(person_name) = toLower(${raw})
                 LIMIT 1
             `;
-            if (metrics.length > 0 && metrics[0].person_name) {
-                primaryName = metrics[0].person_name;
+            const metric = metrics[0];
+            if (metric?.person_name) {
+                primaryName = metric.person_name;
                 namesSet.add(primaryName);
             }
         }
@@ -120,7 +126,7 @@ export async function resolvePersonContext(session: any, rawName: string): Promi
                 OR ($canonicalPersonId IS NOT NULL AND p.canonicalPersonId = $canonicalPersonId))
              RETURN p.name AS name, p.externalId AS externalId, p.email AS email, p.canonicalPersonId AS canonicalPersonId
              LIMIT 10`,
-            { raw, canonicalPersonId }
+            { raw, canonicalPersonId, ...(source ? { source } : {}) }
         );
         for (const rec of neoRes.records) {
             const pName = rec.get('name');
@@ -593,7 +599,8 @@ export async function calculateExpertise(
 export async function calculatePendingWork(
     personName: string,
     mapping: { relation: string | null; targetLabel: string | null },
-    usedRelations: string[]
+    usedRelations: string[],
+    source: DataSource
 ): Promise<{
     score: number;
     count: number;
@@ -606,7 +613,7 @@ export async function calculatePendingWork(
 
     const session = driver.session();
     try {
-        const ctx = await resolvePersonContext(session, personName);
+        const ctx = await resolvePersonContext(session, personName, source);
         const targetLabel = mapping.targetLabel || 'ISSUE';
         const pMatch = cypherPersonMatch('p');
         const queryParams = {
@@ -614,6 +621,7 @@ export async function calculatePendingWork(
             names: ctx.names,
             externalIds: ctx.externalIds,
             emails: ctx.emails,
+            source,
         };
 
         // Query 1: Get total count (exclude completed/closed work, and guard against ticket reassignment)

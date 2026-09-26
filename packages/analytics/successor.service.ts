@@ -2,6 +2,7 @@ import { driver } from '../../apps/api/config/neo4j.js';
 import sql from '../../apps/api/config/postgres.js';
 import neo4j from 'neo4j-driver';
 import { isBotAccount, CYPHER_BOT_FILTER } from '../shared/botDetection.js';
+import { DISPLAYABLE_SOURCES } from '../database/provenance.js';
 
 export interface SuccessorCandidate {
     name: string;
@@ -216,19 +217,21 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
 
         try {
             [pmRows, rmRows, eventRows, identityRows] = await Promise.all([
-                sql`SELECT person_name, external_id, risk_score, repos, top_technologies FROM person_metrics`,
-                sql`SELECT repo_name, bus_factor, primary_owner FROM repo_metrics`,
+                sql`SELECT person_name, external_id, risk_score, repos, top_technologies FROM person_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}`,
+                sql`SELECT repo_name, bus_factor, primary_owner, contributor_count, status FROM repo_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}`,
                 sql`
                     SELECT 
                         coalesce(payload->'sender'->>'login', payload->'pusher'->>'name', payload->'actor'->>'login') AS author,
                         MAX(created_at) as latest_event
                     FROM events
-                    WHERE payload IS NOT NULL AND created_at >= NOW() - INTERVAL '180 days'
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                      AND payload IS NOT NULL AND created_at >= NOW() - INTERVAL '180 days'
                     GROUP BY author
                 `,
                 sql`
                     SELECT canonical_person_id, provider, external_id, username, email, display_name
                     FROM person_identity
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
                 `
             ]);
         } catch (dbErr: any) {
@@ -298,11 +301,15 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
         }
 
         // Map bus factors and SPOF repositories
-        const spofRepoMap = new Map<string, number>();
+        const spofRepoMap = new Map<string, { busFactor: number; contributorCount: number; status: string }>();
         for (const rm of rmRows) {
             if (rm.repo_name) {
                 const bf = Number(rm.bus_factor);
-                spofRepoMap.set(rm.repo_name.toLowerCase().trim(), bf);
+                spofRepoMap.set(rm.repo_name.toLowerCase().trim(), {
+                    busFactor: bf,
+                    contributorCount: Number(rm.contributor_count || 0),
+                    status: rm.status || 'healthy'
+                });
             }
         }
 
@@ -369,8 +376,10 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
             // Count SPOF repositories candidate maintains
             let spofCount = 0;
             for (const r of repos) {
-                const bf = spofRepoMap.get(r);
-                if (bf !== undefined && bf <= 1) spofCount++;
+                const repoInfo = spofRepoMap.get(r.toLowerCase().trim());
+                if (repoInfo && repoInfo.status !== 'empty' && repoInfo.busFactor <= 1 && repoInfo.busFactor > 0) {
+                    spofCount++;
+                }
             }
 
             profileMap.set(name.toLowerCase(), {
@@ -441,7 +450,7 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
         // Fallback: If no repo explicitly tagged via primary_owner with bus_factor <= 1, evaluate target's SPOF repos
         if (ownedRepos.length === 0) {
             for (const r of targetProfile.repositories) {
-                const bf = spofRepoMap.get(r) ?? 1.0;
+                const bf = spofRepoMap.get(r)?.busFactor ?? 1.0;
                 if (bf <= 1) {
                     ownedRepos.push({ repoName: r, busFactor: bf });
                 }
@@ -451,7 +460,7 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
         // If target has no SPOF repos, evaluate against all repositories target worked on
         if (ownedRepos.length === 0) {
             for (const r of targetProfile.repositories) {
-                const bf = spofRepoMap.get(r) ?? 2.0;
+                const bf = spofRepoMap.get(r)?.busFactor ?? 2.0;
                 ownedRepos.push({ repoName: r, busFactor: bf });
             }
         }
@@ -464,6 +473,22 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
             const repoName = repoInfo.repoName;
             const repoNameLower = repoName.toLowerCase();
             const busFactor = repoInfo.busFactor;
+
+            const repoData = spofRepoMap.get(repoNameLower);
+            const contributorCount = repoData?.contributorCount ?? 0;
+            const repoStatus = repoData?.status ?? 'healthy';
+
+            // Invariant 8: Successor recommendation list is empty if contributors <= 1 or repo is empty
+            if (contributorCount <= 1 || repoStatus === 'empty') {
+                resultsByRepo.push({
+                    repoName,
+                    busFactor,
+                    candidates: [],
+                    hasSuccessor: false,
+                    explanation: `Repository "${repoName}" has ${contributorCount} contributor(s) (<= 1). Successor recommendation list is empty.`
+                });
+                continue;
+            }
 
             // Determine target technologies for THIS specific repository
             let targetRepoTechs = repoTechMap.get(repoNameLower);

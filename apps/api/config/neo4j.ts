@@ -1,5 +1,8 @@
 import neo4j from 'neo4j-driver'
 import env from './env.js'
+import { enforceGraphQueryPolicy } from '../../../packages/database/neo4j/queryPolicy.js'
+import { runGraphWrite } from '../../../packages/database/neo4j/graphWrite.repository.js'
+import type { DataSource } from '../../../packages/database/provenance.js'
 
 const uri = env.NEO4J_URI
 const username = env.NEO4J_USERNAME
@@ -21,7 +24,25 @@ export const driver = neo4j.driver(uri, neo4j.auth.basic(username, password), {
 
 const originalSession = driver.session.bind(driver)
 driver.session = function (config: any = {}) {
-    return originalSession({ database: neo4jDatabase, ...config })
+    const session = originalSession({ database: neo4jDatabase, ...config })
+    return new Proxy(session, {
+        get(target, property) {
+            if (property === 'run') return (cypher: string, params: Record<string, unknown> = {}) => {
+                if (/\b(?:CREATE|MERGE|SET|DELETE|REMOVE|DETACH\s+DELETE)\b/i.test(cypher)
+                    && !/^\s*CREATE\s+(?:INDEX|CONSTRAINT)\b/i.test(cypher)) {
+                    const guardedParams = params.source === undefined && process.env.CORTEX_ENV === 'local-dev'
+                        && ['development', 'test'].includes(process.env.NODE_ENV || '') && process.env.CORTEX_ACTIVE_SEED_SOURCE
+                        ? { ...params, source: process.env.CORTEX_ACTIVE_SEED_SOURCE as DataSource }
+                        : params as Record<string, unknown> & { source: DataSource }
+                    return runGraphWrite((query, queryParams) => target.run(query, queryParams), cypher, guardedParams)
+                }
+                const guarded = enforceGraphQueryPolicy(cypher, params)
+                return target.run(guarded.cypher, guarded.params)
+            }
+            const value = Reflect.get(target, property, target)
+            return typeof value === 'function' ? value.bind(target) : value
+        }
+    }) as typeof session
 }
 
 export function neo4jSession(config: Record<string, unknown> = {}) {

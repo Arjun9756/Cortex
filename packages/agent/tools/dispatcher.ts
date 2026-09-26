@@ -130,6 +130,16 @@ export async function dispatchCoreTool(toolName: string, rawArgs: any): Promise<
                 return { toolName, args, success: true, data, summary, latencyMs: Date.now() - tStart };
             }
 
+            case 'get_recent_commits': {
+                const { GetRecentCommitsInputSchema } = await import('./schemas.js');
+                const { executeGetRecentCommits } = await import('./coreTools.service.js');
+                const parsed = GetRecentCommitsInputSchema.parse(args);
+                const data = await executeGetRecentCommits(parsed);
+                const target = parsed.repo ? `repository "${parsed.repo}"` : (parsed.person ? `engineer "${parsed.person}"` : 'organization');
+                const summary = `Found ${data.totalCommits} recent commit(s) for ${target}. Latest commits: ${data.commits.slice(0, 3).map((c: any) => `${c.commitId.slice(0, 7)} on ${c.formattedDate} by ${c.authorName} ("${c.message.slice(0, 50)}")`).join('; ')}.`;
+                return { toolName, args, success: true, data, summary, latencyMs: Date.now() - tStart };
+            }
+
             default:
                 throw new Error(`Tool "${toolName}" is not a recognized core tool.`);
         }
@@ -161,5 +171,6 @@ export function isCoreTool(name: string): boolean {
         'search_evidence',
         'get_person_identity',
         'get_pr_cycle_time',
+        'get_recent_commits',
     ].includes(name);
 }

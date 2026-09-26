@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { resolveIdentity } from '../packages/identity/canonicalPerson.service.js';
 import sql from '../apps/api/config/postgres.js';
 
@@ -36,7 +38,7 @@ async function seedIdentities() {
 
     console.log('--- Registering all team identities into person_identity table ---');
     for (const id of identities) {
-        const res = await resolveIdentity(id as any);
+        const res = await resolveIdentity({ ...id, source: seedSource } as any);
         console.log(`Resolved [${id.provider}] ${id.displayName} (${id.externalId}) -> ${res.canonicalPersonId} (${res.matchedBy})`);
     }
 }

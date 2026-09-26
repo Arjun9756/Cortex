@@ -2,6 +2,7 @@ import {Router} from 'express'
 import { validateGithubSignature } from './validator.js'
 import {parseGithubEvent , IParsedGithubEvent} from './normalize.js'
 import { pushGithubEventToDatabase } from './controller.js'
+import { sourceForWebhookRequest } from '../../../../packages/database/provenance.js'
 export const githubRouter = Router()
 
 githubRouter.post('/webhook' , async (req , res)=>{
@@ -26,7 +27,7 @@ githubRouter.post('/webhook' , async (req , res)=>{
         }
 
         // 3. Currently Directly Push To PostgreSQL Server Furture Include BullMQ Workers To Proceed Same
-        await pushGithubEventToDatabase(parsedEvent)
+        await pushGithubEventToDatabase(parsedEvent, sourceForWebhookRequest(req.get('x-cortex-seed-source')))
         console.log(`${deliveryID} Github Webhook Saved To Database`)
 
         // 4. Push Current Event To Kafka For Proceeding To LLM Neo4j VectorDB and Knowledge Graph Currently Handle By BullMQ

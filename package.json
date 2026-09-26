@@ -22,11 +22,17 @@
   },
   "type": "module",
   "scripts": {
-    "test": "npx tsx scripts/check_metrics_docs_sync.ts && npx tsx scripts/verify_metrics_golden_dataset.ts && npx tsx scripts/test_metrics_stress_scenarios.ts",
+    "test": "npx tsx scripts/verify_provenance_integrity.ts && npx tsx scripts/check_metrics_docs_sync.ts && npx tsx scripts/verify_metrics_golden_dataset.ts --target=local && npx tsx scripts/verify_dashboard_invariants.ts --target=local && npx tsx scripts/test_future_data_integrity.ts --target=local && npx tsx scripts/test_metrics_stress_scenarios.ts --target=local && npx tsx scripts/test_worst_case_pr_resilience.ts --target=local",
+    "test:provenance": "npx tsx scripts/verify_provenance_integrity.ts",
+    "verify:web:artifact": "npx tsx scripts/verify_web_production_artifact.ts",
+    "test:invariants": "npx tsx scripts/verify_dashboard_invariants.ts --target=local",
+    "test:future": "npx tsx scripts/test_future_data_integrity.ts --target=local",
     "test:metrics:sync": "npx tsx scripts/check_metrics_docs_sync.ts",
-    "test:metrics:golden": "npx tsx scripts/verify_metrics_golden_dataset.ts",
-    "test:metrics:stress": "npx tsx scripts/test_metrics_stress_scenarios.ts",
-    "test:agent": "npx tsx scripts/test_generalized_agent_suite.ts"
+    "test:metrics:golden": "npx tsx scripts/verify_metrics_golden_dataset.ts --target=local",
+    "test:metrics:stress": "npx tsx scripts/test_metrics_stress_scenarios.ts --target=local",
+    "test:metrics:resilience": "npx tsx scripts/test_worst_case_pr_resilience.ts --target=local",
+    "test:agent": "npx tsx scripts/test_generalized_agent_suite.ts",
+    "test:e2e": "node scripts/test_end_to_end_ingestion.mjs --target=local"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

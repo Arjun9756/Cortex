@@ -1,9 +1,11 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { runAnalyticsJob } from '../packages/workers/scheduler.worker.js';
 import { driver } from '../apps/api/config/neo4j.js';
 
 async function main() {
     console.log('=== Step 1: Running Analytics Job ===');
-    await runAnalyticsJob();
+    await runAnalyticsJob(seedSource);
 
     console.log('\n=== Step 2: Querying Neo4j PERSON Nodes ===');
     const session = driver.session();

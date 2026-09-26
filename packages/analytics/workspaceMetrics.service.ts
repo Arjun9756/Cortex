@@ -1,13 +1,16 @@
 import sql from "../../apps/api/config/postgres.js";
+import { aggregationSources, type DataSource } from '../database/provenance.js';
 
-export async function calculateWorkspaceMetrics() {
+export async function calculateWorkspaceMetrics(source: DataSource) {
     try {
-        const [personStats] = await sql`SELECT count(*)::int AS count, avg(risk_score)::int AS avg_risk FROM person_metrics`;
+        const trustedSources = aggregationSources(source);
+        const [personStats] = await sql`SELECT count(*)::int AS count, avg(risk_score)::int AS avg_risk FROM person_metrics WHERE source IN ${sql(trustedSources)}`;
         const [repoStats] = await sql`
             SELECT 
                 count(*)::int AS count, 
                 COALESCE(avg(bus_factor) FILTER (WHERE status NOT IN ('empty', 'scaffold') AND bus_factor > 0), 1.0)::numeric AS avg_bf 
             FROM repo_metrics
+            WHERE source IN ${sql(trustedSources)}
         `;
         const [eventStats] = await sql`
             SELECT 
@@ -25,6 +28,7 @@ export async function calculateWorkspaceMetrics() {
                       AND (payload->'pull_request'->>'state' = 'open' OR payload->>'state' = 'open')
                 )::int AS prs
             FROM events
+            WHERE source IN ${sql(trustedSources)}
         `;
 
         const totalPeople = personStats?.count ?? 0;
@@ -35,12 +39,12 @@ export async function calculateWorkspaceMetrics() {
         const openPrs = eventStats?.prs ?? 0;
 
         // Ensure workspace_metrics stays at a single row (avoid unbounded growth)
-        await sql`DELETE FROM workspace_metrics`;
+        await sql`DELETE FROM workspace_metrics WHERE source = ${source}`;
         await sql`
             INSERT INTO workspace_metrics
-                (knowledge_risk_avg, bus_factor_avg, repo_count, contributor_count, open_issues_count, open_prs_count, computed_at)
+                (source, knowledge_risk_avg, bus_factor_avg, repo_count, contributor_count, open_issues_count, open_prs_count, computed_at)
             VALUES
-                (${avgRisk}, ${avgBusFactor}, ${totalRepos}, ${totalPeople}, ${openIssues}, ${openPrs}, now())
+                (${source}, ${avgRisk}, ${totalRepos}, ${totalPeople}, ${openIssues}, ${openPrs}, now())
         `;
 
         console.log(`[WorkspaceMetrics] Computed: repos=${totalRepos}, people=${totalPeople}, riskAvg=${avgRisk}%, busFactorAvg=${avgBusFactor}`);

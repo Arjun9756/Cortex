@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { driver } from '../apps/api/config/neo4j.js';
 
 interface SlackMergeMapping {

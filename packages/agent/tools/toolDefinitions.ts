@@ -23,7 +23,7 @@ export const CORE_TOOL_DEFINITIONS = [
                     },
                     person: {
                         type: 'string',
-                        description: 'Engineer/person name to filter commits (e.g. "priyasharma", "michaelchen", "Arjun9756"). Omit to get contributor rankings across the organization.',
+                        description: 'Engineer/person name to filter commits (e.g. "alice_dev", "bob_engineer"). Omit to get contributor rankings across the organization.',
                     },
                     date_range: {
                         type: 'string',
@@ -64,7 +64,7 @@ export const CORE_TOOL_DEFINITIONS = [
                 properties: {
                     person: {
                         type: 'string',
-                        description: 'Engineer/person name (e.g. "rohanverma", "Priya Sharma").',
+                        description: 'Engineer/person name (e.g. "alice_dev", "John Smith").',
                     },
                     limit: {
                         type: 'number',
@@ -128,7 +128,7 @@ export const CORE_TOOL_DEFINITIONS = [
                     },
                     person: {
                         type: 'string',
-                        description: 'Engineer/person name whose departure requires successors (e.g. "priyasharma", "michaelchen").',
+                        description: 'Engineer/person name whose departure requires successors (e.g. "alice_dev", "bob_engineer").',
                     },
                 },
             },
@@ -209,13 +209,13 @@ export const CORE_TOOL_DEFINITIONS = [
         type: 'function' as const,
         function: {
             name: 'get_person_identity',
-            description: 'Resolve an engineer\'s verified canonical person identity, email, username, aliases, commit counts, and owned repositories. Use for identifying people, finding emails, or resolving aliases (e.g. "Arjun9756" -> Arjun Kumar).',
+            description: 'Resolve an engineer\'s verified canonical person identity, email, username, aliases, commit counts, and owned repositories. Use for identifying people, finding emails, or resolving aliases (e.g. "janedoe" -> Jane Doe).',
             parameters: {
                 type: 'object',
                 properties: {
                     alias: {
                         type: 'string',
-                        description: 'Name, alias, GitHub username, or email to resolve (e.g. "Arjun9756", "priyasharma").',
+                        description: 'Name, alias, GitHub username, or email to resolve (e.g. "alice_dev", "janedoe@company.com").',
                     },
                 },
                 required: ['alias'],
@@ -248,6 +248,36 @@ export const CORE_TOOL_DEFINITIONS = [
             },
         },
     },
+
+    // ─── 12. get_recent_commits ────────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_recent_commits',
+            description: 'Get verified recent Git commits, exact commit dates, commit SHAs, commit messages, and author details from PostgreSQL for a repository or person. MANDATORY whenever the user asks for recent commits, commit history, commit dates, or what commits an engineer made. Note: "SQL" is a query language, not a repository name.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    repo: {
+                        type: 'string',
+                        description: 'Optional repository name (e.g. "crypto-settlement-engine", "realtime-stream-engine"). NEVER pass "SQL".',
+                    },
+                    person: {
+                        type: 'string',
+                        description: 'Optional person name, email, GitHub login, or Slack ID (e.g. "Jane Doe", "jane.doe@company.com", "U12345678").',
+                    },
+                    limit: {
+                        type: 'number',
+                        description: 'Maximum number of commits to return (default 10, max 50).',
+                    },
+                    days: {
+                        type: 'number',
+                        description: 'Lookback window in days (default 90).',
+                    },
+                },
+            },
+        },
+    },
 ];
 
 export const TOOL_DEFINITIONS = [
@@ -264,7 +294,7 @@ export const TOOL_DEFINITIONS = [
                 properties: {
                     personName: {
                         type: 'string',
-                        description: 'Name of the engineer/person to analyze (e.g. "Priya", "Arjun"), or "ALL" to evaluate all engineers.',
+                        description: 'Name of the engineer/person to analyze (e.g. "Jane Doe", "John Smith"), or "ALL" to evaluate all engineers.',
                     },
                 },
                 required: ['personName'],
@@ -307,7 +337,7 @@ export const TOOL_DEFINITIONS = [
                 properties: {
                     entity: {
                         type: 'string',
-                        description: 'Entity name to describe (e.g. "Priya Sharma", "checkout-service", "React").',
+                        description: 'Entity name to describe (e.g. "Jane Doe", "checkout-service", "React").',
                     },
                 },
                 required: ['entity'],

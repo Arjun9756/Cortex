@@ -6,12 +6,14 @@ import { resolveIdentity } from '../../identity/canonicalPerson.service.js'
 import { upsertVector } from '../../database/vector/qdrant.repository.js'
 import { generateEmbeddings } from '../../llm/providers/gemini.js'
 import crypto from 'crypto'
+import { assertDataSource } from '../../database/provenance.js'
 
 export async function processSlackEvent(eventID: string) {
     try {
         // 1. Get Payload From Database
-        const [event] = await sql`SELECT *FROM events WHERE id=${eventID}`
-        if (!event) {
+        const [event] = await sql`SELECT * FROM events WHERE id=${eventID} AND (source IN ('webhook', 'backfill') OR (source LIKE 'seed:%' AND current_setting('cortex.allow_seed_data', true) = 'on'))`
+        if (event?.source) assertDataSource(event.source)
+        if (!event || !event.source) {
             console.log(`Event With Event ID For Slack ${eventID} Not Found in Database`)
             return null
         }
@@ -46,6 +48,7 @@ export async function processSlackEvent(eventID: string) {
 
             try {
                 const identityRes = await resolveIdentity({
+                    source: event.source,
                     provider: 'slack',
                     externalId,
                     username,
@@ -73,7 +76,7 @@ export async function processSlackEvent(eventID: string) {
         }
 
         // 6. Save to Graph Database (with enriched PERSON metadata)
-        await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata)
+        await saveExtractionToGraph(entities, newEntities, relationships, newRelations, { source: event.source, sourceEventId: eventID }, personMetadata, undefined)
 
         // 7. Process The Summary To Create Vector Embeddings For Semantic Search
         const effectiveSummary = summary && summary.trim().length > 0
@@ -87,6 +90,7 @@ export async function processSlackEvent(eventID: string) {
 
             await upsertVector(crypto.randomUUID(), vectorEmbedding, {
                 eventID,
+                source: event.source,
                 summary: effectiveSummary,
                 entities: allEntities,
                 relationships: allRelations,

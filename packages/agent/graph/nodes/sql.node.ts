@@ -2,6 +2,7 @@ import { AgentStateType, StructuredEvidence } from "../state.js";
 import { createGroqChatCompletion } from "../../../llm/providers/groq.js";
 import sql from '../../../../apps/api/config/postgres.js';
 import { buildSqlPlannerPrompt } from "../../../llm/prompts/sqlplanner.prompt.js";
+import { DISPLAYABLE_SOURCES } from '../../../database/provenance.js';
 
 function formatTimestamp12h(date: Date): string {
     if (isNaN(date.getTime())) return 'Unknown Date';
@@ -31,21 +32,21 @@ export async function runSafeQuery(queryType: string, params: any) {
         case "recent_activity": {
             const limit = Math.min(Number(params.limit ?? 5), 50);
             const author = (params.author || params.person || params.personName || params.user || '').trim();
-            const repository = (params.repository || params.repo || '').trim();
+            const rawRepo = (params.repository || params.repo || '').trim();
+            const repository = rawRepo.toLowerCase() === 'sql' ? '' : rawRepo;
             const provider = params.provider && params.provider !== 'all' ? String(params.provider).trim() : null;
             const eventType = (params.eventType || params.event_type) && params.eventType !== 'all' ? String(params.eventType).trim() : null;
 
             let rows: any[] = [];
             if (author) {
-                // Split author words to support partial matching and typos (e.g. "rohan vermna" -> "rohan", "verma")
-                const tokens = author.split(/\s+/).filter((t: string) => t.length > 2);
-                const terms = Array.from(new Set([author, ...tokens]));
+                const { resolvePersonAliases } = await import('../../tools/coreTools.service.js');
+                const terms = await resolvePersonAliases(author);
                 const patterns = terms.map((t: string) => `%${t}%`);
 
                 rows = await sql`
                     SELECT id, external_id, provider, event_type, payload, created_at 
                     FROM events 
-                    WHERE (
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND (
                         payload->>'author' ILIKE ANY(${patterns})
                         OR payload->>'user' ILIKE ANY(${patterns})
                         OR payload->'sender'->>'login' ILIKE ANY(${patterns})
@@ -73,7 +74,8 @@ export async function runSafeQuery(queryType: string, params: any) {
                 rows = await sql`
                     SELECT id, external_id, provider, event_type, payload, created_at 
                     FROM events 
-                    WHERE (payload->'repository'->>'name' ILIKE ${repoPattern} OR payload->>'repository' ILIKE ${repoPattern})
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                      AND (payload->'repository'->>'name' ILIKE ${repoPattern} OR payload->>'repository' ILIKE ${repoPattern})
                     ${provider ? sql`AND provider = ${provider}` : sql``}
                     ${eventType ? sql`AND event_type = ${eventType}` : sql``}
                     ORDER BY created_at DESC 
@@ -83,7 +85,7 @@ export async function runSafeQuery(queryType: string, params: any) {
                 rows = await sql`
                     SELECT id, external_id, provider, event_type, payload, created_at 
                     FROM events 
-                    WHERE 1=1
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
                     ${provider ? sql`AND provider = ${provider}` : sql``}
                     ${eventType ? sql`AND event_type = ${eventType}` : sql``}
                     ORDER BY created_at DESC 
@@ -138,20 +140,30 @@ export async function runSafeQuery(queryType: string, params: any) {
                 };
             });
         }
+        case "recent_commits": {
+            const { executeGetRecentCommits } = await import('../../tools/coreTools.service.js');
+            return await executeGetRecentCommits({
+                repo: params.repository || params.repo,
+                person: params.author || params.person,
+                limit: params.limit,
+                days: params.days,
+            });
+        }
         case "recent_events": {
             const limit = Math.min(params.limit ?? 10, 50);
             if (params.provider) {
                 return await sql`
                     SELECT id, external_id, provider, event_type, payload, created_at 
                     FROM events 
-                    WHERE provider = ${params.provider}
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = ${params.provider}
                     ORDER BY created_at DESC 
                     LIMIT ${limit}
                 `;
             }
             return await sql`
                 SELECT id, external_id, provider, event_type, payload, created_at 
-                FROM events 
+                FROM events
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
                 ORDER BY created_at DESC 
                 LIMIT ${limit}
             `;
@@ -162,7 +174,8 @@ export async function runSafeQuery(queryType: string, params: any) {
             return await sql`
                 SELECT provider, COUNT(*) as count 
                 FROM events 
-                WHERE created_at >= NOW() - (${days} || ' days')::interval
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND created_at >= NOW() - (${days} || ' days')::interval
                 GROUP BY provider
             `;
         }
@@ -173,13 +186,14 @@ export async function runSafeQuery(queryType: string, params: any) {
             return await sql`
                 SELECT id, external_id, provider, event_type, payload, created_at 
                 FROM events 
-                WHERE payload->>'author' ILIKE ${authorTerm}
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND (payload->>'author' ILIKE ${authorTerm}
                    OR payload->>'user' ILIKE ${authorTerm}
                    OR payload->'sender'->>'login' ILIKE ${authorTerm}
                    OR payload->'sender'->>'email' ILIKE ${authorTerm}
                    OR payload->'pusher'->>'name' ILIKE ${authorTerm}
                    OR payload->'user'->>'displayName' ILIKE ${authorTerm}
-                   OR payload->'issue'->'fields'->'reporter'->>'displayName' ILIKE ${authorTerm}
+                   OR payload->'issue'->'fields'->'reporter'->>'displayName' ILIKE ${authorTerm})
                 ORDER BY created_at DESC 
                 LIMIT ${limit}
             `;
@@ -200,6 +214,7 @@ export async function runSafeQuery(queryType: string, params: any) {
                     provider,
                     COUNT(*) AS event_count
                 FROM events
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
                 GROUP BY engineer, provider
                 ORDER BY event_count DESC
                 LIMIT ${limit}
@@ -211,7 +226,7 @@ export async function runSafeQuery(queryType: string, params: any) {
                 return [];
             return await sql`
                 SELECT id, external_id, provider, event_type, payload, created_at
-                FROM events WHERE id = ${params.eventId} LIMIT 1
+                FROM events WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND id = ${params.eventId} LIMIT 1
             `;
         }
 
@@ -219,7 +234,7 @@ export async function runSafeQuery(queryType: string, params: any) {
             return await sql`
                 SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
                 FROM repo_metrics
-                WHERE status IS DISTINCT FROM 'empty'
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND status IS DISTINCT FROM 'empty'
                 ORDER BY risk_score DESC
             `;
         }
@@ -229,7 +244,8 @@ export async function runSafeQuery(queryType: string, params: any) {
             return await sql`
                 SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
                 FROM repo_metrics
-                WHERE bus_factor <= ${threshold} AND status IS DISTINCT FROM 'empty'
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND bus_factor <= ${threshold} AND status IS DISTINCT FROM 'empty'
                 ORDER BY bus_factor ASC, risk_score DESC
             `;
         }
@@ -244,8 +260,9 @@ export async function runSafeQuery(queryType: string, params: any) {
             let rows = await sql`
                 SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
                 FROM repo_metrics
-                WHERE lower(repo_name) = ${normalized}
-                   OR lower(repo_name) = ${rawRepo.toLowerCase()}
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND (lower(repo_name) = ${normalized}
+                   OR lower(repo_name) = ${rawRepo.toLowerCase()})
                 LIMIT 1
             `;
 
@@ -254,8 +271,9 @@ export async function runSafeQuery(queryType: string, params: any) {
                 rows = await sql`
                     SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
                     FROM repo_metrics
-                    WHERE repo_name ILIKE ${'%' + normalized + '%'}
-                       OR replace(lower(repo_name), '-', ' ') ILIKE ${'%' + spaced + '%'}
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                      AND (repo_name ILIKE ${'%' + normalized + '%'}
+                       OR replace(lower(repo_name), '-', ' ') ILIKE ${'%' + spaced + '%'})
                     ORDER BY 
                         CASE WHEN lower(repo_name) = ${normalized} THEN 0 ELSE 1 END,
                         risk_score DESC
@@ -263,21 +281,25 @@ export async function runSafeQuery(queryType: string, params: any) {
                 `;
             }
 
-            return rows.map((r: any) => ({
-                repo_name: r.repo_name,
-                bus_factor: Number(r.bus_factor ?? 1),
-                risk_score: Number(r.risk_score ?? 0),
-                contributor_count: Number(r.contributor_count ?? 1),
-                primary_owner: r.primary_owner || 'Unknown',
-                status: r.status || 'active',
-                isSPOF: Number(r.bus_factor ?? 1) <= 1 && r.status !== 'empty'
-            }));
+            return rows.map((r: any) => {
+                const isEmpty = r.status === 'empty' || Number(r.bus_factor) === 0 || Number(r.contributor_count) === 0;
+                return {
+                    repo_name: r.repo_name,
+                    bus_factor: isEmpty ? 0 : Number(r.bus_factor ?? 1),
+                    risk_score: isEmpty ? 0 : Number(r.risk_score ?? 0),
+                    contributor_count: isEmpty ? 0 : Number(r.contributor_count ?? 0),
+                    primary_owner: isEmpty ? 'None' : (r.primary_owner || 'Unknown'),
+                    status: isEmpty ? 'empty' : (r.status || 'active'),
+                    isSPOF: isEmpty ? false : (Number(r.bus_factor ?? 1) <= 1)
+                };
+            });
         }
 
         case 'healthy_vs_fragile': {
             const rows = await sql`
                 SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
                 FROM repo_metrics
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
                 ORDER BY 
                     CASE 
                         WHEN status = 'empty' THEN 3
@@ -334,7 +356,7 @@ export async function runSafeQuery(queryType: string, params: any) {
                 rows = await sql`
                     SELECT id, external_id, provider, event_type, payload, created_at 
                     FROM events 
-                    WHERE provider = 'jira'
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'jira'
                       AND (
                           payload->'issue'->'fields'->'priority'->>'name' ILIKE ANY(${searchTerms})
                           OR payload->'issue'->'fields'->>'summary' ILIKE ANY(${searchTerms})
@@ -351,7 +373,7 @@ export async function runSafeQuery(queryType: string, params: any) {
                 rows = await sql`
                     SELECT id, external_id, provider, event_type, payload, created_at 
                     FROM events 
-                    WHERE provider = 'jira'
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'jira'
                     ORDER BY created_at DESC 
                     LIMIT ${limit}
                 `;
@@ -393,7 +415,7 @@ export async function runSafeQuery(queryType: string, params: any) {
             const rows = await sql`
                 SELECT id, external_id, provider, event_type, payload, created_at 
                 FROM events 
-                WHERE provider = 'slack'
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'slack'
                   AND (
                       payload->>'text' ILIKE ANY(${patterns})
                       OR payload->>'message' ILIKE ANY(${patterns})
@@ -429,8 +451,9 @@ export async function runSafeQuery(queryType: string, params: any) {
             const rows = await sql`
                 SELECT person_name, external_id, risk_score, repos, top_technologies, commit_count
                 FROM person_metrics
-                WHERE person_name ILIKE ${'%' + personName + '%'}
-                   OR external_id ILIKE ${'%' + personName + '%'}
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND (person_name ILIKE ${'%' + personName + '%'}
+                   OR external_id ILIKE ${'%' + personName + '%'})
                 LIMIT 5
             `;
 
@@ -451,15 +474,16 @@ export async function runSafeQuery(queryType: string, params: any) {
             const identities = await sql`
                 SELECT id, provider, external_id, username, email, display_name, canonical_person_id
                 FROM person_identity
-                WHERE display_name ILIKE ${'%' + personName + '%'}
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND (display_name ILIKE ${'%' + personName + '%'}
                    OR username ILIKE ${'%' + personName + '%'}
-                   OR email ILIKE ${'%' + personName + '%'}
+                   OR email ILIKE ${'%' + personName + '%'})
             `;
 
             const metrics = await sql`
                 SELECT person_name, external_id, risk_score, repos, top_technologies, commit_count
                 FROM person_metrics
-                WHERE person_name ILIKE ${'%' + personName + '%'}
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND person_name ILIKE ${'%' + personName + '%'}
                 LIMIT 1
             `;
 
@@ -548,22 +572,27 @@ export async function sqlNode(state: AgentStateType): Promise<Partial<AgentState
         }
 
         const results = await runSafeQuery(queryType, queryParams);
+        const resArray: any[] = Array.isArray(results)
+            ? results
+            : (results && typeof results === 'object' && 'commits' in results && Array.isArray((results as any).commits))
+                ? (results as any).commits
+                : results ? [results] : [];
 
         let evidence: StructuredEvidence | null = null;
-        if (results && results.length > 0) {
+        if (resArray.length > 0) {
             evidence = {
                 id: `sql_${sqlCall.id || index}_${queryType}`,
                 sourceType: 'sql',
                 confidence: 0.95,
-                summary: `SQL query "${queryType}" returned ${results.length} record(s).`,
+                summary: `SQL query "${queryType}" returned ${resArray.length} record(s).`,
                 rawPayload: results,
-                entitiesFound: results.map((r: any) => r.repo_name || r.engineer || r.author || r.repository || r.issue_key || r.person).filter(Boolean),
+                entitiesFound: resArray.map((r: any) => r?.repo_name || r?.engineer || r?.author || r?.repository || r?.issue_key || r?.person || r?.name).filter(Boolean),
                 queryExplanation: `Executed safe relational query "${queryType}" with params ${JSON.stringify(queryParams)}`,
                 ...(sqlCall.subgoalId ? { toolCallId: sqlCall.subgoalId, subgoalId: sqlCall.subgoalId } : {}),
             };
         }
-        return { results, evidence };
-        };
+        return { results: resArray, evidence };
+    };
 
         const callResults = await Promise.all(sqlCalls.map(executeCall));
         const results = callResults.flatMap(result => result.results);

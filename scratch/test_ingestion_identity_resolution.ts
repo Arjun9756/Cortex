@@ -1,6 +1,9 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import { driver } from '../apps/api/config/neo4j.js';
-import { resolveIdentity } from '../packages/identity/canonicalPerson.service.js';
+import { resolveIdentity as persistResolveIdentity } from '../packages/identity/canonicalPerson.service.js';
+const resolveIdentity = (input: Record<string, any>) => persistResolveIdentity({ ...input, source: seedSource } as any);
 import { processGithubEvent } from '../packages/ingestion/github/processGithubEvent.js';
 import { processSlackEvent } from '../packages/ingestion/slack/processSlackEvent.js';
 import { processJiraEvent } from '../packages/ingestion/jira/processJiraEvent.js';
@@ -79,9 +82,10 @@ async function testIngestionIdentityResolution() {
     console.log('\n📥 Processing GitHub Push Event...');
     const ghEventId = `${testPrefix}event_gh_1`;
     await sql`
-        INSERT INTO events (id, provider, event_type, external_id, payload)
+        INSERT INTO events (id, source, provider, event_type, external_id, payload)
         VALUES (
             ${ghEventId},
+            ${seedSource},
             'github',
             'push',
             ${ghEventId},
@@ -126,9 +130,10 @@ async function testIngestionIdentityResolution() {
     const slackUserId = `${testPrefix}U_SCONNOR_SLACK`;
 
     await sql`
-        INSERT INTO events (id, provider, event_type, external_id, payload)
+        INSERT INTO events (id, source, provider, event_type, external_id, payload)
         VALUES (
             ${slackEventId},
+            ${seedSource},
             'slack',
             'message',
             ${slackEventId},
@@ -163,9 +168,10 @@ async function testIngestionIdentityResolution() {
     const jiraAccountId = `${testPrefix}acc_sconnor_jira`;
 
     await sql`
-        INSERT INTO events (id, provider, event_type, external_id, payload)
+        INSERT INTO events (id, source, provider, event_type, external_id, payload)
         VALUES (
             ${jiraEventId},
+            ${seedSource},
             'jira',
             'jira:issue_created',
             ${jiraEventId},

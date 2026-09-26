@@ -19,6 +19,8 @@
  * Automatically injects test records with clean idempotent teardown on completion.
  */
 
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import { calculatePrMetrics } from '../packages/analytics/prMetrics.service.js';
 
@@ -364,9 +366,10 @@ async function setupGoldenDataset(): Promise<void> {
         };
 
         await sql`
-            INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+            INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
             VALUES (
                 ${c.id},
+                ${seedSource},
                 'github',
                 'pull_request',
                 ${c.number.toString()},
@@ -459,12 +462,118 @@ export async function runGoldenDatasetVerification(): Promise<{ pass: boolean; d
             'Context / Notes': d.note || '',
         })));
 
-        const allPassed = diffs.every(d => d.pass);
+        const prPassed = diffs.every(d => d.pass);
 
-        if (allPassed) {
+        if (prPassed) {
             console.log(`\n🎉 ALL 35 GOLDEN DATASET EDGE CASES MATCH GROUND TRUTH WITH 100% ACCURACY!`);
         } else {
             console.error(`\n❌ GOLDEN DATASET MISMATCH DETECTED. Review differences above.`);
+        }
+
+        // =====================================================================
+        // PART 2: Zero-Event Collapse & Active Repository Verification
+        // Test at least 3 empty/scaffold repos (0 events) and 2 real repos
+        // =====================================================================
+        console.log(`\n========================================================================`);
+        console.log(`🚀 RUNNING EMPTY/SCAFFOLD ZERO-EVENT COLLAPSE & REAL REPO VERIFICATION`);
+        console.log(`========================================================================\n`);
+
+        const emptyRepoCases = ['billing-engine', 'inventory-sync-service', 'notification-service'];
+        const realRepoCases = ['customer-portal-next', 'payment-gateway-v2'];
+        let repoSuitePassed = true;
+
+        console.log(`Checking 3 Empty/Scaffold Repositories (Must collapse all dependent fields to zero/empty):`);
+        for (const repoName of emptyRepoCases) {
+            const [row] = await sql<any[]>`SELECT * FROM repo_metrics WHERE repo_name = ${repoName} LIMIT 1`;
+            const pr = await calculatePrMetrics({ repoName, includeBots: true });
+
+            const commitCount = Number(row?.commit_count ?? 0);
+            const contribCount = Number(row?.contributor_count ?? 0);
+            const busFactor = Number(row?.bus_factor ?? 0);
+            const riskScore = Number(row?.risk_score ?? 0);
+            const owner = row?.primary_owner ?? null;
+            const ownershipPct = Number(row?.ownership_percentage ?? 0);
+            const status = row?.status ?? 'empty';
+            const tech = Array.isArray(row?.technologies) ? row.technologies : [];
+            const topContrib = Array.isArray(row?.top_contributors) ? row.top_contributors : [];
+
+            const isCollapsed =
+                commitCount === 0 &&
+                contribCount === 0 &&
+                busFactor === 0 &&
+                riskScore === 0 &&
+                owner === null &&
+                ownershipPct === 0 &&
+                status === 'empty' &&
+                tech.length === 0 &&
+                topContrib.length === 0 &&
+                pr.counts.totalEvaluated === 0 &&
+                pr.counts.mergedHumanPrs === 0 &&
+                pr.counts.mergedBotPrs === 0 &&
+                pr.counts.staleOutliersCount === 0 &&
+                pr.counts.closedUnmergedPrs === 0 &&
+                pr.counts.openPrs === 0 &&
+                (pr.dataCompleteness === 'partial' || pr.dataCompleteness === 'insufficient_data');
+
+            if (!isCollapsed) {
+                repoSuitePassed = false;
+                console.error(`❌ [FAIL] Empty repo "${repoName}" failed zero-collapse invariant:`, {
+                    commitCount, contribCount, busFactor, riskScore, owner, ownershipPct, status,
+                    techLen: tech.length, topContribLen: topContrib.length, prTotal: pr.counts.totalEvaluated
+                });
+            } else {
+                console.log(`  ✅ [PASS] "${repoName}": 0 commits, 0 contributors, status='empty', BF=0, Risk=0, Tech=[], PRs=0`);
+            }
+        }
+
+        console.log(`\nChecking Real Repositories (Confirming normal cases remain unaffected):`);
+        for (const repoName of realRepoCases) {
+            const [row] = await sql<any[]>`SELECT * FROM repo_metrics WHERE repo_name = ${repoName} LIMIT 1`;
+            const pr = await calculatePrMetrics({ repoName, includeBots: true });
+
+            const commitCount = Number(row?.commit_count ?? 0);
+            const contribCount = Number(row?.contributor_count ?? 0);
+            const busFactor = Number(row?.bus_factor ?? 0);
+            const status = row?.status;
+            const topContrib = Array.isArray(row?.top_contributors) ? row.top_contributors : [];
+            const sumContribPct = topContrib.reduce((s: number, c: any) => s + Number(c.percentage || 0), 0);
+            const sumContribCommits = topContrib.reduce((s: number, c: any) => s + Number(c.commits || 0), 0);
+
+            const prDecompositionValid =
+                pr.counts.mergedHumanPrs +
+                pr.counts.mergedBotPrs +
+                pr.counts.staleOutliersCount +
+                pr.counts.closedUnmergedPrs +
+                pr.counts.openPrs ===
+                pr.counts.totalEvaluated;
+
+            const isNormalValid =
+                commitCount > 0 &&
+                contribCount > 0 &&
+                busFactor >= 1 &&
+                status !== 'empty' &&
+                row?.primary_owner !== null &&
+                topContrib.length > 0 &&
+                Math.abs(sumContribPct - 100) < 0.5 &&
+                sumContribCommits === commitCount &&
+                prDecompositionValid;
+
+            if (!isNormalValid) {
+                repoSuitePassed = false;
+                console.error(`❌ [FAIL] Real repo "${repoName}" failed normal invariant checks:`, {
+                    commitCount, contribCount, busFactor, status, owner: row?.primary_owner,
+                    sumContribPct, sumContribCommits, prDecompositionValid
+                });
+            } else {
+                console.log(`  ✅ [PASS] "${repoName}": ${commitCount} commits, ${contribCount} contributors, status='${status}', BF=${busFactor}, TopContrib Sum=${sumContribPct.toFixed(1)}%`);
+            }
+        }
+
+        const allPassed = prPassed && repoSuitePassed;
+        if (allPassed) {
+            console.log(`\n🎉 ALL GOLDEN EDGE CASES AND MULTI-REPO COLLAPSE INVARIANTS PASSED!`);
+        } else {
+            console.error(`\n❌ VERIFICATION FAILURES ENCOUNTERED.`);
         }
 
         return { pass: allPassed, diffs };

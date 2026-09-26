@@ -9,6 +9,8 @@
  *   npx tsx scripts/seed_and_verify_complex_data.ts
  */
 
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { driver } from '../apps/api/config/neo4j.js';
 import sql from '../apps/api/config/postgres.js';
 import { runAnalyticsJob } from '../packages/workers/scheduler.worker.js';
@@ -254,7 +256,7 @@ async function runAndVerifyAnalytics() {
     console.log("\n📊 --- Computing & Verifying Analytics Metrics ---");
 
     // Trigger full metrics computation (Postgres repo_metrics, person_metrics, tech_metrics)
-    await runAnalyticsJob();
+    await runAnalyticsJob(seedSource);
 
     // Query and display computed repo metrics from Postgres
     const repos = await sql`

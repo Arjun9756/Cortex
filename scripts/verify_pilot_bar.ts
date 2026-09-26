@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { driver } from '../apps/api/config/neo4j.js';
 import sql from '../apps/api/config/postgres.js';
 import { calculateAllRepoMetrics } from '../packages/analytics/repoMetrics.service.js';
@@ -23,16 +25,16 @@ async function runPilotBarVerification() {
         try {
             const testRepoName = `pilot_test_healthy_bf5_${Date.now()}`;
             await sql`
-                INSERT INTO repo_metrics (external_id, repo_name, bus_factor, risk_score, contributor_count, primary_owner, status, computed_at)
-                VALUES (${testRepoName}, ${testRepoName}, 5, 0, 8, 'Senior Engineer', 'healthy', now())
-                ON CONFLICT (external_id) DO UPDATE SET bus_factor = 5, risk_score = 0, status = 'healthy'
+                INSERT INTO repo_metrics (source, external_id, repo_name, bus_factor, risk_score, contributor_count, primary_owner, status, computed_at)
+                VALUES (${seedSource}, ${testRepoName}, ${testRepoName}, 5, 0, 8, 'Senior Engineer', 'healthy', now())
+                ON CONFLICT (source, external_id) DO UPDATE SET bus_factor = 5, risk_score = 0, status = 'healthy'
             `;
 
             // Test the active repos filter fixed in controller.ts: status NOT IN ('empty', 'scaffold') AND bus_factor > 0
             const [queried] = await sql`
                 SELECT repo_name, bus_factor, risk_score, status
                 FROM repo_metrics
-                WHERE repo_name = ${testRepoName}
+                WHERE source = ${seedSource} AND repo_name = ${testRepoName}
                   AND status NOT IN ('empty', 'scaffold')
                   AND bus_factor > 0
             `;
@@ -84,7 +86,7 @@ async function runPilotBarVerification() {
             `, { repoName: testBotRepo });
 
             // Calculate repo metrics
-            await calculateAllRepoMetrics();
+            await calculateAllRepoMetrics(seedSource);
 
             const [metrics] = await sql`
                 SELECT primary_owner, bus_factor, contributor_count 
@@ -175,8 +177,8 @@ async function runPilotBarVerification() {
             };
 
             await sql`
-                INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
-                VALUES (${testEventId}, 'github', 'push', ${testEventId}, ${JSON.stringify(rawPayload)}, now())
+                INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
+                VALUES (${testEventId}, ${seedSource}, 'github', 'push', ${testEventId}, ${JSON.stringify(rawPayload)}, now())
             `;
 
             // Process event

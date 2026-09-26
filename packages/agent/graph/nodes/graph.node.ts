@@ -5,6 +5,7 @@ import { executeGraphTraversal } from '../../../graph/cypher/graphTraversalExecu
 import { GraphTraversalSpec } from '../../tools/schemas.js'
 import type { EntityCandidate } from '../../../graph/cypher/analysis.cypher.js'
 import sql from '../../../../apps/api/config/postgres.js'
+import { DISPLAYABLE_SOURCES } from '../../../database/provenance.js'
 
 /**
  * All tool names that route to this graph node.
@@ -135,8 +136,9 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
                                     const identities = await sql`
                                         SELECT id, provider, external_id, username, email, display_name, canonical_person_id 
                                         FROM person_identity 
-                                        WHERE display_name ILIKE ${'%' + resolved + '%'}
-                                           OR username ILIKE ${'%' + resolved + '%'}
+                                        WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                                          AND (display_name ILIKE ${'%' + resolved + '%'}
+                                           OR username ILIKE ${'%' + resolved + '%'})
                                     `;
                                     if (identities.length > 0 && identities[0]) {
                                         const canonicalId = identities[0].canonical_person_id;
@@ -146,7 +148,7 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
 
                                         if (result.properties) {
                                             const props = { ...result.properties };
-                                            // Strip mismatched Slack ID (e.g. U888DEVENDRA1 on Vikram Patel)
+                                            // Strip mismatched Slack ID if not in verified person identities
                                             if (props.slackId && !validExternalIds.has(String(props.slackId).toLowerCase()) && !validUsernames.has(String(props.slackId).toLowerCase())) {
                                                 console.log(`[GraphNode] Stripping mismatched slackId "${props.slackId}" from person "${resolved}"`);
                                                 delete props.slackId;
@@ -229,7 +231,8 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
                             try {
                                 const [pm] = await sql`
                                     SELECT top_technologies FROM person_metrics 
-                                    WHERE person_name ILIKE ${'%' + resolved + '%'}
+                                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                                      AND person_name ILIKE ${'%' + resolved + '%'}
                                     LIMIT 1
                                 `;
                                 if (pm?.top_technologies && Array.isArray(pm.top_technologies) && pm.top_technologies.length > 0) {
@@ -252,7 +255,8 @@ export async function graphNode(state: AgentStateType): Promise<Partial<AgentSta
                             try {
                                 const [pm] = await sql`
                                     SELECT repos FROM person_metrics 
-                                    WHERE person_name ILIKE ${'%' + resolved + '%'}
+                                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                                      AND person_name ILIKE ${'%' + resolved + '%'}
                                     LIMIT 1
                                     `;
                                 if (pm?.repos && Array.isArray(pm.repos) && pm.repos.length > 0) {

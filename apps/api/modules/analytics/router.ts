@@ -8,6 +8,7 @@ import { driver } from '../../config/neo4j.js';
 import redis from '../../config/redis.js';
 import { getTechnologiesHelper } from '../dashboard/controller.js';
 import { getGraphTopologyMetrics } from '../graph/graphService.js';
+import { DISPLAYABLE_SOURCES } from '../../../../packages/database/provenance.js';
 
 export const analyticsRouter = Router();
 
@@ -58,7 +59,7 @@ analyticsRouter.get('/trends', async (req, res) => {
                     END
                 )::int AS issues
             FROM events
-            WHERE created_at >= NOW() - INTERVAL '12 weeks'
+            WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND created_at >= NOW() - INTERVAL '12 weeks'
             GROUP BY 1
             ORDER BY week_start ASC
         `;
@@ -116,7 +117,8 @@ analyticsRouter.get('/trends', async (req, res) => {
         try {
             const reports = await sql`
                 SELECT report_date, summary 
-                FROM daily_reports 
+                FROM daily_reports
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
                 ORDER BY report_date ASC 
                 LIMIT 12
             `;
@@ -174,6 +176,7 @@ analyticsRouter.get('/trends', async (req, res) => {
         const repos = await sql`
             SELECT repo_name, bus_factor, risk_score, contributor_count, status
             FROM repo_metrics
+            WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
             ORDER BY 
                 CASE WHEN status = 'empty' THEN 1 ELSE 0 END ASC,
                 risk_score DESC, 
@@ -213,7 +216,7 @@ analyticsRouter.get('/trends', async (req, res) => {
 
         try {
             const allEvents = await sql`
-                SELECT created_at FROM events WHERE created_at >= NOW() - INTERVAL '16 weeks'
+                SELECT created_at FROM events WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND created_at >= NOW() - INTERVAL '16 weeks'
             `;
             for (const ev of allEvents) {
                 const evDate = new Date(ev.created_at);
@@ -247,7 +250,7 @@ analyticsRouter.get('/trends', async (req, res) => {
         });
 
         // 7. Metadata summary
-        const [totalEventsRes] = await sql`SELECT count(*)::int as count FROM events`;
+        const [totalEventsRes] = await sql`SELECT count(*)::int as count FROM events WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}`;
         const totalEventsCount = Number(totalEventsRes?.count ?? 0);
         const activeReposCount = repoHealth.filter((r: any) => r.status !== 'empty').length;
         const emptyReposCount = repoHealth.filter((r: any) => r.status === 'empty').length;
@@ -348,7 +351,8 @@ analyticsRouter.get('/daily-report/latest', async (req, res) => {
         try {
             const rows = await sql`
                 SELECT report_date, html_content, summary, created_at 
-                FROM daily_reports 
+                FROM daily_reports
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
                 ORDER BY report_date DESC 
                 LIMIT 1
             `;
@@ -393,7 +397,7 @@ analyticsRouter.get('/daily-report/latest', async (req, res) => {
 // POST /api/analytics/daily-report/generate - Manually triggers a fresh 24h daily report generation
 analyticsRouter.post('/daily-report/generate', async (req, res) => {
     try {
-        const result = await generateAndSaveDailyReport();
+        const result = await generateAndSaveDailyReport('webhook');
         return res.status(200).json({
             status: true,
             message: `Daily report for ${result.reportDate} successfully generated and stored in PostgreSQL.`,
@@ -412,6 +416,7 @@ analyticsRouter.get('/daily-report/history', async (req, res) => {
             SELECT id, report_date, created_at, (summary->'workspace'->>'healthScore')::int AS health_score,
                    (summary->'criticalRisks'->'busFactorOneRepos') AS bus_factor_repos
             FROM daily_reports
+            WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
             ORDER BY report_date DESC
             LIMIT 30
         `;

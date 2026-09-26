@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { driver } from '../apps/api/config/neo4j.js';
 import { saveExtractionToGraph } from '../packages/extraction/processExtraction.js';
 import { calculatePendingWork } from '../packages/analytics/knowledge.risk.predict.js';
@@ -21,6 +23,7 @@ async function testAutoStatusUpdate() {
                 { from: testIssueName, to: testPerson, type: 'ASSIGNED_TO', evidence: 'assigned via webhook' }
             ],
             [],
+            { source: seedSource },
             [{ name: testPerson, email: 'alex.autotest@company.io', role: 'Staff Engineer' }],
             [{ name: testIssueName, properties: { status: 'open' } }]
         );
@@ -28,7 +31,7 @@ async function testAutoStatusUpdate() {
         // Check node in Neo4j
         const node1 = await session.run(
             `MATCH (i:ISSUE {name: $name}) RETURN elementId(i) as id, i.status as status`,
-            { name: testIssueName }
+            { name: testIssueName, source: seedSource }
         );
         const elementId1 = node1.records[0]?.get('id');
         const status1 = node1.records[0]?.get('status');
@@ -37,7 +40,8 @@ async function testAutoStatusUpdate() {
         const openPending = await calculatePendingWork(
             testPerson,
             { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' },
-            ['ASSIGNED_TO']
+            ['ASSIGNED_TO'],
+            seedSource
         );
         console.log(`-> Pending Work Count while OPEN: ${openPending.count} (Expected: 1)`);
 
@@ -53,6 +57,7 @@ async function testAutoStatusUpdate() {
                 { from: testIssueName, to: testPerson, type: 'ASSIGNED_TO', evidence: 'still linked in graph' }
             ],
             [],
+            { source: seedSource },
             [{ name: testPerson, email: 'alex.autotest@company.io', role: 'Staff Engineer' }],
             [{ name: testIssueName, properties: { status: 'Done' } }]
         );
@@ -60,7 +65,7 @@ async function testAutoStatusUpdate() {
         // Check node in Neo4j again
         const node2 = await session.run(
             `MATCH (i:ISSUE {name: $name}) RETURN elementId(i) as id, i.status as status`,
-            { name: testIssueName }
+            { name: testIssueName, source: seedSource }
         );
         const elementId2 = node2.records[0]?.get('id');
         const status2 = node2.records[0]?.get('status');
@@ -75,7 +80,8 @@ async function testAutoStatusUpdate() {
         const closedPending = await calculatePendingWork(
             testPerson,
             { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' },
-            ['ASSIGNED_TO']
+            ['ASSIGNED_TO'],
+            seedSource
         );
         console.log(`-> Pending Work Count after DONE: ${closedPending.count} (Expected: 0)`);
 
@@ -98,3 +104,5 @@ async function testAutoStatusUpdate() {
 }
 
 testAutoStatusUpdate().catch(console.error);
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);

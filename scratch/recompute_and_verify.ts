@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { calculateAllRepoMetrics } from '../packages/analytics/repoMetrics.service.js';
 import { calculateWorkspaceMetrics } from '../packages/analytics/workspaceMetrics.service.js';
 import sql from '../apps/api/config/postgres.js';
@@ -5,10 +7,10 @@ import { driver } from '../apps/api/config/neo4j.js';
 
 async function main() {
   console.log('=== 1. Recalculating Repo Metrics with New Empty Repo Logic ===');
-  await calculateAllRepoMetrics();
+  await calculateAllRepoMetrics(seedSource);
 
   console.log('\n=== 2. Recalculating Workspace Metrics ===');
-  await calculateWorkspaceMetrics();
+  await calculateWorkspaceMetrics(seedSource);
 
   console.log('\n=== 3. Inspecting Database (repo_metrics) ===');
   const repos = await sql`

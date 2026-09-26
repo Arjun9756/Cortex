@@ -6,7 +6,7 @@ export const groq = new Groq({
     maxRetries: 3,
 })
 
-export const PRIMARY_MODEL = 'openai/gpt-oss-120b'
+export const PRIMARY_MODEL = 'openai/gpt-oss-20b'
 export const FALLBACK_MODELS = ['openai/gpt-oss-20b', 'qwen/qwen3.6-27b', 'groq/compound-mini']
 export const SAFETY_MODEL = 'openai/gpt-oss-120b'
 export const ANSWER_MODEL = 'openai/gpt-oss-120b'
@@ -256,7 +256,7 @@ export async function executeAgentTurnWithToolCalling(
     let chosenToolCalls: Array<{ id: string; name: string; args: any }> = [];
     let chosenContent = '';
 
-    const modelsToTry = [PRIMARY_MODEL, 'qwen/qwen3.6-27b'];
+    const modelsToTry = [PRIMARY_MODEL, 'qwen/qwen3.8-27b'];
 
     for (const modelCandidate of modelsToTry) {
         currentModel = modelCandidate;
@@ -346,4 +346,4 @@ export async function executeAgentTurnWithToolCalling(
         modelUsed: currentModel,
         telemetry,
     };
-}
+}

@@ -1,6 +1,9 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import { driver } from '../apps/api/config/neo4j.js';
-import { resolveIdentity } from '../packages/identity/canonicalPerson.service.js';
+import { resolveIdentity as persistResolveIdentity } from '../packages/identity/canonicalPerson.service.js';
+const resolveIdentity = (input: Record<string, any>) => persistResolveIdentity({ ...input, source: seedSource } as any);
 
 async function runIdentityResolutionTests() {
     console.log('🚀 Starting Enterprise Identity Resolution Tests (Strict Policy)...\n');

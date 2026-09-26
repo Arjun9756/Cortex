@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import { driver, neo4jSession } from '../apps/api/config/neo4j.js';
 import redis from '../apps/api/config/redis.js';
@@ -263,7 +265,7 @@ async function runAudit() {
     try {
         // Test Strict Identity Policy:
         // Exact Email match -> merge
-        const canonicalA = await resolveIdentity({
+        const canonicalA = await resolveIdentity({ source: seedSource,
             provider: 'github',
             externalId: 'test_strict_regress_1',
             username: 'regress_unique_user',
@@ -272,7 +274,7 @@ async function runAudit() {
         });
 
         // Exact Email match with different name -> merges into canonicalA
-        const canonicalB = await resolveIdentity({
+        const canonicalB = await resolveIdentity({ source: seedSource,
             provider: 'slack',
             externalId: 'test_strict_regress_2',
             username: 'different_user',
@@ -281,7 +283,7 @@ async function runAudit() {
         });
 
         // Name-only similarity with no matching email or username -> must NOT auto-merge
-        const canonicalC = await resolveIdentity({
+        const canonicalC = await resolveIdentity({ source: seedSource,
             provider: 'jira',
             externalId: 'test_strict_regress_3',
             username: 'unrelated_user_xyz',
@@ -299,7 +301,7 @@ async function runAudit() {
         );
 
         // Clean up test identities from person_identity
-        await sql`DELETE FROM person_identity WHERE external_id IN ('test_strict_regress_1', 'test_strict_regress_2', 'test_strict_regress_3')`;
+        await sql`DELETE FROM person_identity WHERE source = ${seedSource} AND external_id IN ('test_strict_regress_1', 'test_strict_regress_2', 'test_strict_regress_3')`;
     } catch (err: any) {
         record('Regression', 'Strict Identity Resolution Policy', false, err.message);
     }

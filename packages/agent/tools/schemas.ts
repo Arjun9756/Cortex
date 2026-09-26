@@ -15,8 +15,8 @@ export interface ToolResultEnvelope<T = any> {
 
 // 1. get_commit_count
 export const GetCommitCountInputSchema = z.object({
-    repo: z.string().optional().describe('Repository name to filter commits (e.g. "billing-engine", "core-platform-gateway"). If omitted or "ALL", returns total commits across all repositories along with repository rankings.'),
-    person: z.string().optional().describe('Person / engineer name to filter commits (e.g. "priyasharma", "michaelchen", "Arjun"). If omitted, returns rankings of top contributors across repositories.'),
+    repo: z.string().optional().describe('Repository name to filter commits (e.g. "auth-service", "api-gateway"). If omitted or "ALL", returns total commits across all repositories along with repository rankings.'),
+    person: z.string().optional().describe('Person / engineer name to filter commits (e.g. "alice_dev", "bob_engineer"). If omitted, returns rankings of top contributors across repositories.'),
     date_range: z.string().optional().describe('Optional time window or relative day filter (e.g. "today", "yesterday", "7d", "30d", "90d", "last year").'),
 });
 export type GetCommitCountInput = z.infer<typeof GetCommitCountInputSchema>;
@@ -74,7 +74,7 @@ export type GetRepoContributorsOutput = z.infer<typeof GetRepoContributorsOutput
 
 // 3. get_person_activity
 export const GetPersonActivityInputSchema = z.object({
-    person: z.string().min(1, 'Person name is required').describe('Engineer name (e.g. "priyasharma", "rohanverma")'),
+    person: z.string().min(1, 'Person name is required').describe('Engineer name (e.g. "alice_dev", "John Smith")'),
     date_range: z.string().optional().describe('Optional date range or time period'),
     limit: z.number().int().min(1).max(50).optional().default(10),
 });
@@ -137,7 +137,7 @@ export type GetBusFactorOutput = z.infer<typeof GetBusFactorOutputSchema>;
 // 6. get_successor_recommendation
 export const GetSuccessorRecommendationInputSchema = z.object({
     repo: z.string().optional().describe('Repository name to find successors/backup owners for (e.g. "billing-engine")'),
-    person: z.string().optional().describe('Engineer name whose departure requires successors (e.g. "priyasharma")'),
+    person: z.string().optional().describe('Engineer name whose departure requires successors (e.g. "alice_dev")'),
 });
 export type GetSuccessorRecommendationInput = z.infer<typeof GetSuccessorRecommendationInputSchema>;
 
@@ -231,7 +231,7 @@ export type SearchEvidenceOutput = z.infer<typeof SearchEvidenceOutputSchema>;
 
 // 10. get_person_identity
 export const GetPersonIdentityInputSchema = z.object({
-    alias: z.string().min(1, 'Alias or name is required').describe('Alias, email, username, or display name to resolve (e.g. "Arjun9756", "priya.sharma@company.com", "michaelchen")'),
+    alias: z.string().min(1, 'Alias or name is required').describe('Alias, email, username, or display name to resolve (e.g. "janedoe", "jane.doe@company.com", "alice_dev")'),
 });
 export type GetPersonIdentityInput = z.infer<typeof GetPersonIdentityInputSchema>;
 
@@ -320,6 +320,32 @@ export const GetPrCycleTimeOutputSchema = z.object({
     transparencyTooltip: z.string(),
 });
 export type GetPrCycleTimeOutput = z.infer<typeof GetPrCycleTimeOutputSchema>;
+
+// 12. get_recent_commits
+export const GetRecentCommitsInputSchema = z.object({
+    repo: z.string().optional().describe('Optional repository name (e.g. "crypto-settlement-engine", "realtime-stream-engine").'),
+    person: z.string().optional().describe('Optional person / author name, email, GitHub login, or Slack ID (e.g. "Jane Doe", "jane.doe@company.com", "U12345678").'),
+    limit: z.number().int().min(1).max(50).optional().default(10).describe('Maximum number of commits to return (default 10, max 50).'),
+    days: z.number().int().min(1).max(365).optional().default(90).describe('Lookback window in days (default 90).'),
+});
+export type GetRecentCommitsInput = z.infer<typeof GetRecentCommitsInputSchema>;
+
+export const GetRecentCommitsOutputSchema = z.object({
+    repository: z.string().nullable(),
+    person: z.string().nullable(),
+    totalCommits: z.number().int().min(0),
+    commits: z.array(z.object({
+        commitId: z.string(),
+        repository: z.string(),
+        authorName: z.string(),
+        authorEmail: z.string().nullable(),
+        message: z.string(),
+        commitDate: z.string(),
+        formattedDate: z.string(),
+        filesChanged: z.number().int().min(0),
+    })),
+});
+export type GetRecentCommitsOutput = z.infer<typeof GetRecentCommitsOutputSchema>;
 
 
 // ─────────────────────────────────────────────────────────────────────────────

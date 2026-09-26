@@ -55,8 +55,9 @@ Return JSON only: {"asks":["ask 1", "ask 2", ...]}`
  * Maps each tool name to the SubGoal type that best describes its purpose.
  */
 function toolNameToSubgoalType(toolName: string): SubGoal['type'] {
-    if (toolName === 'get_commit_count' || toolName === 'get_bus_factor' || toolName === 'get_ownership' || toolName === 'sql_search' || toolName === 'recent_activity' || toolName === 'get_recent_changes') return 'metric_count';
+    if (toolName === 'get_commit_count' || toolName === 'get_bus_factor' || toolName === 'get_ownership' || toolName === 'sql_search' || toolName === 'recent_activity' || toolName === 'get_recent_changes' || toolName === 'get_recent_commits') return 'metric_count';
     if (toolName === 'get_successor_recommendation' || toolName === 'knowledge_risk') return 'risk_analysis';
+    if (toolName === 'get_pr_cycle_time') return 'metric_count';
     if (toolName === 'search_evidence' || toolName === 'vector_search') return 'semantic_explanation';
     return 'entity_lookup';
 }
@@ -67,7 +68,7 @@ function toolNameToSubgoalType(toolName: string): SubGoal['type'] {
 function toolNameToSource(toolName: string): ('graph' | 'vector' | 'sql' | 'analytics') {
     if (toolName.startsWith('graph_') || toolName === 'get_related_entities') return 'graph';
     if (toolName === 'vector_search' || toolName === 'search_evidence') return 'vector';
-    if (toolName === 'knowledge_risk' || toolName === 'get_successor_recommendation') return 'analytics';
+    if (toolName === 'knowledge_risk' || toolName === 'get_successor_recommendation' || toolName === 'get_pr_cycle_time') return 'analytics';
     return 'sql';
 }
 

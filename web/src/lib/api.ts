@@ -16,7 +16,11 @@ export interface RepoMetric {
     bus_factor: number;
     risk_score: number;
     primary_owner?: string;
+    primary_owner_percentage?: number;
     contributor_count?: number;
+    commit_count?: number;
+    technologies?: string[];
+    top_contributors?: Array<{ person: string; commits: number; percentage: number }>;
     status?: 'empty' | 'fragile' | 'concentrated' | 'healthy' | string;
     top_technologies?: any;
     computed_at?: string;
@@ -39,6 +43,7 @@ export interface TechnologyMetric {
     technology_name?: string;
     usage_percent: number;
     repo_count?: number;
+    repos?: string[];
     contributor_count?: number;
     computed_at?: string;
 }
@@ -101,6 +106,7 @@ export interface DashboardOverviewResponse {
     healthScore?: HealthScoreInfo;
     stats?: DashboardStats;
     riskAlerts?: RiskAlertItem[];
+    allRiskAlerts?: RiskAlertItem[];
     activityTrend?: ActivityTrendItem[];
     repos: RepoMetric[];
     people: PersonMetric[];
@@ -663,11 +669,11 @@ export interface StaleOutlierPr {
 }
 
 export interface PrMetricsReport {
-    repoName?: string;
-    timeframeDays?: number;
+    repoName?: string | undefined;
+    timeframeDays?: number | undefined;
     sampleSize: number;
     dataCompleteness: 'complete' | 'partial';
-    warning?: string;
+    warning?: string | undefined;
     reviewCycleTime: {
         headlineHours: number;
         metricName: string;
@@ -702,7 +708,7 @@ export interface PrMetricsReport {
         filteredCount: number;
         suspectBotsCount: number;
         suspectBotAuthors: string[];
-        warning?: string;
+        warning?: string | undefined;
     };
     transparencyTooltip: string;
 }
@@ -714,10 +720,10 @@ export interface PrMetricsResponse {
 }
 
 export interface GetPrMetricsOptions {
-    repo?: string;
-    days?: number;
-    includeBots?: boolean;
-    breakdown?: boolean;
+    repo?: string | undefined;
+    days?: number | undefined;
+    includeBots?: boolean | undefined;
+    breakdown?: boolean | undefined;
 }
 
 export async function getPrMetrics(options?: GetPrMetricsOptions): Promise<PrMetricsResponse> {

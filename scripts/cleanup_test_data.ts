@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import { driver } from '../apps/api/config/neo4j.js';
 import { runAnalyticsJob } from '../packages/workers/scheduler.worker.js';
@@ -87,7 +89,7 @@ async function cleanupTestData() {
 
         // 5. Re-run analytics job to compute pristine canonical state
         console.log('\n--- Re-running Analytics Job on Pristine Enterprise Dataset ---');
-        await runAnalyticsJob();
+        await runAnalyticsJob(seedSource);
 
         // 6. Verify ghost count is 0
         const [ghostP] = await sql`SELECT count(*)::int as c FROM person_metrics WHERE person_name ILIKE '%17900%' OR person_name ILIKE '%pilot%'`;

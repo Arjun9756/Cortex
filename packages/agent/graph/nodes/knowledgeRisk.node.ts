@@ -4,6 +4,7 @@ import { calculateSuccessorCandidates } from "../../../analytics/successor.servi
 import { neo4jSession } from "../../../../apps/api/config/neo4j.js";
 import sql from "../../../../apps/api/config/postgres.js";
 import { isBotAccount, CYPHER_BOT_FILTER } from "../../../shared/botDetection.js";
+import { DISPLAYABLE_SOURCES } from '../../../database/provenance.js';
 
 export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<AgentStateType>> {
     const tStart = Date.now();
@@ -42,8 +43,9 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
             const [pmRow] = await sql`
                 SELECT person_name 
                 FROM person_metrics 
-                WHERE lower(person_name) = lower(${trimmed})
-                   OR person_name ILIKE ${'%' + trimmed + '%'}
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND (lower(person_name) = lower(${trimmed})
+                   OR person_name ILIKE ${'%' + trimmed + '%'})
                 ORDER BY 
                     CASE WHEN lower(person_name) = lower(${trimmed}) THEN 0 ELSE 1 END,
                     commit_count DESC
@@ -54,7 +56,8 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
             const [idRow] = await sql`
                 SELECT display_name 
                 FROM person_identity 
-                WHERE (lower(display_name) = lower(${trimmed}) OR display_name ILIKE ${'%' + trimmed + '%'})
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND (lower(display_name) = lower(${trimmed}) OR display_name ILIKE ${'%' + trimmed + '%'})
                   AND display_name IS NOT NULL
                   AND display_name !~* '^U[A-Z0-9]{6,}$'
                 ORDER BY 
@@ -94,7 +97,8 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
             const rows = await sql`
                 SELECT DISTINCT person_name
                 FROM person_metrics
-                WHERE person_name IS NOT NULL
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND person_name IS NOT NULL
                   AND person_name != ''
                   AND NOT person_name ~ '^U[A-Z0-9]{6,}$'
                   AND (is_active IS NULL OR is_active = true)
@@ -139,8 +143,9 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
             const rows = await sql`
                 SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
                 FROM repo_metrics
-                WHERE lower(repo_name) = ANY(${uniqueRepos.map(r => r.toLowerCase())})
-                   OR repo_name ILIKE ANY(${uniqueRepos.map(r => `%${r}%`)})
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND (lower(repo_name) = ANY(${uniqueRepos.map(r => r.toLowerCase())})
+                   OR repo_name ILIKE ANY(${uniqueRepos.map(r => `%${r}%`)}))
             `;
             for (const row of rows) {
                 results.push({
@@ -264,7 +269,8 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
                     const [pmPerson] = await sql`
                         SELECT person_name, external_id, risk_score, repos, top_technologies, commit_count
                         FROM person_metrics
-                        WHERE lower(person_name) = lower(${resolvedName}) OR person_name ILIKE ${'%' + resolvedName + '%'}
+                        WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                          AND (lower(person_name) = lower(${resolvedName}) OR person_name ILIKE ${'%' + resolvedName + '%'})
                         LIMIT 1
                     `;
 
@@ -298,7 +304,8 @@ export async function knowledgeRiskNode(state: AgentStateType): Promise<Partial<
                             const allPMRows = await sql`
                                 SELECT person_name, external_id, risk_score, repos, top_technologies, commit_count
                                 FROM person_metrics
-                                WHERE lower(person_name) <> lower(${pmPerson.person_name})
+                                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                                  AND lower(person_name) <> lower(${pmPerson.person_name})
                                   AND person_name !~* '^U[A-Z0-9]{6,}$'
                             `;
 

@@ -196,6 +196,30 @@ export async function retrievalPlannerNode(state: AgentStateType): Promise<Parti
                                 }
                             });
                         }
+                    } else if (call.name === 'get_recent_commits') {
+                        for (const c of res.data.commits) {
+                            combinedSql.push({
+                                type: 'commit',
+                                id: c.commitId,
+                                repository: c.repository,
+                                author: c.authorName,
+                                email: c.authorEmail,
+                                message: c.message,
+                                formatted_date: c.formattedDate,
+                                files_changed: c.filesChanged,
+                                created_at: c.commitDate,
+                            });
+                        }
+                    } else if (call.name === 'get_pr_cycle_time') {
+                        combinedSql.push({
+                            type: 'pr_cycle_time',
+                            repo: res.data.repoName,
+                            reviewCycleTimeHours: res.data.reviewCycleTime.headlineHours,
+                            leadTimeHours: res.data.totalLeadTime.headlineHours,
+                            p90ReviewHours: res.data.reviewCycleTime.businessHours.p90,
+                            mergedHumanPrs: res.data.counts.mergedHumanPrs,
+                            outliersCount: res.data.counts.staleOutliersCount,
+                        });
                     }
                 }
             })).then(() => {})

@@ -1,9 +1,14 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { calculateKnowledgeRisk } from '../packages/analytics/knowledge.service.js';
 import { calculateOwnership } from '../packages/analytics/knowledge.risk.predict.js';
-import { upsertEntity, upsertRelation, rollbackEventRelations } from '../packages/database/neo4j/graph.repository.js';
+import { upsertEntity as persistEntity, upsertRelation as persistRelation, rollbackEventRelations } from '../packages/database/neo4j/graph.repository.js';
 import { runAnalyticsJob } from '../packages/workers/scheduler.worker.js';
 import { driver } from '../apps/api/config/neo4j.js';
 import sql from '../apps/api/config/postgres.js';
+
+const upsertEntity = (name: string, type: string, properties: Record<string, any> = {}, session?: any) => persistEntity(name, type, { ...properties, source: seedSource }, session);
+const upsertRelation = (from: string, to: string, type: string, evidence?: string, metadata: Record<string, any> = {}) => persistRelation(from, to, type, evidence, { ...metadata, source: seedSource });
 
 async function runHardeningTests() {
     console.log('=== STARTING ENTERPRISE HARDENING & ZERO-REGRESSION VERIFICATION ===\n');
@@ -76,7 +81,7 @@ async function runHardeningTests() {
         console.log(`[Test 3 Check] Found tagged relation with confidence: ${checkRes.records[0]!.get('confidence')}`);
 
         // Now test rollback
-        const deletedCount = await rollbackEventRelations(testEventId);
+        const deletedCount = await rollbackEventRelations(testEventId, seedSource);
         console.log(`[Test 3 Rollback] Successfully rolled back ${deletedCount} relation(s).`);
 
         // Verify it was deleted
@@ -103,7 +108,7 @@ async function runHardeningTests() {
     // Test 4: Validate Full Analytics Job Execution (Person, Repo, Tech, Workspace, Daily Report)
     try {
         console.log('[Test 4] Testing Full Analytics Batch Job (Non-regression)...');
-        await runAnalyticsJob();
+        await runAnalyticsJob(seedSource);
 
         // Verify Postgres tables updated
         const [personCount] = await sql`SELECT count(*)::int AS count FROM person_metrics`;

@@ -1,13 +1,16 @@
 import { driver } from '../apps/api/config/neo4j.js';
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import { runAnalyticsJob, cleanupOldEvents } from '../packages/workers/scheduler.worker.js';
 import { processGithubEvent } from '../packages/ingestion/github/processGithubEvent.js';
 import { processSlackEvent } from '../packages/ingestion/slack/processSlackEvent.js';
 import { processJiraEvent } from '../packages/ingestion/jira/processJiraEvent.js';
-import { resolveIdentity } from '../packages/identity/canonicalPerson.service.js';
+import { resolveIdentity as persistResolveIdentity } from '../packages/identity/canonicalPerson.service.js';
 import { saveExtractionToGraph } from '../packages/extraction/processExtraction.js';
 import { calculateKnowledgeRisk } from '../packages/analytics/knowledge.service.js';
 import { snowflake } from '../apps/Utils/Snowflake.js';
+const resolveIdentity = (input: Record<string, any>) => persistResolveIdentity({ ...input, source: seedSource } as any);
 
 interface TestCaseResult {
     id: string;
@@ -123,8 +126,8 @@ async function main() {
     try {
         // 1. Insert into Postgres
         await sql`
-            INSERT INTO events (id, provider, event_type, external_id, payload)
-            VALUES (${testEventIdA1}, 'github', 'push', ${testExternalIdA1}, ${sql.json(a1Payload)})
+            INSERT INTO events (id, source, provider, event_type, external_id, payload)
+            VALUES (${testEventIdA1}, ${seedSource}, 'github', 'push', ${testExternalIdA1}, ${sql.json(a1Payload)})
         `;
 
         // 2. Process via processGithubEvent
@@ -148,9 +151,9 @@ async function main() {
 
             // Replay Idempotency check: replay exact same delivery ID
             const replayInsert = await sql`
-                INSERT INTO events (id, provider, event_type, external_id, payload)
-                VALUES (${snowflake.nextID().toString()}, 'github', 'push', ${testExternalIdA1}, ${sql.json(a1Payload)})
-                ON CONFLICT (provider, external_id) DO NOTHING
+                INSERT INTO events (id, source, provider, event_type, external_id, payload)
+                VALUES (${snowflake.nextID().toString()}, ${seedSource}, 'github', 'push', ${testExternalIdA1}, ${sql.json(a1Payload)})
+                ON CONFLICT (provider, external_id, source) DO NOTHING
                 RETURNING id
             `;
             const idempotencyGuarded = replayInsert.length === 0;
@@ -201,8 +204,8 @@ async function main() {
     let a2Evidence: any = {};
     try {
         await sql`
-            INSERT INTO events (id, provider, event_type, external_id, payload)
-            VALUES (${testEventIdA2}, 'github', 'push', ${testExternalIdA2}, ${sql.json(a2Payload)})
+            INSERT INTO events (id, source, provider, event_type, external_id, payload)
+            VALUES (${testEventIdA2}, ${seedSource}, 'github', 'push', ${testExternalIdA2}, ${sql.json(a2Payload)})
         `;
         await processGithubEvent(testEventIdA2);
 
@@ -267,9 +270,9 @@ async function main() {
         };
 
         await sql`
-            INSERT INTO events (id, provider, event_type, external_id, payload)
-            VALUES (${slackEventId}, 'slack', 'message', ${'sl_' + Date.now()}, ${sql.json(slackPayload)}),
-                   (${jiraEventId}, 'jira', 'jira:issue_created', ${'jr_' + Date.now()}, ${sql.json(jiraPayload)})
+            INSERT INTO events (id, source, provider, event_type, external_id, payload)
+            VALUES (${slackEventId}, ${seedSource}, 'slack', 'message', ${'sl_' + Date.now()}, ${sql.json(slackPayload)}),
+                   (${jiraEventId}, ${seedSource}, 'jira', 'jira:issue_created', ${'jr_' + Date.now()}, ${sql.json(jiraPayload)})
         `;
 
         await processSlackEvent(slackEventId);
@@ -300,7 +303,9 @@ async function main() {
                 { from: hallucinatedCommitHash, to: 'TestHardcoreRedis', type: 'USES', evidence: 'mock' }
             ],
             [],
-            [{ name: 'TestDevUser', email: 'testdev@company.com' }]
+            { source: seedSource },
+            [{ name: 'TestDevUser', email: 'testdev@company.com' }],
+            undefined
         );
 
         const a4Session = driver.session();
@@ -338,7 +343,7 @@ async function main() {
     let b1Passed = false;
     let b1Evidence: any = {};
     try {
-        await runAnalyticsJob();
+        await runAnalyticsJob(seedSource);
         const duration = Date.now() - tB1Start;
         b1Evidence = { durationMs: duration };
         b1Passed = duration < 30000;
@@ -390,7 +395,7 @@ async function main() {
         }
 
         // Run analytics to evaluate empty repo
-        await runAnalyticsJob();
+        await runAnalyticsJob(seedSource);
 
         const [scaffoldRow] = await sql`
             SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status
@@ -896,13 +901,13 @@ async function main() {
         const freshFixtureId = snowflake.nextID().toString();
 
         await sql`
-            INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+            INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
             VALUES 
-                (${oldFixtureId}, 'test_retention', 'test_old', ${'ret_old_' + Date.now()}, ${sql.json({ test: true })}, NOW() - INTERVAL '95 days'),
-                (${freshFixtureId}, 'test_retention', 'test_fresh', ${'ret_fresh_' + Date.now()}, ${sql.json({ test: true })}, NOW() - INTERVAL '10 days')
+                (${oldFixtureId}, ${seedSource}, 'test_retention', 'test_old', ${'ret_old_' + Date.now()}, ${sql.json({ test: true })}, NOW() - INTERVAL '95 days'),
+                (${freshFixtureId}, ${seedSource}, 'test_retention', 'test_fresh', ${'ret_fresh_' + Date.now()}, ${sql.json({ test: true })}, NOW() - INTERVAL '10 days')
         `;
 
-        const cleanedCount = await cleanupOldEvents();
+        const cleanedCount = await cleanupOldEvents(seedSource);
 
         const [checkOld] = await sql`SELECT id FROM events WHERE id = ${oldFixtureId}`;
         const [checkFresh] = await sql`SELECT id FROM events WHERE id = ${freshFixtureId}`;
@@ -933,7 +938,7 @@ async function main() {
     let g1Evidence: any = {};
     try {
         const tStart = Date.now();
-        await runAnalyticsJob();
+        await runAnalyticsJob(seedSource);
         const durationSec = (Date.now() - tStart) / 1000;
         g1Evidence = { durationSec: durationSec.toFixed(2) };
         g1Passed = durationSec < 20.0; // Under 20 seconds reasonable bound
@@ -1020,7 +1025,7 @@ async function main() {
     `;
 
     // Re-run analytics to restore pure state
-    await runAnalyticsJob();
+    await runAnalyticsJob(seedSource);
 
     // ------------------------------------------------------------
     // SUMMARY

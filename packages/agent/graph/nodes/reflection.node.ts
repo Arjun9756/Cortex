@@ -81,6 +81,8 @@ AVAILABLE TOOLS:
 - "get_repo_contributors": {"repo": "<repo>"}
 - "get_person_activity": {"person": "<person>"}
 - "get_recent_changes": {"repo": "<repo>", "days": 30}
+- "get_recent_commits": {"repo": "<repo>", "person": "<person>", "days": 90}
+- "get_pr_cycle_time": {"repo": "<repo>", "days": 90, "includeBots": false}
 - "get_person_identity": {"alias": "<alias>"}
 - "search_evidence": {"query": "<query>"}
 - "get_related_entities": {"entity": "<name>"}

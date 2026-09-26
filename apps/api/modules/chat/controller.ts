@@ -2,6 +2,62 @@ import { Request, Response } from 'express'
 import { cortexAgent } from '../../../../packages/agent/graph/workflow.js'
 
 
+function formatChatPayload(result: any, query: string, fullAnswer?: string) {
+    const executedTools = result.executedTools || [];
+    const structuredEvidence = Array.isArray(result.structuredEvidence) ? result.structuredEvidence : [];
+    const vectorResult = Array.isArray(result.vectorResult) ? result.vectorResult : [];
+
+    // Synthesize grounded sources from both structured evidence (SQL, Graph, Analytics) and vector search docs
+    const enrichedSources: any[] = [];
+
+    // 1. Structured evidence sources (SQL, Analytics, Graph)
+    for (const ev of structuredEvidence) {
+        enrichedSources.push({
+            id: ev.id,
+            provider: ev.sourceType === 'sql' ? 'postgres' : ev.sourceType === 'analytics' ? 'analytics' : ev.sourceType === 'graph' ? 'neo4j' : 'cortex',
+            summary: ev.summary,
+            queryExplanation: ev.queryExplanation,
+            confidence: ev.confidence,
+            entities: ev.entitiesFound || [],
+            rawPayload: ev.rawPayload,
+            sourceType: ev.sourceType,
+            isStructured: true,
+        });
+    }
+
+    // 2. Vector semantic documents
+    for (const v of vectorResult) {
+        enrichedSources.push({
+            ...v,
+            provider: v.provider || (v.repository ? 'github' : v.channel ? 'slack' : v.issueKey ? 'jira' : 'qdrant'),
+            summary: v.summary || v.text || (v.repository ? `Event in ${v.repository}` : 'Vector knowledge doc'),
+            author: v.author || 'Engineering Contributor',
+            sourceType: 'vector',
+        });
+    }
+
+    return {
+        query: result.query || query,
+        answer: fullAnswer !== undefined ? fullAnswer : (result.answer || (result.clarificationQuestion ? result.clarificationQuestion : 'No answer generated.')),
+        needsClarification: Boolean(result.clarificationQuestion),
+        clarificationQuestion: result.clarificationQuestion || undefined,
+        execution: {
+            query: result.query || query,
+            tools: executedTools,
+            graphEntities: executedTools.includes('graph_search') ? result.entities : undefined,
+            vectorQuery: result.vectorQuery || undefined,
+            subgoals: result.subgoals || [],
+            toolLatencies: result.metrics?.toolLatencies || {},
+            toolOrder: result.metrics?.toolOrder || [],
+        },
+        sources: enrichedSources,
+        graphContext: result.graphResult || [],
+        sqlContext: result.sqlResult || [],
+        knowledgeRiskResult: result.knowledgeRiskResult || null,
+        structuredEvidence: structuredEvidence,
+    };
+}
+
 export async function handleChatQuery(req: Request, res: Response) {
     try {
         const { query } = req.body
@@ -13,23 +69,7 @@ export async function handleChatQuery(req: Request, res: Response) {
         }
 
         const result = await cortexAgent.invoke({ query }, { recursionLimit: 25 })
-        return res.status(200).json({
-            query: result.query || query,
-            answer: result.answer,
-            needsClarification: Boolean(result.clarificationQuestion),
-            clarificationQuestion: result.clarificationQuestion || undefined,
-            execution: {
-                query: result.query || query,
-                tools: result.executedTools || [],
-                graphEntities: result.executedTools?.includes('graph_search') ? result.entities : undefined,
-                vectorQuery: result.vectorQuery || undefined,
-            },
-            sources: result.vectorResult || [],
-            graphContext: result.graphResult || [],
-            sqlContext: result.sqlResult || [],
-            knowledgeRiskResult: result.knowledgeRiskResult || null,
-            structuredEvidence: result.structuredEvidence || [],
-        })
+        return res.status(200).json(formatChatPayload(result, query))
     }
     catch (error: any) {
         console.warn(`Error in Handle Chat Query: ${error.message}`)
@@ -105,23 +145,7 @@ export async function handleChatQueryStream(req: Request, res: Response) {
             await new Promise(r => setTimeout(r, 18));
         }
 
-        const finalPayload = {
-            query: result.query || query,
-            answer: fullAnswer,
-            needsClarification: Boolean(result.clarificationQuestion),
-            clarificationQuestion: result.clarificationQuestion || undefined,
-            execution: {
-                query: result.query || query,
-                tools: result.executedTools || [],
-                graphEntities: result.executedTools?.includes('graph_search') ? result.entities : undefined,
-                vectorQuery: result.vectorQuery || undefined,
-            },
-            sources: result.vectorResult || [],
-            graphContext: result.graphResult || [],
-            sqlContext: result.sqlResult || [],
-            knowledgeRiskResult: result.knowledgeRiskResult || null,
-            structuredEvidence: result.structuredEvidence || [],
-        };
+        const finalPayload = formatChatPayload(result, query, fullAnswer);
 
         res.write(`event: done\ndata: ${JSON.stringify(finalPayload)}\n\n`);
         res.end();

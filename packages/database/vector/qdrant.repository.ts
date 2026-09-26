@@ -1,12 +1,43 @@
 import env from '../../../apps/api/config/env.js'
 import qdrantClient from '../../../apps/api/config/qdrant.js'
+import { assertWritableDataSource, DISPLAYABLE_SOURCES, type DataSource } from '../provenance.js'
 
 const collectionName = env.QDRANT_COLLECTION_NAME
+
+async function quarantineLegacyPoints() {
+    let offset: string | number | Record<string, unknown> | null | undefined = undefined;
+    do {
+        const page = await qdrantClient.scroll(collectionName as string, {
+            limit: 256,
+            with_payload: true,
+            with_vector: false,
+            ...(offset !== undefined && offset !== null ? { offset: offset as any } : {})
+        });
+        const legacyIds = page.points
+            .filter(point => {
+                const source = (point.payload as Record<string, unknown> | null)?.source;
+                return typeof source !== 'string' || !(
+                    source === 'webhook' || source === 'backfill' ||
+                    (source.startsWith('seed:') && source.length > 5)
+                );
+            })
+            .map(point => point.id);
+        if (legacyIds.length) {
+            await qdrantClient.setPayload(collectionName as string, {
+                points: legacyIds,
+                payload: { source: 'seed:legacy-unverified' }
+            });
+        }
+        offset = page.next_page_offset as typeof offset;
+    } while (offset !== undefined && offset !== null);
+}
 
 export async function ensureCollection() {
     try {
         const collections = await qdrantClient.collectionExists(collectionName as string)
         if (collections.exists) {
+            await qdrantClient.createPayloadIndex(collectionName as string, { field_name: 'source', field_schema: 'keyword' }).catch(() => undefined)
+            await quarantineLegacyPoints();
             console.log("Collection Already Created")
             return
         }
@@ -17,16 +48,20 @@ export async function ensureCollection() {
                 distance: "Cosine"
             }
         })
+        await qdrantClient.createPayloadIndex(collectionName as string, { field_name: 'source', field_schema: 'keyword' })
+        await quarantineLegacyPoints();
 
         console.log('Collection Created')
     }
     catch (error: any) {
-        console.log(`Error While Creating Collection For Vector DB`)
+        console.error(`[Qdrant] Provenance collection setup failed: ${error?.message || error}`)
+        throw error
     }
 }
 
-export async function upsertVector(id: string, vector:number[], payload: Record<string, any>) {
+export async function upsertVector(id: string, vector:number[], payload: Record<string, any> & { source: DataSource }) {
     try {
+        assertWritableDataSource(payload?.source)
         const result = await qdrantClient.upsert(collectionName!, {
             points: [{
                 id,
@@ -36,7 +71,7 @@ export async function upsertVector(id: string, vector:number[], payload: Record<
         })
     }
     catch (error: any) {
-        console.log(`Error While Inserting Vector on Vector DB`)
+        throw new Error(`Error while inserting vector with provenance: ${error?.message || error}`)
     }
 }
 
@@ -46,6 +81,7 @@ export async function searchSimilar(queryVector: number[], topK = 5 , colName?:s
             query: queryVector,
             limit: topK,
             with_payload: true,
+            filter: { must: [{ key: 'source', match: { any: [...DISPLAYABLE_SOURCES] } }] },
         })
 
         return result.points

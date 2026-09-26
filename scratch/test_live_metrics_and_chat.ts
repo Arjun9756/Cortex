@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { ensurePostgresTables } from '../packages/database/postgres/schema.js';
 import { calculateAllRepoMetrics } from '../packages/analytics/repoMetrics.service.js';
 import { calculateAllPersonMetrics } from '../packages/analytics/personMetrics.service.js';
@@ -9,8 +11,8 @@ async function main() {
     await ensurePostgresTables();
 
     console.log('--- 2. Computing Repo & Person Metrics ---');
-    await calculateAllRepoMetrics();
-    await calculateAllPersonMetrics();
+    await calculateAllRepoMetrics(seedSource);
+    await calculateAllPersonMetrics(seedSource);
 
     console.log('\n--- 2. Updated repo_metrics in Postgres ---');
     const repos = await sql`SELECT repo_name, bus_factor, risk_score, primary_owner, contributor_count FROM repo_metrics ORDER BY repo_name`;

@@ -4,11 +4,12 @@ import { calculateKnowledgeRisk } from '../../../../packages/analytics/knowledge
 import { calculateSuccessorCandidates, calculateSuccessorsByRepo } from '../../../../packages/analytics/successor.service.js'
 import { Request, Response } from 'express';
 import { RISK_THRESHOLDS } from '../../../../packages/shared/riskThresholds.js';
+import { DISPLAYABLE_SOURCES } from '../../../../packages/database/provenance.js';
 
 // ─── Existing endpoints ────────────────────────────────────────────
 
 export async function getTechnologiesHelper() {
-    let technologies: any[] = await sql`SELECT * FROM technology_metrics ORDER BY usage_percent DESC`;
+    let technologies: any[] = await sql`SELECT * FROM technology_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} ORDER BY repo_count DESC, usage_percent DESC`;
 
     // Neo4j Fallback & Auto-Sync if Postgres technology_metrics table is empty
     if (!technologies || technologies.length === 0) {
@@ -19,12 +20,27 @@ export async function getTechnologiesHelper() {
 
             const neoTechRes = await session.run(`
                 MATCH (t:TECHNOLOGY)
-                OPTIONAL MATCH (p:PERSON)-[]-(e)-[:MENTIONED_IN|USES]-(t)
-                OPTIONAL MATCH (t)-[:MENTIONED_IN|USES]-(e2)-[:PART_OF]->(r:REPOSITORY)
+                OPTIONAL MATCH (r1:REPOSITORY)-[:USES|DEPENDS_ON|MENTIONED_IN]-(t)
+                OPTIONAL MATCH (t)<-[:USES]-(pContrib:PERSON)-[:CONTRIBUTED_TO|WORKS_ON]->(r2:REPOSITORY)
+                OPTIONAL MATCH (t)-[:MENTIONED_IN|USES]-(:PULL_REQUEST|ISSUE)-[:PART_OF]->(r3:REPOSITORY)
+                WITH t, [r IN collect(DISTINCT r1.name) + collect(DISTINCT r2.name) + collect(DISTINCT r3.name) WHERE r IS NOT NULL] AS allRepoNames
+                UNWIND (CASE WHEN size(allRepoNames) > 0 THEN allRepoNames ELSE [null] END) AS rName
+                WITH t, [rn IN collect(DISTINCT rName) WHERE rn IS NOT NULL] AS repoNames
+                WITH t, repoNames, size(repoNames) AS repoCount
+
+                OPTIONAL MATCH (p1:PERSON)-[:USES]-(t)
+                OPTIONAL MATCH (p2:PERSON)-[:CONTRIBUTED_TO|WORKS_ON]->(rRepo:REPOSITORY)
+                WHERE rRepo.name IN repoNames
+                WITH t, repoNames, repoCount, [p IN collect(DISTINCT COALESCE(p1.name, p1.externalId)) + collect(DISTINCT COALESCE(p2.name, p2.externalId)) WHERE p IS NOT NULL] AS allContribs
+                UNWIND (CASE WHEN size(allContribs) > 0 THEN allContribs ELSE [null] END) AS cName
+                WITH t, repoNames, repoCount, [cn IN collect(DISTINCT cName) WHERE cn IS NOT NULL] AS contribNames
+                WITH t, repoNames, repoCount, contribNames, size(contribNames) AS contributorCount
+
                 RETURN t.name AS tech_name,
-                       count(DISTINCT p) AS contributor_count,
-                       count(DISTINCT r) AS repo_count
-                ORDER BY contributor_count DESC
+                       contributorCount AS contributor_count,
+                       repoCount AS repo_count,
+                       repoNames AS repos
+                ORDER BY repo_count DESC, contributor_count DESC
             `);
             if (neoTechRes.records.length > 0) {
                 technologies = neoTechRes.records.map((rec: any) => {
@@ -34,6 +50,7 @@ export async function getTechnologiesHelper() {
                         tech_name: rec.get('tech_name'),
                         usage_percent: usagePercent,
                         repo_count: repoCount,
+                        repos: rec.get('repos') || [],
                         contributor_count: rec.get('contributor_count')?.toNumber() || 0,
                         top_experts: []
                     };
@@ -57,6 +74,9 @@ export async function getTechnologiesHelper() {
             uniqueTechs.push({
                 ...t,
                 tech_name: name,
+                repo_count: Number(t.repo_count ?? 0),
+                usage_percent: Number(t.usage_percent ?? 0),
+                repos: Array.isArray(t.repos) ? t.repos : [],
                 contributor_count: Number(t.contributor_count ?? 0)
             });
         }
@@ -66,9 +86,9 @@ export async function getTechnologiesHelper() {
 
 export async function getDashboardOverview(req: Request, res: Response) {
     try {
-        const [workspace] = await sql`SELECT * FROM workspace_metrics ORDER BY computed_at DESC LIMIT 1`;
-        const repos = await sql`SELECT * FROM repo_metrics ORDER BY risk_score DESC`;
-        const people = await sql`SELECT * FROM person_metrics ORDER BY risk_score DESC`;
+        const [workspace] = await sql`SELECT * FROM workspace_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} ORDER BY computed_at DESC LIMIT 1`;
+        const repos = await sql`SELECT * FROM repo_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} ORDER BY risk_score DESC`;
+        const people = await sql`SELECT * FROM person_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} ORDER BY risk_score DESC`;
         const technologies = await getTechnologiesHelper();
 
         // 1. Compute Composite Headline Health Score (0-100)
@@ -153,7 +173,7 @@ export async function getDashboardOverview(req: Request, res: Response) {
                         END
                     )::int AS prs
                 FROM events
-                WHERE created_at >= NOW() - INTERVAL '12 weeks'
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND created_at >= NOW() - INTERVAL '12 weeks'
                 GROUP BY 1
                 ORDER BY week_start ASC
             `;
@@ -261,6 +281,7 @@ export async function getDashboardOverview(req: Request, res: Response) {
             healthScore,
             stats,
             riskAlerts: topRiskAlerts,
+            allRiskAlerts: riskAlerts,
             activityTrend,
             repos,
             people,
@@ -273,12 +294,12 @@ export async function getDashboardOverview(req: Request, res: Response) {
 }
 
 export async function getPeoplePage(req: Request, res: Response) {
-    const people = await sql`SELECT * FROM person_metrics ORDER BY risk_score DESC`;
+    const people = await sql`SELECT * FROM person_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} ORDER BY risk_score DESC`;
     res.json({ people });
 }
 
 export async function getBusFactorPage(req: Request, res: Response) {
-    const repos = await sql`SELECT * FROM repo_metrics ORDER BY bus_factor ASC`;
+    const repos = await sql`SELECT * FROM repo_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} ORDER BY bus_factor ASC`;
     res.json({ repos });
 }
 
@@ -327,6 +348,7 @@ export async function getTimeline(req: Request, res: Response) {
                 payload->'repository'->>'full_name'
             ) AS repo
         FROM events
+        WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
         ORDER BY created_at DESC
         LIMIT 20
     `;
@@ -359,7 +381,8 @@ export async function getFindings(req: Request, res: Response) {
         const fragileRepos = await sql`
             SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner
             FROM repo_metrics
-            WHERE bus_factor <= ${BUS_FACTOR_CRITICAL_THRESHOLD}
+            WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+              AND bus_factor <= ${BUS_FACTOR_CRITICAL_THRESHOLD}
               AND status NOT IN ('empty', 'scaffold')
               AND bus_factor > 0
         `;
@@ -381,7 +404,8 @@ export async function getFindings(req: Request, res: Response) {
         const highRiskPeople = await sql`
             SELECT person_name, external_id, risk_score, repos, commit_count
             FROM person_metrics
-            WHERE risk_score >= ${PERSON_RISK_HIGH_THRESHOLD}
+            WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+              AND risk_score >= ${PERSON_RISK_HIGH_THRESHOLD}
         `;
 
         for (const person of highRiskPeople) {
@@ -399,7 +423,8 @@ export async function getFindings(req: Request, res: Response) {
         const highRiskRepos = await sql`
             SELECT repo_name, risk_score, bus_factor, contributor_count
             FROM repo_metrics
-            WHERE risk_score >= ${REPO_RISK_HIGH_THRESHOLD}
+            WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+              AND risk_score >= ${REPO_RISK_HIGH_THRESHOLD}
               AND bus_factor > ${BUS_FACTOR_CRITICAL_THRESHOLD}
               AND status NOT IN ('empty', 'scaffold')
         `;
@@ -444,7 +469,8 @@ export async function simulateDeparture(req: Request, res: Response) {
         const [person] = await sql`
             SELECT person_name, external_id, risk_score, top_technologies, repos, commit_count
             FROM person_metrics
-            WHERE external_id = ${externalId} OR person_name = ${externalId}
+            WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+              AND (external_id = ${externalId} OR person_name = ${externalId})
             LIMIT 1
         `;
 
@@ -532,7 +558,8 @@ export async function getRepoDetails(req: Request, res: Response) {
         const [metric] = await sql`
             SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status, computed_at
             FROM repo_metrics
-            WHERE lower(repo_name) = lower(${repoName})
+            WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+              AND lower(repo_name) = lower(${repoName})
             LIMIT 1
         `;
 
@@ -660,7 +687,7 @@ export async function getRepoDetails(req: Request, res: Response) {
                             'Team Contributor'
                         ) AS author
                     FROM events
-                    WHERE (
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND (
                         payload->'repository'->>'name' ILIKE ${repoName}
                         OR payload->'repository'->>'full_name' ILIKE ${'%' + repoName}
                     )
@@ -768,7 +795,8 @@ export async function getIntegrationsStatus(req: Request, res: Response) {
     try {
         const counts = await sql`
             SELECT provider, count(*)::int as count 
-            FROM events 
+            FROM events
+            WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
             GROUP BY provider
         `;
         const countMap: Record<string, number> = {};
@@ -850,7 +878,7 @@ export async function getPrCycleTimeMetrics(req: Request, res: Response) {
             const repoRows = await sql`
                 SELECT DISTINCT repo_name
                 FROM repo_metrics
-                WHERE status NOT IN ('empty', 'scaffold')
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND status NOT IN ('empty', 'scaffold')
                 ORDER BY repo_name ASC
             `;
             const repoList = repoRows.map(r => r.repo_name);
@@ -858,7 +886,8 @@ export async function getPrCycleTimeMetrics(req: Request, res: Response) {
             const targetRepos = repoList.length > 0 ? repoList : (await sql`
                 SELECT DISTINCT COALESCE(payload->'repository'->>'name', payload->>'repository') as repo_name
                 FROM events
-                WHERE provider = 'github' AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND provider = 'github' AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
             `).map(r => r.repo_name).filter(Boolean);
 
             repoBreakdown = await Promise.all(

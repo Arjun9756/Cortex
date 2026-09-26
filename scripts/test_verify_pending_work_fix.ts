@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { driver } from '../apps/api/config/neo4j.js';
 import { calculatePendingWork } from '../packages/analytics/knowledge.risk.predict.js';
 import { calculateKnowledgeRisk } from '../packages/analytics/knowledge.service.js';
@@ -47,7 +49,8 @@ async function main() {
         const initialPending = await calculatePendingWork(
             testPerson,
             { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' },
-            ['ASSIGNED_TO']
+            ['ASSIGNED_TO'],
+            seedSource
         );
         console.log(`   Initial pendingWork for ${testPerson}: count=${initialPending.count}, score=${initialPending.score}`);
 
@@ -75,7 +78,8 @@ async function main() {
         const filteredPending = await calculatePendingWork(
             testPerson,
             { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' },
-            ['ASSIGNED_TO']
+            ['ASSIGNED_TO'],
+            seedSource
         );
 
         console.log(`   Result count: ${filteredPending.count} (Expected: exactly 1 open issue)`);

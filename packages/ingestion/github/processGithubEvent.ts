@@ -10,12 +10,15 @@ import { rollbackEventRelations } from '../../database/neo4j/graph.repository.js
 import crypto from 'crypto'
 import { ContentEmbedding } from '@google/genai'
 import { isBotAccount } from '../../shared/botDetection.js'
+import { assertDataSource, type DataSource } from '../../database/provenance.js'
+import { upsertRepoMetrics } from '../../analytics/repoMetrics.service.js'
 
 export async function processGithubEvent(eventID: string) {
     try {
         // 1.Get Payload From Database
-        const [event] = await sql`SELECT *FROM events WHERE id=${eventID}`
-        if (!event) {
+        const [event] = await sql`SELECT * FROM events WHERE id=${eventID} AND (source IN ('webhook', 'backfill') OR (source LIKE 'seed:%' AND current_setting('cortex.allow_seed_data', true) = 'on'))`
+        if (event?.source) assertDataSource(event.source)
+        if (!event || !event.source) {
             console.log(`Event With Event ID For Github ${eventID} Not Found in Database`)
             return null
         }
@@ -124,8 +127,8 @@ export async function processGithubEvent(eventID: string) {
         interface CommitAuthorGroup {
             author: string
             email: string | null
-            username?: string
-            externalId?: string
+            username?: string | undefined
+            externalId?: string | undefined
             commitCount: number
             lastCommitAt: number
             isBot: boolean
@@ -268,10 +271,10 @@ export async function processGithubEvent(eventID: string) {
 
         interface ActorCandidate {
             author: string
-            email?: string | null
-            username?: string
-            externalId?: string
-            isBot?: boolean
+            email?: string | null | undefined
+            username?: string | undefined
+            externalId?: string | undefined
+            isBot?: boolean | undefined
         }
         const actorsToResolve: ActorCandidate[] = []
 
@@ -336,6 +339,7 @@ export async function processGithubEvent(eventID: string) {
             if (hasAuthorInfo) {
                 try {
                     const identityRes = await resolveIdentity({
+                        source: event.source as DataSource,
                         provider: 'github',
                         externalId: actor.externalId || `github_${actor.author}`,
                         username: actor.username || actor.author,
@@ -390,13 +394,14 @@ export async function processGithubEvent(eventID: string) {
                 if (prId) {
                     try {
                         const previousEvents = await sql`
-                            SELECT id FROM events 
+                            SELECT id, source FROM events 
                             WHERE provider = 'github' 
                               AND (payload->'pull_request'->>'id' = ${prId} OR payload->>'number' = ${prId})
                               AND id != ${eventID}
                         `;
                         for (const prev of previousEvents) {
-                            const deleted = await rollbackEventRelations(prev.id);
+                            const rollbackSource = (prev.source || event.source) as DataSource;
+                            const deleted = await rollbackEventRelations(prev.id, rollbackSource);
                             if (deleted > 0) {
                                 console.log(`[GitHub Ingestion] Auto-rollback: PR #${prId} was closed without merge. Rolled back ${deleted} relations from previous event ${prev.id}.`);
                             }
@@ -408,15 +413,31 @@ export async function processGithubEvent(eventID: string) {
             }
         }
 
+        // 6b. Immediately sync repo_metrics for this specific repo so the Dashboard
+        //     reflects the same commit count that the Chat Agent sees from Neo4j.
+        //     This closes the 45-180 second debounce gap between the two data paths.
+        //     NOTE: runs BEFORE saveExtractionToGraph so it succeeds even if the graph write
+        //     encounters a transient Cypher error; the scheduler will reconcile Neo4j later.
+        if (normalizedPayload.repository && normalizedPayload.repository !== 'unknown') {
+            const repoExternalId =
+                rawPayload.repository?.full_name ||
+                rawPayload.repository?.node_id ||
+                rawPayload.repository?.id?.toString() ||
+                normalizedPayload.repository;
+            upsertRepoMetrics(normalizedPayload.repository, repoExternalId, event.source).catch((e) => {
+                console.warn('[GitHub Ingestion] Inline repo_metrics sync failed: ' + e?.message);
+            });
+        }
+
         // 6. Save Onto Graph Database (with enriched PERSON and ENTITY metadata + rollback traceability)
         await saveExtractionToGraph(
             entities,
             newEntities,
             relationships,
             newRelations,
+            { source: event.source as DataSource, sourceEventId: eventID, confidence: 1.0 },
             personMetadata,
-            entityMetadata,
-            { sourceEventId: eventID, confidence: 1.0 }
+            entityMetadata
         )
 
         // 7.Process The Summary To Create Vector Embeddings For Semantic Search
@@ -436,6 +457,7 @@ export async function processGithubEvent(eventID: string) {
 
             await upsertVector(stableVectorId, vectorEmbedding, {
                 eventID,
+                source: event.source as DataSource,
                 summary: effectiveSummary,
                 entities: allEntities,
                 relationships: allRelations,

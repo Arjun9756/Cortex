@@ -1,4 +1,6 @@
 import { cortexAgent } from '../packages/agent/graph/workflow.js';
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { driver } from '../apps/api/config/neo4j.js';
 
 async function createDuplicateNode() {

@@ -3,8 +3,9 @@ import { JOBS } from '../../../../packages/queue/jobs.js';
 import { snowflake } from '../../../Utils/Snowflake.js';
 import sql from '../../config/postgres.js'
 import { ISlackParsedEvent } from './normalize.js';
+import type { DataSource } from '../../../../packages/database/provenance.js';
 
-export async function pushSlackEventToDatabase(parsedEvent:ISlackParsedEvent){
+export async function pushSlackEventToDatabase(parsedEvent:ISlackParsedEvent, source: DataSource){
     try{
         const uniqueID = snowflake.nextID().toString()
         const raw = parsedEvent.rawBody ?? {}
@@ -14,9 +15,9 @@ export async function pushSlackEventToDatabase(parsedEvent:ISlackParsedEvent){
             || uniqueID
 
         const result = await sql`
-            INSERT INTO events(id, provider, event_type, external_id, payload) 
-            VALUES (${uniqueID}, ${'slack'}, ${parsedEvent.event_type}, ${externalId}, ${sql.json(parsedEvent.rawBody)}) 
-            ON CONFLICT (provider, external_id) DO NOTHING
+            INSERT INTO events(id, source, provider, event_type, external_id, payload) 
+            VALUES (${uniqueID}, ${source}, 'slack', ${parsedEvent.event_type}, ${externalId}, ${sql.json(parsedEvent.rawBody)}) 
+            ON CONFLICT (provider, external_id, source) DO NOTHING
             RETURNING id, created_at
         `
 

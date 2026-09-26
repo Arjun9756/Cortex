@@ -1,6 +1,7 @@
 import { resolveEntity, isCommitEntity } from "./entityResolver.js";
 import { upsertEntity, upsertRelation, batchUpsertRelations } from "../database/neo4j/graph.repository.js";
 import { driver } from "../../apps/api/config/neo4j.js";
+import type { DataSource } from '../database/provenance.js'
 
 export interface PersonMetadata {
     name: string
@@ -34,9 +35,9 @@ export async function saveExtractionToGraph(
     newEntities:{name:string , suggestedType:string}[],
     relation:{from:string , to:string , type:string , evidence:string}[],
     newRelations:{from:string , to:string , suggestedType:string , evidence?:string}[],
-    personMetadata?: PersonMetadata[],
-    entityMetadata?: EntityMetadata[],
-    options?: { sourceEventId?: string; confidence?: number }
+    options: { source: DataSource; sourceEventId?: string; confidence?: number },
+    personMetadata: PersonMetadata[] | undefined,
+    entityMetadata: EntityMetadata[] | undefined
 ) {
     // Build extraPropertiesMap from personMetadata — only include non-null values
     const extraPropertiesMap: Record<string, Record<string, any>> = {}
@@ -69,7 +70,7 @@ export async function saveExtractionToGraph(
     const session = driver.session()
     try {
         // 1. Entities Resolve + Insert in this session
-        const idMap = await resolveEntity(entities, newEntities, extraPropertiesMap, session)
+        const idMap = await resolveEntity(entities, newEntities, options.source, extraPropertiesMap, session)
 
         // 2. Relation Combine
         const allRelations = [
@@ -84,7 +85,7 @@ export async function saveExtractionToGraph(
             toID: string;
             type: string;
             evidence?: string | undefined;
-            metadata?: any;
+            metadata: any;
         }> = []
 
         for (const rel of allRelations) {
@@ -106,6 +107,7 @@ export async function saveExtractionToGraph(
                 type: rel.type,
                 evidence: rel.evidence,
                 metadata: {
+                    source: options.source,
                     sourceEventId: options?.sourceEventId ?? null,
                     confidence: options?.confidence ?? 1.0,
                     commitCount: (rel as any).commitCount ?? (rel as any).properties?.commitCount,

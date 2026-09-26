@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createGroqChatCompletion, ANSWER_MODEL } from "../llm/providers/groq.js";
+import type { DataSource } from '../database/provenance.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,6 +43,7 @@ export async function ensureDailyReportsTable() {
         await sql`
             CREATE TABLE IF NOT EXISTS daily_reports (
                 id SERIAL PRIMARY KEY,
+                source VARCHAR(255) NOT NULL,
                 report_date DATE UNIQUE NOT NULL,
                 html_content TEXT NOT NULL,
                 summary JSONB NOT NULL,
@@ -68,12 +70,14 @@ export async function aggregateDailyReportData(): Promise<DailyReportData> {
         const [personStats] = await sql`
             SELECT count(*)::int AS count, COALESCE(avg(risk_score), 45)::int AS avg_risk 
             FROM person_metrics
+            WHERE source IN ('webhook', 'backfill')
         `;
         const [repoStats] = await sql`
             SELECT 
                 count(*)::int AS count, 
                 COALESCE(avg(bus_factor) FILTER (WHERE status NOT IN ('empty', 'scaffold') AND bus_factor > 0), 1.0)::numeric AS avg_bf 
             FROM repo_metrics
+            WHERE source IN ('webhook', 'backfill')
         `;
 
         // 2. Repositories with Bus Factor = 1 (Critical) — excluding empty / scaffold repos
@@ -81,6 +85,7 @@ export async function aggregateDailyReportData(): Promise<DailyReportData> {
             SELECT repo_name, bus_factor, risk_score, contributor_count 
             FROM repo_metrics 
             WHERE bus_factor <= 1 
+              AND source IN ('webhook', 'backfill')
               AND status NOT IN ('empty', 'scaffold')
               AND risk_score > 0
             ORDER BY risk_score DESC, repo_name ASC
@@ -91,6 +96,7 @@ export async function aggregateDailyReportData(): Promise<DailyReportData> {
         const highRiskPeopleRows = await sql`
             SELECT person_name, risk_score 
             FROM person_metrics 
+            WHERE source IN ('webhook', 'backfill')
             ORDER BY risk_score DESC 
             LIMIT 6
         `;
@@ -99,6 +105,7 @@ export async function aggregateDailyReportData(): Promise<DailyReportData> {
         const techRows = await sql`
             SELECT tech_name, usage_percent, contributor_count 
             FROM technology_metrics 
+            WHERE source IN ('webhook', 'backfill')
             ORDER BY usage_percent DESC 
             LIMIT 8
         `;
@@ -110,14 +117,14 @@ export async function aggregateDailyReportData(): Promise<DailyReportData> {
                 count(*) FILTER (WHERE event_type ILIKE '%pr%' OR event_type ILIKE '%pull%')::int AS prs,
                 count(*) FILTER (WHERE event_type ILIKE '%issue%')::int AS issues
             FROM events
-            WHERE created_at >= NOW() - INTERVAL '30 days'
+            WHERE source IN ('webhook', 'backfill') AND created_at >= NOW() - INTERVAL '30 days'
         `;
 
         // 6. Active contributors from Neo4j
         let activeContributors: string[] = [];
         try {
             const result = await session.run(`
-                MATCH (p:PERSON)
+                MATCH (p:PERSON) WHERE p.source IN ['webhook', 'backfill']
                 RETURN p.name AS name
                 LIMIT 10
             `);
@@ -421,7 +428,7 @@ export function renderDailyReportHtml(data: DailyReportData): string {
 /**
  * Generates and stores the daily report in PostgreSQL (pure DB storage, no filesystem files).
  */
-export async function generateAndSaveDailyReport(): Promise<{ reportDate: string; summary: DailyReportData; html: string }> {
+export async function generateAndSaveDailyReport(source: DataSource): Promise<{ reportDate: string; summary: DailyReportData; html: string }> {
     console.log('[DailyReport] Starting daily report generation...');
     await ensureDailyReportsTable();
 
@@ -431,9 +438,9 @@ export async function generateAndSaveDailyReport(): Promise<{ reportDate: string
     // Save exclusively to PostgreSQL daily_reports table
     try {
         await sql`
-            INSERT INTO daily_reports (report_date, html_content, summary, created_at)
-            VALUES (${data.reportDate}, ${html}, ${JSON.stringify(data)}, NOW())
-            ON CONFLICT (report_date)
+            INSERT INTO daily_reports (source, report_date, html_content, summary, created_at)
+            VALUES (${source}, ${data.reportDate}, ${html}, ${JSON.stringify(data)}, NOW())
+            ON CONFLICT (source, report_date)
             DO UPDATE SET
                 html_content = EXCLUDED.html_content,
                 summary = EXCLUDED.summary,
@@ -450,4 +457,3 @@ export async function generateAndSaveDailyReport(): Promise<{ reportDate: string
         html,
     };
 }
-

@@ -52,21 +52,31 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
             const embedding = await generateEmbeddings(vQuery);
             if (!embedding) return { results: [], evidence: [] };
 
-            const rawResult = await searchSimilar(embedding) as QdrantSearchResult[];
-            const mappedResults = rawResult?.map((r) => ({
-                summary: r.payload?.summary,
-                entities: r.payload?.entities,
-                relationships: r.payload?.relationships,
-                eventId: r.payload?.eventID ?? r.payload?.eventId,
-                provider: r.payload?.provider,
-                channel: r.payload?.channel,
-                timestamp: r.payload?.timestamp,
-                author: r.payload?.author,
-                repository: r.payload?.repository,
-                text: r.payload?.text,
-                issueKey: r.payload?.issueKey,
-                status: r.payload?.status,
-            })) ?? [];
+            const mappedResults = rawResult?.map((r, rIdx) => {
+                const p: any = r.payload || {};
+                const summaryText = p.summary || p.text || p.message || p.description || p.title || (p.repository ? `Event in ${p.repository}` : `Codebase discussion snippet #${rIdx + 1}`);
+                const authorName = p.author || p.user || p.pusher || p.actor || 'Engineering Contributor';
+                const providerName = p.provider || (p.repository ? 'github' : p.channel ? 'slack' : p.issueKey ? 'jira' : 'github');
+                const eventId = p.eventID ?? p.eventId ?? p.id ?? (r as any).id;
+                const repo = p.repository ?? p.repo ?? undefined;
+                const timestamp = p.timestamp ?? p.created_at ?? p.date ?? undefined;
+
+                return {
+                    summary: summaryText,
+                    entities: p.entities || [],
+                    relationships: p.relationships || [],
+                    eventId,
+                    provider: providerName,
+                    channel: p.channel,
+                    timestamp,
+                    author: authorName,
+                    repository: repo,
+                    text: summaryText,
+                    issueKey: p.issueKey,
+                    status: p.status,
+                    score: (r as any).score ?? 0.85
+                };
+            }) ?? [];
 
             const callEvidence: StructuredEvidence[] = [];
             if (mappedResults.length > 0) {

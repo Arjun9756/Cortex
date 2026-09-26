@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import { ensurePostgresTables } from '../packages/database/postgres/schema.js';
 import { runAnalyticsJob } from '../packages/workers/scheduler.worker.js';
@@ -62,7 +64,7 @@ async function testFreshPostgresBoot() {
         // Step 4: Run startup analytics job (which server.ts triggers immediately on boot)
         console.log('4. Running startup analytics calculation job (runAnalyticsJob)...');
         const tAnalytics = Date.now();
-        await runAnalyticsJob();
+        await runAnalyticsJob(seedSource);
         console.log(`   ✅ runAnalyticsJob() completed successfully in ${Date.now() - tAnalytics}ms without crashes.\n`);
 
         // Step 5: Verify metrics tables have populated rows

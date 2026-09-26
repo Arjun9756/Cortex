@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { generateAndSaveDailyReport, aggregateDailyReportData, renderDailyReportHtml } from '../packages/analytics/dailyReport.service.js';
 import fs from 'fs';
 import path from 'path';
@@ -8,7 +10,7 @@ async function main() {
     console.log('════════════════════════════════════════════════════════════════════════════════\n');
 
     const start = Date.now();
-    const result = await generateAndSaveDailyReport();
+    const result = await generateAndSaveDailyReport(seedSource);
     const duration = Date.now() - start;
 
     console.log('\n✅ Report Successfully Generated & Stored in PostgreSQL!');

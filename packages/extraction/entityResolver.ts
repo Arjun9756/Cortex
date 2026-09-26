@@ -1,4 +1,5 @@
 import { upsertRelation, upsertEntity } from "../database/neo4j/graph.repository.js"
+import type { DataSource } from '../database/provenance.js'
 
 type ExtractedEntity = {
     name: string,
@@ -60,6 +61,7 @@ export function isCommitEntity(name: string, type?: string): boolean {
 export async function resolveEntity(
     entities: ExtractedEntity[],
     newEntity: NewEntities[],
+    source: DataSource,
     extraPropertiesMap?: Record<string, Record<string, any>>,
     existingSession?: any
 ) {
@@ -90,7 +92,7 @@ export async function resolveEntity(
                 }
             }
 
-            const realID = await upsertEntity(entity.name, entity.type, extras, existingSession)
+            const realID = await upsertEntity(entity.name, entity.type, { ...(extras || {}), source }, existingSession)
             if (realID) {
                 idMap[entity.name] = realID
             } else {

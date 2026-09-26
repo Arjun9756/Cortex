@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, AlertCircle, Search, ExternalLink, ShieldAlert } from 'lucide-react';
+import { X, Clock, Search, ShieldAlert } from 'lucide-react';
 import type { StaleOutlierPr } from '../lib/api';
 
 interface OutlierPrModalProps {

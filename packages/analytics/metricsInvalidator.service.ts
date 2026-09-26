@@ -126,7 +126,7 @@ export async function checkAndRunMetricsDebounced(): Promise<{
                 await execute();
             } else {
                 const { runAnalyticsJob } = await import('../workers/scheduler.worker.js');
-                await runAnalyticsJob();
+                await runAnalyticsJob('webhook');
             }
 
             // Step 5: Check if new events arrived while recalculation was in flight (Zero Lost Updates)

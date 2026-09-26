@@ -1,12 +1,15 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import { neo4jSession } from '../apps/api/config/neo4j.js';
 import { snowflake } from '../apps/Utils/Snowflake.js';
-import { resolveIdentity, setPersonActiveStatus, linkCanonicalPersons } from '../packages/identity/canonicalPerson.service.js';
+import { resolveIdentity as persistResolveIdentity, setPersonActiveStatus, linkCanonicalPersons } from '../packages/identity/canonicalPerson.service.js';
 import { normalizeSlackEvent } from '../packages/ingestion/slack/normalize.js';
 import { parseCoAuthors } from '../packages/ingestion/github/normalize.js';
 import { processGithubEvent } from '../packages/ingestion/github/processGithubEvent.js';
 import { calculateKnowledgeRisk } from '../packages/analytics/knowledge.service.js';
 import { findSuccessors } from '../packages/analytics/successor.service.js';
+const resolveIdentity = (input: Record<string, any>) => persistResolveIdentity({ ...input, source: seedSource } as any);
 import { calculateAllRepoMetrics } from '../packages/analytics/repoMetrics.service.js';
 import { calculateAllPersonMetrics } from '../packages/analytics/personMetrics.service.js';
 import { isBotAccount, CYPHER_BOT_FILTER } from '../packages/shared/botDetection.js';
@@ -72,7 +75,7 @@ async function runHardcoreGrill() {
             });
 
             // Calculate repo metrics
-            await calculateAllRepoMetrics();
+            await calculateAllRepoMetrics(seedSource);
 
             const [rm] = await sql`
                 SELECT repo_name, primary_owner, bus_factor, status 
@@ -102,14 +105,14 @@ async function runHardcoreGrill() {
 
             // Register in Postgres person_identity and person_metrics as inactive
             await sql`
-                INSERT INTO person_identity (id, canonical_person_id, provider, external_id, username, display_name, is_active)
-                VALUES (${`id_${snowflake.nextID()}`}, ${alumniCId}, 'github', ${`gh_${alumniName}`}, ${alumniName}, ${alumniName}, false)
-                ON CONFLICT (provider, external_id) DO UPDATE SET is_active = false
+                INSERT INTO person_identity (id, source, canonical_person_id, provider, external_id, username, display_name, is_active)
+                VALUES (${`id_${snowflake.nextID()}`}, ${seedSource}, ${alumniCId}, 'github', ${`gh_${alumniName}`}, ${alumniName}, ${alumniName}, false)
+                ON CONFLICT (source, provider, external_id) DO UPDATE SET is_active = false
             `;
             await sql`
-                INSERT INTO person_metrics (external_id, person_name, risk_score, is_active, employment_status)
-                VALUES (${alumniCId}, ${alumniName}, 40, false, 'alumni')
-                ON CONFLICT (external_id) DO UPDATE SET is_active = false, employment_status = 'alumni'
+                INSERT INTO person_metrics (source, external_id, person_name, risk_score, is_active, employment_status)
+                VALUES (${seedSource}, ${alumniCId}, ${alumniName}, 40, false, 'alumni')
+                ON CONFLICT (source, external_id) DO UPDATE SET is_active = false, employment_status = 'alumni'
             `;
 
             // Run findSuccessors on alumni
@@ -256,7 +259,7 @@ async function runHardcoreGrill() {
             });
 
             // Administratively link them
-            await linkCanonicalPersons(alias1.canonicalPersonId, alias2.canonicalPersonId, 'Verified employee link');
+            await linkCanonicalPersons(alias1.canonicalPersonId, alias2.canonicalPersonId, seedSource, 'Verified employee link');
 
             // Verify Postgres person_identity rows both point to alias1
             const idRows = await sql`
@@ -475,8 +478,8 @@ async function runHardcoreGrill() {
             };
 
             await sql`
-                INSERT INTO events (id, provider, event_type, external_id, payload)
-                VALUES (${eventId}, 'github', 'push', ${`deliv_c1_${timestamp}`}, ${sql.json(payload)})
+                INSERT INTO events (id, source, provider, event_type, external_id, payload)
+                VALUES (${eventId}, ${seedSource}, 'github', 'push', ${`deliv_c1_${timestamp}`}, ${sql.json(payload)})
             `;
 
             await processGithubEvent(eventId);
@@ -526,8 +529,8 @@ async function runHardcoreGrill() {
             };
 
             await sql`
-                INSERT INTO events (id, provider, event_type, external_id, payload)
-                VALUES (${eventIdG1}, 'github', 'push', ${deliveryIdG1}, ${sql.json(scalePayload)})
+                INSERT INTO events (id, source, provider, event_type, external_id, payload)
+                VALUES (${eventIdG1}, ${seedSource}, 'github', 'push', ${deliveryIdG1}, ${sql.json(scalePayload)})
             `;
 
             await processGithubEvent(eventIdG1);
@@ -604,7 +607,7 @@ async function runHardcoreGrill() {
                 MERGE (h)-[:CONTRIBUTED_TO {commitCount: 20, lastCommitAt: $timestamp}]->(r)
             `, { botRepo, botName, realHuman, timestamp });
 
-            await calculateAllRepoMetrics();
+            await calculateAllRepoMetrics(seedSource);
             const [rmBot] = await sql`SELECT primary_owner, bus_factor FROM repo_metrics WHERE repo_name ILIKE ${botRepo}`;
 
             const passedH3 = rmBot?.primary_owner === realHuman;

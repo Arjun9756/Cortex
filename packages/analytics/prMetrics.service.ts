@@ -13,6 +13,7 @@
 
 import sql from '../../apps/api/config/postgres.js';
 import { isBotAccount } from '../shared/botDetection.js';
+import { DISPLAYABLE_SOURCES } from '../database/provenance.js';
 
 export interface PrMetricRecord {
     prId: string;
@@ -47,11 +48,11 @@ export interface DistributionStats {
 }
 
 export interface PrMetricsReport {
-    repoName?: string;
-    timeframeDays?: number;
+    repoName?: string | undefined;
+    timeframeDays?: number | undefined;
     sampleSize: number;
     dataCompleteness: 'complete' | 'partial';
-    warning?: string;
+    warning?: string | undefined;
     reviewCycleTime: {
         headlineHours: number; // p50 wall-clock hours
         metricName: string;
@@ -91,16 +92,38 @@ export interface PrMetricsReport {
         filteredCount: number;
         suspectBotsCount: number;
         suspectBotAuthors: string[];
-        warning?: string;
+        warning?: string | undefined;
     };
     transparencyTooltip: string;
 }
 
 export interface PrMetricsOptions {
-    repoName?: string;
-    timeframeDays?: number;
-    includeBots?: boolean;
-    outlierThresholdDays?: number;
+    repoName?: string | undefined;
+    timeframeDays?: number | undefined;
+    includeBots?: boolean | undefined;
+    outlierThresholdDays?: number | undefined;
+}
+
+/**
+ * Helper to safely parse dates without throwing or returning Invalid Date (NaN).
+ */
+export function parseSafeDate(val: any): Date | null {
+    if (!val) return null;
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Helper to safely parse positive numbers, stripping formatting commas and clamping to >= 0.
+ */
+export function parseSafePositiveInt(val: any, fallback = 0): number {
+    if (val === null || val === undefined) return fallback;
+    if (typeof val === 'number') {
+        return Number.isFinite(val) ? Math.max(0, Math.round(val)) : fallback;
+    }
+    const clean = String(val).replace(/,/g, '').trim();
+    const parsed = parseInt(clean, 10);
+    return isNaN(parsed) ? fallback : Math.max(0, parsed);
 }
 
 /**
@@ -109,6 +132,7 @@ export interface PrMetricsOptions {
  * Weekends (Saturday, Sunday) are completely excluded (0 hours).
  */
 export function calculateBusinessHours(startDate: Date, endDate: Date): number {
+    if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return 0;
     if (endDate.getTime() <= startDate.getTime()) return 0;
 
     let current = new Date(startDate.getTime());
@@ -149,11 +173,12 @@ export function calculateBusinessHours(startDate: Date, endDate: Date): number {
  * Computes deterministic distribution percentiles (p50, p90, p75, p25, min, max, avg)
  */
 export function calculatePercentiles(values: number[]): DistributionStats {
-    if (values.length === 0) {
+    const validValues = values.filter(v => typeof v === 'number' && Number.isFinite(v));
+    if (validValues.length === 0) {
         return { median: 0, p90: 0, p75: 0, p25: 0, min: 0, max: 0, average: 0 };
     }
 
-    const sorted = [...values].sort((a, b) => a - b);
+    const sorted = [...validValues].sort((a, b) => a - b);
     const n = sorted.length;
 
     const getP = (p: number): number => {
@@ -199,10 +224,14 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             rows = await sql`
                 SELECT id, external_id, payload, created_at
                 FROM events
-                WHERE provider = 'github'
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'github'
                   AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
                   AND (
-                      lower(COALESCE(payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
+                      lower(COALESCE(payload->'repository'->>'full_name', payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
+                      OR (
+                          lower(COALESCE(payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
+                          AND payload->'repository'->>'full_name' IS NULL
+                      )
                   )
                   AND created_at >= NOW() - (${timeframeDays} || ' days')::INTERVAL
                 ORDER BY created_at DESC
@@ -211,10 +240,14 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             rows = await sql`
                 SELECT id, external_id, payload, created_at
                 FROM events
-                WHERE provider = 'github'
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'github'
                   AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
                   AND (
-                      lower(COALESCE(payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
+                      lower(COALESCE(payload->'repository'->>'full_name', payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
+                      OR (
+                          lower(COALESCE(payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
+                          AND payload->'repository'->>'full_name' IS NULL
+                      )
                   )
                 ORDER BY created_at DESC
             `;
@@ -222,7 +255,7 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             rows = await sql`
                 SELECT id, external_id, payload, created_at
                 FROM events
-                WHERE provider = 'github'
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'github'
                   AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
                   AND created_at >= NOW() - (${timeframeDays} || ' days')::INTERVAL
                 ORDER BY created_at DESC
@@ -231,7 +264,7 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             rows = await sql`
                 SELECT id, external_id, payload, created_at
                 FROM events
-                WHERE provider = 'github'
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'github'
                   AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
                 ORDER BY created_at DESC
             `;
@@ -240,17 +273,45 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
         console.warn(`[PrMetrics] Failed to query events table: ${err?.message}`);
     }
 
-    // Deduplicate PRs by PR number / repository
+    // Deduplicate and coalesce PRs by PR number / repository
     const prMap = new Map<string, any>();
     for (const row of rows) {
         const p = row.payload || {};
         const pr = p.pull_request || p;
-        const rName = p.repository?.name || p.repository || repoName || 'unknown';
+        const rName = p.repository?.name || p.repository?.full_name || p.repository || repoName || 'unknown';
         const prNumber = pr.number || row.external_id || row.id;
         const key = `${rName}#${prNumber}`;
 
         if (!prMap.has(key)) {
-            prMap.set(key, { ...row, parsedPr: pr, repoName: rName, prNumber });
+            prMap.set(key, { ...row, parsedPr: { ...pr }, repoName: rName, prNumber });
+        } else {
+            // Lifecycle Coalescing: merge richer state from other events of the same PR
+            const existing = prMap.get(key);
+            const exPr = existing.parsedPr;
+
+            // Preserve merge metadata if any snapshot contains it
+            if (!exPr.merged_at && (pr.merged_at || pr.merged)) {
+                exPr.merged_at = pr.merged_at || pr.updated_at;
+                exPr.merged = true;
+            }
+            if (!exPr.ready_for_review_at && pr.ready_for_review_at) {
+                exPr.ready_for_review_at = pr.ready_for_review_at;
+            }
+            if (!exPr.closed_at && pr.closed_at) {
+                exPr.closed_at = pr.closed_at;
+            }
+            if ((!exPr.additions || exPr.additions === 0) && pr.additions) {
+                exPr.additions = pr.additions;
+            }
+            if ((!exPr.deletions || exPr.deletions === 0) && pr.deletions) {
+                exPr.deletions = pr.deletions;
+            }
+            if ((!exPr.changed_files || exPr.changed_files === 0) && pr.changed_files) {
+                exPr.changed_files = pr.changed_files;
+            }
+            if ((!exPr.commits || exPr.commits === 0) && pr.commits) {
+                exPr.commits = pr.commits;
+            }
         }
     }
 
@@ -276,61 +337,74 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
         const mergedAtStr = pr.merged_at || (pr.merged ? pr.updated_at : null);
         const closedAtStr = pr.closed_at || null;
 
+        const createdDate = parseSafeDate(createdAtStr) || new Date();
+        const mergedDate = parseSafeDate(mergedAtStr);
+        const closedDate = parseSafeDate(closedAtStr);
+
         let state: 'open' | 'merged' | 'closed' = 'open';
-        if (mergedAtStr) {
+        if (mergedDate) {
             state = 'merged';
-        } else if (closedAtStr) {
+        } else if (closedDate) {
             state = 'closed';
             closedUnmergedPrs++;
         } else {
             openPrs++;
         }
 
-        if (state !== 'merged') continue;
+        if (state !== 'merged' || !mergedDate) continue;
 
         if (isBot) {
             mergedBotPrs++;
-            if (!includeBots) continue; // exclude bots from human metrics
         }
 
-        const createdDate = new Date(createdAtStr);
-        const mergedDate = new Date(mergedAtStr);
-
         // Ready for review timestamp: if draft, ready_for_review_at; else created_at
-        const readyForReviewDate = pr.ready_for_review_at ? new Date(pr.ready_for_review_at) : createdDate;
+        const rawReadyDate = parseSafeDate(pr.ready_for_review_at);
+        const readyForReviewDate = rawReadyDate || createdDate;
 
         const wallClockReviewHours = Math.max(0, (mergedDate.getTime() - readyForReviewDate.getTime()) / (1000 * 60 * 60));
         const businessReviewHours = calculateBusinessHours(readyForReviewDate, mergedDate);
         const totalLeadHours = Math.max(0, (mergedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60));
+
+        // Ensure review durations are finite numbers
+        if (!Number.isFinite(wallClockReviewHours) || !Number.isFinite(totalLeadHours)) {
+            console.warn(`[PrMetrics] Skipping PR ${key} with non-finite duration (${wallClockReviewHours}h)`);
+            continue;
+        }
 
         const isOutlier = wallClockReviewHours > outlierThresholdHours;
 
         prRecords.push({
             prId: key,
             repoName: item.repoName,
-            number: Number(item.prNumber),
+            number: Number(item.prNumber) || 0,
             title: pr.title || 'Untitled PR',
             author,
             isBot,
             isDraft,
-            createdAt: createdAtStr,
+            createdAt: createdDate.toISOString(),
             readyForReviewAt: readyForReviewDate.toISOString(),
-            mergedAt: mergedAtStr,
-            closedAt: closedAtStr,
+            mergedAt: mergedDate.toISOString(),
+            closedAt: closedDate ? closedDate.toISOString() : null,
             state: 'merged',
             reviewTimeWallClockHours: Math.round(wallClockReviewHours * 10) / 10,
             totalLeadTimeHours: Math.round(totalLeadHours * 10) / 10,
             isOutlier,
-            additions: Number(pr.additions || 0),
-            deletions: Number(pr.deletions || 0),
-            changedFiles: Number(pr.changed_files || 0),
-            commitsCount: Number(pr.commits || 1),
+            additions: parseSafePositiveInt(pr.additions, 0),
+            deletions: parseSafePositiveInt(pr.deletions, 0),
+            changedFiles: parseSafePositiveInt(pr.changed_files, 0),
+            commitsCount: parseSafePositiveInt(pr.commits, 1),
         });
     }
 
-    // Segregate standard PRs and outliers
-    const standardPrs = prRecords.filter(r => !r.isOutlier);
-    const outlierPrs = prRecords.filter(r => r.isOutlier);
+    // Segregate human PRs and outliers
+    const humanPrs = prRecords.filter(r => !r.isBot);
+    const standardHumanPrs = humanPrs.filter(r => !r.isOutlier);
+    const outlierHumanPrs = humanPrs.filter(r => r.isOutlier);
+
+    // Active PRs for statistical distribution calculation
+    const activePrs = includeBots ? prRecords : humanPrs;
+    const standardPrs = activePrs.filter(r => !r.isOutlier);
+    const outlierPrs = activePrs.filter(r => r.isOutlier);
 
     const wallClockHoursList = standardPrs.map(r => r.reviewTimeWallClockHours ?? 0);
     const leadTimeHoursList = standardPrs.map(r => r.totalLeadTimeHours ?? 0);
@@ -373,11 +447,11 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
         },
         counts: {
             totalEvaluated,
-            mergedHumanPrs: standardPrs.length,
+            mergedHumanPrs: standardHumanPrs.length,
             mergedBotPrs,
             openPrs,
             closedUnmergedPrs,
-            staleOutliersCount: outlierPrs.length,
+            staleOutliersCount: outlierHumanPrs.length,
         },
         sizeContext: {
             totalAdditions,

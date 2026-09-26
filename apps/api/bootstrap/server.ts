@@ -7,6 +7,7 @@ import { ensurePostgresTables } from '../../../packages/database/postgres/schema
 import { startMetricsScheduler } from '../../../packages/workers/scheduler.worker.js'
 import { verifyLicenseOnStartup } from '../../../packages/license/index.js'
 import { verifyNeo4jConnectivity } from '../config/neo4j.js'
+import { warnIfPostgresRlsIsBypassed } from '../config/postgres.js'
 
 async function startServer() {
     try {
@@ -18,6 +19,7 @@ async function startServer() {
         }
 
         await ensurePostgresTables()
+        await warnIfPostgresRlsIsBypassed()
         // Graph enrichment is optional for API reads. Surface the real infrastructure
         // failure at startup, but do not make Postgres-backed metrics unavailable.
         try {

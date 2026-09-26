@@ -2,17 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   GitPullRequest,
   Clock,
-  CheckCircle2,
   AlertTriangle,
   RefreshCw,
   Info,
-  SlidersHorizontal,
   Bot,
   Layers,
   ArrowUpDown,
-  FileCode2,
-  Plus,
-  Minus,
   AlertCircle
 } from 'lucide-react';
 import {

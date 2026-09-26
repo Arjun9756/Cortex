@@ -73,7 +73,7 @@ export async function calculateKnowledgeRisk(personName: string): Promise<Knowle
         calculateActivity(personName, mappings.activity, schema.relationshipTypes),
         calculateDocumentation(personName, mappings.documentation, schema.relationshipTypes),
         calculateExpertise(personName, mappings.expertise, schema.relationshipTypes),
-        calculatePendingWork(personName, mappings.pendingWork, schema.relationshipTypes),
+        calculatePendingWork(personName, mappings.pendingWork, schema.relationshipTypes, 'webhook'),
     ])
     console.log(`[KnowledgeRisk:Timing] Parallel component calculations: ${Date.now() - tCalc0}ms`);
 

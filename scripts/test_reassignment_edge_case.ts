@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { driver } from '../apps/api/config/neo4j.js';
 import { calculatePendingWork } from '../packages/analytics/knowledge.risk.predict.js';
 
@@ -15,7 +17,7 @@ async function testReassignment() {
         `);
 
         // Check Alice count
-        const alice1 = await calculatePendingWork("Alice ReassignTest", { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' }, ['ASSIGNED_TO']);
+        const alice1 = await calculatePendingWork("Alice ReassignTest", { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' }, ['ASSIGNED_TO'], seedSource);
         console.log('Alice initial pending count:', alice1.count);
 
         // Now issue is reassigned to Bob in Jira/GitHub
@@ -28,8 +30,8 @@ async function testReassignment() {
         `);
 
         // Check Alice and Bob counts
-        const alice2 = await calculatePendingWork("Alice ReassignTest", { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' }, ['ASSIGNED_TO']);
-        const bob2 = await calculatePendingWork("Bob ReassignTest", { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' }, ['ASSIGNED_TO']);
+        const alice2 = await calculatePendingWork("Alice ReassignTest", { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' }, ['ASSIGNED_TO'], seedSource);
+        const bob2 = await calculatePendingWork("Bob ReassignTest", { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' }, ['ASSIGNED_TO'], seedSource);
 
         console.log('After reassignment to Bob:');
         console.log('  Alice pending count:', alice2.count, '(Expected: 0 if properly attributed to Bob only)');

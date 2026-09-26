@@ -7,12 +7,14 @@ import { resolveIdentity } from '../../identity/canonicalPerson.service.js'
 import { generateEmbeddings } from '../../llm/providers/gemini.js'
 import { ICleanEvent, normalizeJiraEvent } from './normalize.js'
 import crypto from 'crypto'
+import { assertDataSource } from '../../database/provenance.js'
 
 export async function processJiraEvent(eventID: string) {
     try {
         // 1.Fetch Data From Database
-        const [event] = await sql`SELECT *FROM events WHERE id=${eventID}`
-        if (!event) {
+        const [event] = await sql`SELECT * FROM events WHERE id=${eventID} AND (source IN ('webhook', 'backfill') OR (source LIKE 'seed:%' AND current_setting('cortex.allow_seed_data', true) = 'on'))`
+        if (event?.source) assertDataSource(event.source)
+        if (!event || !event.source) {
             console.log(`Event ID ${eventID} Not Found in Database`)
             return null
         }
@@ -63,6 +65,7 @@ export async function processJiraEvent(eventID: string) {
         if (hasAuthorInfo) {
             try {
                 const identityRes = await resolveIdentity({
+                    source: event.source,
                     provider: 'jira',
                     externalId,
                     username,
@@ -105,7 +108,7 @@ export async function processJiraEvent(eventID: string) {
         }
 
         // 6. Save to Graph Database (with enriched PERSON and ENTITY metadata)
-        await saveExtractionToGraph(entities, newEntities, relationships, newRelations, personMetadata, entityMetadata)
+        await saveExtractionToGraph(entities, newEntities, relationships, newRelations, { source: event.source, sourceEventId: eventID }, personMetadata, entityMetadata)
 
         // 7.Generate vector embedding
         const effectiveSummary = summary && summary.trim().length > 0
@@ -119,6 +122,7 @@ export async function processJiraEvent(eventID: string) {
 
             await upsertVector(crypto.randomUUID(), vectorEmbedding, {
                 eventID,
+                source: event.source,
                 summary: effectiveSummary,
                 entities: allEntities,
                 relationships: allRelations,

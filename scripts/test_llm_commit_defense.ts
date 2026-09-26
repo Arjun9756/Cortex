@@ -1,8 +1,12 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js'
+const seedSource = assertSafeTestDatabase(import.meta.url)
 import { isCommitEntity, normalizeEntityType, resolveEntity } from '../packages/extraction/entityResolver.js'
 import { ENTITY_TYPES } from '../packages/extraction/ontology.js'
-import { upsertEntity, batchUpsertRelations } from '../packages/database/neo4j/graph.repository.js'
+import { upsertEntity as persistEntity } from '../packages/database/neo4j/graph.repository.js'
 import { saveExtractionToGraph } from '../packages/extraction/processExtraction.js'
 import { driver } from '../apps/api/config/neo4j.js'
+
+const upsertEntity = (name: string, type: string, properties: Record<string, any> | undefined = {}, session?: any) => persistEntity(name, type, { ...(properties || {}), source: seedSource }, session);
 
 async function runDefenseTests() {
     console.log('=== RUNNING CORTEX LLM COMMIT DEFENSE & GRAPH INTEGRITY AUDIT ===\n')
@@ -110,7 +114,9 @@ async function runDefenseTests() {
         mockNewEntities,
         mockRelationships,
         mockNewRelations,
-        [{ name: 'TestDevUser', email: 'testdev@cortex.internal' }]
+        { source: seedSource },
+        [{ name: 'TestDevUser', email: 'testdev@cortex.internal' }],
+        undefined
     )
 
     // Verify Relationship Rewiring function directly

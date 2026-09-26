@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import { driver } from '../apps/api/config/neo4j.js';
 import { calculatePendingWork } from '../packages/analytics/knowledge.risk.predict.js';
 
@@ -19,7 +21,8 @@ async function proveLifecycle() {
         const openState = await calculatePendingWork(
             testPerson,
             { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' },
-            ['ASSIGNED_TO']
+            ['ASSIGNED_TO'],
+            seedSource
         );
         console.log(`-> Jab issue OPEN tha: pendingCount = ${openState.count}`);
 
@@ -41,7 +44,8 @@ async function proveLifecycle() {
         const closedState = await calculatePendingWork(
             testPerson,
             { relation: 'ASSIGNED_TO', targetLabel: 'ISSUE' },
-            ['ASSIGNED_TO']
+            ['ASSIGNED_TO'],
+            seedSource
         );
         console.log(`-> Wahi SAME issue CLOSE hone ke baad: pendingCount = ${closedState.count}`);
 

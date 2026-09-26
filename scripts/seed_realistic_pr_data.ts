@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import crypto from 'crypto';
 
@@ -704,9 +706,10 @@ async function seedRealPrData() {
         };
 
         await sql`
-            INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+            INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
             VALUES (
                 ${id},
+                ${seedSource},
                 'github',
                 'pull_request',
                 ${externalId},

@@ -1,3 +1,5 @@
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import { driver } from '../apps/api/config/neo4j.js';
 import { processGithubEvent } from '../packages/ingestion/github/processGithubEvent.js';
@@ -35,8 +37,8 @@ async function testStrictIngestionAndDuplicates() {
     console.log('\n📥 Processing Ingestion Event 1: Alexander Hamilton (Alpha)...');
     const event1Id = `${prefix}event_1`;
     await sql`
-        INSERT INTO events (id, provider, event_type, external_id, payload)
-        VALUES (${event1Id}, 'github', 'push', ${event1Id}, ${JSON.stringify({
+        INSERT INTO events (id, source, provider, event_type, external_id, payload)
+        VALUES (${event1Id}, ${seedSource}, 'github', 'push', ${event1Id}, ${JSON.stringify({
             ref: 'refs/heads/main',
             repository: { name: repoName },
             sender: { id: 99101, login: `${prefix}alex_alpha` },
@@ -56,8 +58,8 @@ async function testStrictIngestionAndDuplicates() {
     console.log('\n📥 Processing Ingestion Event 2: Alexander Hamilton (Beta, different email)...');
     const event2Id = `${prefix}event_2`;
     await sql`
-        INSERT INTO events (id, provider, event_type, external_id, payload)
-        VALUES (${event2Id}, 'github', 'push', ${event2Id}, ${JSON.stringify({
+        INSERT INTO events (id, source, provider, event_type, external_id, payload)
+        VALUES (${event2Id}, ${seedSource}, 'github', 'push', ${event2Id}, ${JSON.stringify({
             ref: 'refs/heads/main',
             repository: { name: repoName },
             sender: { id: 99102, login: `${prefix}alex_beta` },
@@ -77,8 +79,8 @@ async function testStrictIngestionAndDuplicates() {
     console.log('\n📥 Processing Ingestion Event 3: Alexander Hamilton (Gamma, name only, no email)...');
     const event3Id = `${prefix}event_3`;
     await sql`
-        INSERT INTO events (id, provider, event_type, external_id, payload)
-        VALUES (${event3Id}, 'github', 'push', ${event3Id}, ${JSON.stringify({
+        INSERT INTO events (id, source, provider, event_type, external_id, payload)
+        VALUES (${event3Id}, ${seedSource}, 'github', 'push', ${event3Id}, ${JSON.stringify({
             ref: 'refs/heads/main',
             repository: { name: repoName },
             sender: { id: 99103, login: `${prefix}alex_gamma` },
@@ -163,7 +165,7 @@ async function testStrictIngestionAndDuplicates() {
         await verifySession.close();
     }
 
-    await calculateAllRepoMetrics();
+    await calculateAllRepoMetrics(seedSource);
     const [repoMetric] = await sql`SELECT bus_factor, contributor_count, primary_owner FROM repo_metrics WHERE external_id = ${repoName}`;
     console.log(`  - Repo Metrics: bus_factor=${repoMetric?.bus_factor}, contributors=${repoMetric?.contributor_count}, owner=${repoMetric?.primary_owner}`);
     // 3 distinct authors with 1 commit each (total 3 commits). Any 2 authors cover 2/3 = 66.7% >= 50%. Bus factor should be 2!

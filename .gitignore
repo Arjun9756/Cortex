@@ -4,3 +4,4 @@ postgresql.pem
 .agent
 neural_docs_cortex.txt
 scratch/
+*.log

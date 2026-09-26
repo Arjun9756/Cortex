@@ -13,6 +13,7 @@ import { AnimatedNumber } from '../components/AnimatedNumber';
 import { RiskGauge } from '../components/RiskGauge';
 import { EvidenceChip } from '../components/EvidenceChip';
 import { RepoDetailModal } from '../components/RepoDetailModal';
+import { UrgentRisksModal } from '../components/UrgentRisksModal';
 import {
   ShieldAlert,
   Users,
@@ -75,6 +76,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   const [repoLoading, setRepoLoading] = useState<boolean>(false);
   const [repoError, setRepoError] = useState<string | null>(null);
   const [isRepoModalOpen, setIsRepoModalOpen] = useState<boolean>(false);
+  const [isUrgentModalOpen, setIsUrgentModalOpen] = useState<boolean>(false);
 
   // Team Overview Table Sort state
   const [sortField, setSortField] = useState<'risk' | 'commits' | 'name'>('risk');
@@ -419,12 +421,13 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           icon={<AlertTriangle className="h-5 w-5" />}
           accentColor={stats.totalRiskAlertsCount > 0 ? 'rose' : 'emerald'}
           trend={stats.totalRiskAlertsCount > 0 ? { value: `${stats.totalRiskAlertsCount} active`, positive: false } : { value: 'Clear', positive: true }}
+          onClick={() => setIsUrgentModalOpen(true)}
         />
       </div>
 
       {/* ─── ROW 3: RISK ALERTS (SURFACE PROBLEMS FIRST) ────────────────────── */}
       <div className="p-5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] space-y-3.5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
               <ShieldAlert className="h-4 w-4 text-rose-400" />
@@ -434,9 +437,17 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
               Top organizational risks detected from real ownership and commit data.
             </p>
           </div>
-          <span className="text-[10px] font-mono text-[var(--text-muted)] bg-[var(--bg-subtle)] px-2.5 py-1 rounded border border-[var(--border-subtle)]">
-            Ordered by Severity
-          </span>
+          <div className="flex items-center space-x-2.5">
+            <button
+              onClick={() => setIsUrgentModalOpen(true)}
+              className="px-2.5 py-1 text-xs font-mono font-medium rounded border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 transition-colors cursor-pointer flex items-center space-x-1"
+            >
+              <span>View All ({data?.allRiskAlerts?.length || stats.totalRiskAlertsCount}) Active Risks →</span>
+            </button>
+            <span className="text-[10px] font-mono text-[var(--text-muted)] bg-[var(--bg-subtle)] px-2.5 py-1 rounded border border-[var(--border-subtle)]">
+              Ordered by Severity
+            </span>
+          </div>
         </div>
 
         {riskAlerts.length === 0 ? (
@@ -529,13 +540,13 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           <>
             <div className="grid grid-cols-3 gap-2.5">
               <div className="p-2.5 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)] text-center">
-                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Total Commits</span>
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Recent Commits (12W)</span>
                 <span className="text-base font-bold text-indigo-400">
                   {activityTrend.reduce((sum, w) => sum + (w.commits || 0), 0)}
                 </span>
               </div>
               <div className="p-2.5 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)] text-center">
-                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Total PRs</span>
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Recent PRs (12W)</span>
                 <span className="text-base font-bold text-cyan-400">
                   {activityTrend.reduce((sum, w) => sum + (w.prs || 0), 0)}
                 </span>
@@ -783,6 +794,14 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           }}
         />
       )}
+
+      {/* Interactive Urgent Risk Alerts Popup Modal */}
+      <UrgentRisksModal
+        isOpen={isUrgentModalOpen}
+        onClose={() => setIsUrgentModalOpen(false)}
+        alerts={data?.allRiskAlerts && data.allRiskAlerts.length > 0 ? data.allRiskAlerts : (data?.riskAlerts || [])}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 };

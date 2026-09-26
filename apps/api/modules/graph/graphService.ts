@@ -1,6 +1,7 @@
 import sql from '../../config/postgres.js';
 import { driver } from '../../config/neo4j.js';
 import { RISK_THRESHOLDS } from '../../../../packages/shared/riskThresholds.js';
+import { DISPLAYABLE_SOURCES } from '../../../../packages/database/provenance.js';
 export interface GraphSummaryFilters {
     repository?: string;
     personExternalId?: string;
@@ -95,9 +96,9 @@ export async function buildGraphSummary(filters: GraphSummaryFilters = {}): Prom
     const maxLimit = Math.min(filters.limit || 120, 200);
     // 1. Fetch precomputed metrics in parallel from Postgres
     const [reposRaw, peopleRaw, techRaw] = await Promise.all([
-        sql`SELECT external_id, repo_name, bus_factor, risk_score, contributor_count, primary_owner, status, computed_at FROM repo_metrics ORDER BY risk_score DESC LIMIT 60`,
-        sql`SELECT external_id, person_name, risk_score, top_technologies, repos, commit_count, computed_at FROM person_metrics ORDER BY commit_count DESC, risk_score DESC LIMIT 60`,
-        sql`SELECT tech_name, usage_percent, trend_percent, repo_count, contributor_count, top_experts, computed_at FROM technology_metrics ORDER BY repo_count DESC, usage_percent DESC LIMIT 40`,
+        sql`SELECT external_id, repo_name, bus_factor, risk_score, contributor_count, primary_owner, status, computed_at FROM repo_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} ORDER BY risk_score DESC LIMIT 60`,
+        sql`SELECT external_id, person_name, risk_score, top_technologies, repos, commit_count, computed_at FROM person_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} ORDER BY commit_count DESC, risk_score DESC LIMIT 60`,
+        sql`SELECT tech_name, usage_percent, trend_percent, repo_count, contributor_count, top_experts, computed_at FROM technology_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} ORDER BY repo_count DESC, usage_percent DESC LIMIT 40`,
     ]);
     const nodeMap = new Map<string, SummaryNode>();
     const edges: SummaryEdge[] = [];
@@ -318,15 +319,15 @@ export async function buildNodeDetail(id: string, requestedType?: string): Promi
     if (type === 'person' || type === 'user' || cleanId.startsWith('person_') || cleanId.startsWith('canonical_')) return resolvePersonDetail(cleanId);
     if (type === 'technology' || type === 'tech') return resolveTechDetail(cleanId);
 
-    const repoMatch = await sql`SELECT external_id FROM repo_metrics WHERE external_id = ${cleanId} OR repo_name = ${cleanId} LIMIT 1`;
+    const repoMatch = await sql`SELECT external_id FROM repo_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND (external_id = ${cleanId} OR repo_name = ${cleanId}) LIMIT 1`;
     if (repoMatch.length > 0) return resolveRepoDetail(cleanId);
-    const personMatch = await sql`SELECT external_id FROM person_metrics WHERE external_id = ${cleanId} OR person_name ILIKE ${cleanId} LIMIT 1`;
+    const personMatch = await sql`SELECT external_id FROM person_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND (external_id = ${cleanId} OR person_name ILIKE ${cleanId}) LIMIT 1`;
     if (personMatch.length > 0) return resolvePersonDetail(cleanId);
     return resolveTechDetail(cleanId);
 }
 
 async function resolveRepoDetail(identifier: string) {
-    const rows = await sql`SELECT external_id, repo_name, bus_factor, risk_score, contributor_count, primary_owner, status, computed_at FROM repo_metrics WHERE external_id = ${identifier} OR repo_name = ${identifier} LIMIT 1`;
+    const rows = await sql`SELECT external_id, repo_name, bus_factor, risk_score, contributor_count, primary_owner, status, computed_at FROM repo_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND (external_id = ${identifier} OR repo_name = ${identifier}) LIMIT 1`;
     if (rows.length === 0) {
         return {
             id: identifier,
@@ -352,7 +353,30 @@ async function resolveRepoDetail(identifier: string) {
     const repo = rows[0]!;
     const repoName = repo.repo_name;
 
-    const contributorsRaw = await sql`SELECT external_id, person_name, risk_score, commit_count, top_technologies FROM person_metrics WHERE repos::jsonb ? ${repoName} ORDER BY commit_count DESC LIMIT 8`;
+    if (repo.status === 'empty' || Number(repo.bus_factor) === 0 || Number(repo.contributor_count) === 0) {
+        return {
+            id: repo.external_id || repoName,
+            name: repoName,
+            type: 'REPOSITORY',
+            status: 'empty',
+            bus_factor: 0,
+            risk_score: 0,
+            primary_owner: null,
+            contributor_count: 0,
+            top_contributors: [],
+            related_technologies: [],
+            neighbors: [],
+            computed_at: repo.computed_at,
+            actions: {
+                inspect_risk: { type: 'route', target: 'bus-factor', label: 'Inspect Risk', params: { repo: repoName } },
+                simulate_impact: { type: 'action', target: 'simulate_impact', label: 'Simulate Impact' }
+            },
+            generated_at: new Date().toISOString(),
+            cached: false
+        };
+    }
+
+    const contributorsRaw = await sql`SELECT external_id, person_name, risk_score, commit_count, top_technologies FROM person_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND repos::jsonb ? ${repoName} ORDER BY commit_count DESC LIMIT 8`;
     const topContributors = contributorsRaw.map(c => ({
         id: c.external_id,
         name: c.person_name,
@@ -416,7 +440,7 @@ async function resolveRepoDetail(identifier: string) {
 }
 
 async function resolvePersonDetail(identifier: string) {
-    const rows = await sql`SELECT external_id, person_name, risk_score, top_technologies, repos, commit_count, computed_at FROM person_metrics WHERE external_id = ${identifier} OR person_name ILIKE ${identifier} LIMIT 1`;
+    const rows = await sql`SELECT external_id, person_name, risk_score, top_technologies, repos, commit_count, computed_at FROM person_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND (external_id = ${identifier} OR person_name ILIKE ${identifier}) LIMIT 1`;
     if (rows.length === 0) {
         return {
             id: identifier,
@@ -442,7 +466,7 @@ async function resolvePersonDetail(identifier: string) {
 
     let repoRisks: any[] = [];
     if (personRepos.length > 0) {
-        repoRisks = await sql`SELECT repo_name, status, risk_score, bus_factor FROM repo_metrics WHERE repo_name = ANY(${personRepos})`;
+        repoRisks = await sql`SELECT repo_name, status, risk_score, bus_factor FROM repo_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND repo_name = ANY(${personRepos})`;
     }
     const repoRiskMap = new Map(repoRisks.map(r => [r.repo_name, r]));
 
@@ -456,7 +480,7 @@ async function resolvePersonDetail(identifier: string) {
         };
     });
 
-    const identities = await sql`SELECT provider, external_id, username, email, display_name FROM person_identity WHERE canonical_person_id = ${canonicalId}`;
+    const identities = await sql`SELECT provider, external_id, username, email, display_name FROM person_identity WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND canonical_person_id = ${canonicalId}`;
 
     const riskScore = person.risk_score || 0;
     const riskTier = riskScore >= RISK_THRESHOLDS.CRITICAL ? 'Critical' : riskScore >= RISK_THRESHOLDS.HIGH ? 'High' : riskScore >= RISK_THRESHOLDS.MODERATE ? 'Moderate' : 'Low';
@@ -493,7 +517,7 @@ async function resolvePersonDetail(identifier: string) {
 }
 
 async function resolveTechDetail(identifier: string) {
-    const rows = await sql`SELECT tech_name, usage_percent, trend_percent, repo_count, contributor_count, commit_count, pr_count, issue_count, top_experts, computed_at FROM technology_metrics WHERE tech_name ILIKE ${identifier} LIMIT 1`;
+    const rows = await sql`SELECT tech_name, usage_percent, trend_percent, repo_count, contributor_count, commit_count, pr_count, issue_count, top_experts, computed_at FROM technology_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND tech_name ILIKE ${identifier} LIMIT 1`;
     if (rows.length === 0) {
         return {
             id: identifier,
@@ -518,7 +542,7 @@ async function resolveTechDetail(identifier: string) {
     const tech = rows[0]!;
     const techName = tech.tech_name;
     const likePattern = '%' + techName + '%';
-    const relatedReposRaw = await sql`SELECT DISTINCT jsonb_array_elements_text(repos) AS repo FROM person_metrics WHERE top_technologies::text ILIKE ${likePattern} LIMIT 8`;
+    const relatedReposRaw = await sql`SELECT DISTINCT jsonb_array_elements_text(repos) AS repo FROM person_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND top_technologies::text ILIKE ${likePattern} LIMIT 8`;
     const relatedRepos = relatedReposRaw.map(r => r.repo).filter(Boolean);
     const topExperts = Array.isArray(tech.top_experts) ? tech.top_experts : [];
 

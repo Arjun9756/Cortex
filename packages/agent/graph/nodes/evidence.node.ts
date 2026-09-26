@@ -202,6 +202,12 @@ export function evidenceNode(state: AgentStateType): Partial<AgentStateType> {
                 const contribs = (item.contributors || []).map((c: any) => `${c.name} (${c.commits} commits)`).join(', ') || 'None';
                 return `[REPOSITORY CONTRIBUTORS] Repository: "${item.repo_name}" | Primary Owner: "${item.primary_owner || 'Unknown'}" | Bus Factor: ${item.bus_factor} | Contributor Count: ${item.contributor_count} | Contributors: [${contribs}]`;
             }
+            if (item?.type === 'commit') {
+                return `[VERIFIED RECENT COMMIT] Commit: ${item.id} | Repo: "${item.repository}" | Author: ${item.author}${item.email ? ` (${item.email})` : ''} | Date: ${item.formatted_date} | Files: ${item.files_changed} | Message: "${item.message}"`;
+            }
+            if (item?.type === 'pr_cycle_time') {
+                return `[PR REVIEW CYCLE TIME] Repo: "${item.repo || 'All'}" | Median Review Cycle Time: ${item.reviewCycleTimeHours} business hours | p90 Review: ${item.p90ReviewHours}h | Median Lead Time: ${item.leadTimeHours}h | Merged Human PRs: ${item.mergedHumanPrs} | Outliers (>30d): ${item.outliersCount}`;
+            }
             if (item?.healthy_repositories || item?.fragile_repositories) {
                 const hLines = (item.healthy_repositories || []).map((r: any) => `  - [HEALTHY] "${r.repo_name}" | Bus Factor: ${r.bus_factor} | Risk: ${r.risk_score}% | Owner: ${r.primary_owner} | Contributors: ${r.contributor_count}`);
                 const fLines = (item.fragile_repositories || []).map((r: any) => `  - [FRAGILE] "${r.repo_name}" | Bus Factor: ${r.bus_factor} (SPOF) | Risk: ${r.risk_score}% | Owner: ${r.primary_owner} | Contributors: ${r.contributor_count}`);

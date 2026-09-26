@@ -3,7 +3,8 @@ import { neo4jSession } from '../../apps/api/config/neo4j.js';
 import { snowflake } from '../../apps/Utils/Snowflake.js';
 import { calculateNameSimilarity } from './stringSimilarity.js';
 import { createGroqChatCompletion } from '../llm/providers/groq.js';
-import { upsertCanonicalPersonNode, upsertIdentityNode } from '../database/neo4j/graph.repository.js';
+import { upsertCanonicalPersonNode, upsertIdentityNode, runGraphWrite } from '../database/neo4j/graph.repository.js';
+import { assertDataSource, type DataSource } from '../database/provenance.js';
 
 export type SupportedProvider =
     | 'github'
@@ -17,6 +18,7 @@ export type SupportedProvider =
     | (string & {});
 
 export interface ProviderIdentityInput {
+    source: DataSource;
     provider: SupportedProvider;
     externalId: string;
     username?: string | undefined;
@@ -102,6 +104,7 @@ export function isStrongUsername(username: string | null | undefined): boolean {
  */
 export async function resolveIdentity(input: ProviderIdentityInput): Promise<IdentityResolutionResult> {
     const { provider, externalId, username, email, displayName } = input;
+    assertDataSource(input.source);
 
     if (!provider || !externalId) {
         throw new Error('Provider and externalId are required for identity resolution');
@@ -116,7 +119,7 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
         const [existing] = await sql`
             SELECT canonical_person_id, email, username, display_name 
             FROM person_identity 
-            WHERE provider = ${provider} AND external_id = ${externalId}
+            WHERE provider = ${provider} AND external_id = ${externalId} AND source IN ('webhook', 'backfill')
             LIMIT 1
         `;
 
@@ -127,7 +130,7 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                 SET email = COALESCE(${cleanEmail}, email),
                     username = COALESCE(${cleanUsername}, username),
                     display_name = COALESCE(${cleanDisplayName}, display_name)
-                WHERE provider = ${provider} AND external_id = ${externalId}
+                WHERE provider = ${provider} AND external_id = ${externalId} AND source IN ('webhook', 'backfill')
             `;
 
             // Sync Graph nodes
@@ -136,7 +139,8 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                 externalId,
                 username: cleanUsername || externalId,
                 displayName: cleanDisplayName,
-                canonicalPersonId: existing.canonical_person_id
+                canonicalPersonId: existing.canonical_person_id,
+                source: input.source
             });
 
             return {
@@ -157,6 +161,7 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                 SELECT canonical_person_id, display_name
                 FROM person_identity
                 WHERE LOWER(email) = ${cleanEmail}
+                  AND source IN ('webhook', 'backfill')
                 LIMIT 1
             `;
 
@@ -171,6 +176,7 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                     matchedBy: 'EXACT_EMAIL',
                     confidence: 1.0,
                     reason: `Matched exact email address: ${cleanEmail}`,
+                    source: input.source,
                 });
 
                 return {
@@ -198,6 +204,7 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                 SELECT canonical_person_id, display_name, provider, email
                 FROM person_identity
                 WHERE LOWER(username) = ${cleanUsername}
+                  AND source IN ('webhook', 'backfill')
                 LIMIT 1
             `;
 
@@ -215,6 +222,7 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                     matchedBy: 'USERNAME_MATCH',
                     confidence: 0.98,
                     reason: `Matched username "${cleanUsername}" across providers`,
+                    source: input.source,
                 });
 
                 return {
@@ -242,6 +250,7 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
         matchedBy: 'NEW_PERSON',
         confidence: 1.0,
         reason: 'No high-confidence email or username match; created new canonical person (name-only auto-merge prohibited)',
+        source: input.source,
     });
 
     // Audit check: If display name, username, or noreply email matches an existing person, log to potential_duplicates table (status = 'pending')
@@ -255,7 +264,8 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
         const candidateIdentities = await sql`
             SELECT DISTINCT canonical_person_id, display_name, username, email, provider, created_at
             FROM person_identity
-            WHERE canonical_person_id != ${newCanonicalId}
+            WHERE source IN ('webhook', 'backfill')
+              AND canonical_person_id != ${newCanonicalId}
             ORDER BY created_at DESC
             LIMIT 250
         `;
@@ -319,6 +329,7 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                 personBUsername: cleanUsername,
                 similarityScore: highestScore,
                 reason: bestReason,
+                source: input.source,
             });
             console.log(`[IdentityResolution] [STRICT POLICY] Flagged collision to potential_duplicates: "${cleanDisplayName || cleanUsername}" vs "${bestCandidate.display_name}" (${bestReason})`);
         }
@@ -339,6 +350,7 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
  * NEVER auto-merges; keeps entries separate with status = 'pending'.
  */
 async function recordPotentialDuplicate(params: {
+    source: DataSource;
     personAId: string;
     personAName: string;
     personAProvider: string | null;
@@ -354,11 +366,12 @@ async function recordPotentialDuplicate(params: {
     try {
         await sql`
             INSERT INTO potential_duplicates (
-                id, person_a_id, person_a_name, person_a_provider, person_a_username,
+                id, source, person_a_id, person_a_name, person_a_provider, person_a_username,
                 person_b_id, person_b_name, person_b_provider, person_b_username,
                 similarity_score, status, resolution_reason
             ) VALUES (
                 ${id},
+                ${params.source},
                 ${params.personAId},
                 ${params.personAName},
                 ${params.personAProvider},
@@ -382,6 +395,7 @@ async function recordPotentialDuplicate(params: {
  * and creates a merge audit record if joining an existing person.
  */
 async function linkIdentityAndAudit(params: {
+    source: DataSource;
     canonicalId: string;
     incoming: ProviderIdentityInput;
     cleanEmail: string | null;
@@ -391,14 +405,15 @@ async function linkIdentityAndAudit(params: {
     confidence: number;
     reason: string;
 }): Promise<void> {
-    const { canonicalId, incoming, cleanEmail, cleanUsername, cleanDisplayName, matchedBy, confidence, reason } = params;
+    const { canonicalId, incoming, cleanEmail, cleanUsername, cleanDisplayName, matchedBy, confidence, reason, source } = params;
     const identityId = `identity_${snowflake.nextID()}`;
 
     // 1. Insert into person_identity table
     await sql`
-        INSERT INTO person_identity (id, canonical_person_id, provider, external_id, username, email, display_name)
+        INSERT INTO person_identity (id, source, canonical_person_id, provider, external_id, username, email, display_name)
         VALUES (
             ${identityId},
+            ${source},
             ${canonicalId},
             ${incoming.provider},
             ${incoming.externalId},
@@ -406,7 +421,7 @@ async function linkIdentityAndAudit(params: {
             ${cleanEmail},
             ${cleanDisplayName}
         )
-        ON CONFLICT (provider, external_id) DO UPDATE SET
+        ON CONFLICT (source, provider, external_id) DO UPDATE SET
             canonical_person_id = ${canonicalId},
             username = COALESCE(${cleanUsername}, person_identity.username),
             email = COALESCE(${cleanEmail}, person_identity.email),
@@ -417,9 +432,10 @@ async function linkIdentityAndAudit(params: {
     if (matchedBy !== 'NEW_PERSON') {
         const auditLogId = `merge_${snowflake.nextID()}`;
         await sql`
-            INSERT INTO identity_merge_log (id, person_a, person_b, confidence, matched_by, reason)
+            INSERT INTO identity_merge_log (id, source, person_a, person_b, confidence, matched_by, reason)
             VALUES (
                 ${auditLogId},
+                ${source},
                 ${canonicalId},
                 ${`${incoming.provider}:${incoming.externalId}`},
                 ${confidence},
@@ -434,6 +450,7 @@ async function linkIdentityAndAudit(params: {
         id: canonicalId,
         name: cleanDisplayName,
         email: cleanEmail || undefined,
+        source,
     });
 
     await upsertIdentityNode({
@@ -442,6 +459,7 @@ async function linkIdentityAndAudit(params: {
         username: cleanUsername || incoming.externalId,
         displayName: cleanDisplayName,
         canonicalPersonId: canonicalId,
+        source,
     });
 }
 
@@ -510,15 +528,17 @@ INSTRUCTIONS:
  * Excludes inactive employees from current Bus Factor, Primary Owner, and Successor pools.
  */
 export async function setPersonActiveStatus(
-    canonicalPersonId: string, 
+    canonicalPersonId: string,
     isActive: boolean, 
+    source: DataSource,
     employmentStatus: 'active' | 'alumni' = isActive ? 'active' : 'alumni'
 ): Promise<{ updatedPostgres: number; updatedNeo4j: number }> {
+    assertDataSource(source);
     // 1. Update PostgreSQL person_identity table
     const identityResult = await sql`
         UPDATE person_identity 
         SET is_active = ${isActive}
-        WHERE canonical_person_id = ${canonicalPersonId}
+        WHERE canonical_person_id = ${canonicalPersonId} AND source = ${source}
         RETURNING id
     `;
 
@@ -527,21 +547,21 @@ export async function setPersonActiveStatus(
         UPDATE person_metrics
         SET is_active = ${isActive},
             employment_status = ${employmentStatus}
-        WHERE external_id = ${canonicalPersonId}
+        WHERE external_id = ${canonicalPersonId} AND source = ${source}
     `;
 
     // 3. Update Neo4j (p:PERSON) node
     const session = neo4jSession();
     let updatedNeo4j = 0;
     try {
-        const neoRes = await session.run(`
+        const neoRes = await runGraphWrite(`
             MATCH (p:PERSON)
-            WHERE p.canonicalPersonId = $canonicalPersonId 
-               OR p.externalId = $canonicalPersonId
+            WHERE (p.canonicalPersonId = $canonicalPersonId OR p.externalId = $canonicalPersonId)
+              AND p.source = $source
             SET p.isActive = $isActive,
                 p.employmentStatus = $employmentStatus
             RETURN count(p) AS c
-        `, { canonicalPersonId, isActive, employmentStatus });
+        `, { canonicalPersonId, isActive, employmentStatus, source }, session);
         updatedNeo4j = neoRes.records[0]?.get('c')?.toNumber ? neoRes.records[0].get('c').toNumber() : Number(neoRes.records[0]?.get('c') || 0);
     } finally {
         await session.close();
@@ -558,23 +578,26 @@ export async function setPersonActiveStatus(
 export async function linkCanonicalPersons(
     keepCanonicalId: string,
     mergeCanonicalId: string,
+    source: DataSource,
     reason: string = 'Manual administrative link / potential duplicate resolution'
 ): Promise<void> {
+    assertDataSource(source);
     if (keepCanonicalId === mergeCanonicalId) return;
 
     // 1. Update Postgres person_identity to point all mergeCanonicalId rows to keepCanonicalId
     await sql`
         UPDATE person_identity
         SET canonical_person_id = ${keepCanonicalId}
-        WHERE canonical_person_id = ${mergeCanonicalId}
+        WHERE canonical_person_id = ${mergeCanonicalId} AND source = ${source}
     `;
 
     // 2. Audit log the merge
     const auditLogId = `merge_${snowflake.nextID()}`;
     await sql`
-        INSERT INTO identity_merge_log (id, person_a, person_b, confidence, matched_by, reason)
+        INSERT INTO identity_merge_log (id, source, person_a, person_b, confidence, matched_by, reason)
         VALUES (
             ${auditLogId},
+            ${source},
             ${keepCanonicalId},
             ${mergeCanonicalId},
             1.0,
@@ -588,27 +611,27 @@ export async function linkCanonicalPersons(
         UPDATE potential_duplicates
         SET status = 'resolved',
             resolution_reason = ${`Linked to canonical person ${keepCanonicalId}: ${reason}`}
-        WHERE (person_a_id = ${keepCanonicalId} AND person_b_id = ${mergeCanonicalId})
+        WHERE source = ${source} AND ((person_a_id = ${keepCanonicalId} AND person_b_id = ${mergeCanonicalId})
            OR (person_a_id = ${mergeCanonicalId} AND person_b_id = ${keepCanonicalId})
            OR person_a_id = ${mergeCanonicalId}
-           OR person_b_id = ${mergeCanonicalId}
+           OR person_b_id = ${mergeCanonicalId})
     `;
 
     // 4. Update Neo4j:
     // Rewire CONTRIBUTED_TO relationships from merge person to keep person, summing commitCount and weightedScore
     const session = neo4jSession();
     try {
-        await session.run(`
+        await runGraphWrite(`
             MATCH (keep:PERSON)
-            WHERE keep.canonicalPersonId = $keepCanonicalId OR keep.externalId = $keepCanonicalId
+            WHERE (keep.canonicalPersonId = $keepCanonicalId OR keep.externalId = $keepCanonicalId) AND keep.source = $source
             MATCH (merge:PERSON)
             WHERE (merge.canonicalPersonId = $mergeCanonicalId OR merge.externalId = $mergeCanonicalId)
-              AND elementId(merge) <> elementId(keep)
+              AND merge.source = $source AND elementId(merge) <> elementId(keep)
             
             // Transfer CONTRIBUTED_TO relationships
-            OPTIONAL MATCH (merge)-[r:CONTRIBUTED_TO]->(repo:REPOSITORY)
+            OPTIONAL MATCH (merge)-[r:CONTRIBUTED_TO {source: $source}]->(repo:REPOSITORY {source: $source})
             FOREACH (_ IN CASE WHEN r IS NOT NULL THEN [1] ELSE [] END |
-                MERGE (keep)-[newR:CONTRIBUTED_TO]->(repo)
+                MERGE (keep)-[newR:CONTRIBUTED_TO {source: $source}]->(repo)
                 ON CREATE SET 
                     newR.commitCount = COALESCE(r.commitCount, 1),
                     newR.lastCommitAt = COALESCE(r.lastCommitAt, timestamp()),
@@ -624,13 +647,13 @@ export async function linkCanonicalPersons(
             
             // Delete the duplicate PERSON node
             DETACH DELETE merge
-        `, { keepCanonicalId, mergeCanonicalId });
+        `, { keepCanonicalId, mergeCanonicalId, source }, session);
     } finally {
         await session.close();
     }
 
     // 5. Clean up duplicate person_metrics row in Postgres
-    await sql`DELETE FROM person_metrics WHERE external_id = ${mergeCanonicalId}`;
+    await sql`DELETE FROM person_metrics WHERE external_id = ${mergeCanonicalId} AND source = ${source}`;
 
     console.log(`[IdentityResolution] Successfully linked canonical person ${mergeCanonicalId} into ${keepCanonicalId}`);
 }

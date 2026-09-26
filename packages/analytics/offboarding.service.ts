@@ -4,6 +4,7 @@ import neo4j from 'neo4j-driver';
 import { calculateKnowledgeRisk } from './knowledge.service.js';
 import { calculateSuccessorCandidates } from './successor.service.js';
 import { createGroqChatCompletion } from '../llm/providers/groq.js';
+import { DISPLAYABLE_SOURCES } from '../database/provenance.js';
 
 export interface OffboardingHandoffOutput {
     person: string;
@@ -38,7 +39,7 @@ export async function generateOffboardingHandoff(personName: string): Promise<Of
 
         for (const repo of repoNames) {
             const [metrics] = await sql`
-                SELECT bus_factor FROM repo_metrics WHERE repo_name ILIKE ${`%${repo}%`} LIMIT 1
+                SELECT bus_factor FROM repo_metrics WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND repo_name ILIKE ${`%${repo}%`} LIMIT 1
             `;
             const busFactor = metrics?.bus_factor ?? 1;
             ownedRepositories.push({

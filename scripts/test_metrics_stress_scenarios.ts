@@ -12,6 +12,8 @@
  * 6. Off-Hours / Weekend Skew: Confirms business hours protect teams in different timezones from weekend review penalties.
  */
 
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
 import sql from '../apps/api/config/postgres.js';
 import { calculatePrMetrics } from '../packages/analytics/prMetrics.service.js';
 
@@ -35,9 +37,9 @@ export async function runStressScenarios(): Promise<{ pass: boolean; results: an
         // 8 Bot PRs (Dependabot) + 2 Human PRs (2.0 hours)
         for (let i = 1; i <= 8; i++) {
             await sql`
-                INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+                INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
                 VALUES (
-                    ${STRESS_PREFIX + 'bot_' + i}, 'github', 'pull_request', ${STRESS_PREFIX + 'bot_ext_' + i},
+                    ${STRESS_PREFIX + 'bot_' + i}, ${seedSource}, 'github', 'pull_request', ${STRESS_PREFIX + 'bot_ext_' + i},
                     ${{
                         repository: { name: repoBot },
                         pull_request: {
@@ -59,9 +61,9 @@ export async function runStressScenarios(): Promise<{ pass: boolean; results: an
 
         for (let i = 9; i <= 10; i++) {
             await sql`
-                INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+                INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
                 VALUES (
-                    ${STRESS_PREFIX + 'bot_' + i}, 'github', 'pull_request', ${STRESS_PREFIX + 'bot_ext_' + i},
+                    ${STRESS_PREFIX + 'bot_' + i}, ${seedSource}, 'github', 'pull_request', ${STRESS_PREFIX + 'bot_ext_' + i},
                     ${{
                         repository: { name: repoBot },
                         pull_request: {
@@ -98,9 +100,9 @@ export async function runStressScenarios(): Promise<{ pass: boolean; results: an
         // 5 Normal PRs (3.0 hours) + 3 Abandoned PRs open 70 days
         for (let i = 1; i <= 5; i++) {
             await sql`
-                INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+                INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
                 VALUES (
-                    ${STRESS_PREFIX + 'stale_' + i}, 'github', 'pull_request', ${STRESS_PREFIX + 'stale_ext_' + i},
+                    ${STRESS_PREFIX + 'stale_' + i}, ${seedSource}, 'github', 'pull_request', ${STRESS_PREFIX + 'stale_ext_' + i},
                     ${{
                         repository: { name: repoStale },
                         pull_request: {
@@ -121,9 +123,9 @@ export async function runStressScenarios(): Promise<{ pass: boolean; results: an
 
         for (let i = 6; i <= 8; i++) {
             await sql`
-                INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+                INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
                 VALUES (
-                    ${STRESS_PREFIX + 'stale_' + i}, 'github', 'pull_request', ${STRESS_PREFIX + 'stale_ext_' + i},
+                    ${STRESS_PREFIX + 'stale_' + i}, ${seedSource}, 'github', 'pull_request', ${STRESS_PREFIX + 'stale_ext_' + i},
                     ${{
                         repository: { name: repoStale },
                         pull_request: {
@@ -158,9 +160,9 @@ export async function runStressScenarios(): Promise<{ pass: boolean; results: an
 
         // Contributor A: 1 huge PR (4,000 lines added)
         await sql`
-            INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+            INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
             VALUES (
-                ${STRESS_PREFIX + 'asym_huge'}, 'github', 'pull_request', ${STRESS_PREFIX + 'asym_ext_1'},
+                ${STRESS_PREFIX + 'asym_huge'}, ${seedSource}, 'github', 'pull_request', ${STRESS_PREFIX + 'asym_ext_1'},
                 ${{
                     repository: { name: repoAsym },
                     pull_request: {
@@ -184,9 +186,9 @@ export async function runStressScenarios(): Promise<{ pass: boolean; results: an
         // Contributor B: 10 tiny PRs (1 line each = typo fixes)
         for (let i = 2; i <= 11; i++) {
             await sql`
-                INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+                INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
                 VALUES (
-                    ${STRESS_PREFIX + 'asym_tiny_' + i}, 'github', 'pull_request', ${STRESS_PREFIX + 'asym_ext_' + i},
+                    ${STRESS_PREFIX + 'asym_tiny_' + i}, ${seedSource}, 'github', 'pull_request', ${STRESS_PREFIX + 'asym_ext_' + i},
                     ${{
                         repository: { name: repoAsym },
                         pull_request: {
@@ -224,9 +226,9 @@ export async function runStressScenarios(): Promise<{ pass: boolean; results: an
 
         for (let i = 1; i <= 4; i++) {
             await sql`
-                INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+                INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
                 VALUES (
-                    ${STRESS_PREFIX + 'closed_' + i}, 'github', 'pull_request', ${STRESS_PREFIX + 'closed_ext_' + i},
+                    ${STRESS_PREFIX + 'closed_' + i}, ${seedSource}, 'github', 'pull_request', ${STRESS_PREFIX + 'closed_ext_' + i},
                     ${{
                         repository: { name: repoClosed },
                         pull_request: {
@@ -261,9 +263,9 @@ export async function runStressScenarios(): Promise<{ pass: boolean; results: an
         const repoSquash = 'stress-squash-repo';
 
         await sql`
-            INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+            INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
             VALUES (
-                ${STRESS_PREFIX + 'squash_1'}, 'github', 'pull_request', ${STRESS_PREFIX + 'squash_ext_1'},
+                ${STRESS_PREFIX + 'squash_1'}, ${seedSource}, 'github', 'pull_request', ${STRESS_PREFIX + 'squash_ext_1'},
                 ${{
                     repository: { name: repoSquash },
                     pull_request: {
@@ -297,9 +299,9 @@ export async function runStressScenarios(): Promise<{ pass: boolean; results: an
         // PR opened Friday 18:00 (end of workday), merged Monday 09:00 (start of workday)
         // Business hours duration: 0.0 hours! Wall-clock: 63.0 hours!
         await sql`
-            INSERT INTO events (id, provider, event_type, external_id, payload, created_at)
+            INSERT INTO events (id, source, provider, event_type, external_id, payload, created_at)
             VALUES (
-                ${STRESS_PREFIX + 'weekend_1'}, 'github', 'pull_request', ${STRESS_PREFIX + 'weekend_ext_1'},
+                ${STRESS_PREFIX + 'weekend_1'}, ${seedSource}, 'github', 'pull_request', ${STRESS_PREFIX + 'weekend_ext_1'},
                 ${{
                     repository: { name: repoWeekend },
                     pull_request: {

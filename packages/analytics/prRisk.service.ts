@@ -3,6 +3,7 @@ import sql from '../../apps/api/config/postgres.js';
 import redis from '../../apps/api/config/redis.js';
 import neo4j from 'neo4j-driver';
 import { calculateKnowledgeRisk } from './knowledge.service.js';
+import { DISPLAYABLE_SOURCES } from '../database/provenance.js';
 
 export interface PullRequestRiskInput {
     repository: string;
@@ -93,7 +94,8 @@ export async function evaluatePullRequestRisk(input: PullRequestRiskInput): Prom
             const [repoMetrics] = await sql`
                 SELECT bus_factor, risk_score 
                 FROM repo_metrics 
-                WHERE repo_name ILIKE ${`%${repository}%`} OR external_id ILIKE ${`%${repository}%`}
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND (repo_name ILIKE ${`%${repository}%`} OR external_id ILIKE ${`%${repository}%`})
                 LIMIT 1
             `;
             if (repoMetrics) {
@@ -118,7 +120,8 @@ export async function evaluatePullRequestRisk(input: PullRequestRiskInput): Prom
             const incidentEvents = await sql`
                 SELECT COUNT(*) as count 
                 FROM events 
-                WHERE (payload->>'repository' ILIKE ${`%${repository}%`} OR payload->>'text' ILIKE '%incident%')
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND (payload->>'repository' ILIKE ${`%${repository}%`} OR payload->>'text' ILIKE '%incident%')
                   AND created_at >= NOW() - INTERVAL '30 days'
             `;
             incidentCount = Number(incidentEvents[0]?.count ?? 0);

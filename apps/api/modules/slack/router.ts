@@ -2,6 +2,7 @@ import express from 'express'
 import { validateSlackSignature } from './validator.js'
 import { ISlackParsedEvent, parseSlackEvent } from './normalize.js'
 import { pushSlackEventToDatabase } from './controller.js'
+import { sourceForWebhookRequest } from '../../../../packages/database/provenance.js'
 
 const router = express.Router()
 router.post('/webhook', async (req, res) => {
@@ -29,7 +30,7 @@ router.post('/webhook', async (req, res) => {
         })
     }
 
-    await pushSlackEventToDatabase(parsedEvent)
+    await pushSlackEventToDatabase(parsedEvent, sourceForWebhookRequest(req.get('x-cortex-seed-source')))
     console.log('Slack Event Saved To Database')
 
     return res.status(200).json({

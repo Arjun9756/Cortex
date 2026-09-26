@@ -1,5 +1,6 @@
 import { driver } from '../../../apps/api/config/neo4j.js'
 import neo4j from 'neo4j-driver'
+import { assertDataSource, type DataSource } from '../provenance.js'
 
 const ALLOWED_RELATIONS = new Set([
     'USES', 'HAS_PROBLEM', 'FIXED_BY', 'REPLACED_BY', 'DEPENDS_ON',
@@ -27,11 +28,28 @@ export async function ensureIndexes(): Promise<void> {
         await session.run(`CREATE INDEX entity_person_name IF NOT EXISTS FOR (n:PERSON) ON (n.name)`)
         await session.run(`CREATE INDEX entity_repo_name IF NOT EXISTS FOR (n:REPOSITORY) ON (n.name)`)
         await session.run(`CREATE INDEX entity_tech_name IF NOT EXISTS FOR (n:TECHNOLOGY) ON (n.name)`)
+        // Existing graph records without source cannot be attributed from their properties.
+        // Quarantine them, then the shared query policy excludes them from product reads.
+        await runGraphWrite(`MATCH (n) WHERE n.source IS NULL SET n.source = $source RETURN count(n) AS quarantined`, { source: 'seed:legacy-unverified' }, session)
+        await runGraphWrite(`MATCH ()-[r]->() WHERE r.source IS NULL SET r.source = $source RETURN count(r) AS quarantined`, { source: 'seed:legacy-unverified' }, session)
         console.log('[Graph] Neo4j indexes ensured (PERSON: canonicalPersonId, name, email, externalId; REPOSITORY: name, externalId; TECHNOLOGY: name)')
     } catch (error: any) {
         console.error('[Graph] Failed to ensure indexes:', error.message)
+        throw error
     } finally {
         await session.close()
+    }
+}
+
+/** Shared entry point for graph mutations outside the entity and relation upserts. */
+export async function runGraphWrite(cypher: string, params: Record<string, unknown> & { source: DataSource }, existingSession?: any) {
+    assertDataSource(params.source);
+    if (!/\$source/i.test(cypher)) throw new Error('Graph write query must use the required source parameter');
+    const session = existingSession || driver.session();
+    try {
+        return await session.run(cypher, params);
+    } finally {
+        if (!existingSession) await session.close();
     }
 }
 
@@ -48,7 +66,7 @@ export async function ensureIndexes(): Promise<void> {
 export async function upsertEntity(
     name: string,
     type: string,
-    extraProperties?: Record<string, any>,
+    extraProperties: Record<string, any> & { source: DataSource },
     existingSession?: any
 ): Promise<string | undefined> {
     const session = existingSession || driver.session()
@@ -67,9 +85,10 @@ export async function upsertEntity(
         if (!ALLOWED_ENTITY_TYPES.has(normalizedType)) {
             throw new Error(`Invalid entity type: ${type}`)
         }
+        assertDataSource(extraProperties?.source)
         // Build dynamic SET clauses for non-null extra properties
         const setParts: string[] = []
-        const params: Record<string, any> = { name }
+        const params: Record<string, any> = { name, source: extraProperties.source }
 
         if (extraProperties) {
             for (const [key, value] of Object.entries(extraProperties)) {
@@ -94,11 +113,11 @@ export async function upsertEntity(
 
             const probeMatch = await session.run(`
                 OPTIONAL MATCH (p1:PERSON) 
-                WHERE $canonicalPersonId IS NOT NULL AND p1.canonicalPersonId = $canonicalPersonId
+                WHERE $canonicalPersonId IS NOT NULL AND p1.canonicalPersonId = $canonicalPersonId AND p1.source = $source
                 OPTIONAL MATCH (p2:PERSON) 
-                WHERE p1 IS NULL AND $email IS NOT NULL AND toLower(p2.email) = toLower($email)
+                WHERE p1 IS NULL AND $email IS NOT NULL AND toLower(p2.email) = toLower($email) AND p2.source = $source
                 OPTIONAL MATCH (p3:PERSON) 
-                WHERE p1 IS NULL AND p2 IS NULL AND $externalId IS NOT NULL AND p3.externalId = $externalId
+                WHERE p1 IS NULL AND p2 IS NULL AND $externalId IS NOT NULL AND p3.externalId = $externalId AND p3.source = $source
                 WITH coalesce(p1, p2, p3) AS matched
                 RETURN elementId(matched) AS id
                 LIMIT 1
@@ -111,33 +130,33 @@ export async function upsertEntity(
                 params.id = matchedId;
                 result = await session.run(`
                     MATCH (e:PERSON) WHERE elementId(e) = $id
-                    SET e.name = $name, e.updatedAt = timestamp()${extraSetClause}
+                    SET e.name = $name, e.source = $source, e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
                 `, params);
             } else if (extraProperties?.canonicalPersonId) {
                 result = await session.run(`
-                    MERGE (e:PERSON {canonicalPersonId: $canonicalPersonId})
+                    MERGE (e:PERSON {canonicalPersonId: $canonicalPersonId, source: $source})
                     ON CREATE SET e.name = $name, e.createdAt = timestamp()${extraSetClause}
-                    ON MATCH SET e.name = $name, e.updatedAt = timestamp()${extraSetClause}
+                    ON MATCH SET e.name = $name, e.source = $source, e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
                 `, params);
             } else if (extraProperties?.email) {
                 result = await session.run(`
-                    MERGE (e:PERSON {email: $email})
+                    MERGE (e:PERSON {email: $email, source: $source})
                     ON CREATE SET e.name = $name, e.createdAt = timestamp()${extraSetClause}
-                    ON MATCH SET e.name = $name, e.updatedAt = timestamp()${extraSetClause}
+                    ON MATCH SET e.name = $name, e.source = $source, e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
                 `, params);
             } else if (extraProperties?.externalId) {
                 result = await session.run(`
-                    MERGE (e:PERSON {externalId: $externalId})
+                    MERGE (e:PERSON {externalId: $externalId, source: $source})
                     ON CREATE SET e.name = $name, e.createdAt = timestamp()${extraSetClause}
-                    ON MATCH SET e.name = $name, e.updatedAt = timestamp()${extraSetClause}
+                    ON MATCH SET e.name = $name, e.source = $source, e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
                 `, params);
             } else {
                 result = await session.run(`
-                    CREATE (e:PERSON {name: $name, createdAt: timestamp()${extraSetClause}})
+                    CREATE (e:PERSON {name: $name, source: $source, createdAt: timestamp()${extraSetClause}})
                     RETURN elementId(e) AS id
                 `, params);
             }
@@ -145,10 +164,10 @@ export async function upsertEntity(
             // Case-insensitive lookup for TECHNOLOGY, REPOSITORY, and other entity types to prevent case-variant duplicates (e.g. "Redis" vs "redis")
             const existingMatch = await session.run(`
                 MATCH (e:${normalizedType})
-                WHERE toLower(e.name) = toLower($name)
+                WHERE toLower(e.name) = toLower($name) AND e.source = $source
                 RETURN elementId(e) AS id, e.name AS existingName
                 LIMIT 1
-            `, { name });
+            `, { name, source: extraProperties.source });
 
             if (existingMatch.records.length > 0 && existingMatch.records[0]) {
                 const matchedId = existingMatch.records[0].get('id');
@@ -159,12 +178,12 @@ export async function upsertEntity(
                 params.preferredName = preferredName;
                 result = await session.run(`
                     MATCH (e:${normalizedType}) WHERE elementId(e) = $id
-                    SET e.name = $preferredName, e.updatedAt = timestamp()${extraSetClause}
+                    SET e.name = $preferredName, e.source = $source, e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
                 `, params);
             } else {
                 result = await session.run(`
-                    MERGE (e:${normalizedType} {name: $name})
+                    MERGE (e:${normalizedType} {name: $name, source: $source})
                     ON CREATE SET e.createdAt = timestamp()${extraSetClause}
                     ON MATCH SET e.updatedAt = timestamp()${extraSetClause}
                     RETURN elementId(e) AS id
@@ -182,8 +201,9 @@ export async function upsertEntity(
     }
 }
 
-export async function upsertCanonicalPersonNode(person: { id: string; name: string; email?: string | undefined; isActive?: boolean; employmentStatus?: string }, session?: any) {
+export async function upsertCanonicalPersonNode(person: { id: string; name: string; source: DataSource; email?: string | undefined; isActive?: boolean; employmentStatus?: string }, session?: any) {
     return await upsertEntity(person.name, 'PERSON', { 
+        source: person.source,
         email: person.email, 
         canonicalPersonId: person.id, 
         externalId: person.id,
@@ -192,11 +212,12 @@ export async function upsertCanonicalPersonNode(person: { id: string; name: stri
     }, session);
 }
 
-export async function upsertIdentityNode(identity: { provider: string; externalId: string; username: string; displayName: string; canonicalPersonId: string }, session?: any) {
-    return await upsertEntity(identity.displayName || identity.username, 'PERSON', { externalId: identity.externalId, provider: identity.provider, canonicalPersonId: identity.canonicalPersonId }, session);
+export async function upsertIdentityNode(identity: { provider: string; externalId: string; username: string; displayName: string; canonicalPersonId: string; source: DataSource }, session?: any) {
+    return await upsertEntity(identity.displayName || identity.username, 'PERSON', { source: identity.source, externalId: identity.externalId, provider: identity.provider, canonicalPersonId: identity.canonicalPersonId }, session);
 }
 
 export interface RelationMetadata {
+    source: DataSource;
     sourceEventId?: string | null;
     confidence?: number | null;
     commitCount?: number | null;
@@ -208,8 +229,8 @@ export async function upsertRelation(
     fromID: string,
     toID: string,
     type: string,
-    evidence?: string,
-    metadata?: RelationMetadata,
+    evidence: string | undefined,
+    metadata: RelationMetadata,
     existingSession?: any
 ) {
     const session = existingSession || driver.session()
@@ -219,8 +240,9 @@ export async function upsertRelation(
         if (!ALLOWED_RELATIONS.has(normalizedType)) {
             throw new Error(`Invalid relationship type: ${type}`)
         }
+        assertDataSource(metadata.source)
 
-        const sourceEventId = metadata?.sourceEventId ?? null;
+        const sourceEventId = metadata.sourceEventId ?? null;
         const confidence = metadata?.confidence != null ? metadata.confidence : 1.0;
         const commitCount = metadata?.commitCount ?? (metadata?.properties?.commitCount ?? 1);
         const lastCommitAt = metadata?.lastCommitAt ?? (metadata?.properties?.lastCommitAt ?? Date.now());
@@ -231,15 +253,15 @@ export async function upsertRelation(
                 MATCH (b) WHERE elementId(b) = $toID
                 OPTIONAL MATCH (a)-[oldRel:ASSIGNED_TO]->(other) WHERE elementId(other) <> elementId(b)
                 DELETE oldRel
-                MERGE (a)-[r:ASSIGNED_TO]->(b)
+                MERGE (a)-[r:ASSIGNED_TO {source: $source}]->(b)
                 ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence, r.sourceEventId = $sourceEventId, r.confidence = $confidence
-                ON MATCH SET r.updatedAt = timestamp(), r.evidence = $evidence, r.sourceEventId = COALESCE($sourceEventId, r.sourceEventId), r.confidence = COALESCE($confidence, r.confidence)
-            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence });
+                ON MATCH SET r.updatedAt = timestamp(), r.source = $source, r.evidence = $evidence, r.sourceEventId = COALESCE($sourceEventId, r.sourceEventId), r.confidence = COALESCE($confidence, r.confidence)
+            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence, source: metadata.source });
         } else if (normalizedType === 'CONTRIBUTED_TO') {
             await session.run(`
                 MATCH (a) WHERE elementId(a) = $fromID
                 MATCH (b) WHERE elementId(b) = $toID
-                MERGE (a)-[r:CONTRIBUTED_TO]->(b)
+                MERGE (a)-[r:CONTRIBUTED_TO {source: $source}]->(b)
                 ON CREATE SET 
                     r.commitCount = COALESCE($commitCount, 1),
                     r.lastCommitAt = COALESCE($lastCommitAt, timestamp()),
@@ -282,15 +304,16 @@ export async function upsertRelation(
                     r.evidence = $evidence,
                     r.sourceEventId = COALESCE($sourceEventId, r.sourceEventId),
                     r.confidence = COALESCE($confidence, r.confidence)
-            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence, commitCount, lastCommitAt });
+                    , r.source = $source
+            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence, commitCount, lastCommitAt, source: metadata.source });
         } else {
             await session.run(`
                 MATCH (a) WHERE elementId(a) = $fromID
                 MATCH (b) WHERE elementId(b) = $toID
-                MERGE (a)-[r:${normalizedType}]->(b)
+                MERGE (a)-[r:${normalizedType} {source: $source}]->(b)
                 ON CREATE SET r.createdAt = timestamp(), r.evidence = $evidence, r.sourceEventId = $sourceEventId, r.confidence = $confidence
                 ON MATCH SET r.updatedAt = timestamp(), r.evidence = $evidence, r.sourceEventId = COALESCE($sourceEventId, r.sourceEventId), r.confidence = COALESCE($confidence, r.confidence)
-            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence });
+            `, { fromID, toID, evidence: evidence ?? null, sourceEventId, confidence, source: metadata.source });
         }
     }
     catch (error: any) {
@@ -311,7 +334,7 @@ export async function batchUpsertRelations(
         toID: string;
         type: string;
         evidence?: string | undefined;
-        metadata?: RelationMetadata | undefined;
+        metadata: RelationMetadata;
     }>,
     existingSession?: any
 ): Promise<void> {
@@ -320,8 +343,9 @@ export async function batchUpsertRelations(
     const shouldClose = !existingSession;
 
     try {
-        const byType = new Map<string, any[]>();
+        const byTypeAndSource = new Map<string, any[]>();
         for (const rel of relations) {
+            assertDataSource(rel.metadata.source)
             const normalizedType = rel.type.toUpperCase();
             if (!ALLOWED_RELATIONS.has(normalizedType)) {
                 console.warn(`[GraphBatch] Skipping unknown relation type: ${rel.type}`);
@@ -331,21 +355,26 @@ export async function batchUpsertRelations(
                 console.warn(`[GraphBatch] Skipping relation with missing endpoint: from=${rel.fromID}, to=${rel.toID}`);
                 continue;
             }
-            if (!byType.has(normalizedType)) {
-                byType.set(normalizedType, []);
+            const source = rel.metadata.source;
+            const groupKey = `${source}::${normalizedType}`;
+            if (!byTypeAndSource.has(groupKey)) {
+                byTypeAndSource.set(groupKey, []);
             }
-            byType.get(normalizedType)!.push({
+            byTypeAndSource.get(groupKey)!.push({
                 fromID: rel.fromID,
                 toID: rel.toID,
                 evidence: rel.evidence ?? null,
                 sourceEventId: rel.metadata?.sourceEventId ?? null,
+                source: rel.metadata.source,
                 confidence: rel.metadata?.confidence != null ? rel.metadata.confidence : 1.0,
                 commitCount: rel.metadata?.commitCount ?? (rel.metadata?.properties?.commitCount ?? 1),
                 lastCommitAt: rel.metadata?.lastCommitAt ?? (rel.metadata?.properties?.lastCommitAt ?? Date.now())
             });
         }
 
-        for (const [relType, batch] of byType.entries()) {
+        for (const [groupKey, batch] of byTypeAndSource.entries()) {
+            const [source, relType] = groupKey.split('::');
+            if (!source || !relType) throw new Error('[GraphBatch] Invalid source/type batch key');
             if (relType === 'ASSIGNED_TO') {
                 await session.run(`
                     UNWIND $batch AS item
@@ -353,16 +382,16 @@ export async function batchUpsertRelations(
                     MATCH (b) WHERE elementId(b) = item.toID
                     OPTIONAL MATCH (a)-[oldRel:ASSIGNED_TO]->(other) WHERE elementId(other) <> elementId(b)
                     DELETE oldRel
-                    MERGE (a)-[r:ASSIGNED_TO]->(b)
+                    MERGE (a)-[r:ASSIGNED_TO {source: item.source}]->(b)
                     ON CREATE SET r.createdAt = timestamp(), r.evidence = item.evidence, r.sourceEventId = item.sourceEventId, r.confidence = item.confidence
-                    ON MATCH SET r.updatedAt = timestamp(), r.evidence = item.evidence, r.sourceEventId = COALESCE(item.sourceEventId, r.sourceEventId), r.confidence = COALESCE(item.confidence, r.confidence)
-                `, { batch });
+                    ON MATCH SET r.updatedAt = timestamp(), r.source = item.source, r.evidence = item.evidence, r.sourceEventId = COALESCE(item.sourceEventId, r.sourceEventId), r.confidence = COALESCE(item.confidence, r.confidence)
+                `, { batch, source });
             } else if (relType === 'CONTRIBUTED_TO') {
                 await session.run(`
                     UNWIND $batch AS item
                     MATCH (a) WHERE elementId(a) = item.fromID
                     MATCH (b) WHERE elementId(b) = item.toID
-                    MERGE (a)-[r:CONTRIBUTED_TO]->(b)
+                    MERGE (a)-[r:CONTRIBUTED_TO {source: item.source}]->(b)
                     ON CREATE SET 
                         r.commitCount = COALESCE(item.commitCount, 1),
                         r.lastCommitAt = COALESCE(item.lastCommitAt, timestamp()),
@@ -405,16 +434,16 @@ export async function batchUpsertRelations(
                         r.evidence = item.evidence,
                         r.sourceEventId = COALESCE(item.sourceEventId, r.sourceEventId),
                         r.confidence = COALESCE(item.confidence, r.confidence)
-                `, { batch });
+                `, { batch, source });
             } else {
                 await session.run(`
                     UNWIND $batch AS item
                     MATCH (a) WHERE elementId(a) = item.fromID
                     MATCH (b) WHERE elementId(b) = item.toID
-                    MERGE (a)-[r:${relType}]->(b)
+                    MERGE (a)-[r:${relType} {source: item.source}]->(b)
                     ON CREATE SET r.createdAt = timestamp(), r.evidence = item.evidence, r.sourceEventId = item.sourceEventId, r.confidence = item.confidence
-                    ON MATCH SET r.updatedAt = timestamp(), r.evidence = item.evidence, r.sourceEventId = COALESCE(item.sourceEventId, r.sourceEventId), r.confidence = COALESCE(item.confidence, r.confidence)
-                `, { batch });
+                    ON MATCH SET r.updatedAt = timestamp(), r.source = item.source, r.evidence = item.evidence, r.sourceEventId = COALESCE(item.sourceEventId, r.sourceEventId), r.confidence = COALESCE(item.confidence, r.confidence)
+                `, { batch, source });
             }
         }
     } catch (err: any) {
@@ -429,8 +458,9 @@ export async function batchUpsertRelations(
  * Rollback / delete all relationships tagged with a specific sourceEventId.
  * Used for reversing hallucinated or deleted/reverted webhook deliveries.
  */
-export async function rollbackEventRelations(sourceEventId: string): Promise<number> {
+export async function rollbackEventRelations(sourceEventId: string, source: DataSource): Promise<number> {
     if (!sourceEventId) return 0;
+    assertDataSource(source);
     const session = driver.session();
     try {
         const result = await session.run(`
@@ -438,7 +468,7 @@ export async function rollbackEventRelations(sourceEventId: string): Promise<num
             WHERE r.sourceEventId = $sourceEventId
             DELETE r
             RETURN count(r) AS deletedCount
-        `, { sourceEventId });
+        `, { sourceEventId, source });
         const deleted = result.records[0]?.get('deletedCount')?.toNumber() ?? 0;
         console.log(`[GraphRollback] Rolled back ${deleted} relations for sourceEventId: ${sourceEventId}`);
         return deleted;

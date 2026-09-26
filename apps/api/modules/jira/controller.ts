@@ -3,8 +3,9 @@ import sql from '../../config/postgres.js'
 import { snowflake } from "../../../Utils/Snowflake.js";
 import { cortexQueue } from "../../../../packages/queue/bullmq.js";
 import { JOBS } from "../../../../packages/queue/jobs.js";
+import type { DataSource } from '../../../../packages/database/provenance.js';
 
-export async function pushJiraEventToDatabase(parsedEvent:IJiraParsedEvent){
+export async function pushJiraEventToDatabase(parsedEvent:IJiraParsedEvent, source: DataSource){
     try{
         const uniqueID = snowflake.nextID().toString()
         const raw = parsedEvent.rawbody ?? {}
@@ -13,9 +14,9 @@ export async function pushJiraEventToDatabase(parsedEvent:IJiraParsedEvent){
             || uniqueID
 
         const result = await sql`
-            INSERT INTO events(id, provider, event_type, external_id, payload) 
-            VALUES (${uniqueID}, ${parsedEvent.provider}, ${parsedEvent.event_type}, ${externalId}, ${sql.json(parsedEvent.rawbody)}) 
-            ON CONFLICT (provider, external_id) DO NOTHING
+            INSERT INTO events(id, source, provider, event_type, external_id, payload) 
+            VALUES (${uniqueID}, ${source}, ${parsedEvent.provider}, ${parsedEvent.event_type}, ${externalId}, ${sql.json(parsedEvent.rawbody)}) 
+            ON CONFLICT (provider, external_id, source) DO NOTHING
             RETURNING id, created_at
         `
 

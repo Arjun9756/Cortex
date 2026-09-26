@@ -18,8 +18,8 @@ export const ProductProofSection: React.FC = () => {
   // Frame 1 Data: Repo SPOF & Bus Factor Matrix
   const repoData = [
     {
-      name: 'notification-service',
-      busFactor: 0,
+      name: 'notification-worker',
+      busFactor: 1,
       primaryOwner: 'rohanverma',
       commitsPct: 100,
       status: 'Fragile (SPOF)',

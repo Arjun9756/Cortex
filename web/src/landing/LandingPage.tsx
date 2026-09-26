@@ -3,8 +3,11 @@ import { Navbar } from './Navbar';
 import { Hero } from './Hero';
 import { ProductProofSection } from './ProductProofSection';
 import { HowItWorks } from './HowItWorks';
+import { MetricsDefinedSection } from './MetricsDefinedSection';
+import { GuaranteesSection } from './GuaranteesSection';
 import { DifferentiationSection } from './DifferentiationSection';
 import { ByocSection } from './ByocSection';
+import { UseCasesSection } from './UseCasesSection';
 import { PricingSection } from './PricingSection';
 import { FaqSection } from './FaqSection';
 import { ContactModal } from './ContactModal';
@@ -21,11 +24,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
   const [modalMessage, setModalMessage] = useState('');
   const [showMobileStickyCta, setShowMobileStickyCta] = useState(false);
 
-  // Auto-open modal if URL query parameter asks for it
+  // Auto-open modal if URL query parameter asks for it, or handle section anchors
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('request') === 'true' || params.get('demo') === 'true' || window.location.pathname === '/request') {
       setIsModalOpen(true);
+    }
+
+    // Direct section jump if specified via ?section=
+    const sectionParam = params.get('section');
+    if (sectionParam) {
+      setTimeout(() => {
+        const el = document.getElementById(sectionParam);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     }
 
     const handleScroll = () => {
@@ -54,28 +66,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
       />
 
       <main>
-        {/* 2. Hero Section (Headline, 2-line subcopy, CTAs, 3 trust chips, integration logo strip) */}
+        {/* 2. Hero Section */}
         <Hero onOpenContact={() => setIsModalOpen(true)} />
 
         {/* 3. Product Proof in Authentic Browser Chrome Frames (SPOF Table · Departure Simulation · Grounded Q&A) */}
         <ProductProofSection />
 
-        {/* 4. How It Works (3 Steps: Connect -> Build Graph -> Mitigate Risk & Search) */}
+        {/* 4. How It Works (Deterministic Pipeline Flow: Read-Only Webhooks -> Graph Compaction -> Deterministic Math -> Grounded Lineage) */}
         <HowItWorks />
 
-        {/* 5. Differentiation (Deterministic Graph Math vs Generic LLMs & DORA Metrics) */}
+        {/* 5. Metrics, Defined (Public Canonical Ground-Truth: Exact Formulas, Inclusions, Noise Exclusions & Rationale) */}
+        <MetricsDefinedSection />
+
+        {/* 6. What Cortex Guarantees / What Cortex Does NOT Guarantee (Strict Capability Boundaries) */}
+        <GuaranteesSection />
+
+        {/* 7. Differentiation (Deterministic Graph Math vs Generic LLMs & DORA Metrics) */}
         <DifferentiationSection />
 
-        {/* 6. Security & BYOC Infrastructure (VPC Boundary, Air-Gapped, Docker Quickstart) */}
+        {/* 8. Built For / Operational Use Cases (Departure Handover, Onboarding, Incident Triage, Stale Docs) */}
+        <UseCasesSection />
+
+        {/* 9. Security & Data Handling (BYOC Boundary, Read-Only Scopes, What Is Read vs Stored, 13 Invariant Safeguards) */}
         <ByocSection onOpenContact={() => setIsModalOpen(true)} />
 
-        {/* 7. Transparent Pricing (Community Edition $0 License Fee + Future Enterprise Cloud) */}
+        {/* 10. Transparent Pricing (Community Edition $0 License Fee + Future Enterprise Cloud) */}
         <PricingSection onOpenContact={openContactWithPlan} />
 
-        {/* 8. Technical FAQ for Engineering Leaders */}
+        {/* 11. Technical FAQ for Technical Buyers & Engineering Leaders */}
         <FaqSection />
 
-        {/* 9. High-Conversion Final CTA & Embedded Setup Request Section */}
+        {/* 12. High-Conversion Final CTA & Embedded Setup Request Section */}
         <section id="contact" className="py-20 md:py-28 bg-[#0B0F14] relative border-t border-white/10 antialiased">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-[#12181F] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl">
@@ -101,7 +122,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
         </section>
       </main>
 
-      {/* 10. Minimal Institutional Footer */}
+      {/* 13. Institutional Footer with Canonical Docs & Invariant References */}
       <Footer onOpenContact={() => setIsModalOpen(true)} />
 
       {/* Mobile Sticky Bottom CTA Bar */}

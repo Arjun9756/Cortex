@@ -26,6 +26,24 @@ const KNOWN_BOT_USERNAMES = new Set([
     'slackbot',
     'jira',
     'atlassian-bot',
+    'mergify',
+    'mergify[bot]',
+    'bors',
+    'bors[bot]',
+    'stale',
+    'stale[bot]',
+    'allcontributors',
+    'allcontributors[bot]',
+    'codeclimate',
+    'houndci-bot',
+    'probot',
+    'release-drafter',
+    'imgbot',
+    'imgbot[bot]',
+    'cla-assistant',
+    'cla-assistant[bot]',
+    'custom-ci-auto',
+    'jira-sentry-automation[bot]',
 ]);
 
 /**
@@ -72,6 +90,6 @@ export function isBotAccount(
  */
 export const CYPHER_BOT_FILTER = `
     NOT toLower(COALESCE(p.name, '')) ENDS WITH '[bot]'
-    AND NOT toLower(COALESCE(p.name, '')) IN ['dependabot', 'renovate', 'github-actions', 'snyk-bot', 'snyk', 'codecov', 'web-flow', 'semantic-release-bot', 'greenkeeper', 'slackbot']
+    AND NOT toLower(COALESCE(p.name, '')) IN ['dependabot', 'renovate', 'github-actions', 'snyk-bot', 'snyk', 'codecov', 'web-flow', 'semantic-release-bot', 'greenkeeper', 'slackbot', 'custom-ci-auto', 'jira-sentry-automation[bot]']
     AND COALESCE(p.isBot, false) = false
 `;

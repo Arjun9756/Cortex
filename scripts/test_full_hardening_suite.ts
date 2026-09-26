@@ -1,11 +1,16 @@
 import { cortexAgent } from '../packages/agent/graph/workflow.js';
-import { upsertEntity, upsertRelation } from '../packages/database/neo4j/graph.repository.js';
+import { assertSafeTestDatabase } from '../packages/database/provenance.js';
+const seedSource = assertSafeTestDatabase(import.meta.url);
+import { upsertEntity as persistEntity, upsertRelation as persistRelation } from '../packages/database/neo4j/graph.repository.js';
 import { upsertVector } from '../packages/database/vector/qdrant.repository.js';
 import { generateEmbeddings } from '../packages/llm/providers/gemini.js';
 import sql from '../apps/api/config/postgres.js';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 dotenv.config();
+
+const upsertEntity = (name: string, type: string, properties: Record<string, any> = {}, session?: any) => persistEntity(name, type, { ...properties, source: seedSource }, session);
+const upsertRelation = (from: string, to: string, type: string, evidence?: string, metadata: Record<string, any> = {}) => persistRelation(from, to, type, evidence, { ...metadata, source: seedSource });
 
 /**
  * 1. SEED BRAND-NEW SYNTHETIC DATASET (Quantum Nexus Workspace)
@@ -51,12 +56,12 @@ async function seedNewSyntheticData() {
 
     // C. PostgreSQL Metrics
     await sql`
-        INSERT INTO repo_metrics (external_id, repo_name, bus_factor, risk_score, contributor_count, status, computed_at)
+        INSERT INTO repo_metrics (source, external_id, repo_name, bus_factor, risk_score, contributor_count, status, computed_at)
         VALUES 
-            ('quantum/payment-orchestrator', 'payment-orchestrator', 1, 85, 1, 'fragile', now()),
-            ('quantum/data-pipeline-core', 'data-pipeline-core', 2, 45, 3, 'healthy', now()),
-            ('quantum/identity-edge', 'identity-edge', 1, 90, 1, 'critical', now())
-        ON CONFLICT (external_id) DO UPDATE SET
+            (${seedSource}, 'quantum/payment-orchestrator', 'payment-orchestrator', 1, 85, 1, 'fragile', now()),
+            (${seedSource}, 'quantum/data-pipeline-core', 'data-pipeline-core', 2, 45, 3, 'healthy', now()),
+            (${seedSource}, 'quantum/identity-edge', 'identity-edge', 1, 90, 1, 'critical', now())
+        ON CONFLICT (source, external_id) DO UPDATE SET
             repo_name = EXCLUDED.repo_name,
             bus_factor = EXCLUDED.bus_factor,
             risk_score = EXCLUDED.risk_score,
@@ -70,6 +75,7 @@ async function seedNewSyntheticData() {
     const emb1 = await generateEmbeddings(doc1);
     if (emb1) {
         await upsertVector(crypto.randomUUID(), emb1, {
+            source: seedSource,
             eventId: "quantum-evt-101",
             summary: doc1,
             entities: [
@@ -89,6 +95,7 @@ async function seedNewSyntheticData() {
     const emb2 = await generateEmbeddings(doc2);
     if (emb2) {
         await upsertVector(crypto.randomUUID(), emb2, {
+            source: seedSource,
             eventId: "quantum-evt-102",
             summary: doc2,
             entities: [
@@ -108,6 +115,7 @@ async function seedNewSyntheticData() {
     const emb3 = await generateEmbeddings(doc3);
     if (emb3) {
         await upsertVector(crypto.randomUUID(), emb3, {
+            source: seedSource,
             eventId: "quantum-evt-103",
             summary: doc3,
             entities: [

@@ -2,6 +2,7 @@ import {Router} from 'express'
 import { validateJiraSignature } from './validator.js'
 import { IJiraParsedEvent, parsedJiraEvent } from './normalize.js'
 import { pushJiraEventToDatabase } from './controller.js'
+import { sourceForWebhookRequest } from '../../../../packages/database/provenance.js'
 export const jiraRouter = Router()
 
 jiraRouter.post('/webhook' , async (req,res)=>{
@@ -24,7 +25,7 @@ jiraRouter.post('/webhook' , async (req,res)=>{
         })
     }
 
-    const {status , message} = await pushJiraEventToDatabase(parsedEvent)
+    const {status , message} = await pushJiraEventToDatabase(parsedEvent, sourceForWebhookRequest(req.get('x-cortex-seed-source')))
     console.log(`Saved Jira Event to Database`)
 
     return res.status(status == true ? 201 : 501).json({

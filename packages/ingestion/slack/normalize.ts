@@ -1,5 +1,6 @@
 import env from '../../../apps/api/config/env.js'
 import sql from '../../../apps/api/config/postgres.js'
+import { DISPLAYABLE_SOURCES } from '../../database/provenance.js'
 
 // ─── Slack User Profile Cache ─────────────────────────────────────────────────
 
@@ -34,8 +35,9 @@ export async function resolveSlackUserProfile(userId: string): Promise<SlackUser
             const [identity] = await sql`
                 SELECT display_name, email, username
                 FROM person_identity
-                WHERE (provider = 'slack' AND external_id = ${userId})
-                   OR external_id = ${userId}
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND ((provider = 'slack' AND external_id = ${userId})
+                   OR external_id = ${userId})
                 LIMIT 1
             `;
             if (identity) {

@@ -2,7 +2,7 @@ import { runAnalyticsJob } from '../packages/workers/scheduler.worker.js';
 
 async function main() {
     console.log('Triggering runAnalyticsJob...');
-    await runAnalyticsJob();
+    await runAnalyticsJob('webhook');
     console.log('Analytics job completed successfully!');
     process.exit(0);
 }

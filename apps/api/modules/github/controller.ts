@@ -3,17 +3,18 @@ import sql from '../../config/postgres.js'
 import { snowflake } from "../../../Utils/Snowflake.js";
 import { cortexQueue } from "../../../../packages/queue/bullmq.js";
 import { JOBS } from "../../../../packages/queue/jobs.js";
+import type { DataSource } from '../../../../packages/database/provenance.js';
 
-export async function pushGithubEventToDatabase(payload:IParsedGithubEvent){
+export async function pushGithubEventToDatabase(payload:IParsedGithubEvent, source: DataSource){
     try{
         const uniqueID = snowflake.nextID().toString()
         console.log("unique id" , uniqueID)
 
         // Idempotency guard: skip duplicate webhook deliveries (same provider + delivery ID)
         const result = await sql `
-            INSERT INTO events(id , provider , event_type , external_id , payload) 
-            VALUES (${uniqueID} , ${'github'} , ${payload.event_type} , ${payload.deliveryID} , ${sql.json(payload.rawBody)}) 
-            ON CONFLICT (provider, external_id) DO NOTHING
+            INSERT INTO events(id, source, provider, event_type, external_id, payload) 
+            VALUES (${uniqueID}, ${source}, 'github', ${payload.event_type}, ${payload.deliveryID}, ${sql.json(payload.rawBody)}) 
+            ON CONFLICT (provider, external_id, source) DO NOTHING
             RETURNING id , created_at
         `
 

@@ -3,11 +3,13 @@ import {
   Lock, 
   Copy, 
   Check, 
-  Server, 
   Cloud, 
   ShieldCheck, 
-  Cpu,
-  ArrowRight
+  ArrowRight, 
+  Database, 
+  FileCheck2, 
+  Key, 
+  RefreshCw 
 } from 'lucide-react';
 
 interface ByocSectionProps {
@@ -24,27 +26,49 @@ export const ByocSection: React.FC<ByocSectionProps> = ({ onOpenContact }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const securityFeatures = [
+  const securityPillars = [
     {
-      title: 'VPC Boundary Isolation',
+      title: 'BYOC Deployment Perimeter',
       icon: Cloud,
-      description: 'Deploys directly into your AWS, GCP, or Azure private subnet. No inbound network egress from your codebase to external model providers.',
+      detailTag: 'Customer VPC Boundary',
+      description:
+        'Cortex runs entirely as a containerized service inside your AWS, GCP, Azure, or on-premise private subnet. Your proprietary source code never leaves your infrastructure boundary.'
     },
     {
-      title: 'Air-Gapped Local Inference',
-      icon: Cpu,
-      description: 'Connect to local OpenAI-compatible inference servers (Ollama, vLLM) for completely offline, air-gapped defense or regulated environments.',
+      title: 'Strict Scoped Read-Only Access',
+      icon: Key,
+      detailTag: 'Zero Write Permissions',
+      description:
+        'Integrations are limited to read-only webhook subscriptions on GitHub, Slack, and Jira. Cortex has zero write permissions to your production git branches and cannot modify repository settings.'
     },
     {
-      title: 'HMAC Webhook Verification',
-      icon: Lock,
-      description: 'All GitHub, Slack, and Jira event webhooks are cryptographically validated using HMAC SHA-256 signatures before graph ingestion.',
+      title: 'What Is Read vs What Is Stored',
+      icon: Database,
+      detailTag: 'Zero Code Blobs Stored',
+      description:
+        'Cortex reads event metadata: commit hashes, author git trailers, diff statistics (+lines / -lines), PR timestamps, and thread context. Compact relational metrics and property graphs are stored in your VPC database. Full codebase repositories are never cloned or stored in multi-tenant SaaS.'
     },
     {
-      title: 'Full Database Sovereignty',
-      icon: Server,
-      description: 'Your Neo4j Aura, Qdrant vector index, and PostgreSQL relational metrics reside under your team\'s direct cloud credentials.',
+      title: 'Identity Resolution Protocol',
+      icon: ShieldCheck,
+      detailTag: 'Canonical Person Mapping',
+      description:
+        'Maps fragmented identities (git commit emails, GitHub handles, Slack user IDs) into unified canonical person profiles in PostgreSQL and Neo4j, eliminating ghost accounts, bots, and duplicate entries.'
     },
+    {
+      title: '13 Automated Invariant Audits',
+      icon: FileCheck2,
+      detailTag: 'Self-Healing Integrity Guard',
+      description:
+        'An automated integrity guard validates 13 cross-field logical invariants after every recalculation job (e.g. 0 commits strictly collapses to 0 contributors and null owner; bus factor <= contributor count). Violations are self-healed and logged.'
+    },
+    {
+      title: 'Distributed Mutex & Zero Lost Updates',
+      icon: RefreshCw,
+      detailTag: 'Redis Distributed Lock',
+      description:
+        'Metrics calculation uses a distributed Redis mutex lock with debounced quiet-period windows. If new Jira tickets or commits arrive during calculation, the dirty flag is maintained to ensure zero events are ever lost.'
+    }
   ];
 
   return (
@@ -54,8 +78,8 @@ export const ByocSection: React.FC<ByocSectionProps> = ({ onOpenContact }) => {
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#12181F] border border-white/10 text-slate-300 text-xs font-mono mb-4">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-            <span>Security &amp; Self-Hosted Infrastructure</span>
+            <Lock className="w-3.5 h-3.5 text-blue-400" />
+            <span>Security &amp; Data Handling Architecture</span>
           </div>
 
           <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight font-sans">
@@ -63,7 +87,7 @@ export const ByocSection: React.FC<ByocSectionProps> = ({ onOpenContact }) => {
           </h2>
 
           <p className="mt-3 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Enterprise engineering teams cannot hand private source code over to multi-tenant AI startups. Cortex runs as a self-hosted container inside your infrastructure perimeter.
+            Enterprise engineering teams cannot export proprietary source code to multi-tenant AI startups. Cortex runs as a self-hosted container inside your infrastructure perimeter under strict read-only scopes.
           </p>
         </div>
 
@@ -76,7 +100,7 @@ export const ByocSection: React.FC<ByocSectionProps> = ({ onOpenContact }) => {
               <span className="browser-dot bg-[#10B981]/80" />
               <span className="text-xs text-slate-400 font-mono ml-2">Docker Container Quickstart</span>
             </div>
-            <span className="text-[11px] font-mono text-slate-500">v1.0 Production Release</span>
+            <span className="text-[11px] font-mono text-slate-500">Self-Hosted Community &amp; Enterprise</span>
           </div>
 
           <div className="p-5 bg-[#090D12] flex items-center justify-between font-mono text-xs overflow-x-auto gap-4">
@@ -101,37 +125,49 @@ export const ByocSection: React.FC<ByocSectionProps> = ({ onOpenContact }) => {
           </div>
         </div>
 
-        {/* 4 Security Guarantees Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto mb-12">
-          {securityFeatures.map((feat) => {
-            const Icon = feat.icon;
+        {/* 6 Security & Data Handling Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-14">
+          {securityPillars.map((pillar) => {
+            const Icon = pillar.icon;
             return (
               <div 
-                key={feat.title}
-                className="p-5 rounded-xl bg-[#12181F] border border-white/10 space-y-3"
+                key={pillar.title}
+                className="p-6 rounded-xl bg-[#12181F] border border-white/10 space-y-4 hover:border-white/20 transition-colors flex flex-col justify-between"
               >
-                <div className="w-8 h-8 rounded-lg bg-[#0E131A] border border-white/10 flex items-center justify-center text-blue-400">
-                  <Icon className="w-4 h-4" />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="w-9 h-9 rounded-lg bg-[#0E131A] border border-white/10 flex items-center justify-center text-blue-400">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/5">
+                      {pillar.detailTag}
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-semibold text-white font-sans">
+                    {pillar.title}
+                  </h3>
+
+                  <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                    {pillar.description}
+                  </p>
                 </div>
-                <h4 className="text-sm font-semibold text-white font-sans">
-                  {feat.title}
-                </h4>
-                <p className="text-xs text-slate-400 leading-relaxed font-sans">
-                  {feat.description}
-                </p>
               </div>
             );
           })}
         </div>
 
-        {/* Dedicated Deployment Assistance Strip */}
-        <div className="max-w-4xl mx-auto p-6 sm:p-7 rounded-xl bg-[#12181F] border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="text-left space-y-1">
-            <h3 className="text-base font-bold text-white font-sans">
-              Need assistance provisioning Helm charts or Terraform modules?
+        {/* Technical Buyer & Security Officer Assurance Callout */}
+        <div className="max-w-4xl mx-auto p-6 sm:p-8 rounded-2xl bg-[#12181F] border border-blue-500/30 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="text-left space-y-1.5">
+            <div className="text-xs font-mono text-blue-400 font-semibold uppercase tracking-wider">
+              Security Review &amp; Architecture Walkthrough
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-white font-sans">
+              Conduct a technical security audit with our engineering team.
             </h3>
-            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-              Our engineering team works directly with design partner infrastructure leads to verify VPC IAM permissions and webhook configurations.
+            <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
+              Inspect our open Terraform modules, Kubernetes Helm manifests, and verify read-only IAM policies before connecting your repositories.
             </p>
           </div>
 
@@ -139,7 +175,7 @@ export const ByocSection: React.FC<ByocSectionProps> = ({ onOpenContact }) => {
             onClick={onOpenContact}
             className="px-5 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors shrink-0 flex items-center space-x-1.5 cursor-pointer shadow-sm"
           >
-            <span>Request Setup Walkthrough</span>
+            <span>Request Architecture Review</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
