@@ -1,15 +1,68 @@
-Copyright (c) 2026 Cortex. All rights reserved.
+CORTEX ENTERPRISE SOFTWARE LICENSE & ON-PREMISE TERMS OF USE
+Copyright (c) 2026 Cortex Technologies Inc. ("Licensor"). All rights reserved.
 
-Proprietary and Confidential Software.
+IMPORTANT: PLEASE READ THIS LICENSE AGREEMENT CAREFULLY BEFORE INSTALLING,
+DEPLOYING, ACCESSING, OR USING THIS SOFTWARE.
 
-Unauthorized copying, modification, distribution, sublicensing, reverse engineering,
-or commercial use of this software, in whole or in part, via any medium, is strictly 
-prohibited without the express prior written consent of the copyright owner.
+1. PROPRIETARY & SOURCE-AVAILABLE SOFTWARE
+This Software (including all source code, object code, APIs, database schemas,
+scripts, and documentation) is the proprietary, confidential, and copyrighted 
+property of Cortex Technologies Inc. It is licensed, not sold.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. GRANT OF LICENSE
+Subject to the terms and conditions of this Agreement and continuous possession
+of an active, valid commercial license key issued by Licensor, Licensor grants 
+to Licensee a non-exclusive, non-transferable, non-sublicensable, revocable license 
+to install, run, and execute the Software solely for Licensee's internal business 
+operations within the designated deployment environment.
+
+3. RESTRICTIONS ON MODIFICATION AND USE
+Licensee shall NOT, directly or indirectly:
+a. Modify, alter, adapt, translate, enhance, or create derivative works of the 
+   Software, in whole or in part, without the express prior written consent of Licensor.
+b. Circumvent, disable, bypass, tamper with, or interfere with any security, 
+   license validation, hardware binding (HWID), machine signature, telemetry, 
+   or access control mechanisms implemented in the Software.
+c. Distribute, sublicense, rent, lease, lend, resell, publish, assign, or otherwise 
+   transfer the Software or access to the Software to any third party, whether as 
+   a managed service, software-as-a-service (SaaS), or on-premise installation.
+d. Reverse engineer, decompile, disassemble, or attempt to derive the underlying 
+   algorithms, scoring models, graph dependency mappings, or intellectual property 
+   of the Software.
+e. Remove, obscure, or alter any copyright notices, trademarks, or proprietary 
+   legends appearing in or on the Software.
+
+4. TECHNICAL ENFORCEMENT & LICENSE VALIDATION
+The Software incorporates technological protection measures designed to prevent 
+unlicensed or unauthorized use. The Software connects periodically to Licensor's 
+central license verification infrastructure (including cortex-admin control plane) 
+to confirm the validity of the License Key, machine signature, and subscription term. 
+If the Software fails license verification, the subscription expires, or the license 
+is revoked, the Software may automatically restrict functionality or cease operating.
+
+5. INTELLECTUAL PROPERTY OWNERSHIP
+Licensor retains all right, title, and interest (including all patents, copyrights, 
+trade secrets, trademarks, and all other proprietary rights) in and to the Software, 
+updates, enhancements, and all derivative works thereof. Any unauthorized modifications 
+or additions made to the Software shall automatically and immediately vest in Licensor.
+
+6. TERMINATION
+This Agreement and the license granted hereunder shall automatically terminate 
+immediately without notice if Licensee fails to comply with any provision of this 
+Agreement, attempts to tamper with licensing controls, or upon the expiration of 
+Licensee's commercial license term. Upon termination, Licensee must immediately 
+cease all use of the Software, dismantle deployments, and destroy all copies.
+
+7. DISCLAIMER OF WARRANTIES
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NONINFRINGEMENT. LICENSOR DOES NOT 
+WARRANT THAT THE SOFTWARE WILL BE UNINTERRUPTED, BUG-FREE, OR ERROR-FREE.
+
+8. LIMITATION OF LIABILITY
+IN NO EVENT SHALL LICENSOR, ITS DIRECTORS, OFFICERS, EMPLOYEES, OR AFFILIATES BE 
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE, OR 
+CONSEQUENTIAL DAMAGES (INCLUDING PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, 
+LOSS OF USE, DATA, REVENUE, OR PROFITS, OR BUSINESS INTERRUPTION) ARISING IN 
+ANY WAY OUT OF THE INSTALLATION, USE, OR INABILITY TO USE THIS SOFTWARE, EVEN 
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
