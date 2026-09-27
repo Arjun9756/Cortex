@@ -4,7 +4,7 @@ const graphWrite = /\b(?:CREATE|MERGE|SET|DELETE|REMOVE|DETACH\s+DELETE)\b/i;
 const schemaWrite = /^\s*CREATE\s+(?:INDEX|CONSTRAINT)\b/i;
 
 function addTrustedPredicates(cypher: string, mode: 'trusted' | 'write' = 'trusted'): string {
-    const matchClause = /((?:OPTIONAL\s+)?MATCH\s+)([\s\S]*?)(\s+WHERE\b|(?=\s+(?:WITH|RETURN|OPTIONAL\s+MATCH|MATCH|UNWIND|CALL|ORDER\s+BY|SKIP|LIMIT|CREATE|MERGE|SET|DELETE|DETACH)\b)|$)/gi;
+    const matchClause = /(?<!\bON\s+)((?:OPTIONAL\s+)?MATCH\s+)([\s\S]*?)(\s+WHERE\b|(?=\s+(?:WITH|RETURN|OPTIONAL\s+MATCH|MATCH|UNWIND|CALL|ORDER\s+BY|SKIP|LIMIT|CREATE|MERGE|SET|DELETE|DETACH|FOREACH)\b)|$)/gi;
     return cypher.replace(matchClause, (whole, prefix: string, pattern: string, nextClause: string) => {
         const variables = new Set<string>();
         for (const node of pattern.matchAll(/\(\s*([A-Za-z_][\w]*)\s*(?::[A-Za-z_][\w]*)?[^)]*\)/g)) if (node[1]) variables.add(node[1]);

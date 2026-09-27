@@ -89,7 +89,7 @@ export class IntegrationService {
                 accountAvatar: row?.account_avatar || null,
                 scopes: row?.scopes || [],
                 updatedAt: row?.updated_at || null,
-                scopeRules: row?.scope_rules || { allMonitored: true, monitoredItems: ['*'] },
+                scopeRules: this.normalizeScopeRules(row?.scope_rules),
                 hasCredentialsConfigured: this.hasCredentials(p),
             };
         }
@@ -579,11 +579,36 @@ export class IntegrationService {
      * Updates scoping rules (monitored items) for a provider.
      */
     public async updateScopeRules(provider: SupportedIntegrationProvider, rules: { allMonitored: boolean; monitoredItems: string[] }) {
+        const normalized = this.normalizeScopeRules(rules);
         await sql`
             UPDATE integrations
-            SET scope_rules = ${JSON.stringify(rules)}, updated_at = CURRENT_TIMESTAMP
+            SET scope_rules = ${sql.json(normalized)}, updated_at = CURRENT_TIMESTAMP
             WHERE provider = ${provider}
         `;
+    }
+
+    /**
+     * Normalizes raw scoping rules to guarantee a consistent object shape.
+     */
+    public normalizeScopeRules(raw: any): { allMonitored: boolean; monitoredItems: string[] } {
+        if (!raw) {
+            return { allMonitored: true, monitoredItems: ['*'] };
+        }
+        let val = raw;
+        while (typeof val === 'string') {
+            try {
+                val = JSON.parse(val);
+            } catch {
+                break;
+            }
+        }
+        if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+            return {
+                allMonitored: Boolean(val.allMonitored),
+                monitoredItems: Array.isArray(val.monitoredItems) ? val.monitoredItems : ['*'],
+            };
+        }
+        return { allMonitored: true, monitoredItems: ['*'] };
     }
 
     /**

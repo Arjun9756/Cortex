@@ -201,19 +201,19 @@ export async function upsertEntity(
     }
 }
 
-export async function upsertCanonicalPersonNode(person: { id: string; name: string; source: DataSource; email?: string | undefined; isActive?: boolean; employmentStatus?: string }, session?: any) {
+export async function upsertCanonicalPersonNode(person: { id: string; name: string; source: DataSource; email?: string | undefined; isActive?: boolean; isBot?: boolean; employmentStatus?: string }, session?: any) {
     return await upsertEntity(person.name, 'PERSON', { 
         source: person.source,
         email: person.email, 
         canonicalPersonId: person.id, 
         externalId: person.id,
-        isActive: person.isActive ?? true,
+        isActive: person.isActive ?? true, isBot: Boolean(person.isBot),
         employmentStatus: person.employmentStatus ?? (person.isActive === false ? 'alumni' : 'active')
     }, session);
 }
 
-export async function upsertIdentityNode(identity: { provider: string; externalId: string; username: string; displayName: string; canonicalPersonId: string; source: DataSource }, session?: any) {
-    return await upsertEntity(identity.displayName || identity.username, 'PERSON', { source: identity.source, externalId: identity.externalId, provider: identity.provider, canonicalPersonId: identity.canonicalPersonId }, session);
+export async function upsertIdentityNode(identity: { provider: string; externalId: string; username: string; displayName: string; canonicalPersonId: string; isBot?: boolean; source: DataSource }, session?: any) {
+    return await upsertEntity(identity.displayName || identity.username, 'PERSON', { source: identity.source, externalId: identity.externalId, provider: identity.provider, canonicalPersonId: identity.canonicalPersonId, isBot: Boolean(identity.isBot) }, session);
 }
 
 export interface RelationMetadata {

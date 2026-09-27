@@ -7,6 +7,8 @@ import { calculateAllTechnologyMetrics } from '../analytics/technologyMetrics.js
 import { calculateWorkspaceMetrics } from '../analytics/workspaceMetrics.service.js'
 import { generateAndSaveDailyReport } from '../analytics/dailyReport.service.js'
 import { startDebouncedMetricsPoller } from '../analytics/metricsInvalidator.service.js'
+import { directorySyncService } from '../identity/directorySync.service.js'
+import { reconcileWorkerService } from '../identity/reconcileWorker.service.js'
 import type { DataSource } from '../database/provenance.js'
 import { aggregationSources } from '../database/provenance.js'
 
@@ -125,7 +127,21 @@ export function startMetricsScheduler() {
     // 2. Debounced Event-Driven Poller — recalculates metrics when new events arrive
     startDebouncedMetricsPoller(() => runAnalyticsJob('webhook'))
 
-    // 3. Immediate execution on server startup so metrics tables are never empty right after deployment
+    // 3. Hourly Directory Sync & Delta Reconciliation Job
+    cron.schedule('0 * * * *', async () => {
+        try {
+            console.log('[Scheduler] Running hourly directory sync and identity reconciliation...');
+            await directorySyncService.syncAllDirectories('backfill');
+            await reconcileWorkerService.runReconciliation('backfill');
+        } catch (syncErr: any) {
+            console.error('[Scheduler] Hourly directory sync error:', syncErr?.message ?? syncErr);
+        }
+    }, {
+        name: "DirectorySyncReconciliationJob",
+    });
+    console.log('[Scheduler] Hourly directory sync & identity reconciliation scheduled');
+
+    // 4. Immediate execution on server startup so metrics tables are never empty right after deployment
     console.log('[Scheduler] Triggering immediate startup analytics calculation...')
     runAnalyticsJob('webhook').catch(err => {
         console.error('[Scheduler] Initial startup metrics calculation error:', err?.message ?? err)
@@ -134,4 +150,9 @@ export function startMetricsScheduler() {
 
 export async function runMetricsNow(source: DataSource) {
     await runAnalyticsJob(source)
+}
+
+export async function runDirectorySyncAndReconcileNow(source: DataSource = 'backfill') {
+    await directorySyncService.syncAllDirectories(source);
+    return await reconcileWorkerService.runReconciliation(source);
 }

@@ -126,14 +126,17 @@ export async function ensurePostgresTables(): Promise<void> {
                 email VARCHAR(255),
                 display_name VARCHAR(255),
                 is_active BOOLEAN DEFAULT true,
+                is_bot BOOLEAN DEFAULT false,
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT unique_provider_external_id UNIQUE (provider, external_id)
             )
         `;
         await sql`ALTER TABLE person_identity ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`;
+        await sql`ALTER TABLE person_identity ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT false`;
         await sql`CREATE INDEX IF NOT EXISTS person_identity_canonical_id_idx ON person_identity(canonical_person_id)`;
         await sql`CREATE INDEX IF NOT EXISTS person_identity_email_idx ON person_identity(LOWER(email))`;
         await sql`CREATE INDEX IF NOT EXISTS person_identity_username_idx ON person_identity(LOWER(username))`;
+        await sql`CREATE INDEX IF NOT EXISTS person_identity_is_bot_idx ON person_identity(is_bot)`;
 
         // 7. Identity Merge Log Table (Audit trail of identity resolution merges)
         await sql`

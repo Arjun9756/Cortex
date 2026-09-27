@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LandingPage } from './landing/LandingPage';
 import { PricingPage } from './pages/PricingPage';
 import { RequestPage } from './pages/RequestPage';
@@ -17,18 +17,101 @@ import { OnboardingPage } from './onboarding/OnboardingPage';
 
 import { isDemoEnabled } from './config';
 
+const STORAGE_VIEW_KEY = 'cortex_current_view';
+const STORAGE_TAB_KEY = 'cortex_active_tab';
+
+const VALID_TABS: NavTab[] = [
+  'overview',
+  'chat',
+  'graph',
+  'people',
+  'bus-factor',
+  'technologies',
+  'timeline',
+  'analytics',
+  'pull-requests',
+];
+
 export function App() {
   const [viewMode, setViewMode] = useState<'landing' | 'dashboard' | 'pricing' | 'request' | 'onboarding'>(() => {
+    // 1. Priority to URL parameters or path
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view');
     if (view === 'onboarding' || window.location.pathname === '/onboarding') return 'onboarding';
     if (view === 'request' || window.location.pathname === '/request') return 'request';
     if (view === 'pricing' || window.location.pathname === '/pricing') return 'pricing';
     if ((view === 'dashboard' || window.location.pathname === '/dashboard') && isDemoEnabled) return 'dashboard';
+    if (view === 'landing') return 'landing';
+
+    // 2. Fall back to persisted view in localStorage
+    try {
+      const savedView = localStorage.getItem(STORAGE_VIEW_KEY);
+      if (savedView === 'onboarding' || savedView === 'pricing' || savedView === 'request') return savedView;
+      if (savedView === 'dashboard' && isDemoEnabled) return 'dashboard';
+      if (savedView === 'landing') return 'landing';
+    } catch {}
+
     // Default to Landing Page
     return 'landing';
   });
-  const [activeTab, setActiveTab] = useState<NavTab>('overview');
+
+  const [activeTab, setActiveTab] = useState<NavTab>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab') as NavTab | null;
+    if (tabParam && VALID_TABS.includes(tabParam)) return tabParam;
+
+    try {
+      const savedTab = localStorage.getItem(STORAGE_TAB_KEY) as NavTab | null;
+      if (savedTab && VALID_TABS.includes(savedTab)) return savedTab;
+    } catch {}
+
+    return 'overview';
+  });
+
+  // Sync viewMode and activeTab to URL and localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_VIEW_KEY, viewMode);
+      if (viewMode === 'dashboard') {
+        localStorage.setItem(STORAGE_TAB_KEY, activeTab);
+      }
+    } catch {}
+
+    const url = new URL(window.location.href);
+    if (viewMode === 'landing') {
+      url.searchParams.delete('view');
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('view', viewMode);
+      if (viewMode === 'dashboard') {
+        url.searchParams.set('tab', activeTab);
+      } else {
+        url.searchParams.delete('tab');
+      }
+    }
+    window.history.replaceState(null, '', url.pathname + url.search);
+  }, [viewMode, activeTab]);
+
+  // Support browser Back/Forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get('view');
+      if (view === 'onboarding' || view === 'dashboard' || view === 'pricing' || view === 'request') {
+        setViewMode(view as any);
+      } else {
+        setViewMode('landing');
+      }
+
+      const tab = params.get('tab') as NavTab | null;
+      if (tab && VALID_TABS.includes(tab)) {
+        setActiveTab(tab);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(new Date());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);

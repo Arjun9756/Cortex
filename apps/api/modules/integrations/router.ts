@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { integrationService, SupportedIntegrationProvider } from './service.js';
+import { directorySyncService } from '../../../../packages/identity/directorySync.service.js';
+import { reconcileWorkerService } from '../../../../packages/identity/reconcileWorker.service.js';
+import type { DataSource } from '../../../../packages/database/provenance.js';
 
 export const integrationsRouter = Router();
 
@@ -29,6 +32,54 @@ integrationsRouter.get('/status', async (req: Request, res: Response) => {
         });
     } catch (err: any) {
         console.error('[Integrations] Error fetching status:', err);
+        return res.status(500).json({ success: false, error: err?.message });
+    }
+});
+
+// 1.5. POST /api/integrations/sync
+// Triggers on-demand directory synchronization across connected providers (Slack, Jira, GitHub)
+integrationsRouter.post('/sync', async (req: Request, res: Response) => {
+    try {
+        const source = (req.body?.source as DataSource) || 'backfill';
+        const report = await directorySyncService.syncAllDirectories(source);
+        return res.json({
+            success: true,
+            report,
+        });
+    } catch (err: any) {
+        console.error('[Integrations] Directory sync error:', err);
+        return res.status(500).json({ success: false, error: err?.message });
+    }
+});
+
+// 1.6. POST /api/integrations/reconcile
+// Triggers delta identity reconciliation for missing emails, GitHub noreply, localhost authors, bots, and alumni
+integrationsRouter.post('/reconcile', async (req: Request, res: Response) => {
+    try {
+        const source = (req.body?.source as DataSource) || 'backfill';
+        const stats = await reconcileWorkerService.runReconciliation(source);
+        return res.json({
+            success: true,
+            stats,
+        });
+    } catch (err: any) {
+        console.error('[Integrations] Reconciliation error:', err);
+        return res.status(500).json({ success: false, error: err?.message });
+    }
+});
+
+// 1.7. GET /api/integrations/reconcile/stats
+// Retrieves current identity resolution breakdown and pending duplicates
+integrationsRouter.get('/reconcile/stats', async (req: Request, res: Response) => {
+    try {
+        const source = (req.query?.source as DataSource) || 'backfill';
+        const stats = await reconcileWorkerService.getReconciliationStats(source);
+        return res.json({
+            success: true,
+            ...stats,
+        });
+    } catch (err: any) {
+        console.error('[Integrations] Error fetching reconciliation stats:', err);
         return res.status(500).json({ success: false, error: err?.message });
     }
 });

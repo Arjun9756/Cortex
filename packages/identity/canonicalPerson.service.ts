@@ -4,7 +4,7 @@ import { snowflake } from '../../apps/Utils/Snowflake.js';
 import { calculateNameSimilarity } from './stringSimilarity.js';
 import { createGroqChatCompletion } from '../llm/providers/groq.js';
 import { upsertCanonicalPersonNode, upsertIdentityNode, runGraphWrite } from '../database/neo4j/graph.repository.js';
-import { assertDataSource, type DataSource } from '../database/provenance.js';
+import { assertDataSource, aggregationSources, type DataSource } from '../database/provenance.js';
 
 export type SupportedProvider =
     | 'github'
@@ -24,6 +24,8 @@ export interface ProviderIdentityInput {
     username?: string | undefined;
     email?: string | undefined;
     displayName?: string | undefined;
+    isBot?: boolean | undefined;
+    isActive?: boolean | undefined;
 }
 
 export interface IdentityResolutionResult {
@@ -113,13 +115,16 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
     const cleanEmail = email ? email.trim().toLowerCase() : null;
     const cleanUsername = username ? username.trim().toLowerCase() : null;
     const cleanDisplayName = displayName ? displayName.trim() : (username || externalId);
+    const trustedSources = aggregationSources(input.source);
+    const isBot = Boolean(input.isBot);
+    const isActive = input.isActive !== false;
 
     // Step 0: Check if identity is already linked to a canonical person in Postgres (Preserves confirmed merges)
     try {
         const [existing] = await sql`
             SELECT canonical_person_id, email, username, display_name 
             FROM person_identity 
-            WHERE provider = ${provider} AND external_id = ${externalId} AND source IN ('webhook', 'backfill')
+            WHERE provider = ${provider} AND external_id = ${externalId} AND source IN ${sql(trustedSources)}
             LIMIT 1
         `;
 
@@ -129,8 +134,10 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                 UPDATE person_identity 
                 SET email = COALESCE(${cleanEmail}, email),
                     username = COALESCE(${cleanUsername}, username),
-                    display_name = COALESCE(${cleanDisplayName}, display_name)
-                WHERE provider = ${provider} AND external_id = ${externalId} AND source IN ('webhook', 'backfill')
+                    display_name = COALESCE(${cleanDisplayName}, display_name),
+                    is_active = COALESCE(${input.isActive ?? null}, is_active),
+                    is_bot = COALESCE(${input.isBot ?? null}, is_bot)
+                WHERE provider = ${provider} AND external_id = ${externalId} AND source IN ${sql(trustedSources)}
             `;
 
             // Sync Graph nodes
@@ -154,6 +161,29 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
         console.warn(`[IdentityResolution] DB check error: ${dbErr?.message}`);
     }
 
+    // Step 0.5: Bots and CI/CD service accounts are strictly isolated from human identities
+    if (isBot) {
+        const botCanonicalId = `bot_${snowflake.nextID()}`;
+        await linkIdentityAndAudit({
+            canonicalId: botCanonicalId,
+            incoming: input,
+            cleanEmail,
+            cleanUsername,
+            cleanDisplayName,
+            matchedBy: 'NEW_PERSON',
+            confidence: 1.0,
+            reason: `Service account / Bot detected (${cleanDisplayName || cleanUsername || externalId}); kept separate from human identities`,
+            source: input.source,
+        });
+
+        return {
+            canonicalPersonId: botCanonicalId,
+            confidence: 1.0,
+            reason: 'Bot / service account registered',
+            matchedBy: 'NEW_PERSON',
+        };
+    }
+
     // Tier 1: Exact Email Match (High-Confidence Auto-Merge)
     if (cleanEmail && isMergeableEmail(cleanEmail)) {
         try {
@@ -161,7 +191,8 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                 SELECT canonical_person_id, display_name
                 FROM person_identity
                 WHERE LOWER(email) = ${cleanEmail}
-                  AND source IN ('webhook', 'backfill')
+                  AND source IN ${sql(trustedSources)}
+                  AND (is_bot IS FALSE OR is_bot IS NULL)
                 LIMIT 1
             `;
 
@@ -204,7 +235,8 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                 SELECT canonical_person_id, display_name, provider, email
                 FROM person_identity
                 WHERE LOWER(username) = ${cleanUsername}
-                  AND source IN ('webhook', 'backfill')
+                  AND source IN ${sql(trustedSources)}
+                  AND (is_bot IS FALSE OR is_bot IS NULL)
                 LIMIT 1
             `;
 
@@ -264,8 +296,9 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
         const candidateIdentities = await sql`
             SELECT DISTINCT canonical_person_id, display_name, username, email, provider, created_at
             FROM person_identity
-            WHERE source IN ('webhook', 'backfill')
+            WHERE source IN ${sql(trustedSources)}
               AND canonical_person_id != ${newCanonicalId}
+              AND (is_bot IS FALSE OR is_bot IS NULL)
             ORDER BY created_at DESC
             LIMIT 250
         `;
@@ -410,7 +443,9 @@ async function linkIdentityAndAudit(params: {
 
     // 1. Insert into person_identity table
     await sql`
-        INSERT INTO person_identity (id, source, canonical_person_id, provider, external_id, username, email, display_name)
+        INSERT INTO person_identity (
+            id, source, canonical_person_id, provider, external_id, username, email, display_name, is_active, is_bot
+        )
         VALUES (
             ${identityId},
             ${source},
@@ -419,13 +454,17 @@ async function linkIdentityAndAudit(params: {
             ${incoming.externalId},
             ${cleanUsername},
             ${cleanEmail},
-            ${cleanDisplayName}
+            ${cleanDisplayName},
+            ${incoming.isActive !== false},
+            ${Boolean(incoming.isBot)}
         )
         ON CONFLICT (source, provider, external_id) DO UPDATE SET
             canonical_person_id = ${canonicalId},
             username = COALESCE(${cleanUsername}, person_identity.username),
             email = COALESCE(${cleanEmail}, person_identity.email),
-            display_name = COALESCE(${cleanDisplayName}, person_identity.display_name)
+            display_name = COALESCE(${cleanDisplayName}, person_identity.display_name),
+            is_active = COALESCE(${incoming.isActive ?? null}, person_identity.is_active),
+            is_bot = COALESCE(${incoming.isBot ?? null}, person_identity.is_bot)
     `;
 
     // 2. Audit log if merging into an existing identity
@@ -450,6 +489,8 @@ async function linkIdentityAndAudit(params: {
         id: canonicalId,
         name: cleanDisplayName,
         email: cleanEmail || undefined,
+        isActive: incoming.isActive !== false,
+        isBot: Boolean(incoming.isBot),
         source,
     });
 
@@ -459,6 +500,7 @@ async function linkIdentityAndAudit(params: {
         username: cleanUsername || incoming.externalId,
         displayName: cleanDisplayName,
         canonicalPersonId: canonicalId,
+        isBot: Boolean(incoming.isBot),
         source,
     });
 }
@@ -630,6 +672,7 @@ export async function linkCanonicalPersons(
             
             // Transfer CONTRIBUTED_TO relationships
             OPTIONAL MATCH (merge)-[r:CONTRIBUTED_TO {source: $source}]->(repo:REPOSITORY {source: $source})
+            WITH keep, merge, r, repo
             FOREACH (_ IN CASE WHEN r IS NOT NULL THEN [1] ELSE [] END |
                 MERGE (keep)-[newR:CONTRIBUTED_TO {source: $source}]->(repo)
                 ON CREATE SET 
@@ -644,7 +687,38 @@ export async function linkCanonicalPersons(
                     newR.updatedAt = timestamp()
                 DELETE r
             )
+
+            WITH keep, merge
+            // Transfer AUTHORED relationships
+            OPTIONAL MATCH (merge)-[rAuth:AUTHORED {source: $source}]->(targetAuth)
+            WITH keep, merge, rAuth, targetAuth
+            FOREACH (_ IN CASE WHEN rAuth IS NOT NULL THEN [1] ELSE [] END |
+                MERGE (keep)-[newAuth:AUTHORED {source: $source}]->(targetAuth)
+                ON CREATE SET newAuth.createdAt = timestamp()
+                DELETE rAuth
+            )
+
+            WITH keep, merge
+            // Transfer WORKS_ON relationships
+            OPTIONAL MATCH (merge)-[rWork:WORKS_ON {source: $source}]->(targetWork)
+            WITH keep, merge, rWork, targetWork
+            FOREACH (_ IN CASE WHEN rWork IS NOT NULL THEN [1] ELSE [] END |
+                MERGE (keep)-[newWork:WORKS_ON {source: $source}]->(targetWork)
+                ON CREATE SET newWork.createdAt = timestamp()
+                DELETE rWork
+            )
+
+            WITH keep, merge
+            // Transfer incoming ASSIGNED_TO relationships
+            OPTIONAL MATCH (sourceAssign)-[rAssign:ASSIGNED_TO {source: $source}]->(merge)
+            WITH keep, merge, rAssign, sourceAssign
+            FOREACH (_ IN CASE WHEN rAssign IS NOT NULL THEN [1] ELSE [] END |
+                MERGE (sourceAssign)-[newAssign:ASSIGNED_TO {source: $source}]->(keep)
+                ON CREATE SET newAssign.createdAt = timestamp()
+                DELETE rAssign
+            )
             
+            WITH merge
             // Delete the duplicate PERSON node
             DETACH DELETE merge
         `, { keepCanonicalId, mergeCanonicalId, source }, session);

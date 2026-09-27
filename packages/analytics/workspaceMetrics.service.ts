@@ -44,7 +44,7 @@ export async function calculateWorkspaceMetrics(source: DataSource) {
             INSERT INTO workspace_metrics
                 (source, knowledge_risk_avg, bus_factor_avg, repo_count, contributor_count, open_issues_count, open_prs_count, computed_at)
             VALUES
-                (${source}, ${avgRisk}, ${totalRepos}, ${totalPeople}, ${openIssues}, ${openPrs}, now())
+                (${source}, ${avgRisk}, ${avgBusFactor}, ${totalRepos}, ${totalPeople}, ${openIssues}, ${openPrs}, now())
         `;
 
         console.log(`[WorkspaceMetrics] Computed: repos=${totalRepos}, people=${totalPeople}, riskAvg=${avgRisk}%, busFactorAvg=${avgBusFactor}`);
