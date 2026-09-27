@@ -225,7 +225,9 @@ We the builder of the Cortex system — built without external funding, team, or
 
 ## License & Intellectual Property
 
-Copyright (c) 2026 Cortex. All rights reserved.
+Copyright (c) 2026 CORTEXCO ("Licensor"). All rights reserved.
 
-This software and associated documentation files are proprietary and confidential. Unauthorized copying, modification, distribution, sublicensing, or commercial use of this software, in whole or in part, via any medium, is strictly prohibited without explicit prior written consent.
+This software (including all source code, object code, APIs, database schemas, scripts, and documentation) is the proprietary and confidential property of CORTEXCO. It is licensed under the [CORTEX ENTERPRISE SOFTWARE LICENSE & ON-PREMISE TERMS OF USE](LICENSE), not sold.
+
+Unauthorized copying, modification, distribution, sublicensing, reverse engineering, circumvention of license verification controls, or commercial use of this software, in whole or in part, via any medium, is strictly prohibited without explicit prior written consent of CORTEXCO.
 
