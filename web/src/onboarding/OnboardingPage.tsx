@@ -159,9 +159,11 @@ const SaveButton: React.FC<{
             {state === 'saving'
                 ? 'Saving Scope…'
                 : state === 'saved'
-                ? `✓ Scope Saved (${count} monitored)`
+                ? (count === 0 ? '✓ Scope Cleared (0 monitored)' : `✓ Scope Saved (${count} monitored)`)
                 : state === 'error'
                 ? 'Failed — Click to Retry'
+                : count === 0
+                ? 'Save Scope (Clear All / 0 selected)'
                 : `Save Scope (${count} selected)`}
         </button>
     );
@@ -370,8 +372,11 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
 
             if (statuses.github?.status === 'connected') {
                 loadRealRepos();
-                let savedRepos = parseMonitoredItems(statuses.github.scopeRules);
-                if (savedRepos.length === 0) {
+                const hasExplicitRules = Boolean(statuses.github.scopeRules && typeof statuses.github.scopeRules === 'object');
+                let savedRepos: string[] = [];
+                if (hasExplicitRules) {
+                    savedRepos = parseMonitoredItems(statuses.github.scopeRules);
+                } else {
                     try {
                         const cached = localStorage.getItem('cortex_selected_repos');
                         if (cached) savedRepos = JSON.parse(cached);
@@ -389,8 +394,11 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
 
             if (statuses.slack?.status === 'connected') {
                 loadRealChannels();
-                let savedChannels = parseMonitoredItems(statuses.slack.scopeRules);
-                if (savedChannels.length === 0) {
+                const hasExplicitRules = Boolean(statuses.slack.scopeRules && typeof statuses.slack.scopeRules === 'object');
+                let savedChannels: string[] = [];
+                if (hasExplicitRules) {
+                    savedChannels = parseMonitoredItems(statuses.slack.scopeRules);
+                } else {
                     try {
                         const cached = localStorage.getItem('cortex_selected_channels');
                         if (cached) savedChannels = JSON.parse(cached);
@@ -408,8 +416,11 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
 
             if (statuses.jira?.status === 'connected') {
                 loadRealProjects();
-                let savedProjects = parseMonitoredItems(statuses.jira.scopeRules);
-                if (savedProjects.length === 0) {
+                const hasExplicitRules = Boolean(statuses.jira.scopeRules && typeof statuses.jira.scopeRules === 'object');
+                let savedProjects: string[] = [];
+                if (hasExplicitRules) {
+                    savedProjects = parseMonitoredItems(statuses.jira.scopeRules);
+                } else {
                     try {
                         const cached = localStorage.getItem('cortex_selected_projects');
                         if (cached) savedProjects = JSON.parse(cached);
@@ -615,10 +626,6 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
     };
 
     const handleSaveGithubScope = async () => {
-        if (selectedRepos.length === 0) {
-            showToast('Select at least one repository to monitor.', 'error');
-            return;
-        }
         setGithubSaveState('saving');
         try {
             const res = await saveIntegrationScope('github', {
@@ -633,11 +640,13 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                 github: {
                     ...prev.github,
                     scopeRules: { allMonitored: false, monitoredItems: selectedRepos },
-                    webhookRegistered: res.webhookSync?.status === 'installed' ? true : prev.github.webhookRegistered,
+                    webhookRegistered: selectedRepos.length > 0 && res.webhookSync?.status === 'installed' ? true : (selectedRepos.length === 0 ? false : prev.github.webhookRegistered),
                 }
             } : prev);
             setGithubSaveState('saved');
-            if (res.webhookSync?.status === 'installed') {
+            if (selectedRepos.length === 0) {
+                showToast(`✓ GitHub scope cleared (0 repositories monitored — monitoring paused).`, 'info');
+            } else if (res.webhookSync?.status === 'installed') {
                 showToast(`🎉 GitHub scope saved & webhook auto-installed for ${selectedRepos.length} repository(ies)!`, 'success');
             } else if (res.webhookSync?.status === 'skipped_localhost') {
                 showToast(`Scope saved! Enter your Port Shift / Tunnel URL above to auto-install on GitHub.`, 'info');
@@ -653,10 +662,6 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
     };
 
     const handleSaveSlackScope = async () => {
-        if (selectedChannels.length === 0) {
-            showToast('Select at least one channel to monitor.', 'error');
-            return;
-        }
         setSlackSaveState('saving');
         try {
             const res = await saveIntegrationScope('slack', {
@@ -671,11 +676,13 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                 slack: {
                     ...prev.slack,
                     scopeRules: { allMonitored: false, monitoredItems: selectedChannels },
-                    webhookRegistered: res.webhookSync?.status === 'channels_joined' ? true : prev.slack.webhookRegistered,
+                    webhookRegistered: selectedChannels.length > 0 && res.webhookSync?.status === 'channels_joined' ? true : (selectedChannels.length === 0 ? false : prev.slack.webhookRegistered),
                 }
             } : prev);
             setSlackSaveState('saved');
-            if (res.webhookSync?.status === 'channels_joined') {
+            if (selectedChannels.length === 0) {
+                showToast(`✓ Slack scope cleared (0 channels monitored — bot paused).`, 'info');
+            } else if (res.webhookSync?.status === 'channels_joined') {
                 showToast(`🎉 Slack scope saved & bot joined ${selectedChannels.length} channel(s)!`, 'success');
             } else {
                 showToast(`Slack scope saved (${selectedChannels.length} channels monitored).`, 'success');
@@ -689,10 +696,6 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
     };
 
     const handleSaveJiraScope = async () => {
-        if (selectedProjects.length === 0) {
-            showToast('Select at least one project to monitor.', 'error');
-            return;
-        }
         setJiraSaveState('saving');
         try {
             const res = await saveIntegrationScope('jira', {
@@ -707,11 +710,13 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                 jira: {
                     ...prev.jira,
                     scopeRules: { allMonitored: false, monitoredItems: selectedProjects },
-                    webhookRegistered: res.webhookSync?.status === 'installed' ? true : prev.jira.webhookRegistered,
+                    webhookRegistered: selectedProjects.length > 0 && res.webhookSync?.status === 'installed' ? true : (selectedProjects.length === 0 ? false : prev.jira.webhookRegistered),
                 }
             } : prev);
             setJiraSaveState('saved');
-            if (res.webhookSync?.status === 'installed') {
+            if (selectedProjects.length === 0) {
+                showToast(`✓ Jira scope cleared (0 projects monitored — monitoring paused).`, 'info');
+            } else if (res.webhookSync?.status === 'installed') {
                 showToast(`🎉 Jira scope saved & dynamic webhook registered!`, 'success');
             } else if (res.webhookSync?.status === 'skipped_localhost') {
                 showToast(`Scope saved! Enter your Port Shift / Tunnel URL above to auto-register Jira webhooks.`, 'info');
@@ -959,6 +964,48 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                     </div>
                 </div>
 
+                {/* ── Official App Logos & Brand Assets Bar ── */}
+                <div className="bg-gradient-to-r from-slate-900/80 via-slate-900/60 to-indigo-950/40 border border-slate-800 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-sm shadow-xl shadow-black/20">
+                    <div className="flex items-center gap-3.5">
+                        <img src="/cortex-app-symbol.png" alt="Cortex Logo" className="w-11 h-11 rounded-xl border border-slate-700/80 shadow-md object-cover" />
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h4 className="text-xs font-bold text-white tracking-wide">Official Cortex App Icons</h4>
+                                <span className="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-semibold">512×512 PNG</span>
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                                Download the official app icon to upload into your Slack Bot, GitHub App, or Jira Developer Portal.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        <a
+                            href="/cortex-app-symbol.png"
+                            download="cortex-slack-app-icon.png"
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span className="w-3.5 h-3.5"><SlackIcon /></span>
+                            Slack Icon
+                        </a>
+                        <a
+                            href="/cortex-app-symbol.png"
+                            download="cortex-github-app-icon.png"
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span className="w-3.5 h-3.5"><GitHubIcon /></span>
+                            GitHub Icon
+                        </a>
+                        <a
+                            href="/cortex-app-symbol.png"
+                            download="cortex-jira-app-icon.png"
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span className="w-3.5 h-3.5"><JiraIcon /></span>
+                            Jira Icon
+                        </a>
+                    </div>
+                </div>
+
                 {/* ── Provider cards ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-10">
 
@@ -1039,7 +1086,18 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                     <div className="border-t border-slate-800/60 pt-4 space-y-2.5 flex-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-slate-200">Repository Scope</span>
-                                            <QuotaBadge selected={selectedRepos.length} limit={GITHUB_REPO_LIMIT} />
+                                            <div className="flex items-center gap-2">
+                                                {selectedRepos.length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setSelectedRepos([]); setGithubSaveState('idle'); }}
+                                                        className="text-[10px] text-slate-400 hover:text-rose-400 underline transition-colors cursor-pointer"
+                                                    >
+                                                        Clear all
+                                                    </button>
+                                                )}
+                                                <QuotaBadge selected={selectedRepos.length} limit={GITHUB_REPO_LIMIT} />
+                                            </div>
                                         </div>
                                         <p className="text-[11px] text-slate-500">Choose up to {GITHUB_REPO_LIMIT} repositories to monitor.</p>
                                         <SearchBox value={repoSearch} onChange={setRepoSearch} placeholder="Search repos…" />
@@ -1215,7 +1273,18 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                     <div className="border-t border-slate-800/60 pt-4 space-y-2.5 flex-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-slate-200">Channel Scope</span>
-                                            <QuotaBadge selected={selectedChannels.length} limit={SLACK_CHANNEL_LIMIT} />
+                                            <div className="flex items-center gap-2">
+                                                {selectedChannels.length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setSelectedChannels([]); setSlackSaveState('idle'); }}
+                                                        className="text-[10px] text-slate-400 hover:text-rose-400 underline transition-colors cursor-pointer"
+                                                    >
+                                                        Clear all
+                                                    </button>
+                                                )}
+                                                <QuotaBadge selected={selectedChannels.length} limit={SLACK_CHANNEL_LIMIT} />
+                                            </div>
                                         </div>
                                         <p className="text-[11px] text-slate-500">Choose up to {SLACK_CHANNEL_LIMIT} channels to monitor.</p>
                                         <SearchBox value={channelSearch} onChange={setChannelSearch} placeholder="Search channels…" />
@@ -1385,7 +1454,18 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                     <div className="border-t border-slate-800/60 pt-4 space-y-2.5 flex-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-slate-200">Project Scope</span>
-                                            <QuotaBadge selected={selectedProjects.length} limit={JIRA_PROJECT_LIMIT} />
+                                            <div className="flex items-center gap-2">
+                                                {selectedProjects.length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setSelectedProjects([]); setJiraSaveState('idle'); }}
+                                                        className="text-[10px] text-slate-400 hover:text-rose-400 underline transition-colors cursor-pointer"
+                                                    >
+                                                        Clear all
+                                                    </button>
+                                                )}
+                                                <QuotaBadge selected={selectedProjects.length} limit={JIRA_PROJECT_LIMIT} />
+                                            </div>
                                         </div>
                                         <p className="text-[11px] text-slate-500">Choose up to {JIRA_PROJECT_LIMIT} projects to monitor.</p>
                                         <SearchBox value={projectSearch} onChange={setProjectSearch} placeholder="Search projects…" />
@@ -1581,6 +1661,27 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
 {setupModalProvider === 'slack' && `SLACK_CLIENT_ID=your_client_id\nSLACK_CLIENT_SECRET=your_client_secret`}
 {setupModalProvider === 'jira' && `JIRA_CLIENT_ID=your_client_id\nJIRA_CLIENT_SECRET=your_client_secret`}
                                 </pre>
+                            </div>
+
+                            <div className="pt-1">
+                                <span className="text-slate-400 font-medium block mb-1.5">5. App Icon & Branding (512x512 PNG)</span>
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800">
+                                    <div className="flex items-center gap-3">
+                                        <img src="/cortex-app-symbol.png" alt="Cortex Icon" className="w-10 h-10 rounded-lg border border-slate-700/60 object-cover" />
+                                        <div>
+                                            <p className="text-slate-200 font-medium text-xs">Official Cortex App Icon</p>
+                                            <p className="text-slate-500 text-[10px]">Optimized 512x512 PNG for Slack, GitHub & Jira portals</p>
+                                        </div>
+                                    </div>
+                                    <a
+                                        href="/cortex-app-symbol.png"
+                                        download={`cortex-${setupModalProvider}-app-icon.png`}
+                                        className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-md transition-colors flex items-center gap-1.5 shadow-sm"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                        Download Logo
+                                    </a>
+                                </div>
                             </div>
                         </div>
 
