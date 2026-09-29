@@ -967,7 +967,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                 {/* ── Official App Logos & Brand Assets Bar ── */}
                 <div className="bg-gradient-to-r from-slate-900/80 via-slate-900/60 to-indigo-950/40 border border-slate-800 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-sm shadow-xl shadow-black/20">
                     <div className="flex items-center gap-3.5">
-                        <img src="/cortex-app-symbol.png" alt="Cortex Logo" className="w-11 h-11 rounded-xl border border-slate-700/80 shadow-md object-cover" />
+                        <img src="/cortex-app-icon-512.png" alt="Cortex Logo" className="w-11 h-11 rounded-xl border border-slate-700/80 shadow-md object-cover bg-[#0B0F15]" />
                         <div>
                             <div className="flex items-center gap-2">
                                 <h4 className="text-xs font-bold text-white tracking-wide">Official Cortex App Icons</h4>
@@ -980,7 +980,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                     </div>
                     <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         <a
-                            href="/cortex-app-symbol.png"
+                            href="/cortex-slack-app-icon.png"
                             download="cortex-slack-app-icon.png"
                             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
@@ -988,7 +988,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                             Slack Icon
                         </a>
                         <a
-                            href="/cortex-app-symbol.png"
+                            href="/cortex-github-app-icon.png"
                             download="cortex-github-app-icon.png"
                             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
@@ -996,7 +996,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                             GitHub Icon
                         </a>
                         <a
-                            href="/cortex-app-symbol.png"
+                            href="/cortex-jira-app-icon.png"
                             download="cortex-jira-app-icon.png"
                             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
@@ -1667,14 +1667,14 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                 <span className="text-slate-400 font-medium block mb-1.5">5. App Icon & Branding (512x512 PNG)</span>
                                 <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-800">
                                     <div className="flex items-center gap-3">
-                                        <img src="/cortex-app-symbol.png" alt="Cortex Icon" className="w-10 h-10 rounded-lg border border-slate-700/60 object-cover" />
+                                        <img src="/cortex-app-icon-512.png" alt="Cortex Icon" className="w-10 h-10 rounded-lg border border-slate-700/60 object-cover bg-[#0B0F15]" />
                                         <div>
                                             <p className="text-slate-200 font-medium text-xs">Official Cortex App Icon</p>
                                             <p className="text-slate-500 text-[10px]">Optimized 512x512 PNG for Slack, GitHub & Jira portals</p>
                                         </div>
                                     </div>
                                     <a
-                                        href="/cortex-app-symbol.png"
+                                        href="/cortex-app-icon-512.png"
                                         download={`cortex-${setupModalProvider}-app-icon.png`}
                                         className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-md transition-colors flex items-center gap-1.5 shadow-sm"
                                     >
