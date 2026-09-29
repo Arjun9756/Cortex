@@ -479,3 +479,36 @@ CREATE TABLE daily_reports (
 | **Agent Response Latency** | $< 3\text{ seconds}$ | Simulated SSE word streaming; parallel tool execution. |
 | **Database Failure Mode** | Graceful Degradation | Neo4j unavailability returns clean HTTP 503 instead of fabricating fallback data. |
 | **Worker Scalability** | Horizontal Scalability | Stateless worker processes decoupled via Redis BullMQ queue. |
+
+---
+
+## 10. Dynamic Integration Architecture & Operational Defenses
+
+To ensure seamless enterprise deployment without configuration friction or runtime outages, Cortex includes five specialized integration subsystems:
+
+### 10.1 Zero-Touch Dynamic Webhook Auto-Registration
+- **Workflow:** When an OAuth integration flow finishes, `integrationService` automatically contacts GitHub, Slack, and Jira management APIs.
+- **Security:** Dynamically generates random 32-byte cryptographic webhook secrets (`crypto.randomBytes(32).toString('hex')`) and registers the destination webhook URL (`/api/{provider}/webhook`).
+- **PostgreSQL Persistence:** The generated secrets are stored in `integrations.webhook_secret` with RLS protection.
+- **Zero Manual IT Intervention:** Customers never have to manually enter Webhook URLs, copy-paste HMAC secrets, or configure individual event subscriptions in external provider consoles.
+
+### 10.2 Slack Sub-50ms Immediate Acknowledgment Pipeline
+- **Enforcement:** Slack terminates webhook calls exceeding 3,000ms and issues up to 3 exponential retries.
+- **Decoupled Architecture:** In [`apps/api/modules/slack/router.ts`](file:///d:/Cortex/apps/api/modules/slack/router.ts), HMAC-SHA256 signature verification executes synchronously, followed immediately by `res.status(200).json({ status: true })` in $<20\text{ ms}$.
+- **Asynchronous Handoff:** Raw event normalization, PostgreSQL deduplication (`ON CONFLICT (provider, external_id, source) DO NOTHING`), and BullMQ job enqueueing run asynchronously in the background.
+- **Duplicate Suppression:** By closing the HTTP socket before heavy work starts, Slack's retry mechanism is never triggered, eliminating duplicate event storms.
+
+### 10.3 Atlassian Jira 3LO OAuth Token Lifecycle
+- **60-Minute Expiration Shield:** Atlassian Jira Cloud OAuth 2.0 access tokens strictly expire in 3,600 seconds.
+- **Proactive Token Rotation:** `integrationService.getValidJiraAccessToken()` inspects the `token_expires_at` column. If a token is within 5 minutes of expiring, it proactively exchanges the stored `refresh_token` with Atlassian's auth server (`https://auth.atlassian.com/oauth/token`) and updates PostgreSQL.
+- **Hourly Cron Verification:** The hourly scheduler cron in [`packages/workers/scheduler.worker.ts`](file:///d:/Cortex/packages/workers/scheduler.worker.ts) proactively refreshes tokens before directory synchronization triggers.
+- **In-Flight 401 Recovery:** Directory sync automatically refreshes expired tokens and retries failed API calls once before reporting an authentication error.
+
+### 10.4 GitHub API Rate-Limit Defenses
+- **Secondary Rate-Limit Pacing:** To prevent GitHub secondary burst-rate limits (HTTP 403 / 429), [`packages/identity/directorySync.service.ts`](file:///d:/Cortex/packages/identity/directorySync.service.ts) introduces a 60ms non-blocking delay between individual contributor profile queries and commit searches.
+- **Remaining Quota Inspection:** Responses inspect `x-ratelimit-remaining` and `retry-after` headers. If remaining quota falls to 10 or fewer requests, the directory sync worker logs an audit warning and pauses execution gracefully.
+
+### 10.5 Strict Canonical Identity Resolution
+- **Ground-Truth Policy:** *"A wrong merge is far worse than having two separate accounts."*
+- **Allowed Merges:** Auto-merging across Slack, GitHub, and Jira is permitted exclusively on exact verified email match (`isMergeableEmail()`) or strong, clean, non-generic usernames (`isStrongUsername()`).
+- **Forbidden Merges:** Merging by display name similarity (e.g. "Arjun" $\leftrightarrow$ "Arjun S") is strictly blocked to eliminate destructive identity collisions. Unmerged accounts remain separate until an administrator explicitly merges them via the Admin Audit Dashboard.

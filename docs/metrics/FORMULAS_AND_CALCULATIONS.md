@@ -465,3 +465,46 @@ Evaluating successors for **Priya Sharma** (owner of `billing-engine`):
 | **Technology Usage %** | $(\text{Repos Using Tech} / \text{Total Repos}) \times 100$ | $0\% \to 100\%$ | High = Standard Stack; 1 Contributor = Risk |
 | **Engineer Knowledge Risk** | $0.30\,\text{Own} + 0.20\,\text{Dep} + 0.15\,\text{Act} + 0.15\,\text{Doc} + 0.10\,\text{Exp} + 0.10\,\text{Work}$ | $0\% \to 100\%$ | $< 25\%$ is Low Risk; $\ge 60\%$ is Critical |
 | **Successor Match Score** | $0.40\,\text{Tech} + 0.25\,\text{Repo} + 0.20\,\text{Act} + 0.15\,\text{Capacity}$ | $0\% \to 100\%$ | $\ge 60\%$ = Successor; Capped at 25% if 0 Repos |
+
+---
+
+## 8. Real-Time Ingestion Architecture & Resilience Protections
+
+All metrics in Cortex rely on live, continuous event streams from GitHub, Slack, and Jira. To ensure that high traffic, network latency, and strict API rate limits never disrupt calculation accuracy or crash the server, Cortex enforces five foundational operational protections:
+
+### 8.1 Zero-Touch Dynamic Webhook Auto-Registration
+- **The Problem:** In traditional enterprise tools, setting up webhooks requires an administrator to manually log into GitHub, Slack, and Jira, copy-paste webhook endpoints, create random secret tokens, and manually configure event subscriptions. This leads to configuration errors and unmonitored repositories.
+- **The Cortex Solution:** When an organization connects via OAuth in the Onboarding flow, Cortex automatically:
+  1. Calls GitHub's API (`/repos/:owner/:repo/hooks`) to register webhooks with a secure, cryptographically generated HMAC SHA-256 secret.
+  2. Stores the webhook secret directly in PostgreSQL (`integrations.webhook_secret`).
+  3. Validates every inbound webhook using constant-time timing-safe HMAC comparisons (`crypto.timingSafeEqual`).
+  4. Automatically activates scoped repository and channel monitoring without requiring manual DevOps intervention.
+
+### 8.2 Slack Sub-50ms Immediate Acknowledgment (Eliminating 3-Second Timeout Cascades)
+- **The Problem:** Slack's Events API enforces a strict 3,000ms response timeout. If an API server performs database queries, entity extraction, or graph writes synchronously within the webhook handler, high network latency can cause the response to exceed 3 seconds. Slack then treats the request as a failure and retries up to 3 times, causing exponential duplicate traffic spikes.
+- **The Cortex Solution:**
+  1. In [`apps/api/modules/slack/router.ts`](file:///d:/Cortex/apps/api/modules/slack/router.ts), Cortex cryptographically validates the timestamp and `x-slack-signature`.
+  2. Immediately acknowledges Slack with `200 OK` in less than 20 milliseconds, cleanly completing the HTTP transaction.
+  3. Offloads database persistence and BullMQ queue insertion asynchronously into the background.
+  4. Unsupported or ignored event subtypes return `200 OK` (rather than HTTP 501), ensuring Slack acknowledges the message as delivered and never triggers redundant retries.
+
+### 8.3 Atlassian Jira 3LO OAuth Token Auto-Refresh Lifecycle
+- **The Problem:** Atlassian Jira Cloud OAuth 2.0 (3LO) access tokens have a strict lifespan of 3,600 seconds (1 hour). Once an hour elapses, API requests fail with HTTP 401 Unauthorized, causing automated directory syncs and ticket ingestion to stall until an administrator re-authenticates.
+- **The Cortex Solution:**
+  1. **Proactive Pre-Expiry Rotation:** `integrationService.getValidJiraAccessToken()` inspects the stored `token_expires_at` timestamp. If the token is expired or within 5 minutes of expiration, it proactively exchanges the stored `refresh_token` for a fresh 1-hour access token before making any Jira API calls.
+  2. **Hourly Cron Safety Net:** The hourly scheduler cron in [`packages/workers/scheduler.worker.ts`](file:///d:/Cortex/packages/workers/scheduler.worker.ts) inspects Jira connections and refreshes tokens before directory synchronization begins.
+  3. **In-Flight 401 Fallback:** If Jira returns HTTP 401 during directory pagination, [`packages/identity/directorySync.service.ts`](file:///d:/Cortex/packages/identity/directorySync.service.ts) automatically attempts a one-time token refresh and immediately retries the query before declaring an error.
+
+### 8.4 GitHub API Rate-Limit Defense & Polite Pacing
+- **The Problem:** Traversing dozens of repositories, contributor lists, and commit histories during directory sync can easily exhaust GitHub's 5,000 requests/hour authenticated quota or trigger secondary burst-rate limits (HTTP 403 / 429).
+- **The Cortex Solution:**
+  1. **Polite Pacing Delays:** A 60ms non-blocking pacing delay (`await new Promise(r => setTimeout(r, 60))`) is introduced between consecutive profile lookups and commit searches, preventing secondary burst-rate flags.
+  2. **Quota Header Monitoring:** Directory sync actively inspects `x-ratelimit-remaining` and `retry-after` response headers. If remaining calls fall to 10 or below, the scan pauses gracefully, protecting the client's API quota and preventing IP bans.
+
+### 8.5 Strict Identity Resolution ("Wrong Merge is Worse Than Two Nodes")
+- **The Problem:** Developers often have different emails and usernames across tools (e.g. `as9604793@gmail.com` on personal GitHub, `arjun@company.com` on corporate Slack, and `arjun-jira` on Atlassian). Naive systems use fuzzy string matching (e.g. merging any user named "Arjun" or "Alex"), which frequently merges two completely different employees into one identity, corrupting Bus Factor and Knowledge Risk calculations.
+- **The Cortex Solution:**
+  1. **Strict Verified Email Priority:** Auto-merging across providers is permitted **only** when an exact, case-insensitive, non-generic email matches (`confidence = 1.0`).
+  2. **Strong Unique Username Matching:** Auto-merging is permitted for strong, exact usernames (`confidence = 0.98`), strictly rejecting generic handles (`admin`, `support`, `bot`, `dev`).
+  3. **Strict Disqualification of Fuzzy Names:** Cortex explicitly refuses to merge profiles based on display name similarity alone (even if > 95% similar).
+  4. **The Guiding Principle:** Having two separate nodes for the same person until an admin manually merges them is vastly preferable to corrupting corporate memory by mistakenly merging two different developers.
