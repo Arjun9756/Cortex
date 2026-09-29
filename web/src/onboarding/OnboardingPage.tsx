@@ -6,6 +6,7 @@ import {
     fetchRealSlackChannels,
     fetchRealJiraProjects,
     saveIntegrationScope,
+    syncIntegrationWebhooks,
     disconnectIntegration,
     claimIntegrationTicket,
 } from './onboardingApi';
@@ -288,6 +289,29 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
             return [];
         }
     });
+
+    // Webhook Tunnel URL (Port Shift / Ngrok / Domain)
+    const [webhookBaseUrl, setWebhookBaseUrl] = useState<string>(() => {
+        try {
+            const saved = localStorage.getItem('cortex_webhook_base_url');
+            if (saved) return saved;
+            if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                return window.location.origin;
+            }
+        } catch {}
+        return '';
+    });
+
+    const handleWebhookBaseUrlChange = (val: string) => {
+        setWebhookBaseUrl(val);
+        try {
+            if (val.trim()) {
+                localStorage.setItem('cortex_webhook_base_url', val.trim());
+            } else {
+                localStorage.removeItem('cortex_webhook_base_url');
+            }
+        } catch {}
+    };
 
     // Save states
     const [githubSaveState, setGithubSaveState] = useState<SaveState>('idle');
@@ -597,10 +621,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
         }
         setGithubSaveState('saving');
         try {
-            await saveIntegrationScope('github', {
+            const res = await saveIntegrationScope('github', {
                 allMonitored: false,
                 monitoredItems: selectedRepos,
-            });
+            }, webhookBaseUrl.trim() || undefined);
             try {
                 localStorage.setItem('cortex_selected_repos', JSON.stringify(selectedRepos));
             } catch {}
@@ -608,12 +632,19 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                 ...prev,
                 github: {
                     ...prev.github,
-                    scopeRules: { allMonitored: false, monitoredItems: selectedRepos }
+                    scopeRules: { allMonitored: false, monitoredItems: selectedRepos },
+                    webhookRegistered: res.webhookSync?.status === 'installed' ? true : prev.github.webhookRegistered,
                 }
             } : prev);
             setGithubSaveState('saved');
-            showToast(`GitHub scope saved (${selectedRepos.length} repositories monitored).`, 'success');
-            setTimeout(() => setGithubSaveState('idle'), 2500);
+            if (res.webhookSync?.status === 'installed') {
+                showToast(`🎉 GitHub scope saved & webhook auto-installed for ${selectedRepos.length} repository(ies)!`, 'success');
+            } else if (res.webhookSync?.status === 'skipped_localhost') {
+                showToast(`Scope saved! Enter your Port Shift / Tunnel URL above to auto-install on GitHub.`, 'info');
+            } else {
+                showToast(`GitHub scope saved (${selectedRepos.length} repositories monitored).`, 'success');
+            }
+            setTimeout(() => setGithubSaveState('idle'), 3000);
         } catch (err: any) {
             setGithubSaveState('error');
             setTimeout(() => setGithubSaveState('idle'), 2500);
@@ -628,10 +659,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
         }
         setSlackSaveState('saving');
         try {
-            await saveIntegrationScope('slack', {
+            const res = await saveIntegrationScope('slack', {
                 allMonitored: false,
                 monitoredItems: selectedChannels,
-            });
+            }, webhookBaseUrl.trim() || undefined);
             try {
                 localStorage.setItem('cortex_selected_channels', JSON.stringify(selectedChannels));
             } catch {}
@@ -639,12 +670,17 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                 ...prev,
                 slack: {
                     ...prev.slack,
-                    scopeRules: { allMonitored: false, monitoredItems: selectedChannels }
+                    scopeRules: { allMonitored: false, monitoredItems: selectedChannels },
+                    webhookRegistered: res.webhookSync?.status === 'channels_joined' ? true : prev.slack.webhookRegistered,
                 }
             } : prev);
             setSlackSaveState('saved');
-            showToast(`Slack scope saved (${selectedChannels.length} channels monitored).`, 'success');
-            setTimeout(() => setSlackSaveState('idle'), 2500);
+            if (res.webhookSync?.status === 'channels_joined') {
+                showToast(`🎉 Slack scope saved & bot joined ${selectedChannels.length} channel(s)!`, 'success');
+            } else {
+                showToast(`Slack scope saved (${selectedChannels.length} channels monitored).`, 'success');
+            }
+            setTimeout(() => setSlackSaveState('idle'), 3000);
         } catch (err: any) {
             setSlackSaveState('error');
             setTimeout(() => setSlackSaveState('idle'), 2500);
@@ -659,10 +695,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
         }
         setJiraSaveState('saving');
         try {
-            await saveIntegrationScope('jira', {
+            const res = await saveIntegrationScope('jira', {
                 allMonitored: false,
                 monitoredItems: selectedProjects,
-            });
+            }, webhookBaseUrl.trim() || undefined);
             try {
                 localStorage.setItem('cortex_selected_projects', JSON.stringify(selectedProjects));
             } catch {}
@@ -670,16 +706,46 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                 ...prev,
                 jira: {
                     ...prev.jira,
-                    scopeRules: { allMonitored: false, monitoredItems: selectedProjects }
+                    scopeRules: { allMonitored: false, monitoredItems: selectedProjects },
+                    webhookRegistered: res.webhookSync?.status === 'installed' ? true : prev.jira.webhookRegistered,
                 }
             } : prev);
             setJiraSaveState('saved');
-            showToast(`Jira scope saved (${selectedProjects.length} projects monitored).`, 'success');
-            setTimeout(() => setJiraSaveState('idle'), 2500);
+            if (res.webhookSync?.status === 'installed') {
+                showToast(`🎉 Jira scope saved & dynamic webhook registered!`, 'success');
+            } else if (res.webhookSync?.status === 'skipped_localhost') {
+                showToast(`Scope saved! Enter your Port Shift / Tunnel URL above to auto-register Jira webhooks.`, 'info');
+            } else {
+                showToast(`Jira scope saved (${selectedProjects.length} projects monitored).`, 'success');
+            }
+            setTimeout(() => setJiraSaveState('idle'), 3000);
         } catch (err: any) {
             setJiraSaveState('error');
             setTimeout(() => setJiraSaveState('idle'), 2500);
             showToast(err.message || 'Failed to save scope', 'error');
+        }
+    };
+
+    const handleSyncWebhooks = async (provider: SupportedProvider) => {
+        try {
+            showToast(`Syncing ${provider.toUpperCase()} webhooks…`, 'info');
+            const res = await syncIntegrationWebhooks(provider, webhookBaseUrl.trim() || undefined);
+            if (res.webhookSync?.status === 'installed' || res.webhookSync?.status === 'channels_joined') {
+                showToast(`✓ ${res.webhookSync.message}`, 'success');
+                setConnectors(prev => prev ? {
+                    ...prev,
+                    [provider]: {
+                        ...prev[provider],
+                        webhookRegistered: true,
+                    }
+                } : prev);
+            } else if (res.webhookSync?.status === 'skipped_localhost') {
+                showToast(res.webhookSync.message, 'info');
+            } else {
+                showToast(res.webhookSync?.message || 'Sync complete', 'info');
+            }
+        } catch (err: any) {
+            showToast(err.message || 'Failed to sync webhooks', 'error');
         }
     };
 
@@ -850,6 +916,49 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                     </p>
                 </div>
 
+                {/* ── Webhook Auto-Deployment & Tunnel Settings ── */}
+                <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 mb-8 backdrop-blur-sm shadow-xl shadow-black/20">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="text-xs font-bold text-white tracking-wide uppercase">Automated Webhook Deployment</h3>
+                                    {webhookBaseUrl && !webhookBaseUrl.includes('localhost') && !webhookBaseUrl.includes('127.0.0.1') ? (
+                                        <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                            Public Tunnel Active
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-full font-medium">
+                                            Localhost Mode (Tunnel Recommended)
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-slate-400 mt-1">
+                                    When you select and save repos or channels, Cortex automatically installs webhooks on their servers so push, PR, and message events stream live.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Public URL Input */}
+                        <div className="flex flex-col gap-1 sm:w-80 shrink-0">
+                            <span className="text-[10px] text-slate-400 font-medium">Public Webhook URL (Port Shift / Tunnel):</span>
+                            <input
+                                type="text"
+                                value={webhookBaseUrl}
+                                onChange={e => handleWebhookBaseUrlChange(e.target.value)}
+                                placeholder="https://your-tunnel.portshift.io"
+                                className="w-full bg-slate-950/80 border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono transition-colors"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 {/* ── Provider cards ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-10">
 
@@ -983,6 +1092,27 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                             )}
                                         </div>
                                         <SaveButton state={githubSaveState} onClick={handleSaveGithubScope} disabled={!isConnected} count={selectedRepos.length} />
+                                        {isConnected && (
+                                            <div className="flex items-center justify-between text-[11px] pt-1">
+                                                {info?.webhookRegistered ? (
+                                                    <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                                        Webhook Active on GitHub
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 flex items-center gap-1.5">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                                        Webhook auto-installs on save
+                                                    </span>
+                                                )}
+                                                <button
+                                                    onClick={() => handleSyncWebhooks('github')}
+                                                    className="text-[10px] text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
+                                                >
+                                                    Sync Webhook
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -1133,6 +1263,27 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                             )}
                                         </div>
                                         <SaveButton state={slackSaveState} onClick={handleSaveSlackScope} disabled={!isConnected} count={selectedChannels.length} />
+                                        {isConnected && (
+                                            <div className="flex items-center justify-between text-[11px] pt-1">
+                                                {info?.webhookRegistered ? (
+                                                    <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                                        Slack Bot in Scoped Channels
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 flex items-center gap-1.5">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                                        Bot auto-joins on save
+                                                    </span>
+                                                )}
+                                                <button
+                                                    onClick={() => handleSyncWebhooks('slack')}
+                                                    className="text-[10px] text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
+                                                >
+                                                    Sync Channels
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -1277,6 +1428,27 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                             )}
                                         </div>
                                         <SaveButton state={jiraSaveState} onClick={handleSaveJiraScope} disabled={!isConnected} count={selectedProjects.length} />
+                                        {isConnected && (
+                                            <div className="flex items-center justify-between text-[11px] pt-1">
+                                                {info?.webhookRegistered ? (
+                                                    <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                                        Jira Dynamic Webhook Active
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 flex items-center gap-1.5">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                                        Webhook auto-installs on save
+                                                    </span>
+                                                )}
+                                                <button
+                                                    onClick={() => handleSyncWebhooks('jira')}
+                                                    className="text-[10px] text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
+                                                >
+                                                    Sync Webhook
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

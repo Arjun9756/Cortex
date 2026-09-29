@@ -5,6 +5,7 @@ import type {
     RealSlackChannel,
     RealJiraProject,
     ScopeRules,
+    WebhookSyncResult,
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -74,16 +75,37 @@ export async function claimIntegrationTicket(provider: SupportedProvider, ticket
     return res.json();
 }
 
-export async function saveIntegrationScope(provider: SupportedProvider, rules: ScopeRules): Promise<void> {
+export async function saveIntegrationScope(
+    provider: SupportedProvider,
+    rules: ScopeRules,
+    webhookBaseUrl?: string
+): Promise<{ success: boolean; scopeRules: ScopeRules; webhookSync?: WebhookSyncResult }> {
     const res = await fetch(`${API_BASE}/api/integrations/${provider}/scope`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rules),
+        body: JSON.stringify({ ...rules, webhookBaseUrl }),
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(err.error || 'Failed to update scope');
     }
+    return res.json();
+}
+
+export async function syncIntegrationWebhooks(
+    provider: SupportedProvider,
+    webhookBaseUrl?: string
+): Promise<{ success: boolean; webhookSync?: WebhookSyncResult }> {
+    const res = await fetch(`${API_BASE}/api/integrations/${provider}/sync-webhooks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ webhookBaseUrl }),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || 'Failed to sync webhooks');
+    }
+    return res.json();
 }
 
 export async function disconnectIntegration(provider: SupportedProvider): Promise<void> {

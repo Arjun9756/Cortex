@@ -140,18 +140,40 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
                 WHERE provider = ${provider} AND external_id = ${externalId} AND source IN ${sql(trustedSources)}
             `;
 
+            let canonicalPersonId = existing.canonical_person_id;
+            if (cleanEmail && isMergeableEmail(cleanEmail)) {
+                const [targetPerson] = await sql`
+                    SELECT canonical_person_id 
+                    FROM person_identity 
+                    WHERE LOWER(email) = ${cleanEmail} 
+                      AND canonical_person_id != ${canonicalPersonId}
+                      AND source IN ${sql(trustedSources)}
+                      AND (is_bot IS FALSE OR is_bot IS NULL)
+                    LIMIT 1
+                `;
+                if (targetPerson) {
+                    await linkCanonicalPersons(
+                        targetPerson.canonical_person_id,
+                        canonicalPersonId,
+                        input.source,
+                        `Updated verified email (${cleanEmail}) matches existing canonical person`
+                    );
+                    canonicalPersonId = targetPerson.canonical_person_id;
+                }
+            }
+
             // Sync Graph nodes
             await upsertIdentityNode({
                 provider,
                 externalId,
                 username: cleanUsername || externalId,
                 displayName: cleanDisplayName,
-                canonicalPersonId: existing.canonical_person_id,
+                canonicalPersonId,
                 source: input.source
             });
 
             return {
-                canonicalPersonId: existing.canonical_person_id,
+                canonicalPersonId,
                 confidence: 1.0,
                 reason: `Existing identity match for ${provider}:${externalId}`,
                 matchedBy: 'EXACT_EMAIL',
@@ -626,11 +648,13 @@ export async function linkCanonicalPersons(
     assertDataSource(source);
     if (keepCanonicalId === mergeCanonicalId) return;
 
+    const trustedSources = aggregationSources(source);
+
     // 1. Update Postgres person_identity to point all mergeCanonicalId rows to keepCanonicalId
     await sql`
         UPDATE person_identity
         SET canonical_person_id = ${keepCanonicalId}
-        WHERE canonical_person_id = ${mergeCanonicalId} AND source = ${source}
+        WHERE canonical_person_id = ${mergeCanonicalId} AND source IN ${sql(trustedSources)}
     `;
 
     // 2. Audit log the merge

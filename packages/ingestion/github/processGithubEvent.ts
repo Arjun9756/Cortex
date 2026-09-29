@@ -395,7 +395,8 @@ export async function processGithubEvent(eventID: string) {
                     try {
                         const previousEvents = await sql`
                             SELECT id, source FROM events 
-                            WHERE provider = 'github' 
+                            WHERE source = ${event.source}
+                              AND provider = 'github' 
                               AND (payload->'pull_request'->>'id' = ${prId} OR payload->>'number' = ${prId})
                               AND id != ${eventID}
                         `;

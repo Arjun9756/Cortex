@@ -52,7 +52,9 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
             const embedding = await generateEmbeddings(vQuery);
             if (!embedding) return { results: [], evidence: [] };
 
-            const mappedResults = rawResult?.map((r, rIdx) => {
+            const rawResult: any = (await searchSimilar(embedding, 5)) || [];
+
+            const mappedResults = rawResult?.map((r: any, rIdx: number) => {
                 const p: any = r.payload || {};
                 const summaryText = p.summary || p.text || p.message || p.description || p.title || (p.repository ? `Event in ${p.repository}` : `Codebase discussion snippet #${rIdx + 1}`);
                 const authorName = p.author || p.user || p.pusher || p.actor || 'Engineering Contributor';
@@ -81,7 +83,7 @@ export async function vectorNode(state: AgentStateType): Promise<Partial<AgentSt
             const callEvidence: StructuredEvidence[] = [];
             if (mappedResults.length > 0) {
                 const extractedEntities = mappedResults
-                    .flatMap(r => (r.entities ?? []).map((e: any) => typeof e === 'string' ? e : e?.name))
+                    .flatMap((r: any) => (r.entities ?? []).map((e: any) => typeof e === 'string' ? e : e?.name))
                     .filter(Boolean);
 
                 callEvidence.push({

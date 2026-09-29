@@ -57,13 +57,13 @@ app.get('/api/license/status', (req, res) => {
     return res.status(status.isValid ? 200 : 403).json(status);
 })
 
-// Guard all subsequent /api routes
-app.use('/api', licenseGuard)
-
 // Webhook routes authenticate their providers with their own signatures/secrets.
 app.use('/api/github' , githubRouter)
 app.use('/api/slack' , slackRouter)
 app.use('/api/jira' , jiraRouter)
+
+// Guard all subsequent /api routes
+app.use('/api', licenseGuard)
 
 app.use('/api/chat' , chatRouter)
 app.use('/api/graph' , graphRouter)

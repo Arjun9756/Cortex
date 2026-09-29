@@ -13,9 +13,15 @@ githubRouter.post('/webhook' , async (req , res)=>{
     const eventType = req.headers['x-github-event'] as string
 
     // 2. Verify Github Signature With Crypto Moduel
-    if(!validateGithubSignature(signature , req.rawBody)){
+    if(!(await validateGithubSignature(signature , req.rawBody))){
         console.error(`[Security] Invalid Signature For Delivery ID ${deliveryID}`)
         return res.status(403).json({error:"Forbidden: Invalid Signature"})
+    }
+
+    // Acknowledge GitHub webhook ping immediately
+    if (eventType === 'ping') {
+        console.log(`[GitHub] Webhook ping received from ${req.body?.repository?.full_name || 'repository'} (delivery: ${deliveryID})`)
+        return res.status(200).json({ status: true, message: 'pong' })
     }
 
     const parsedEvent:IParsedGithubEvent | null = parseGithubEvent(eventType , deliveryID , req.body)
@@ -26,7 +32,7 @@ githubRouter.post('/webhook' , async (req , res)=>{
             })
         }
 
-        // 3. Currently Directly Push To PostgreSQL Server Furture Include BullMQ Workers To Proceed Same
+        // 3. Currently Directly Push To PostgreSQL Server Future Include BullMQ Workers To Proceed Same
         await pushGithubEventToDatabase(parsedEvent, sourceForWebhookRequest(req.get('x-cortex-seed-source')))
         console.log(`${deliveryID} Github Webhook Saved To Database`)
 

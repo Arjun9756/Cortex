@@ -1,4 +1,5 @@
 import sql from '../../config/postgres.js';
+import crypto from 'crypto';
 
 export type SupportedIntegrationProvider = 'github' | 'slack' | 'jira';
 
@@ -15,6 +16,7 @@ export interface IntegrationStatus {
         monitoredItems: string[];
     };
     hasCredentialsConfigured: boolean;
+    webhookRegistered?: boolean;
 }
 
 export class IntegrationService {
@@ -56,7 +58,8 @@ export class IntegrationService {
     public async getAllStatus(): Promise<Record<SupportedIntegrationProvider, IntegrationStatus>> {
         const rows = await sql`
             SELECT provider, status, account_name, account_email, account_avatar, 
-                   scopes, scope_rules, updated_at, token_expires_at, access_token
+                   scopes, scope_rules, updated_at, token_expires_at, access_token,
+                   webhook_registered, webhook_secret
             FROM integrations
         `;
 
@@ -91,6 +94,7 @@ export class IntegrationService {
                 updatedAt: row?.updated_at || null,
                 scopeRules: this.normalizeScopeRules(row?.scope_rules),
                 hasCredentialsConfigured: this.hasCredentials(p),
+                webhookRegistered: Boolean(row?.webhook_registered),
             };
         }
 
@@ -124,7 +128,7 @@ export class IntegrationService {
                 if (!clientId) {
                     throw new Error('SLACK_CLIENT_ID is not configured in .env and no CORTEX_LICENSE_KEY found.');
                 }
-                const botScopes = encodeURIComponent('channels:read,groups:read,users:read,users:read.email,team:read');
+                const botScopes = encodeURIComponent('channels:read,channels:join,groups:read,users:read,users:read.email,team:read');
                 return `https://slack.com/oauth/v2/authorize?client_id=${encodeURIComponent(clientId)}&scope=${botScopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
             }
             case 'jira': {
@@ -270,6 +274,28 @@ export class IntegrationService {
                 accountName = userData.name || userData.login || 'GitHub User';
                 accountEmail = userData.email || '';
                 accountAvatar = userData.avatar_url || '';
+
+                // If user has email set to private, fetch verified primary email via /user/emails
+                if (!accountEmail && (scopes.includes('user:email') || scopes.includes('user') || scopes.length === 0)) {
+                    try {
+                        const emailRes = await fetch('https://api.github.com/user/emails', {
+                            headers: {
+                                Authorization: `Bearer ${accessToken}`,
+                                'User-Agent': 'Cortex-Onboarding/1.0',
+                                Accept: 'application/vnd.github.v3+json',
+                            },
+                        });
+                        if (emailRes.ok) {
+                            const emails = (await emailRes.json()) as any[];
+                            const primary = emails.find((e: any) => e.primary && e.verified) || emails.find((e: any) => e.verified) || emails[0];
+                            if (primary?.email) {
+                                accountEmail = primary.email.trim().toLowerCase();
+                            }
+                        }
+                    } catch (eErr: any) {
+                        console.warn('[Integrations] Could not fetch private GitHub emails:', eErr?.message);
+                    }
+                }
             }
         } catch (uErr: any) {
             console.warn('[Integrations] Could not fetch GitHub user profile:', uErr?.message);
@@ -532,11 +558,78 @@ export class IntegrationService {
     }
 
     /**
-     * Calls real Jira API to fetch projects using stored OAuth token.
+     * Refreshes Jira OAuth access token using stored refresh_token (rotates tokens).
      */
-    public async getRealJiraProjects(): Promise<Array<{ id: string; key: string; name: string; projectTypeKey: string; avatarUrl: string }>> {
+    public async refreshJiraToken(): Promise<string | null> {
         const [conn] = await sql`
-            SELECT access_token, status, metadata FROM integrations WHERE provider = 'jira'
+            SELECT access_token, refresh_token, token_expires_at, metadata 
+            FROM integrations 
+            WHERE provider = 'jira'
+        `;
+        if (!conn || !conn.refresh_token) {
+            return null;
+        }
+
+        const clientId = process.env.JIRA_CLIENT_ID;
+        const clientSecret = process.env.JIRA_CLIENT_SECRET;
+        if (!clientId || !clientSecret) {
+            return null;
+        }
+
+        try {
+            const tokenRes = await fetch('https://auth.atlassian.com/oauth/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({
+                    grant_type: 'refresh_token',
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    refresh_token: conn.refresh_token,
+                }),
+            });
+
+            const tokenData = (await tokenRes.json()) as any;
+            if (!tokenRes.ok || !tokenData.access_token) {
+                console.warn('[Jira] Token refresh failed:', tokenData.error_description || tokenData.error);
+                if (tokenData.error === 'invalid_grant') {
+                    await sql`UPDATE integrations SET status = 'needs_reauth' WHERE provider = 'jira'`;
+                }
+                return null;
+            }
+
+            const newAccessToken = tokenData.access_token;
+            const newRefreshToken = tokenData.refresh_token || conn.refresh_token;
+            const expiresIn = tokenData.expires_in || 3600;
+            const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
+
+            await sql`
+                UPDATE integrations
+                SET access_token = ${newAccessToken},
+                    refresh_token = ${newRefreshToken},
+                    token_expires_at = ${newExpiresAt},
+                    status = 'connected',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE provider = 'jira'
+            `;
+            console.log('[Jira] Successfully refreshed OAuth access token. Valid until:', newExpiresAt.toISOString());
+            return newAccessToken;
+        } catch (err: any) {
+            console.error('[Jira] Token refresh exception:', err?.message);
+            return null;
+        }
+    }
+
+    /**
+     * Gets a valid, unexpired Jira access token, auto-refreshing if expired or expiring within 5 minutes.
+     */
+    public async getValidJiraAccessToken(): Promise<{ accessToken: string; cloudId: string }> {
+        const [conn] = await sql`
+            SELECT access_token, refresh_token, token_expires_at, metadata, status
+            FROM integrations 
+            WHERE provider = 'jira'
         `;
 
         if (!conn || !conn.access_token || conn.status !== 'connected') {
@@ -548,15 +641,53 @@ export class IntegrationService {
             throw new Error('No Jira Cloud ID found in connection metadata.');
         }
 
+        let token = conn.access_token;
+        const now = Date.now();
+        // If expired or expiring within 5 minutes, refresh proactively
+        if (conn.token_expires_at && new Date(conn.token_expires_at).getTime() <= now + 5 * 60 * 1000) {
+            console.log('[Jira] Access token expiring soon, refreshing proactively...');
+            const refreshed = await this.refreshJiraToken();
+            if (refreshed) {
+                token = refreshed;
+            }
+        }
+
+        return { accessToken: token, cloudId };
+    }
+
+    /**
+     * Calls real Jira API to fetch projects using stored OAuth token.
+     */
+    public async getRealJiraProjects(): Promise<Array<{ id: string; key: string; name: string; projectTypeKey: string; avatarUrl: string }>> {
+        const { accessToken, cloudId } = await this.getValidJiraAccessToken();
+
         const res = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project/search`, {
             headers: {
-                Authorization: `Bearer ${conn.access_token}`,
+                Authorization: `Bearer ${accessToken}`,
                 Accept: 'application/json',
             },
         });
 
         if (!res.ok) {
             if (res.status === 401) {
+                // Try immediate refresh fallback
+                const refreshed = await this.refreshJiraToken();
+                if (refreshed) {
+                    const retryRes = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project/search`, {
+                        headers: { Authorization: `Bearer ${refreshed}`, Accept: 'application/json' },
+                    });
+                    if (retryRes.ok) {
+                        const data = (await retryRes.json()) as any;
+                        const projects = data.values || data || [];
+                        return projects.map((p: any) => ({
+                            id: p.id,
+                            key: p.key,
+                            name: p.name,
+                            projectTypeKey: p.projectTypeKey || 'software',
+                            avatarUrl: p.avatarUrls?.['48x48'] || '',
+                        }));
+                    }
+                }
                 await sql`UPDATE integrations SET status = 'needs_reauth' WHERE provider = 'jira'`;
                 throw new Error('Jira access token expired. Please re-authorize.');
             }
@@ -636,6 +767,370 @@ export class IntegrationService {
         } catch (syncErr: any) {
             console.warn('[Integrations] Could not sync disconnect to Admin:', syncErr?.message);
         }
+    }
+
+    /**
+     * Checks if a URL points to localhost or private network.
+     */
+    public isLocalhostUrl(urlStr: string): boolean {
+        if (!urlStr) return true;
+        try {
+            const parsed = new URL(urlStr);
+            const hostname = parsed.hostname.toLowerCase();
+            return (
+                hostname === 'localhost' ||
+                hostname === '127.0.0.1' ||
+                hostname === '0.0.0.0' ||
+                hostname.endsWith('.localhost') ||
+                hostname === '::1'
+            );
+        } catch {
+            return true;
+        }
+    }
+
+    /**
+     * Automatically creates or updates webhooks on GitHub for scoped repositories.
+     */
+    public async syncGitHubWebhooks(
+        rules: { allMonitored: boolean; monitoredItems: string[] },
+        webhookBaseUrl?: string
+    ): Promise<{
+        status: 'installed' | 'skipped_localhost' | 'skipped_no_token' | 'partial' | 'error';
+        message: string;
+        targetUrl?: string | undefined;
+        results?: Array<{ repo: string; action: 'created' | 'updated' | 'failed'; hookId?: number | undefined; error?: string | undefined }> | undefined;
+    }> {
+        const [conn] = await sql`
+            SELECT access_token, status, webhook_secret FROM integrations WHERE provider = 'github'
+        `;
+
+        if (!conn || !conn.access_token || conn.status !== 'connected') {
+            return {
+                status: 'skipped_no_token',
+                message: 'GitHub is not connected. Scope saved locally.',
+            };
+        }
+
+        const resolvedBaseUrl = (webhookBaseUrl || process.env.WEBHOOK_BASE_URL || process.env.PUBLIC_APP_URL || '').trim();
+        if (!resolvedBaseUrl || this.isLocalhostUrl(resolvedBaseUrl)) {
+            return {
+                status: 'skipped_localhost',
+                message: 'GitHub requires a public HTTPS URL (e.g. Port Shift, Ngrok, or custom domain) to install webhooks. Enter your tunnel URL to auto-install.',
+            };
+        }
+
+        const targetWebhookUrl = `${resolvedBaseUrl.replace(/\/$/, '')}/api/github/webhook`;
+        const secret = conn.webhook_secret || (process.env.GITHUB_SECRET && process.env.GITHUB_SECRET !== 'cortex_test_secret_2026' ? process.env.GITHUB_SECRET : null) || crypto.randomBytes(32).toString('hex');
+
+        let targetRepos: string[] = [];
+        if (rules.allMonitored || rules.monitoredItems.includes('*')) {
+            const allRepos = await this.getRealGitHubRepos();
+            targetRepos = allRepos.map(r => r.fullName);
+        } else {
+            targetRepos = rules.monitoredItems;
+        }
+
+        if (targetRepos.length === 0) {
+            return {
+                status: 'installed',
+                message: 'No repositories selected for webhook attachment.',
+                targetUrl: targetWebhookUrl,
+                results: [],
+            };
+        }
+
+        const results: Array<{ repo: string; action: 'created' | 'updated' | 'failed'; hookId?: number; error?: string }> = [];
+
+        for (const fullName of targetRepos) {
+            if (!fullName.includes('/')) {
+                results.push({ repo: fullName, action: 'failed', error: 'Invalid repository name (expected owner/repo)' });
+                continue;
+            }
+
+            const [owner, repo] = fullName.split('/');
+
+            try {
+                // List existing webhooks on this repository
+                const hooksRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/hooks?per_page=100`, {
+                    headers: {
+                        Authorization: `Bearer ${conn.access_token}`,
+                        Accept: 'application/vnd.github.v3+json',
+                        'User-Agent': 'Cortex-Integrations/1.0',
+                    },
+                });
+
+                if (!hooksRes.ok) {
+                    const errBody = await hooksRes.text();
+                    results.push({ repo: fullName, action: 'failed', error: `GitHub API error (${hooksRes.status}): ${errBody}` });
+                    continue;
+                }
+
+                const hooks = (await hooksRes.json()) as any[];
+                const existingHook = hooks.find(h => {
+                    const hookUrl = h.config?.url || '';
+                    return hookUrl === targetWebhookUrl || hookUrl.endsWith('/api/github/webhook');
+                });
+
+                const webhookPayload = {
+                    name: 'web',
+                    active: true,
+                    events: ['push', 'pull_request', 'issues', 'issue_comment', 'pull_request_review'],
+                    config: {
+                        url: targetWebhookUrl,
+                        content_type: 'json',
+                        secret,
+                        insecure_ssl: '0',
+                    },
+                };
+
+                if (existingHook) {
+                    // Update existing webhook to target the new URL, secret, and events
+                    const patchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/hooks/${existingHook.id}`, {
+                        method: 'PATCH',
+                        headers: {
+                            Authorization: `Bearer ${conn.access_token}`,
+                            Accept: 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'Cortex-Integrations/1.0',
+                        },
+                        body: JSON.stringify(webhookPayload),
+                    });
+
+                    if (patchRes.ok) {
+                        results.push({ repo: fullName, action: 'updated', hookId: existingHook.id });
+                    } else {
+                        const patchErr = await patchRes.text();
+                        results.push({ repo: fullName, action: 'failed', error: `Failed to update hook: ${patchErr}` });
+                    }
+                } else {
+                    // Create new webhook
+                    const createRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/hooks`, {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${conn.access_token}`,
+                            Accept: 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'Cortex-Integrations/1.0',
+                        },
+                        body: JSON.stringify(webhookPayload),
+                    });
+
+                    if (createRes.ok) {
+                        const createdHook = (await createRes.json()) as any;
+                        results.push({ repo: fullName, action: 'created', hookId: createdHook.id });
+                    } else {
+                        const createErr = await createRes.text();
+                        results.push({ repo: fullName, action: 'failed', error: `Failed to create hook: ${createErr}` });
+                    }
+                }
+            } catch (err: any) {
+                results.push({ repo: fullName, action: 'failed', error: err?.message || 'Network error' });
+            }
+        }
+
+        const successCount = results.filter(r => r.action === 'created' || r.action === 'updated').length;
+        const failedCount = results.filter(r => r.action === 'failed').length;
+
+        if (successCount > 0) {
+            await sql`
+                UPDATE integrations
+                SET webhook_registered = true, webhook_secret = ${secret}, updated_at = CURRENT_TIMESTAMP
+                WHERE provider = 'github'
+            `;
+        }
+
+        return {
+            status: failedCount === 0 ? 'installed' : (successCount > 0 ? 'partial' : 'error'),
+            message: `GitHub webhooks synchronized: ${successCount} installed/updated${failedCount > 0 ? `, ${failedCount} failed` : ''}.`,
+            targetUrl: targetWebhookUrl,
+            results,
+        };
+    }
+
+    /**
+     * Automatically adds the Slack bot into the monitored channels so message events stream.
+     */
+    public async syncSlackChannels(
+        rules: { allMonitored: boolean; monitoredItems: string[] },
+        webhookBaseUrl?: string
+    ): Promise<{
+        status: 'channels_joined' | 'skipped_no_token' | 'partial' | 'error';
+        message: string;
+        webhookUrl?: string | undefined;
+        results?: Array<{ channelId: string; action: 'joined' | 'already_in_channel' | 'failed'; error?: string | undefined }> | undefined;
+    }> {
+        const [conn] = await sql`
+            SELECT access_token, status FROM integrations WHERE provider = 'slack'
+        `;
+
+        if (!conn || !conn.access_token || conn.status !== 'connected') {
+            return {
+                status: 'skipped_no_token',
+                message: 'Slack is not connected. Scope saved locally.',
+            };
+        }
+
+        const allChannels = await this.getRealSlackChannels();
+        let targetChannelIds: Array<{ id: string; name: string }> = [];
+
+        if (rules.allMonitored || rules.monitoredItems.includes('*')) {
+            targetChannelIds = allChannels.filter(c => !c.isPrivate).map(c => ({ id: c.id, name: c.name }));
+        } else {
+            // rules.monitoredItems may contain channel names (e.g. 'all-cortexco') or channel IDs (e.g. 'C08123')
+            for (const item of rules.monitoredItems) {
+                const cleanItem = item.replace(/^#/, '');
+                const matched = allChannels.find(c => c.id === item || c.name === cleanItem);
+                if (matched) {
+                    targetChannelIds.push({ id: matched.id, name: matched.name });
+                } else if (item.startsWith('C') || item.startsWith('G')) {
+                    targetChannelIds.push({ id: item, name: item });
+                }
+            }
+        }
+
+        const results: Array<{ channelId: string; action: 'joined' | 'already_in_channel' | 'failed'; error?: string }> = [];
+
+        for (const target of targetChannelIds) {
+            try {
+                const joinRes = await fetch('https://slack.com/api/conversations.join', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${conn.access_token}`,
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify({ channel: target.id }),
+                });
+
+                const data = (await joinRes.json()) as any;
+                console.log(`[Slack] Auto-join channel #${target.name} (${target.id}):`, data);
+
+                if (data.ok) {
+                    results.push({ channelId: target.id, action: 'joined' });
+                } else if (data.error === 'method_not_supported_for_channel_type') {
+                    results.push({ channelId: target.id, action: 'already_in_channel', error: 'Private channel: invite bot with /invite @Cortex in Slack' });
+                } else if (data.error === 'already_in_channel') {
+                    results.push({ channelId: target.id, action: 'already_in_channel' });
+                } else {
+                    results.push({ channelId: target.id, action: 'failed', error: data.error });
+                }
+            } catch (err: any) {
+                console.error(`[Slack] Error auto-joining channel #${target.name}:`, err?.message);
+                results.push({ channelId: target.id, action: 'failed', error: err?.message });
+            }
+        }
+
+        const resolvedBaseUrl = (webhookBaseUrl || process.env.WEBHOOK_BASE_URL || process.env.PUBLIC_APP_URL || '').trim();
+        const targetWebhookUrl = resolvedBaseUrl && !this.isLocalhostUrl(resolvedBaseUrl)
+            ? `${resolvedBaseUrl.replace(/\/$/, '')}/api/slack/webhook`
+            : undefined;
+
+        await sql`
+            UPDATE integrations
+            SET webhook_registered = true, updated_at = CURRENT_TIMESTAMP
+            WHERE provider = 'slack'
+        `;
+
+        const joinedCount = results.filter(r => r.action === 'joined' || r.action === 'already_in_channel').length;
+
+        return {
+            status: 'channels_joined',
+            message: `Slack bot joined ${joinedCount} monitored channel(s).`,
+            webhookUrl: targetWebhookUrl,
+            results,
+        };
+    }
+
+    /**
+     * Automatically registers dynamic webhooks with Jira Cloud for the scoped projects.
+     */
+    public async syncJiraWebhooks(
+        rules: { allMonitored: boolean; monitoredItems: string[] },
+        webhookBaseUrl?: string
+    ): Promise<{
+        status: 'installed' | 'skipped_localhost' | 'skipped_no_token' | 'error';
+        message: string;
+        targetUrl?: string;
+        webhookIds?: number[];
+    }> {
+        let accessToken: string;
+        let cloudId: string;
+        try {
+            const valid = await this.getValidJiraAccessToken();
+            accessToken = valid.accessToken;
+            cloudId = valid.cloudId;
+        } catch (err: any) {
+            return {
+                status: 'skipped_no_token',
+                message: err?.message || 'Jira is not connected.',
+            };
+        }
+
+        const resolvedBaseUrl = (webhookBaseUrl || process.env.WEBHOOK_BASE_URL || process.env.PUBLIC_APP_URL || '').trim();
+        if (!resolvedBaseUrl || this.isLocalhostUrl(resolvedBaseUrl)) {
+            return {
+                status: 'skipped_localhost',
+                message: 'Jira Cloud requires a public HTTPS URL to deliver dynamic webhooks. Enter your tunnel URL to auto-install.',
+            };
+        }
+
+        const targetWebhookUrl = `${resolvedBaseUrl.replace(/\/$/, '')}/api/jira/webhook`;
+
+        let jqlFilter = '';
+        if (!rules.allMonitored && !rules.monitoredItems.includes('*') && rules.monitoredItems.length > 0) {
+            const escaped = rules.monitoredItems.map(p => `"${p.replace(/"/g, '\\"')}"`).join(', ');
+            jqlFilter = `project IN (${escaped})`;
+        }
+
+        const payload = {
+            url: targetWebhookUrl,
+            webhooks: [
+                {
+                    events: [
+                        'jira:issue_created',
+                        'jira:issue_updated',
+                        'jira:issue_deleted',
+                        'comment_created',
+                        'comment_updated',
+                    ],
+                    ...(jqlFilter ? { jqlFilter } : {}),
+                },
+            ],
+        };
+
+        const res = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            return {
+                status: 'error',
+                message: `Jira dynamic webhook registration failed (${res.status}): ${errText}`,
+            };
+        }
+
+        const data = (await res.json()) as any;
+        const webhookIds = (data.webhookRegistrationResult || []).map((w: any) => w.createdWebhookId).filter(Boolean);
+
+        await sql`
+            UPDATE integrations
+            SET webhook_registered = true, updated_at = CURRENT_TIMESTAMP
+            WHERE provider = 'jira'
+        `;
+
+        return {
+            status: 'installed',
+            message: 'Jira dynamic webhook registered successfully.',
+            targetUrl: targetWebhookUrl,
+            webhookIds,
+        };
     }
 }
 

@@ -846,14 +846,38 @@ export async function getIntegrationsStatus(req: Request, res: Response) {
 }
 
 export async function updateIntegrationSecret(req: Request, res: Response) {
-    const { provider } = req.params;
-    const providerKey = typeof provider === 'string' ? provider.toUpperCase() : (Array.isArray(provider) && provider[0] ? String(provider[0]).toUpperCase() : 'PROVIDER');
-    return res.status(501).json({
-        status: false,
-        error: `Dynamic secret updating is not supported by runtime. Please set ${providerKey}_SECRET in your server .env file.`
-    });
-}
+    try {
+        const rawProvider = req.params.provider;
+        const provider = (typeof rawProvider === 'string' ? rawProvider : (rawProvider as any)?.[0] || '').toLowerCase().trim();
+        const { secret } = req.body || {};
 
+        if (!provider || !['github', 'slack', 'jira'].includes(provider)) {
+            return res.status(400).json({ status: false, error: `Invalid provider: '${provider}'. Expected github, slack, or jira.` });
+        }
+
+        if (!secret || typeof secret !== 'string' || !secret.trim()) {
+            return res.status(400).json({ status: false, error: 'Secret must be a non-empty string.' });
+        }
+
+        const trimmedSecret = secret.trim();
+
+        await sql`
+            UPDATE integrations
+            SET webhook_secret = ${trimmedSecret}, updated_at = CURRENT_TIMESTAMP
+            WHERE provider = ${provider}
+        `;
+
+        console.log(`[Integrations] Updated database webhook_secret for provider: ${provider}`);
+
+        return res.status(200).json({
+            status: true,
+            message: `Successfully updated ${provider} webhook secret in database.`
+        });
+    } catch (err: any) {
+        console.error('[Integrations] Error updating integration secret in database:', err);
+        return res.status(500).json({ status: false, error: err?.message || 'Database update failed' });
+    }
+}
 
 /**
  * GET /api/dashboard/pr-metrics

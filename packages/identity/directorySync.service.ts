@@ -2,6 +2,7 @@ import sql from '../../apps/api/config/postgres.js';
 import { resolveIdentity, setPersonActiveStatus } from './canonicalPerson.service.js';
 import { markMetricsDirty } from '../analytics/metricsInvalidator.service.js';
 import { assertDataSource, type DataSource } from '../database/provenance.js';
+import { integrationService } from '../../apps/api/modules/integrations/service.js';
 
 export interface ProviderSyncStats {
     provider: string;
@@ -141,21 +142,14 @@ export class DirectorySyncService {
         };
 
         try {
-            const [conn] = await sql`
-                SELECT access_token, status, metadata, token_expires_at 
-                FROM integrations 
-                WHERE provider = 'jira'
-            `;
-
-            if (!conn || !conn.access_token || conn.status !== 'connected') {
-                stats.error = 'Jira is not connected';
-                return stats;
-            }
-
-            const cloudId = conn.metadata?.cloudId;
-            if (!cloudId) {
-                stats.error = 'Jira Cloud ID missing in connection metadata';
-                stats.status = 'failed';
+            let accessToken: string;
+            let cloudId: string;
+            try {
+                const tokenData = await integrationService.getValidJiraAccessToken();
+                accessToken = tokenData.accessToken;
+                cloudId = tokenData.cloudId;
+            } catch (authErr: any) {
+                stats.error = authErr?.message || 'Jira is not connected';
                 return stats;
             }
 
@@ -165,12 +159,26 @@ export class DirectorySyncService {
             let hasMore = true;
 
             while (hasMore) {
-                const res = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/users/search?startAt=${startAt}&maxResults=${maxResults}`, {
+                let res = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/users/search?startAt=${startAt}&maxResults=${maxResults}`, {
                     headers: {
-                        Authorization: `Bearer ${conn.access_token}`,
+                        Authorization: `Bearer ${accessToken}`,
                         Accept: 'application/json',
                     },
                 });
+
+                if (res.status === 401) {
+                    console.warn('[DirectorySync] Jira returned 401 Unauthorized. Attempting token refresh...');
+                    const refreshedToken = await integrationService.refreshJiraToken();
+                    if (refreshedToken) {
+                        accessToken = refreshedToken;
+                        res = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/users/search?startAt=${startAt}&maxResults=${maxResults}`, {
+                            headers: {
+                                Authorization: `Bearer ${accessToken}`,
+                                Accept: 'application/json',
+                            },
+                        });
+                    }
+                }
 
                 if (!res.ok) {
                     if (res.status === 401) {
@@ -289,6 +297,30 @@ export class DirectorySyncService {
                 }
             }
 
+            // Fetch authenticated GitHub user login and verified primary email
+            let authUserLogin = '';
+            let authUserEmail = conn.account_email || '';
+            try {
+                const userRes = await fetch('https://api.github.com/user', { headers });
+                if (userRes.ok) {
+                    const uData = (await userRes.json()) as any;
+                    authUserLogin = (uData.login || '').toLowerCase();
+                }
+                if (!authUserEmail) {
+                    const emailsRes = await fetch('https://api.github.com/user/emails', { headers });
+                    if (emailsRes.ok) {
+                        const emails = (await emailsRes.json()) as any[];
+                        const primary = emails.find((e: any) => e.primary && e.verified) || emails.find((e: any) => e.verified) || emails[0];
+                        if (primary?.email) {
+                            authUserEmail = primary.email.trim().toLowerCase();
+                            await sql`UPDATE integrations SET account_email = ${authUserEmail} WHERE provider = 'github'`;
+                        }
+                    }
+                }
+            } catch (err: any) {
+                // Non-fatal
+            }
+
             const seenLogins = new Set<string>();
 
             for (const repoName of repoFullNames) {
@@ -296,6 +328,11 @@ export class DirectorySyncService {
                 const cleanRepo = repoName.includes('/') ? repoName : repoName;
                 try {
                     const contribRes = await fetch(`https://api.github.com/repos/${cleanRepo}/contributors?per_page=50`, { headers });
+                    if (contribRes.status === 403 || contribRes.status === 429) {
+                        const remaining = contribRes.headers.get('x-ratelimit-remaining');
+                        console.warn(`[DirectorySync] GitHub rate limit hit (${remaining ?? 0} remaining). Halting repository scan to protect quota.`);
+                        break;
+                    }
                     if (!contribRes.ok) continue;
 
                     const contributors = (await contribRes.json()) as any[];
@@ -313,17 +350,50 @@ export class DirectorySyncService {
                         let userEmail: string | null = null;
                         let userDisplayName = contrib.login;
 
-                        // Fetch detailed user profile if not a bot
+                        // Fetch detailed user profile if not a bot (with polite pacing delay to prevent secondary rate-limit bursts)
                         if (!isBot) {
-                            try {
-                                const profileRes = await fetch(`https://api.github.com/users/${contrib.login}`, { headers });
-                                if (profileRes.ok) {
-                                    const prof = (await profileRes.json()) as any;
-                                    if (prof.email) userEmail = prof.email.trim().toLowerCase();
-                                    if (prof.name) userDisplayName = prof.name.trim();
+                            if (authUserLogin && contrib.login.toLowerCase() === authUserLogin && authUserEmail) {
+                                userEmail = authUserEmail;
+                            }
+
+                            if (!userEmail) {
+                                try {
+                                    await new Promise((r) => setTimeout(r, 60));
+                                    const profileRes = await fetch(`https://api.github.com/users/${contrib.login}`, { headers });
+                                    if (profileRes.ok) {
+                                        const prof = (await profileRes.json()) as any;
+                                        if (prof.email) userEmail = prof.email.trim().toLowerCase();
+                                        if (prof.name) userDisplayName = prof.name.trim();
+                                    } else if (profileRes.status === 403 || profileRes.status === 429) {
+                                        console.warn(`[DirectorySync] GitHub rate limit reached during profile fetch for ${contrib.login}`);
+                                        break;
+                                    }
+                                } catch (pErr: any) {
+                                    // Non-fatal profile fetch warning
                                 }
-                            } catch (pErr: any) {
-                                // Non-fatal profile fetch warning
+                            }
+
+                            // If profile email is hidden or noreply, check latest commits on this repo for real author email
+                            if (!userEmail || userEmail.includes('noreply')) {
+                                try {
+                                    await new Promise((r) => setTimeout(r, 60));
+                                    const commitRes = await fetch(`https://api.github.com/repos/${cleanRepo}/commits?author=${encodeURIComponent(contrib.login)}&per_page=5`, { headers });
+                                    if (commitRes.ok) {
+                                        const commits = (await commitRes.json()) as any[];
+                                        for (const c of commits) {
+                                            const cEmail = c?.commit?.author?.email;
+                                            if (cEmail && !cEmail.includes('noreply') && cEmail.includes('@') && !cEmail.includes('localhost')) {
+                                                userEmail = cEmail.trim().toLowerCase();
+                                                break;
+                                            }
+                                        }
+                                    } else if (commitRes.status === 403 || commitRes.status === 429) {
+                                        console.warn(`[DirectorySync] GitHub rate limit reached during commit email search for ${contrib.login}`);
+                                        break;
+                                    }
+                                } catch (cErr: any) {
+                                    // Non-fatal commit email fetch warning
+                                }
                             }
                         }
 

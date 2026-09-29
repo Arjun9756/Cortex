@@ -9,6 +9,7 @@ import { generateAndSaveDailyReport } from '../analytics/dailyReport.service.js'
 import { startDebouncedMetricsPoller } from '../analytics/metricsInvalidator.service.js'
 import { directorySyncService } from '../identity/directorySync.service.js'
 import { reconcileWorkerService } from '../identity/reconcileWorker.service.js'
+import { integrationService } from '../../apps/api/modules/integrations/service.js'
 import type { DataSource } from '../database/provenance.js'
 import { aggregationSources } from '../database/provenance.js'
 
@@ -130,6 +131,24 @@ export function startMetricsScheduler() {
     // 3. Hourly Directory Sync & Delta Reconciliation Job
     cron.schedule('0 * * * *', async () => {
         try {
+            // Proactively refresh Jira OAuth token if within 15 minutes of expiry
+            try {
+                const [jiraConn] = await sql`
+                    SELECT token_expires_at, refresh_token 
+                    FROM integrations 
+                    WHERE provider = 'jira' AND status = 'connected'
+                `;
+                if (jiraConn?.refresh_token && jiraConn.token_expires_at) {
+                    const expiresInMs = new Date(jiraConn.token_expires_at).getTime() - Date.now();
+                    if (expiresInMs < 15 * 60 * 1000) {
+                        console.log('[Scheduler] Proactively refreshing expiring Jira OAuth token...');
+                        await integrationService.refreshJiraToken();
+                    }
+                }
+            } catch (jiraRefreshErr: any) {
+                console.warn('[Scheduler] Jira token proactive refresh warning:', jiraRefreshErr?.message);
+            }
+
             console.log('[Scheduler] Running hourly directory sync and identity reconciliation...');
             await directorySyncService.syncAllDirectories('backfill');
             await reconcileWorkerService.runReconciliation('backfill');

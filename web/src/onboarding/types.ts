@@ -15,6 +15,15 @@ export interface ConnectorInfo {
     updatedAt: string | null;
     scopeRules: ScopeRules;
     hasCredentialsConfigured: boolean;
+    webhookRegistered?: boolean;
+}
+
+export interface WebhookSyncResult {
+    status: 'installed' | 'channels_joined' | 'skipped_localhost' | 'skipped_no_token' | 'partial' | 'error';
+    message: string;
+    targetUrl?: string;
+    webhookUrl?: string;
+    results?: Array<{ repo?: string; channelId?: string; action: string; hookId?: number; error?: string }>;
 }
 
 export interface RealGitHubRepo {

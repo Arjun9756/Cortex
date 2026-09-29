@@ -6,7 +6,7 @@ import { sourceForWebhookRequest } from '../../../../packages/database/provenanc
 export const jiraRouter = Router()
 
 jiraRouter.post('/webhook' , async (req,res)=>{
-    if(!validateJiraSignature(req)){
+    if (!(await validateJiraSignature(req))) {
         console.error("[Security] Invalid Jira Webhook Secret")
         return res.status(403).json({error:"Forbidden: Invalid Signature"})
     }

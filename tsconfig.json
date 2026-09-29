@@ -41,5 +41,5 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": ["web", "node_modules", "dist"]
+  "exclude": ["web", "node_modules", "dist", "scripts", "scratch", "cortex-onboarding-prototype"]
 }

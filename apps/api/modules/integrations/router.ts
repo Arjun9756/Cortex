@@ -182,6 +182,18 @@ const handleCallback = async (req: Request, res: Response) => {
 
         const result = await integrationService.exchangeCode(provider, code, callbackUrl);
 
+        // Zero-touch: Automatically register webhooks / join channels as soon as connected
+        const resolvedBaseUrl = (process.env.WEBHOOK_BASE_URL || process.env.PUBLIC_APP_URL || `${protocol}://${host}`).trim();
+        if (provider === 'github') {
+            integrationService.syncGitHubWebhooks({ allMonitored: true, monitoredItems: ['*'] }, resolvedBaseUrl)
+                .then(r => console.log('[Integrations] Zero-touch GitHub webhook sync:', r.message))
+                .catch(e => console.warn('[Integrations] Zero-touch GitHub webhook sync skipped/failed:', e?.message));
+        } else if (provider === 'slack') {
+            integrationService.syncSlackChannels({ allMonitored: true, monitoredItems: ['*'] }, resolvedBaseUrl)
+                .then(r => console.log('[Integrations] Zero-touch Slack channels sync:', r.message))
+                .catch(e => console.warn('[Integrations] Zero-touch Slack channels sync skipped/failed:', e?.message));
+        }
+
         if (req.method === 'GET') {
             // Popup window communication script or fallback redirect
             return res.send(`
@@ -367,11 +379,11 @@ integrationsRouter.get('/jira/projects', async (req: Request, res: Response) => 
 });
 
 // 7. POST /api/integrations/:provider/scope
-// Updates scoping rules in PostgreSQL
+// Updates scoping rules in PostgreSQL and auto-installs/syncs webhooks on provider servers
 integrationsRouter.post('/:provider/scope', async (req: Request, res: Response) => {
     try {
         const provider = req.params.provider as SupportedIntegrationProvider;
-        const { allMonitored, monitoredItems } = req.body;
+        const { allMonitored, monitoredItems, webhookBaseUrl } = req.body;
 
         if (!['github', 'slack', 'jira'].includes(provider)) {
             return res.status(400).json({ success: false, error: 'Invalid provider' });
@@ -382,15 +394,93 @@ integrationsRouter.post('/:provider/scope', async (req: Request, res: Response) 
             monitoredItems: Array.isArray(monitoredItems) ? monitoredItems : ['*'],
         };
 
+        // 1. Always update database scope rules first
         await integrationService.updateScopeRules(provider, rules);
+
+        // 2. Resolve target webhook base URL
+        const hostHeader = (req.headers['x-forwarded-host'] as string) || req.get('host') || '';
+        const detectedHostUrl = hostHeader && !integrationService.isLocalhostUrl(`https://${hostHeader}`)
+            ? `https://${hostHeader}`
+            : undefined;
+
+        const resolvedBaseUrl = 
+            webhookBaseUrl ||
+            process.env.WEBHOOK_BASE_URL ||
+            process.env.PUBLIC_APP_URL ||
+            detectedHostUrl ||
+            `${req.protocol}://${req.get('host') || 'localhost:3000'}`;
+
+        // 3. Automatically install or sync webhooks/channels on the remote server
+        let webhookSync: any = null;
+        try {
+            if (provider === 'github') {
+                webhookSync = await integrationService.syncGitHubWebhooks(rules, resolvedBaseUrl);
+            } else if (provider === 'slack') {
+                webhookSync = await integrationService.syncSlackChannels(rules, resolvedBaseUrl);
+            } else if (provider === 'jira') {
+                webhookSync = await integrationService.syncJiraWebhooks(rules, resolvedBaseUrl);
+            }
+        } catch (syncErr: any) {
+            console.error(`[Integrations] Error auto-syncing ${provider} webhook:`, syncErr);
+            webhookSync = {
+                status: 'error',
+                message: `Scope saved, but webhook auto-sync encountered an error: ${syncErr?.message}`,
+            };
+        }
 
         return res.json({
             success: true,
             message: `Scope updated for ${provider.toUpperCase()}`,
             scopeRules: rules,
+            webhookSync,
         });
     } catch (err: any) {
         console.error('[Integrations] Error saving scope:', err);
+        return res.status(500).json({ success: false, error: err?.message });
+    }
+});
+
+// 7.5. POST /api/integrations/:provider/sync-webhooks
+// Triggers an on-demand webhook installation/sync with the remote provider
+integrationsRouter.post('/:provider/sync-webhooks', async (req: Request, res: Response) => {
+    try {
+        const provider = req.params.provider as SupportedIntegrationProvider;
+        const { webhookBaseUrl } = req.body;
+
+        if (!['github', 'slack', 'jira'].includes(provider)) {
+            return res.status(400).json({ success: false, error: 'Invalid provider' });
+        }
+
+        const statuses = await integrationService.getAllStatus();
+        const currentRules = statuses[provider]?.scopeRules || { allMonitored: true, monitoredItems: ['*'] };
+
+        const hostHeader = (req.headers['x-forwarded-host'] as string) || req.get('host') || '';
+        const detectedHostUrl = hostHeader && !integrationService.isLocalhostUrl(`https://${hostHeader}`)
+            ? `https://${hostHeader}`
+            : undefined;
+
+        const resolvedBaseUrl = 
+            webhookBaseUrl ||
+            process.env.WEBHOOK_BASE_URL ||
+            process.env.PUBLIC_APP_URL ||
+            detectedHostUrl ||
+            `${req.protocol}://${req.get('host') || 'localhost:3000'}`;
+
+        let webhookSync: any = null;
+        if (provider === 'github') {
+            webhookSync = await integrationService.syncGitHubWebhooks(currentRules, resolvedBaseUrl);
+        } else if (provider === 'slack') {
+            webhookSync = await integrationService.syncSlackChannels(currentRules, resolvedBaseUrl);
+        } else if (provider === 'jira') {
+            webhookSync = await integrationService.syncJiraWebhooks(currentRules, resolvedBaseUrl);
+        }
+
+        return res.json({
+            success: true,
+            webhookSync,
+        });
+    } catch (err: any) {
+        console.error('[Integrations] Error syncing webhooks:', err);
         return res.status(500).json({ success: false, error: err?.message });
     }
 });
