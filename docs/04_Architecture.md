@@ -511,4 +511,4 @@ To ensure seamless enterprise deployment without configuration friction or runti
 ### 10.5 Strict Canonical Identity Resolution
 - **Ground-Truth Policy:** *"A wrong merge is far worse than having two separate accounts."*
 - **Allowed Merges:** Auto-merging across Slack, GitHub, and Jira is permitted exclusively on exact verified email match (`isMergeableEmail()`) or strong, clean, non-generic usernames (`isStrongUsername()`).
-- **Forbidden Merges:** Merging by display name similarity (e.g. "Arjun" $\leftrightarrow$ "Arjun S") is strictly blocked to eliminate destructive identity collisions. Unmerged accounts remain separate until an administrator explicitly merges them via the Admin Audit Dashboard.
+- **Forbidden Merges:** Merging by display name similarity (e.g. "Kishu" $\leftrightarrow$ "Kishu S") is strictly blocked to eliminate destructive identity collisions. Unmerged accounts remain separate until an administrator explicitly merges them via the Admin Audit Dashboard.

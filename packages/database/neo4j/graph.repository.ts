@@ -56,7 +56,7 @@ export async function runGraphWrite(cypher: string, params: Record<string, unkno
 /**
  * Upsert an entity node into Neo4j with multi-property identity resolution.
  * For PERSON entities, matches on email OR name to prevent duplicate nodes
- * across different providers (e.g. GitHub "Arjun" vs Jira "Arjun Kumar").
+ * across different providers (e.g. GitHub "Shikar " vs Jira "Shikar Kumar").
  *
  * @param name             Display name — the fallback key
  * @param type             Node label (e.g. PERSON, REPOSITORY)
@@ -532,7 +532,7 @@ export async function getUsedEntityLabels(): Promise<string[]> {
 
 /**
  * Searches entities by name, email, OR externalId using a single CONTAINS query.
- * This replaces name-only search so queries like "who is arjun@cortex.io" resolve correctly.
+ * This replaces name-only search so queries like "who is kishu@cortex.io" resolve correctly.
  *
  * @param searchTerm  Raw string from planner output (could be name, email, or externalId fragment)
  * @param limit       Max candidates to return (default 5)

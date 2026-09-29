@@ -76,7 +76,7 @@ export const WhyNotChatGptSection: React.FC = () => {
                   <XCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                   <div>
                     <strong className="text-slate-300 font-semibold block">Fragmented Identity Silos:</strong>
-                    <span>Treats <code className="text-slate-300 font-mono">Arjun9756</code> on GitHub, <code className="text-slate-300 font-mono">U098...</code> on Slack, and Git emails as completely unrelated strangers.</span>
+                    <span>Treats <code className="text-slate-300 font-mono">Shikar-dev</code> on GitHub, <code className="text-slate-300 font-mono">U098...</code> on Slack, and Git emails as completely unrelated strangers.</span>
                   </div>
                 </div>
 

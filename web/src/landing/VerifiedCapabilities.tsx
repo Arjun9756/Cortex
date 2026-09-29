@@ -40,7 +40,7 @@ export const VerifiedCapabilities: React.FC = () => {
       status: 'Concentrated Risk',
       statusColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
       barColor: 'bg-amber-500',
-      reason: 'Arjun Kumar authored 94% of core graph traversal and agent graph workflow nodes.'
+      reason: 'Sarah Jenkins authored 94% of core graph traversal and agent graph workflow nodes.'
     },
   ];
 
@@ -328,7 +328,7 @@ export const VerifiedCapabilities: React.FC = () => {
             <div className="p-4 rounded-xl bg-[#0A0B0E] border border-amber-500/30 flex items-center space-x-3 text-xs font-mono text-[#F5F5F7]">
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
               <span>
-                <strong className="text-amber-400">Automated Recommendation:</strong> Require secondary review from @Arjun before merging into main branch.
+                <strong className="text-amber-400">Automated Recommendation:</strong> Require secondary review from @sarah before merging into main branch.
               </span>
             </div>
           </div>

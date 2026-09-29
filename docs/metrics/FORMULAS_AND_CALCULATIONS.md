@@ -502,7 +502,7 @@ All metrics in Cortex rely on live, continuous event streams from GitHub, Slack,
   2. **Quota Header Monitoring:** Directory sync actively inspects `x-ratelimit-remaining` and `retry-after` response headers. If remaining calls fall to 10 or below, the scan pauses gracefully, protecting the client's API quota and preventing IP bans.
 
 ### 8.5 Strict Identity Resolution ("Wrong Merge is Worse Than Two Nodes")
-- **The Problem:** Developers often have different emails and usernames across tools (e.g. `as9604793@gmail.com` on personal GitHub, `arjun@company.com` on corporate Slack, and `arjun-jira` on Atlassian). Naive systems use fuzzy string matching (e.g. merging any user named "Arjun" or "Alex"), which frequently merges two completely different employees into one identity, corrupting Bus Factor and Knowledge Risk calculations.
+- **The Problem:** Developers often have different emails and usernames across tools (e.g. `kishu.dev@gmail.com` on personal GitHub, `kishu@company.com` on corporate Slack, and `kishu-jira` on Atlassian). Naive systems use fuzzy string matching (e.g. merging any user named "Alex" or "Kishu"), which frequently merges two completely different employees into one identity, corrupting Bus Factor and Knowledge Risk calculations.
 - **The Cortex Solution:**
   1. **Strict Verified Email Priority:** Auto-merging across providers is permitted **only** when an exact, case-insensitive, non-generic email matches (`confidence = 1.0`).
   2. **Strong Unique Username Matching:** Auto-merging is permitted for strong, exact usernames (`confidence = 0.98`), strictly rejecting generic handles (`admin`, `support`, `bot`, `dev`).

@@ -249,6 +249,6 @@ To keep all of the above metrics 100% accurate in real time without burdening de
    - Traversing GitHub contributors and repositories can quickly hit GitHub's 5,000 req/hr rate limit or trigger secondary burst blocks.
    - Cortex introduces polite 60ms pacing delays between contributor queries and monitors the `x-ratelimit-remaining` header. If quota drops below 10 requests, directory sync politely pauses rather than failing or risking an account block.
 5. **Strict Identity Resolution ("Two Nodes are Better Than a False Merge"):**
-   - In real engineering teams, developers often use different emails across tools (e.g. `as9604793@gmail.com` on GitHub vs `arjun@company.com` on Slack).
+   - In real engineering teams, developers often use different emails across tools (e.g. `panukishu.dev@gmail.com` on GitHub vs `panukishu@company.com` on Slack).
    - Cortex enforces a strict principle: *"A wrong merge is far more dangerous than having two separate accounts."*
-   - Auto-merging is permitted **only** when there is an exact verified email match or a strong, clean, non-generic username. Fuzzy name matching is strictly forbidden, ensuring that two different people named "Alex" or "Arjun" are never accidentally combined into one person.
+   - Auto-merging is permitted **only** when there is an exact verified email match or a strong, clean, non-generic username. Fuzzy name matching is strictly forbidden, ensuring that two different people named "Alex" or "Kishu" are never accidentally combined into one person.

@@ -1,56 +1,56 @@
 # Cortex — Strategic Vision & Multi-Year Roadmap
-### *Engineering Knowledge Ko Headcount Se Azaad Karna — Long-Term Product Blueprint*
+### *Decoupling Engineering Knowledge from Headcount — Enterprise Product Blueprint*
 
 ---
 
-## 1. Hamara North Star Mission
+## 1. Our North Star Mission
 
 > **"Decouple Engineering Knowledge from Individual Headcount."**  
-> *(Engineering context aur knowledge ko kisi ek employee ki physical presence ka mohtaj na hone dena).*
+> *Transforming fragile human tribal knowledge into a permanent, searchable, and computable corporate memory.*
 
-Duniya ki lagbhag har software company mein ek hi kahani hai: Company ka real architecture code mein nahi, balki logon ke dimaag mein band hota hai. Aur jab senior log jaate hain, company ka intellectual context bhi unke saath gayab ho jaata hai. Iske baad bachte hain fragile codebases, mahino lamba onboarding lag, aur darr-darr ke refactoring karna.
+In nearly every software engineering company worldwide, the core architecture of systems is not documented in wikis—it is locked inside the brains of individual contributors. When senior engineers transition or depart, irreplaceable organizational context vanishes with them. What remains are fragile codebases, multi-month onboarding lags, and an engineering culture paralyzed by fear-driven refactoring.
 
-**Cortex ka ultimate vision hai: Software engineering teams ke liye ek autonomous "Central Nervous System" build karna.**  
-Ek aisa dynamic, self-updating layer jo engineering team ki daily activity (commits, PR reviews, Slack discussions, incident war rooms) ko chupchap ingest kare aur company ke permanent institutional memory mein badal de.
+**The mission of Cortex is to serve as the Autonomous Central Nervous System for software engineering organizations.**  
+A dynamic, continuously updating intelligence layer that passively ingests everyday engineering activity (commits, PR reviews, architectural Slack debates, and incident war rooms) and converts it into durable corporate memory.
 
-Future mein kisi bhi engineering team ko ye sawal na poochne padein:
-- *"Bhai, is legacy payment service ko kaun samajhta hai?"*
-- *"Ye complex edge-case code 2 saal pehle kyu likha gaya tha?"*
-- *"Agar is module ko refactor karein toh downstream kya phatega?"*
-- *"Ek naye hire ko mahino ke badle hafton mein fully productive kaise banayein?"*
+Engineering teams should never have to ask:
+- *"Who understands how this legacy payment microservice functions?"*
+- *"Why was this complex architectural compromise implemented two years ago?"*
+- *"If we refactor this module, what downstream dependencies will break?"*
+- *"How can we ramp up a new engineering hire to full velocity in days instead of months?"*
 
 ---
 
-## 2. Hamare 4 Non-Negotiable Product Tenets (Rules)
+## 2. The Four Non-Negotiable Product Tenets
 
-Jo bhi feature ya algorithm hum banate hain, wo in 4 golden principles pe tike hote hain:
+Every architectural decision and feature implemented in Cortex adheres strictly to four core tenets:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                        THE FOUR CORTEX PRODUCT TENETS                        │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │ 1. PROTECT THE SYSTEM, NEVER SURVEIL THE INDIVIDUAL                          │
-│    Cortex architecture ki vulnerability napta hai, developer ka report-card  │
-│    nahi banata. Hum commit-counting aur employee tracking ko reject karte    │
-│    hain kyunki wo engineering culture ko poison karta hai.                   │
+│    Cortex quantifies architectural fragility, not individual developer       │
+│    performance. We explicitly reject intrusive surveillance and commit-count │
+│    metrics that poison engineering culture.                                  │
 │                                                                              │
-│ 2. DETERMINISTIC MATH OVER AI GUESSWORK                                      │
-│    Risk percentage, bus factor aur successor scores pure mathematical graph  │
-│    formulas se calculate hote hain — zero AI hallucinations or guessing.     │
+│ 2. DETERMINISTIC MATHEMATICS OVER AI GUESSWORK                               │
+│    Risk percentages, bus factors, and successor rankings are derived from    │
+│    verifiable mathematical graph formulas—never generative AI hallucinations.│
 │                                                                              │
 │ 3. ZERO HUMAN OVERHEAD                                                       │
-│    Engineers ko kabhi extra docs ya wiki likhne ke liye mat bolo. Sara       │
-│    context unke daily tools (Git, Slack, Jira) se automatic capture hoga.    │
+│    Engineers are never burdened with writing manual documentation. All       │
+│    context is ingested passively from daily developer tooling (Git/Slack/Jira│
 │                                                                              │
-│ 4. VPC SOVEREIGNTY & PRIVACY FIRST                                           │
-│    Customer ka proprietary code aur unki private chats unke cloud perimeter  │
-│    se bahar nahi jayegi. Pure on-premise / BYOC compliance.                  │
+│ 4. VPC SOVEREIGNTY & PRIVACY BY DESIGN                                       │
+│    Proprietary source code and internal communications remain strictly       │
+│    within the customer's cloud boundary via BYOC and air-gapped architectures│
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. 3-Phase Strategic Product Roadmap
+## 3. Three-Phase Strategic Product Roadmap
 
 ```
   2026: PHASE 1                     2027: PHASE 2                     2028: PHASE 3
@@ -58,92 +58,92 @@ Jo bhi feature ya algorithm hum banate hain, wo in 4 golden principles pe tike h
 │  CONTINUITY RADAR    │          │ ACTIVE ARCHITECTURE  │          │      AUTONOMOUS      │
 │  & DEPARTURE SHIELD  │ ───────▶ │     INTELLIGENCE     │ ───────▶ │     GOVERNANCE       │
 │                      │          │                      │          │                      │
-│ • Passive Ingestion  │          │ • PR Risk Bot        │          │ • Onboarding Sim     │
-│ • Knowledge Graph    │          │ • Living Diagrams    │          │ • Tech Debt Radar    │
+│ • Passive Ingestion  │          │ • PR Blast-Radius Bot│          │ • Onboarding Sim     │
+│ • Knowledge Graph    │          │ • Living C4 Diagrams │          │ • Tech Debt Radar    │
 │ • Bus Factor Engine  │          │ • Enterprise RBAC    │          │ • Cross-Org Graph    │
-│ • Successor Engine   │          │ • Natural Cypher     │          │ • Predictive RAG     │
+│ • Successor Engine   │          │ • Natural Cypher     │          │ • Predictive Guard   │
 └──────────────────────┘          └──────────────────────┘          └──────────────────────┘
 ```
 
 ---
 
 ### Phase 1: Operational Continuity & Knowledge Radar (Current — 2026)
-*Objective: Zero-overhead capture validate karna, Bus Factor 1 ko khatam karna, aur onboarding speed 2x karna.*
+*Objective: Validate zero-overhead capture, eliminate single points of failure (Bus Factor = 1), and accelerate onboarding velocity by 2x.*
 
-- **Zero-Overhead Ingestion:** GitHub, Slack, aur Jira se cryptographically verified webhooks ko Postgres aur BullMQ queues mein le jana.
-- **Topological Knowledge Graph:** Neo4j ke andar contributors, repositories, commits, issues, aur tech stacks ka live relational graph maintain karna.
+- **Zero-Touch Ingestion:** Cryptographically verified webhooks from GitHub, Slack, and Jira routed through PostgreSQL event logs and resilient BullMQ queues.
+- **Topological Knowledge Graph:** Live directed property graph in Neo4j modeling contributors, repositories, commits, issues, and core technologies.
 - **Deterministic Analytics Engine:**
-  - 6-Factor Knowledge Risk Score (kisi specific dev ke resignation ka impact calculate karna).
-  - 4-Factor Successor Engine (Jaccard skill overlap aur workload capacity se best successor suggest karna).
-  - Har repo ka real-time Bus Factor calculate karna.
-- **LangGraph Multi-Tool Agent:** 11-node AI agent jo developer queries ko exact PR hash aur Slack thread link ke saath answer karta hai (Zero Fabrication mode).
-- **Milestone:** 20–150 engineers wali early tech companies ke saath private BYOC deployments validate karna.
+  - 6-Factor Knowledge Risk Scoring (modeling the systemic blast radius of individual departures).
+  - 4-Factor Successor Engine (ranking internal successors based on Jaccard skill overlap and cognitive capacity).
+  - Continuous real-time Bus Factor calculations across all repositories.
+- **LangGraph Multi-Tool Agent:** 11-node state machine answering complex architectural queries grounded in real commit hashes and Slack permalinks (Zero-Fabrication mode).
+- **Enterprise Validation:** Private BYOC deployments validated with engineering teams of 20 to 150+ developers.
 
 ---
 
 ### Phase 2: Active Architecture Intelligence & Collaborative Safety (2026–2027)
-*Objective: Sirf passive dashboard na reh kar developers ke daily PR workflow mein proactive guardrail banna.*
+*Objective: Evolve beyond passive monitoring to serve as an active, proactive guardrail in daily pull-request workflows.*
 
 - **The Cortex PR Blast-Radius Bot:**
-  - GitHub / GitLab pull requests ke sath direct integrate hoga.
-  - Jaise hi koi developer PR kholega, Cortex unki code diff ko Neo4j graph ke against check karke comment karega:
-    > *"⚠️ **Architectural Warning:** Aapne `auth/jwt.ts` modify kiya hai. Iska downstream blast radius `billing-service` par padta hai (Bus Factor 1, primary owner: @arjun). Recommended peer reviewers: @neha (45% tech overlap)."*
-- **Living Architectural Diagrams (Auto-Generated C4 & Mermaid):**
-  - Purane Lucidchart diagrams ko replace karke code commits ke sath automatic update hone wale living architecture maps aur dependency graphs generate karna.
+  - Direct integration into GitHub and GitLab pull requests.
+  - Upon PR submission, Cortex inspects code diffs against the Neo4j knowledge graph and provides inline feedback:
+    > *"⚠️ **Architectural Warning:** You modified `auth/jwt.ts`. Its downstream blast radius impacts `billing-service` (Bus Factor = 1, primary owner: @kishu). Recommended peer reviewers: @sarah (45% technology overlap)."*
+- **Living Architectural Diagrams (Automated C4 & Mermaid Generation):**
+  - Replacing stale static diagrams with living, continuously updated architecture maps synchronized with every merged commit.
 - **Enterprise Multi-Tenancy & Hardening:**
-  - Automated tenant schema isolation.
-  - SOC-2 Type II compliance aur automated data purge workflows.
-  - Enterprise SSO (Okta, Azure AD, Google Workspace) aur granular role-based access control (Employee, Manager, Executive).
-- **Natural Language Cypher Translation:**
-  - CTO ya Architect plain English mein sawal pooch sakte hain (*"Show me all microservices touched by contractors that lack integration tests"*) aur Cortex automatically backend Cypher query run karke accurate graph nikaal dega.
+  - Strict database-level Row-Level Security (RLS) and schema isolation.
+  - SOC2 Type II compliance and automated data retention/purge pipelines.
+  - Enterprise SSO (Okta, Azure AD, Google Workspace) with granular role-based access control (Admin, Manager, Contributor).
+- **Natural Language Cypher Synthesis:**
+  - Enabling CTOs and architects to query graph topology in natural language (*"Show all microservices touched by external contractors lacking integration coverage"*) with automated execution of verified Cypher queries.
 
 ---
 
 ### Phase 3: Autonomous Architectural Governance & Predictive Engineering (2027–2028)
-*Objective: Cortex ko engineering leadership ka predictive co-pilot banana.*
+*Objective: Establish Cortex as the predictive architectural co-pilot for technology leadership.*
 
-- **The Autonomous Onboarding Simulator:**
-  - Jab koi naya developer Team Payments join karega, Cortex unke liye personalized interactive ramp-up roadmap generate karega:
-    - Sabse pehle un 5 repositories ko introduce karega jo wo touch karenge.
-    - Pichle 1 saal ke 10 sabse critical PRs aur Slack war-room discussions unhe digest karwayega.
-    - Ramp-up time 8 hafte se ghata kar **10 din** ke andar la dega.
+- **Autonomous Onboarding Simulator:**
+  - When a new engineer joins a team, Cortex automatically generates a personalized, interactive onboarding trajectory:
+    - Identifies the top 5 repositories they will contribute to first.
+    - Curates the 10 most impactful historical PRs and incident post-mortems from the previous year.
+    - Compresses ramp-up time from 8 weeks to under 10 business days.
 - **Predictive Technical Debt & Fragility Radar:**
-  - Churn velocity aur past incident bugs ko correlate karke batayega ki kaunsa module 3 mahine baad production crash kar sakta hai, aur proactively refactoring propose karega.
-- **Cross-Organization Technology Durability Benchmarking (Anonymized):**
-  - High-level anonymized structural insights ke basis par CTOs ko industry benchmark dega: *"Jo teams Tool A se Tool B migrate karti hain, unka defect rate 6 mahine mein 30% drop hota hai."*
+  - Correlates commit churn velocity with historical production bug reports to predict which modules are at risk of cascading failure, proposing preemptive refactoring plans.
+- **Anonymized Architectural Durability Benchmarking:**
+  - Synthesizes structural metrics across peer engineering teams: *"Organizations migrating from Architecture X to Architecture Y demonstrate a 30% reduction in defect velocity within 6 months."*
 
 ---
 
-## 4. Hamara Long-Term Defensible Moat (Hume Koi Easily Copy Kyu Nahi Kar Sakta?)
+## 4. The Cortex Defensible Competitive Moat
 
-Koi competitor 2-3 mahine mein basic pipeline clone kar sakta hai, lekin hamara moat yahan hai:
+While a competitor can replicate a basic ingestion pipeline, Cortex's defensible enterprise moat is anchored in three structural advantages:
 
 ```
 +-------------------------------------------------------------------------------+
 |                        THE CORTEX COMPETITIVE MOAT                            |
 +-------------------------------------------------------------------------------+
 | 1. ACCUMULATED RELATIONAL GRAPH STATE (HIGH SWITCHING COST)                   |
-|    Pipeline copy ho sakti hai; lekin customer ka 2 saal ka historical graph   |
-|    (jisme 50,000 PRs, incident discussions aur context stitched hain) copy    |
-|    nahi ho sakta. Cortex ko hatana matlab company ka dimaag wipe karna.       |
+|    Ingestion pipelines are replicable; a multi-year historical knowledge      |
+|    graph (synthesizing 50,000+ PRs, incident discussions, and decisions) is   |
+|    irreplaceable. Removing Cortex is equivalent to wiping corporate memory.   |
 |                                                                               |
-| 2. TOPOLOGICAL GRAPH REASONING VS. FLAT VECTOR CHAT                           |
-|    Generic AI tools flat text search karte hain. Cortex directed property     |
-|    graphs pe reason karta hai — code dependencies, ownership chains aur       |
-|    ticket lineage ko deterministic math se calculate karta hai.               |
+| 2. TOPOLOGICAL GRAPH REASONING VS. FLAT VECTOR SEARCH                         |
+|    Generic AI tools perform flat document searches. Cortex reasons across     |
+|    directed property graphs—evaluating code dependencies, ownership trees,    |
+|    and ticket lineage through deterministic mathematics.                      |
 |                                                                               |
-| 3. HARDENED ENTERPRISE PRIVACY (BYOC)                                         |
-|    Cortex customer ke apne cloud (VPC) ke andar deploy hota hai aur zero-      |
-|    retention APIs use karta hai. Enterprise buyers jo apna proprietary code   |
-|    kisi public AI SaaS ko nahi dete, wo Cortex ke safe customer hain.         |
+| 3. HARDENED ENTERPRISE PRIVACY & SOVEREIGNTY (BYOC)                           |
+|    Cortex deploys directly into customer-managed VPCs with zero data          |
+|    retention on external LLM services. Enterprise organizations that refuse    |
+|    to expose proprietary code to public multi-tenant SaaS trust Cortex.        |
 +-------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 5. Summary: Engineering Intelligence Ka Future
+## 5. Summary: The Future of Engineering Intelligence
 
-Engineering companies recruitment aur retention pe croredo rupaye kharch karti hain, lekin har employee transition pe unka bohot bada context kho jaata hai.
+Modern enterprises invest millions in talent acquisition and retention, yet watch vast stores of intellectual capital vanish with every employee departure.
 
-**Cortex is fragile human context ko durable software infrastructure mein badal deta hai.**  
-Zero-overhead capture, deterministic mathematical graph analytics, aur context-aware AI reasoning ke through, Cortex ensure karta hai ki company ki intellectual asset har code push, har PR merge aur har architectural debate ke saath continuously aur permanently grow karti rahe.
+**Cortex converts perishable human memory into resilient, computable software infrastructure.**  
+Through zero-overhead passive capture, deterministic graph mathematics, and context-aware cognitive agents, Cortex ensures that an organization's intellectual capital expands continuously and permanently with every commit, pull request, and architectural debate.

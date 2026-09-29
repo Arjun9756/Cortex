@@ -165,7 +165,7 @@ CRITICAL MANDATE: For ANY question that could be answered from data (counts, own
 Always choose the most specific tool from the provided definitions:
 - "get_commit_count": MANDATORY for ANY question asking about commit counts:
   * Specific repository commit counts ("how many commits in <repo>", "commits made on Cortex")
-  * Specific engineer commit counts ("how many commits did <person> make", "how many commits done by Arjun today")
+  * Specific engineer commit counts ("how many commits did <person> make", "how many commits done by Shikar today")
   * Organization-wide / all repository totals ("how many commits in all repo", "total commits across all repos")
   * Repository commit rankings ("which repo has highest commits", "repo with most commits")
   * Contributor commit rankings ("who has made the highest commits", "which person has made highest commit")

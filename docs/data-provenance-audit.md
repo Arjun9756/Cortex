@@ -1,4 +1,4 @@
-﻿# Data Provenance Audit — Part 1 Inventory (2026-09-26)
+# Data Provenance Audit — Part 1 Inventory (2026-09-26)
 
 ## Initial Part 1 status and stop gate
 
@@ -26,7 +26,7 @@ The event table has no source/delivery-provenance column. Its external IDs are U
 
 ## Authorized development-store reset
 
-Before clearing, all rows and graph/vector properties were exported to `C:\Users\Arjun\AppData\Local\Temp\cortex-provenance-reset-backup` (outside the repository). Captured raw counts were PostgreSQL: events 81, person_metrics 11, workspace_metrics 1, person_identity 53, technology_metrics 89, identity_merge_log 17, potential_duplicates 1, daily_reports 3, repo_metrics 20; Neo4j: 279 nodes and 385 relationships; Qdrant cortex_events: 80 points. The reset ran only after the target database was confirmed as Cortex and `NODE_ENV=development`.
+Before clearing, all rows and graph/vector properties were exported to `<user-temp-dir>/cortex-provenance-reset-backup` (outside the repository). Captured raw counts were PostgreSQL: events 81, person_metrics 11, workspace_metrics 1, person_identity 53, technology_metrics 89, identity_merge_log 17, potential_duplicates 1, daily_reports 3, repo_metrics 20; Neo4j: 279 nodes and 385 relationships; Qdrant cortex_events: 80 points. The reset ran only after the target database was confirmed as Cortex and `NODE_ENV=development`.
 
 Post-reset direct count output:
 

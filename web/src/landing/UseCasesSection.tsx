@@ -79,7 +79,7 @@ export const UseCasesSection: React.FC = () => {
       ],
       sampleQueryResult: {
         query: 'cortex incident blast-radius --service "billing-engine" --window "48h"',
-        resultSnippet: 'SPOF Alert: Bus Factor 1 · Recent Merges: PR #142 (Stripe webhook refactor) · Primary Maintainer: Arjun Kumar'
+        resultSnippet: 'SPOF Alert: Bus Factor 1 · Recent Merges: PR #142 (Stripe webhook refactor) · Primary Maintainer: Sarah Jenkins'
       }
     },
     {
