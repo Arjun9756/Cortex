@@ -20,12 +20,12 @@ interface RealPrSeed {
 }
 
 const SEED_PRS: RealPrSeed[] = [
-    // ─── 1. inventory-sync-service (Primary owner: Arjun9756) ─────────────
+    // ─── 1. inventory-sync-service (Primary owner: kishu-dev) ─────────────
     {
         repo: 'inventory-sync-service',
         number: 101,
         title: 'feat(sync): parallel batch inventory sync with Redis cache [INV-101]',
-        author: 'Arjun9756',
+        author: 'kishu-dev',
         isBot: false,
         daysAgoCreated: 4,
         reviewHours: 2.5,
@@ -38,7 +38,7 @@ const SEED_PRS: RealPrSeed[] = [
         repo: 'inventory-sync-service',
         number: 102,
         title: 'fix(reconcile): handle delta stock reconciliation deadlocks [INV-102]',
-        author: 'Arjun9756',
+        author: 'kishu-dev',
         isBot: false,
         daysAgoCreated: 6,
         reviewHours: 3.2,
@@ -64,7 +64,7 @@ const SEED_PRS: RealPrSeed[] = [
         repo: 'inventory-sync-service',
         number: 104,
         title: 'feat(webhook): supplier catalog sync webhooks [INV-104]',
-        author: 'Arjun9756',
+        author: 'kishu-dev',
         isBot: false,
         daysAgoCreated: 12,
         reviewHours: 5.5,
@@ -102,7 +102,7 @@ const SEED_PRS: RealPrSeed[] = [
         commits: 11,
     },
 
-    // ─── 2. core-platform-gateway (Primary owner: Arjun / Michael) ────────
+    // ─── 2. core-platform-gateway (Primary owner: Kishu / Michael) ────────
     {
         repo: 'core-platform-gateway',
         number: 201,
@@ -120,7 +120,7 @@ const SEED_PRS: RealPrSeed[] = [
         repo: 'core-platform-gateway',
         number: 202,
         title: 'fix(rate-limit): distributed token bucket Redis lua script [CORE-202]',
-        author: 'Arjun9756',
+        author: 'kishu-dev',
         isBot: false,
         daysAgoCreated: 5,
         reviewHours: 2.8,
@@ -146,7 +146,7 @@ const SEED_PRS: RealPrSeed[] = [
         repo: 'core-platform-gateway',
         number: 204,
         title: 'fix(cors): dynamic origin validation for tenant subdomains [CORE-204]',
-        author: 'Arjun9756',
+        author: 'kishu-dev',
         isBot: false,
         daysAgoCreated: 11,
         reviewHours: 1.8,

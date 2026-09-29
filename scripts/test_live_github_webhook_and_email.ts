@@ -20,7 +20,7 @@ async function testLiveWebhook() {
     const pingBody = JSON.stringify({
         zen: 'Favor focus over features.',
         hook_id: 12345678,
-        repository: { id: 98765, name: 'Cortex', full_name: 'Arjun9756/Cortex' }
+        repository: { id: 98765, name: 'Cortex', full_name: 'kishu-dev/Cortex' }
     });
     const pingHmac = 'sha256=' + crypto.createHmac('sha256', secret).update(pingBody).digest('hex');
 
@@ -54,15 +54,15 @@ async function testLiveWebhook() {
         repository: {
             id: 99998888,
             name: 'Cortex',
-            full_name: 'Arjun9756/Cortex'
+            full_name: 'kishu-dev/Cortex'
         },
         pusher: {
-            name: 'Arjun Singh Negi',
+            name: 'Kishu Singh',
             email: 'as9604793@gmail.com'
         },
         sender: {
             id: 167556684,
-            login: 'Arjun9756',
+            login: 'kishu-dev',
             email: 'as9604793@gmail.com'
         },
         head_commit: {
@@ -70,9 +70,9 @@ async function testLiveWebhook() {
             message: 'feat: End-to-end integration and email verification',
             timestamp: new Date().toISOString(),
             author: {
-                name: 'Arjun Singh Negi',
+                name: 'Kishu Singh',
                 email: 'as9604793@gmail.com',
-                username: 'Arjun9756'
+                username: 'kishu-dev'
             },
             modified: ['apps/api/modules/integrations/service.ts']
         },
@@ -82,9 +82,9 @@ async function testLiveWebhook() {
                 message: 'feat: End-to-end integration and email verification',
                 timestamp: new Date().toISOString(),
                 author: {
-                    name: 'Arjun Singh Negi',
+                    name: 'Kishu Singh',
                     email: 'as9604793@gmail.com',
-                    username: 'Arjun9756'
+                    username: 'kishu-dev'
                 },
                 modified: ['apps/api/modules/integrations/service.ts']
             }

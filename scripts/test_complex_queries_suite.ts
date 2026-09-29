@@ -28,7 +28,7 @@ async function runComplexQueriesSuite() {
     {
       id: 'COMPLEX-3',
       category: 'Hinglish Mixed Contact + Departure Risk',
-      query: "Arjun ka email aur role batao aur agar wo team chhod ke chala jaye toh kya risk hoga",
+      query: "Kishu ka email aur role batao aur agar wo team chhod ke chala jaye toh kya risk hoga",
       expectedTools: ['graph_search', 'knowledge_risk'],
     },
     {

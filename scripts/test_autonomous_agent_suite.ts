@@ -31,7 +31,7 @@ const TEST_QUERIES: TestQueryConfig[] = [
     },
     {
         id: 5,
-        query: "What is Arjun's email and who else knows React?",
+        query: "What is Kishu's email and who else knows React?",
         expectedNature: "mixed parallel graph coordination for contact info & technology expertise",
     },
     {

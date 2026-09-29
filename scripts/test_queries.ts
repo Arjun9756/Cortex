@@ -26,16 +26,16 @@ async function testQuery(label: string, query: string) {
 }
 
 async function main() {
-    // Primary verification: knowledge risk for arjun kumar
+    // Primary verification: knowledge risk for kishu kumar
     await testQuery(
         "Knowledge Risk Latency Test",
-        "what is the knowledge risk for arjun kumar"
+        "what is the knowledge risk for kishu kumar"
     );
 
     // Confirm correctness is unchanged on compound query
     await testQuery(
         "Compound: risk + email (correctness check)",
-        "How much Knowledge Loss Will There is arjun kumar leaves how you have calculated that ? what the email of arjun"
+        "How much Knowledge Loss Will There is kishu kumar leaves how you have calculated that ? what the email of kishu"
     );
 
     process.exit(0);

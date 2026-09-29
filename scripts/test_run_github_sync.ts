@@ -21,12 +21,12 @@ async function main() {
     console.log('Reconciliation Stats:', recStats);
 
     console.log('\n✨ Verifying Unified Canonical Person (GitHub + Slack Link):');
-    const arjunRows = await sql`
+    const identityRows = await sql`
         SELECT provider, username, email, display_name, canonical_person_id
         FROM person_identity
-        WHERE email = 'as9604793@gmail.com' OR username IN ('arjun9756', 'as9604793')
+        WHERE email = 'as9604793@gmail.com' OR username IN ('as9604793')
     `;
-    console.table(arjunRows);
+    console.table(identityRows);
 
     process.exit(0);
 }

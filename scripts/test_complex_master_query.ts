@@ -5,7 +5,7 @@ async function runComplexMasterTest() {
     console.log('🔥 TESTING VERY COMPLEX MASTER COMPOUND QUERY');
     console.log('================================================================================\n');
 
-    const complexQuery = "Who is Arjun, what is his knowledge departure risk if he quits, which repos does he work on, and why was Redis replaced with Valkey in Cortex?";
+    const complexQuery = "Who is Kishu, what is his knowledge departure risk if he quits, which repos does he work on, and why was Redis replaced with Valkey in Cortex?";
     
     console.log(`📌 Master Query: "${complexQuery}"\n`);
 

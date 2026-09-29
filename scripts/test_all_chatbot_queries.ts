@@ -64,17 +64,17 @@ async function runExhaustiveChatbotAudit() {
     "single point of failure repositories",
 
     // 2. Person Knowledge Risk Queries
-    "what happens if Arjun leaves the team",
+    "what happens if Kishu leaves the team",
     "knowledge risk of Sarah Chen",
     "what breaks if Vikram Patel quits",
 
     // 3. Entity Contact Info & Role Queries
-    "what is Arjun's email and role",
+    "what is Kishu's email and role",
     "who is Sarah Chen",
     "contact details for Vikram Patel",
 
     // 4. Technology Usage Queries
-    "what technologies does Arjun use",
+    "what technologies does Kishu use",
     "what uses Redis",
     "who knows Valkey",
 
@@ -83,7 +83,7 @@ async function runExhaustiveChatbotAudit() {
     "reason for replacing Redis",
 
     // 6. Compound Multi-Intent Queries (2-3 asks in one sentence)
-    "Who is Arjun, what is his knowledge risk, and which repo is riskiest?",
+    "Who is Kishu, what is his knowledge risk, and which repo is riskiest?",
     "what is Sarah Chen's email and what happens if she leaves"
   ];
 

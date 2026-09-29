@@ -31,15 +31,15 @@
 //         ref: "refs/heads/main",
 //         repository: {
 //             name: "Cortex",
-//             full_name: "Arjun9756/Cortex",
+//             full_name: "kishu-dev/Cortex",
 //         },
 //         pusher: {
-//             name: "Arjun Kumar",
-//             email: "arjun@company.com",
+//             name: "Kishu Kumar",
+//             email: "kishu@company.com",
 //         },
 //         head_commit: {
 //             id: "0d1a26e67d8f5eaf1f6ba7c57a0d7d7c60a2d5e2",
-//             author: { name: "Arjun Kumar", email: "arjun@company.com" },
+//             author: { name: "Kishu Kumar", email: "kishu@company.com" },
 //             message: "Migrated Redis to Valkey because of licensing issues",
 //             timestamp: new Date().toISOString(),
 //             modified: ["packages/database/redis.ts", "README.md"],
@@ -57,13 +57,13 @@
 //         action: "opened",
 //         repository: {
 //             name: "Cortex",
-//             full_name: "Arjun9756/Cortex",
+//             full_name: "kishu-dev/Cortex",
 //         },
-//         sender: { login: "Arjun", email: "arjun@company.com" },
+//         sender: { login: "Kishu", email: "kishu@company.com" },
 //         pull_request: {
 //             title: "Add BullMQ retry strategy for failed jobs",
 //             body: "This PR adds exponential backoff retries to the processing queue to handle transient Redis/Neo4j failures.",
-//             user: { login: "Arjun", email: "arjun@company.com" },
+//             user: { login: "Kishu", email: "kishu@company.com" },
 //             created_at: new Date().toISOString(),
 //             merged: false,
 //         },
@@ -73,13 +73,13 @@
 //         action: "opened",
 //         repository: {
 //             name: "Cortex",
-//             full_name: "Arjun9756/Cortex",
+//             full_name: "kishu-dev/Cortex",
 //         },
-//         sender: { login: "Arjun", email: "arjun@company.com" },
+//         sender: { login: "Kishu", email: "kishu@company.com" },
 //         issue: {
 //             title: "Qdrant collection dimension mismatch on restart",
 //             body: "If GEMINI embedding model changes output size, ensureCollection() should detect mismatch and warn instead of silently failing on upsert.",
-//             user: { login: "Arjun", email: "arjun@company.com" },
+//             user: { login: "Kishu", email: "kishu@company.com" },
 //             created_at: new Date().toISOString(),
 //         },
 //     },
@@ -88,14 +88,14 @@
 //         action: "created",
 //         repository: {
 //             name: "Cortex",
-//             full_name: "Arjun9756/Cortex",
+//             full_name: "kishu-dev/Cortex",
 //         },
-//         sender: { login: "Arjun", email: "arjun@company.com" },
+//         sender: { login: "Kishu", email: "kishu@company.com" },
 //         issue: {
 //             title: "Qdrant collection dimension mismatch on restart",
 //         },
 //         comment: {
-//             user: { login: "Arjun", email: "arjun@company.com" },
+//             user: { login: "Kishu", email: "kishu@company.com" },
 //             body: "Fixed by adding a dimension check inside ensureCollection() before createCollection().",
 //             created_at: new Date().toISOString(),
 //         },
@@ -177,14 +177,14 @@
  * A SECOND, distinct test dataset — different person, different email,
  * different repo, different technologies, different event content.
  *
- * Purpose: the current graph only has data from ONE person (Arjun Kumar).
+ * Purpose: the current graph only has data from ONE person (Kishu Kumar).
  * This script exists to verify that:
  *   1. A second, genuinely different PERSON node gets created (not merged
- *      into Arjun's node by mistake).
+ *      into Kishu's node by mistake).
  *   2. Their email/name/externalId are captured correctly and distinctly.
  *   3. Bus factor / knowledge risk / findings correctly update to reflect
  *      TWO contributors instead of one (e.g. bus factor for a repo touched
- *      by both people should no longer show "depends entirely on Arjun").
+ *      by both people should no longer show "depends entirely on Kishu").
  *   4. Cross-entity queries work — e.g. "who is Priya", "how many commits
  *      did Priya make", "what is Priya's knowledge risk".
  *
@@ -206,7 +206,7 @@ function generateDeliveryId() {
 
 // A distinct persona: different name, different email, different repo,
 // different technology stack, different kind of work — deliberately NOT
-// overlapping with Arjun's data so any accidental entity-merging is obvious.
+// overlapping with Kishu's data so any accidental entity-merging is obvious.
 const PAYLOADS = {
     push: {
         ref: "refs/heads/main",
@@ -323,14 +323,14 @@ async function sendTestWebhook() {
         if (res.status === 200 || res.status === 201) {
             console.log("\n✅ Webhook accepted. Now verify specifically:");
             console.log("   1. Neo4j: MATCH (p:PERSON) RETURN p.name, p.email, p.externalId");
-            console.log("      -> should show BOTH Arjun Kumar AND Priya Sharma as separate nodes");
+            console.log("      -> should show BOTH Kishu Kumar AND Priya Sharma as separate nodes");
             console.log("   2. Neo4j: MATCH (r:REPOSITORY) RETURN r.name");
             console.log("      -> should show BOTH Cortex AND billing-service");
             console.log("   3. Postgres person_metrics: SELECT person_name, external_id, risk_score FROM person_metrics;");
             console.log("      -> should show 2 distinct rows after next analytics run");
             console.log("   4. Dashboard 'Contributors' count should now read 2, not 1");
             console.log("   5. Ask the chat: 'who is Priya Sharma' -> should resolve correctly,");
-            console.log("      not accidentally return Arjun's data");
+            console.log("      not accidentally return Kishu's data");
             console.log("   6. Ask the chat: 'what is Priya's email' -> should return priya.sharma@company.com");
         } else if (res.status === 403) {
             console.log("\n❌ Signature rejected — check GITHUB_SECRET matches server env.");

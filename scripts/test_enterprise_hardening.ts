@@ -18,7 +18,7 @@ async function runHardeningTests() {
     // Test 1: Validate Time-Decayed Ownership calculation contract
     try {
         console.log('[Test 1] Testing Time-Decayed Ownership Calculation...');
-        const ownership = await calculateOwnership('Arjun', { relation: 'AUTHORED', targetLabel: 'COMMIT' }, ['AUTHORED']);
+        const ownership = await calculateOwnership('Kishu', { relation: 'AUTHORED', targetLabel: 'COMMIT' }, ['AUTHORED']);
         console.log(`[Test 1 Result] Ownership Score: ${ownership.score}, Count: ${ownership.count}`);
         if (typeof ownership.score === 'number' && ownership.score >= 0 && ownership.score <= 1 && typeof ownership.count === 'number') {
             console.log('✅ Test 1 PASSED: Ownership calculation contract valid and bounded in [0, 1].\n');
@@ -35,7 +35,7 @@ async function runHardeningTests() {
     // Test 2: Validate 6-Factor Knowledge Risk composite calculation
     try {
         console.log('[Test 2] Testing 6-Factor Knowledge Risk Calculation...');
-        const risk = await calculateKnowledgeRisk('Arjun');
+        const risk = await calculateKnowledgeRisk('Kishu');
         console.log(`[Test 2 Result] Total Risk: ${risk.totalRisk} (${Math.round(risk.totalRisk * 100)}%)`);
         console.log(`[Test 2 Breakdown]`, JSON.stringify(risk.breakdown));
         if (typeof risk.totalRisk === 'number' && risk.totalRisk >= 0 && risk.totalRisk <= 1 && risk.breakdown) {

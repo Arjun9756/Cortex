@@ -13,7 +13,7 @@
 
 import sql from '../../apps/api/config/postgres.js';
 import { isBotAccount } from '../shared/botDetection.js';
-import { DISPLAYABLE_SOURCES } from '../database/provenance.js';
+import { aggregationSources, type DataSource } from '../database/provenance.js';
 
 export interface PrMetricRecord {
     prId: string;
@@ -102,6 +102,7 @@ export interface PrMetricsOptions {
     timeframeDays?: number | undefined;
     includeBots?: boolean | undefined;
     outlierThresholdDays?: number | undefined;
+    source?: DataSource | undefined;
 }
 
 /**
@@ -215,6 +216,9 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
         outlierThresholdDays = 30
     } = options;
 
+    const activeSource = (options.source || (process.env.CORTEX_ACTIVE_SEED_SOURCE as DataSource) || 'webhook');
+    const trustedSources = aggregationSources(activeSource);
+
     const outlierThresholdHours = outlierThresholdDays * 24;
 
     // Fetch PR events from PostgreSQL events table
@@ -224,7 +228,7 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             rows = await sql`
                 SELECT id, external_id, payload, created_at
                 FROM events
-                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'github'
+                WHERE source IN ${sql([...trustedSources])} AND provider = 'github'
                   AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
                   AND (
                       lower(COALESCE(payload->'repository'->>'full_name', payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
@@ -240,7 +244,7 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             rows = await sql`
                 SELECT id, external_id, payload, created_at
                 FROM events
-                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'github'
+                WHERE source IN ${sql([...trustedSources])} AND provider = 'github'
                   AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
                   AND (
                       lower(COALESCE(payload->'repository'->>'full_name', payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
@@ -255,7 +259,7 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             rows = await sql`
                 SELECT id, external_id, payload, created_at
                 FROM events
-                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'github'
+                WHERE source IN ${sql([...trustedSources])} AND provider = 'github'
                   AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
                   AND created_at >= NOW() - (${timeframeDays} || ' days')::INTERVAL
                 ORDER BY created_at DESC
@@ -264,7 +268,7 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             rows = await sql`
                 SELECT id, external_id, payload, created_at
                 FROM events
-                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND provider = 'github'
+                WHERE source IN ${sql([...trustedSources])} AND provider = 'github'
                   AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
                 ORDER BY created_at DESC
             `;

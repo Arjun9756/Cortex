@@ -97,21 +97,21 @@ const COMPLEX_REPOSITORIES: RepoSeedDefinition[] = [
         ]
     },
 
-    // 4. Moderate-Risk: inventory-sync-service (Bus Factor = 2, Maintainers: Arjun Kumar & Rohan Verma)
+    // 4. Moderate-Risk: inventory-sync-service (Bus Factor = 2, Maintainers: Kishu Kumar & Rohan Verma)
     {
         name: "inventory-sync-service",
         description: "Warehouse stock management, SKU reservation, and message queue retry policies.",
         technologies: ["TypeScript", "Node.js", "Redis", "RabbitMQ", "PostgreSQL", "Docker"],
         contributors: [
-            { name: "Arjun Kumar", email: "arjun.kumar@company.com", role: "Software Engineer", commitCount: 5 },
+            { name: "Kishu Kumar", email: "kishu.kumar@company.com", role: "Software Engineer", commitCount: 5 },
             { name: "Rohan Verma", email: "rohan.verma@company.com", role: "Backend Engineer", commitCount: 4 }
         ],
         recentCommits: [
-            { hash: "a3b4c5d6e7f8091a2b3c4d5e6f7a8b9c0d1e2f01", message: "INV-201: Configured RabbitMQ dead-letter exchange and Redis distributed locks for SKU sync.", authorName: "Arjun Kumar", daysAgo: 3 },
+            { hash: "a3b4c5d6e7f8091a2b3c4d5e6f7a8b9c0d1e2f01", message: "INV-201: Configured RabbitMQ dead-letter exchange and Redis distributed locks for SKU sync.", authorName: "Kishu Kumar", daysAgo: 3 },
             { hash: "r1e2d3c4b5a60718293a4b5c6d7e8f9a0b1c2d02", message: "INV-205: Added PostgreSQL batch reconciliation worker for warehouse inventory records.", authorName: "Rohan Verma", daysAgo: 6 }
         ],
         jiraIssues: [
-            { key: "INV-201", summary: "RabbitMQ dead-letter retry exchange and Redis locks", reporter: "Arjun Kumar", status: "In Progress" }
+            { key: "INV-201", summary: "RabbitMQ dead-letter retry exchange and Redis locks", reporter: "Kishu Kumar", status: "In Progress" }
         ]
     },
 
@@ -139,14 +139,14 @@ const COMPLEX_REPOSITORIES: RepoSeedDefinition[] = [
         description: "Central microservices API gateway with distributed tracing, rate limiting, and connection pooling.",
         technologies: ["Express", "TypeScript", "NGINX", "OpenTelemetry", "Docker", "Kubernetes", "Supavisor"],
         contributors: [
-            { name: "Arjun Kumar", email: "arjun.kumar@company.com", role: "Software Engineer", commitCount: 4 },
+            { name: "Kishu Kumar", email: "kishu.kumar@company.com", role: "Software Engineer", commitCount: 4 },
             { name: "Sarah Chen", email: "sarah.chen@company.com", role: "Frontend Tech Lead", commitCount: 4 },
             { name: "Michael Chen", email: "michael.chen@company.com", role: "Infrastructure Architect", commitCount: 4 },
             { name: "Amit Shah", email: "amit.shah@company.com", role: "Staff DevOps Engineer", commitCount: 4 },
             { name: "Priya Sharma", email: "priya.sharma@company.com", role: "Staff Engineer", commitCount: 2 }
         ],
         recentCommits: [
-            { hash: "cp1001a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7", message: "CORE-101: Upgraded Express API gateway routing and OpenTelemetry distributed tracing.", authorName: "Arjun Kumar", daysAgo: 1 },
+            { hash: "cp1001a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7", message: "CORE-101: Upgraded Express API gateway routing and OpenTelemetry distributed tracing.", authorName: "Kishu Kumar", daysAgo: 1 },
             { hash: "cp1002b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8", message: "CORE-105: Configured NGINX reverse proxy rate limiting per API client key.", authorName: "Sarah Chen", daysAgo: 4 },
             { hash: "cp1003c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9", message: "CORE-108: Implemented Docker multi-stage builds and Kubernetes health probes.", authorName: "Michael Chen", daysAgo: 7 },
             { hash: "cp1004d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0", message: "CORE-112: Integrated Supavisor connection pooling for downstream database instances.", authorName: "Amit Shah", daysAgo: 11 }

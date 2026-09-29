@@ -32,7 +32,7 @@ async function runTests() {
     console.log('\n--- 3. Testing syncGitHubWebhooks on Localhost ---');
     const localResult = await integrationService.syncGitHubWebhooks({
         allMonitored: false,
-        monitoredItems: ['Arjun9756/Cortex']
+        monitoredItems: ['Cortex-Labs/Cortex']
     }, 'http://localhost:3000');
     assert(localResult.status === 'skipped_localhost', 'Correctly skips localhost and warns user');
     console.log(`ℹ️ Localhost warning: ${localResult.message}`);
@@ -47,12 +47,12 @@ async function runTests() {
     console.log('\n--- 5. Testing Scoping Rules Persistence Consistency ---');
     await integrationService.updateScopeRules('github', {
         allMonitored: false,
-        monitoredItems: ['Arjun9756/Cortex']
+        monitoredItems: ['Cortex-Labs/Cortex']
     });
     const [row] = await sql`SELECT scope_rules FROM integrations WHERE provider = 'github'`;
     const normalized = integrationService.normalizeScopeRules(row.scope_rules);
     assert(normalized.allMonitored === false, 'allMonitored preserved');
-    assert(normalized.monitoredItems.includes('Arjun9756/Cortex'), 'monitoredItems preserved');
+    assert(normalized.monitoredItems.includes('Cortex-Labs/Cortex'), 'monitoredItems preserved');
 
     console.log('\n🎉 ALL AUTO-WEBHOOK UNIT & INTEGRATION CHECKS PASSED!\n');
     process.exit(0);

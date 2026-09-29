@@ -30,7 +30,38 @@ export async function processJiraEvent(eventID: string) {
         const cleanEventText = JSON.stringify(normalizedPayload)
 
         // 4.Get The Entities and relation from LLM
-        const { entities, newEntities, relationships, newRelations, summary } = await extractFromEvent(cleanEventText, 'jira')
+        // 4.Get The Entities and relation from LLM with Deterministic Fast-Fallback
+        let entities: any[] = []
+        let newEntities: any[] = []
+        let relationships: any[] = []
+        let newRelations: any[] = []
+        let summary = ''
+
+        try {
+            const extracted = await extractFromEvent(cleanEventText, 'jira')
+            entities = extracted.entities || []
+            newEntities = extracted.newEntities || []
+            relationships = extracted.relationships || []
+            newRelations = extracted.newRelations || []
+            summary = extracted.summary || ''
+        } catch (llmErr: any) {
+            console.warn(`[Jira Ingestion] LLM extraction failed (${llmErr?.message}) — executing deterministic graph extraction fallback.`)
+            if (normalizedPayload.author && normalizedPayload.author !== 'Unknown' && normalizedPayload.author !== 'unknown') {
+                entities.push({ name: normalizedPayload.author, type: 'PERSON' })
+            }
+            if (normalizedPayload.issueKey) {
+                entities.push({ name: normalizedPayload.issueKey, type: 'ISSUE' })
+                if (normalizedPayload.author && normalizedPayload.author !== 'Unknown' && normalizedPayload.author !== 'unknown') {
+                    relationships.push({
+                        from: normalizedPayload.author,
+                        to: normalizedPayload.issueKey,
+                        type: 'CREATED',
+                        evidence: `reported Jira issue ${normalizedPayload.issueKey}`
+                    })
+                }
+            }
+            summary = `Jira ${normalizedPayload.issueType || 'ticket'} ${normalizedPayload.issueKey || ''}: ${normalizedPayload.summary || 'issue update'} by ${normalizedPayload.author || 'contributor'}`
+        }
 
         // 5. Resolve canonical identity and build person metadata
         const issueFields = rawPayload.issue?.fields ?? {}
@@ -120,7 +151,11 @@ export async function processJiraEvent(eventID: string) {
             const allEntities = [...entities, ...newEntities.map((e: any) => { return { name: e.name, type: e.suggestedType } })]
             const allRelations = [...relationships, ...newRelations.map((r: any) => { return { from: r.from, to: r.to, type: r.suggestedType } })]
 
-            await upsertVector(crypto.randomUUID(), vectorEmbedding, {
+            // Deterministic UUID derived from eventID to prevent duplicate vectors on retry
+            const hash = crypto.createHash('md5').update(String(eventID)).digest('hex')
+            const stableVectorId = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`
+
+            await upsertVector(stableVectorId, vectorEmbedding, {
                 eventID,
                 source: event.source,
                 summary: effectiveSummary,

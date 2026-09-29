@@ -312,17 +312,17 @@ const TEST_SPECS: TestSpec[] = [
     {
         id: 11,
         category: "Master 6-Part Complex Query",
-        query: "How many total repositories and technologies are there, which repos have a bus factor of 1, what is Priya Sharma's knowledge risk and what technologies does she use, why did we replace Redis with Valkey and when, and if Arjun Kumar leaves what breaks and who's the best successor?",
+        query: "How many total repositories and technologies are there, which repos have a bus factor of 1, what is Priya Sharma's knowledge risk and what technologies does she use, why did we replace Redis with Valkey and when, and if Kishu Kumar leaves what breaks and who's the best successor?",
         expectedTools: ["graph_search", "sql_search", "knowledge_risk", "vector_search"],
         validateAnswer: (ans) => {
             const hasCounts = ans.toLowerCase().includes('repositories') && ans.toLowerCase().includes('technologies');
             const hasBusFactor = ans.toLowerCase().includes('bus factor');
             const hasPriya = ans.toLowerCase().includes('priya') && ans.includes('%');
             const hasValkey = ans.toLowerCase().includes('valkey') && (ans.includes('2026') || ans.toLowerCase().includes('august') || ans.toLowerCase().includes('redis'));
-            const hasArjun = ans.toLowerCase().includes('arjun');
+            const hasKishu = ans.toLowerCase().includes('kishu');
             return {
-                pass: hasCounts && hasBusFactor && hasPriya && hasValkey && hasArjun,
-                reason: `Counts: ${hasCounts}, BusFactor: ${hasBusFactor}, Priya: ${hasPriya}, Valkey: ${hasValkey}, Arjun: ${hasArjun}`
+                pass: hasCounts && hasBusFactor && hasPriya && hasValkey && hasKishu,
+                reason: `Counts: ${hasCounts}, BusFactor: ${hasBusFactor}, Priya: ${hasPriya}, Valkey: ${hasValkey}, Kishu: ${hasKishu}`
             };
         }
     },

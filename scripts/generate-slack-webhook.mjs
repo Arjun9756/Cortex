@@ -186,8 +186,8 @@ const MESSAGES = [
     },
     {
         channel: "C0111AAAA",
-        user: "U0987654321", // same Slack ID used in earlier single-message tests (Arjun, if that's who it was)
-        userDisplayName: "Arjun Kumar",
+        user: "U0987654321", // same Slack ID used in earlier single-message tests (Kishu, if that's who it was)
+        userDisplayName: "Kishu Kumar",
         text: "For visibility — Cortex's BullMQ retry PR is ready for review, same backoff pattern others are now reusing.",
     },
 ];
@@ -278,7 +278,7 @@ async function runBatch() {
     console.log("========================================");
     console.log("\nNow verify:");
     console.log("  1. Neo4j: MATCH (p:PERSON) RETURN p.name, p.email, p.externalId");
-    console.log("     -> should now include Priya Sharma, Rohan Verma, Arjun Kumar as distinct nodes");
+    console.log("     -> should now include Priya Sharma, Rohan Verma, Kishu Kumar as distinct nodes");
     console.log("     (Priya should MERGE with her GitHub identity if externalId matching across providers is implemented — verify this specifically, it's a known open question)");
     console.log("  2. Postgres events table: SELECT COUNT(*) FROM events WHERE provider='slack';");
     console.log(`     -> should have increased by ${MESSAGES.length}`);

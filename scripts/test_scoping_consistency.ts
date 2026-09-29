@@ -44,7 +44,7 @@ async function runScopingVerification() {
         // 2. Test updating GitHub scope rules
         const testGithubRules = {
             allMonitored: false,
-            monitoredItems: ['Arjun9756/Cortex', 'Arjun9756/Cortex-Admin']
+            monitoredItems: ['Cortex-Labs/Cortex', 'Cortex-Labs/Cortex-Admin']
         };
         await integrationService.updateScopeRules('github', testGithubRules);
 
@@ -55,8 +55,8 @@ async function runScopingVerification() {
         assert('DB scope_rules has exact monitored items', 
             Array.isArray(dbRow.scope_rules.monitoredItems) && 
             dbRow.scope_rules.monitoredItems.length === 2 &&
-            dbRow.scope_rules.monitoredItems.includes('Arjun9756/Cortex') &&
-            dbRow.scope_rules.monitoredItems.includes('Arjun9756/Cortex-Admin')
+            dbRow.scope_rules.monitoredItems.includes('Cortex-Labs/Cortex') &&
+            dbRow.scope_rules.monitoredItems.includes('Cortex-Labs/Cortex-Admin')
         );
 
         // 3. Test normalizing defensively even if malformed string exists in DB

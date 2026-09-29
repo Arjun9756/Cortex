@@ -57,7 +57,7 @@ async function runDefenseTests() {
         'PostgreSQL',
         'redis-cache',
         'auth-service',
-        'Arjun Kumar',
+        'Kishu Kumar',
         'CORE-101',
         'PR-404',
         'services/billing/stripeClient.ts'
@@ -122,7 +122,7 @@ async function runDefenseTests() {
     // Verify Relationship Rewiring function directly
     const simulatedLLMRels = [
         { from: '8f3b12a', to: 'PostgreSQL', type: 'USES' },
-        { from: 'ArjunDev', to: '8f3b12a', type: 'AUTHORED' }
+        { from: 'KishuDev', to: '8f3b12a', type: 'AUTHORED' }
     ]
     const repoName = 'cortex-core-repo'
     for (const r of simulatedLLMRels) {
@@ -137,7 +137,7 @@ async function runDefenseTests() {
         }
     }
     assert(Boolean(simulatedLLMRels[0]?.from === 'cortex-core-repo' && simulatedLLMRels[0]?.to === 'PostgreSQL' && simulatedLLMRels[0]?.type === 'USES'), 'Commit-to-tech relation rewired to repo -> USES -> tech')
-    assert(Boolean(simulatedLLMRels[1]?.from === 'ArjunDev' && simulatedLLMRels[1]?.to === 'cortex-core-repo' && simulatedLLMRels[1]?.type === 'CONTRIBUTED_TO'), 'Person-to-commit relation rewired to person -> CONTRIBUTED_TO -> repo')
+    assert(Boolean(simulatedLLMRels[1]?.from === 'KishuDev' && simulatedLLMRels[1]?.to === 'cortex-core-repo' && simulatedLLMRels[1]?.type === 'CONTRIBUTED_TO'), 'Person-to-commit relation rewired to person -> CONTRIBUTED_TO -> repo')
 
     // ----------------------------------------------------
     // TEST LAYER 5: LIVE NEO4J VERIFICATION

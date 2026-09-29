@@ -12,7 +12,7 @@ async function main() {
         { name: 'get_bus_factor', tool: 'get_bus_factor', args: { repo: 'billing-engine' } },
         { name: 'get_repo_contributors', tool: 'get_repo_contributors', args: { repo: 'billing-engine' } },
         { name: 'get_ownership', tool: 'get_ownership', args: { repo: 'billing-engine' } },
-        { name: 'get_person_identity', tool: 'get_person_identity', args: { alias: 'Arjun9756' } },
+        { name: 'get_person_identity', tool: 'get_person_identity', args: { alias: 'kishu-dev' } },
         { name: 'get_recent_changes', tool: 'get_recent_changes', args: { repo: 'billing-engine', days: 30 } },
         { name: 'get_person_activity', tool: 'get_person_activity', args: { person: 'priyasharma' } },
     ];

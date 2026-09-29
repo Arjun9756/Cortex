@@ -48,13 +48,21 @@ export function parseCoAuthors(message?: string): Array<{ name: string; email: s
 }
 
 function normalizePush(payload: any): CleanGithubEvent {
-  const commits = Array.isArray(payload.commits) ? payload.commits : [];
-  const allModifiedFiles = commits.flatMap((c: any) => c.modified ?? [])
-  const relevantFiles = filterRelevantFiles(allModifiedFiles)
+  let commits = Array.isArray(payload.commits) ? payload.commits : [];
+  if (commits.length === 0 && payload.head_commit) {
+    commits = [payload.head_commit];
+  }
+
+  const allModifiedFiles = commits.flatMap((c: any) => [
+    ...(Array.isArray(c.added) ? c.added : []),
+    ...(Array.isArray(c.modified) ? c.modified : []),
+    ...(Array.isArray(c.removed) ? c.removed : [])
+  ]);
+  const relevantFiles = filterRelevantFiles(allModifiedFiles);
 
   // GitHub push: pusher.email may exist; fall back to head_commit.author.email
   const authorEmail: string | null =
-    payload.pusher?.email ?? payload.head_commit?.author?.email ?? null
+    payload.pusher?.email ?? payload.head_commit?.author?.email ?? null;
 
   const author = payload.pusher?.name ?? payload.sender?.login ?? 'unknown';
   const isBot = isBotAccount(author, authorEmail, payload.sender?.login);
@@ -63,27 +71,34 @@ function normalizePush(payload: any): CleanGithubEvent {
     provider: "github",
     eventType: "push",
     repository: payload.repository?.full_name ?? payload.repository?.name ?? 'unknown',
-    branch: (payload.ref ?? '').replace("refs/heads/", ""),
+    branch: (payload.ref ?? '').replace(/^refs\/(heads|tags)\//, ""),
     author,
     authorEmail,
     authorRole: null,
     isBot,
     timestamp: payload.head_commit?.timestamp ?? new Date().toISOString(),
-    commits: commits.map((c: any) => ({
-      id: c.id,
-      message: c.message,
-      filesChanged: c.modified,
-      author: c.author ? {
-        name: c.author.name,
-        email: c.author.email,
-        username: c.author.username,
-      } : null,
-      coAuthors: parseCoAuthors(c.message),
-      timestamp: c.timestamp,
-      isBot: isBotAccount(c.author?.name, c.author?.email, c.author?.username),
-    })),
-    filesChanged: relevantFiles.slice(0, 5), // max 5 files, noise filtered
-    totalFilesChanged: allModifiedFiles.length, // total count, context ke liye
+    commits: commits.map((c: any) => {
+      const files = Array.from(new Set([
+        ...(Array.isArray(c.added) ? c.added : []),
+        ...(Array.isArray(c.modified) ? c.modified : []),
+        ...(Array.isArray(c.removed) ? c.removed : [])
+      ]));
+      return {
+        id: c.id,
+        message: c.message,
+        filesChanged: files.length > 0 ? files : (c.modified ?? []),
+        author: c.author ? {
+          name: c.author.name,
+          email: c.author.email,
+          username: c.author.username,
+        } : null,
+        coAuthors: parseCoAuthors(c.message),
+        timestamp: c.timestamp,
+        isBot: isBotAccount(c.author?.name, c.author?.email, c.author?.username),
+      };
+    }),
+    filesChanged: relevantFiles.slice(0, 5), // top 5 relevant files for concise context
+    totalFilesChanged: allModifiedFiles.length, // total changed file count
   };
 }
 
@@ -94,7 +109,7 @@ function normalizePullRequest(payload: any): CleanGithubEvent {
   return {
     provider: "github",
     eventType: "pull_request",
-    action: payload.action, // opened, closed, merged, etc.
+    action: payload.action, // opened, closed, merged, synchronize, etc.
     repository: payload.repository?.full_name ?? payload.repository?.name ?? 'unknown',
     author,
     authorEmail,
@@ -104,6 +119,7 @@ function normalizePullRequest(payload: any): CleanGithubEvent {
     title: pr.title ?? '',
     body: pr.body ?? '',
     merged: pr.merged ?? false,
+    prNumber: pr.number ?? payload.number,
   };
 }
 
@@ -144,28 +160,63 @@ function normalizeIssueComment(payload: any): CleanGithubEvent {
   };
 }
 
-// ... baaki bhi isi pattern pe
+function normalizePRReview(payload: any): CleanGithubEvent {
+  const pr = payload.pull_request ?? {};
+  const review = payload.review ?? {};
+  const author = review.user?.login ?? payload.sender?.login ?? 'unknown';
+  const authorEmail = review.user?.email ?? payload.sender?.email ?? null;
+  return {
+    provider: "github",
+    eventType: "pull_request_review",
+    action: payload.action, // submitted, edited, dismissed
+    state: review.state, // approved, changes_requested, commented
+    repository: payload.repository?.full_name ?? payload.repository?.name ?? 'unknown',
+    author,
+    authorEmail,
+    authorRole: null,
+    isBot: isBotAccount(author, authorEmail, review.user?.login),
+    timestamp: review.submitted_at ?? new Date().toISOString(),
+    title: pr.title ?? '',
+    body: review.body ?? '',
+    prNumber: pr.number ?? payload.number,
+  };
+}
+
+function normalizePRReviewComment(payload: any): CleanGithubEvent {
+  const comment = payload.comment ?? {};
+  const pr = payload.pull_request ?? {};
+  const author = comment.user?.login ?? payload.sender?.login ?? 'unknown';
+  const authorEmail = comment.user?.email ?? payload.sender?.email ?? null;
+  return {
+    provider: "github",
+    eventType: "pull_request_review_comment",
+    action: payload.action,
+    repository: payload.repository?.full_name ?? payload.repository?.name ?? 'unknown',
+    author,
+    authorEmail,
+    authorRole: null,
+    isBot: isBotAccount(author, authorEmail, comment.user?.login),
+    timestamp: comment.created_at ?? new Date().toISOString(),
+    body: comment.body ?? '',
+    path: comment.path ?? '',
+    prNumber: pr.number ?? payload.number,
+  };
+}
 
 export function normalizeGithubEvent(rawPayload: object, eventType: string): CleanGithubEvent | null {
   switch (eventType) {
     case eventTypes.PUSH:
-      return normalizePush(rawPayload)
+      return normalizePush(rawPayload);
     case eventTypes.PULL_REQUEST:
-      return normalizePullRequest(rawPayload)
+      return normalizePullRequest(rawPayload);
     case eventTypes.ISSUES:
-      return normalizeIssue(rawPayload)
+      return normalizeIssue(rawPayload);
     case eventTypes.ISSUE_COMMENT:
       return normalizeIssueComment(rawPayload);
-    // case eventTypes.PULL_REQUEST_REVIEW:
-    //     return normalizePRReview(rawPayload)
-    // case eventTypes.PULL_REQUEST_REVIEW_COMMENT:
-    //     return normalizePRReviewComment(rawPayload)
-    // case eventTypes.RELEASE:
-    //     return normalizeRelease(rawPayload)
-    // case eventTypes.CREATE:
-    //     return normalizeCreate(rawPayload);
-    // case eventTypes.DELETE:
-    //     return normalizeDelete(rawPayload);
+    case eventTypes.PULL_REQUEST_REVIEW:
+      return normalizePRReview(rawPayload);
+    case eventTypes.PULL_REQUEST_REVIEW_COMMENT:
+      return normalizePRReviewComment(rawPayload);
     default:
       console.warn(`Unhandled GitHub event type: ${eventType}`);
       return null;

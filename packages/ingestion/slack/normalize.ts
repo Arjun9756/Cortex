@@ -23,7 +23,11 @@ const profileCache = new Map<string, SlackUserProfile>()
  * 3. If token is absent or API fails, queries PostgreSQL person_identity table.
  * 4. Fallback: returns minimal profile with raw userId as name.
  */
-export async function resolveSlackUserProfile(userId: string): Promise<SlackUserProfile> {
+export async function resolveSlackUserProfile(userId?: string | null): Promise<SlackUserProfile> {
+    if (!userId || userId === 'unknown') {
+        return { name: 'Unknown User', email: null, role: null, avatarUrl: null }
+    }
+
     if (profileCache.has(userId)) {
         return profileCache.get(userId)!
     }
@@ -107,32 +111,40 @@ export type CleanSlackEvent = {
     threadParentTs?: string | null
 }
 
-export async function normalizeMessage(payload: any): Promise<CleanSlackEvent> {
+export async function normalizeMessage(rawPayload: any): Promise<CleanSlackEvent> {
+    const payload = rawPayload.event ?? rawPayload
     const isThreadReply = !!payload.thread_ts && payload.thread_ts !== payload.ts
-    const profile = await resolveSlackUserProfile(payload.user)
+    const userId = payload.user ?? payload.user_id
+    const profile = await resolveSlackUserProfile(userId)
 
     return {
         provider: "slack",
         eventType: isThreadReply ? "thread_reply" : "message",
-        channel: payload.channel,
+        channel: payload.channel || 'general',
         author: profile.name,
         authorEmail: profile.email,
         authorRole: profile.role,
-        timestamp: payload.ts,
-        text: payload.text,
+        timestamp: payload.ts || new Date().toISOString(),
+        text: payload.text || '',
         threadParentTs: isThreadReply ? payload.thread_ts : null,
     }
 }
 
 export async function normalizeSlackEvent(rawPayload: any, eventType: string): Promise<CleanSlackEvent | null> {
+    const ev = rawPayload.event ?? rawPayload
+
     // P1-4: Drop pure bot messages (bot_message subtype, bot_id, USLACKBOT) to prevent junk person creation
     if (
+        ev.subtype === 'bot_message' ||
         rawPayload.subtype === 'bot_message' ||
+        Boolean(ev.bot_id) ||
         Boolean(rawPayload.bot_id) ||
+        ev.user === 'USLACKBOT' ||
         rawPayload.user === 'USLACKBOT' ||
+        Boolean(ev.bot_profile) ||
         Boolean(rawPayload.bot_profile)
     ) {
-        console.log(`[Slack] Dropping bot message (subtype: ${rawPayload.subtype}, bot_id: ${rawPayload.bot_id}, user: ${rawPayload.user})`);
+        console.log(`[Slack] Dropping bot message (subtype: ${ev.subtype || rawPayload.subtype}, bot_id: ${ev.bot_id || rawPayload.bot_id}, user: ${ev.user || rawPayload.user})`);
         return null;
     }
 

@@ -7,12 +7,12 @@ async function verifyAllQueriesInNode() {
 
   const testCases = [
     { name: 'Repo Bus Factor 1', query: 'which repo has bus factor 1' },
-    { name: 'Hinglish Repo Risk', query: 'konsi repo me risk jyda h sabse' },
+    { name: 'Repo Risk Overview', query: 'which repository has the highest risk score' },
     { name: 'English Repo Risk', query: 'Which repository has higher risk' },
     { name: 'SPOF Query', query: 'single point of failure repositories' },
-    { name: 'Person Departure Risk', query: 'what happens if Arjun Kumar leaves' },
-    { name: 'Person Contact Info', query: 'what is Arjun Kumar email and role' },
-    { name: 'Technology Usage', query: 'what technologies does Arjun Kumar use' },
+    { name: 'Person Departure Risk', query: 'what happens if Kishu Kumar leaves' },
+    { name: 'Person Contact Info', query: 'what is Kishu Kumar email and role' },
+    { name: 'Technology Usage', query: 'what technologies does Kishu Kumar use' },
     { name: 'Vector Architectural Decision', query: 'why was Redis replaced with Valkey' },
   ];
 

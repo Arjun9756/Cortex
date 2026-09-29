@@ -479,7 +479,10 @@ export async function runGoldenDatasetVerification(): Promise<{ pass: boolean; d
         console.log(`========================================================================\n`);
 
         const emptyRepoCases = ['billing-engine', 'inventory-sync-service', 'notification-service'];
-        const realRepoCases = ['customer-portal-next', 'payment-gateway-v2'];
+        const existingRealRepos = await sql<any[]>`SELECT repo_name FROM repo_metrics WHERE status != 'empty' AND commit_count > 0 ORDER BY commit_count DESC LIMIT 2`;
+        const realRepoCases = existingRealRepos.length >= 2
+            ? existingRealRepos.map(r => r.repo_name)
+            : ['customer-portal-next', 'payment-gateway-v2'];
         let repoSuitePassed = true;
 
         console.log(`Checking 3 Empty/Scaffold Repositories (Must collapse all dependent fields to zero/empty):`);

@@ -15,13 +15,13 @@ interface PersonSpec {
 
 const CANONICAL_PERSONAS: PersonSpec[] = [
   {
-    canonicalId: 'person_arjun_kumar',
-    displayName: 'Arjun Kumar',
-    email: 'arjun.kumar@company.com',
-    githubUsername: 'arjun9756',
+    canonicalId: 'person_kishu_kumar',
+    displayName: 'Kishu Kumar',
+    email: 'kishu.kumar@company.com',
+    githubUsername: 'kishu-dev',
     githubExtId: '1001',
     slackId: 'U0987654321',
-    jiraId: 'acc-arjun-001'
+    jiraId: 'acc-kishu-001'
   },
   {
     canonicalId: 'person_priya_sharma',
@@ -213,7 +213,7 @@ async function reconcileIdentities() {
       SET node.isBot = true, node.isActive = false
     `);
 
-    // Ensure human git commit accounts on Arjun9756/Cortex are active so commit volume is preserved
+    // Ensure human git commit accounts on kishu-dev/Cortex are active so commit volume is preserved
     await session.run(`
       MATCH (node:PERSON)
       WHERE node.name IN ['ghost', 'Unknown Contributor']

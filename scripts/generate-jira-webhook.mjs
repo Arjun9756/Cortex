@@ -18,8 +18,8 @@
 // const USER = {
 //     accountId: "557058:abc-def-123-456",
 //     accountType: "atlassian",
-//     displayName: "Arjun Kumar",
-//     emailAddress: "arjun@company.com",     // ✅ SAME EMAIL
+//     displayName: "Kishu Kumar",
+//     emailAddress: "kishu@company.com",     // ✅ SAME EMAIL
 //     active: true,
 //     timeZone: "Asia/Kolkata",
 //     locale: "en_US",
@@ -232,9 +232,9 @@ const ISSUES = [
         issueKeySuffix: "512",
         summary: "Document BullMQ retry/backoff pattern as a shared internal guide",
         description: "Multiple teams (Cortex, billing-service, notification-service) are now independently implementing the same BullMQ exponential backoff pattern — should be documented once and reused.",
-        reporterName: "Arjun Kumar",
-        reporterEmail: "arjun@company.com",
-        reporterAccountId: "acc-arjun-001",
+        reporterName: "Kishu Kumar",
+        reporterEmail: "kishu@company.com",
+        reporterAccountId: "acc-kishu-001",
         projectKey: "CORTEX",
         status: "To Do",
     },
@@ -326,8 +326,8 @@ async function runBatch() {
     console.log("========================================");
     console.log("\nNow verify:");
     console.log("  1. Neo4j: MATCH (p:PERSON) RETURN p.name, p.email, p.externalId");
-    console.log("     -> should now include Priya Sharma, Rohan Verma, Arjun Kumar");
-    console.log("     -> IMPORTANT: check whether Priya/Arjun's Jira-sourced node MERGED with");
+    console.log("     -> should now include Priya Sharma, Rohan Verma, Kishu Kumar");
+    console.log("     -> IMPORTANT: check whether Priya/Kishu's Jira-sourced node MERGED with");
     console.log("        their GitHub-sourced node, or created a SEPARATE node (jira:acc-priya-001");
     console.log("        vs github:998877665 are different externalId values by design — this is");
     console.log("        expected to create separate nodes unless cross-provider identity linking");

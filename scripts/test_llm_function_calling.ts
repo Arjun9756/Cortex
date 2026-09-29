@@ -6,10 +6,10 @@ async function testAutonomousLLMFunctionCalling() {
   console.log('=====================================================================\n');
 
   const testQueries = [
-    "konsi repo me risk jyda h sabse",
+    "which repository has the highest risk score",
     "which repo has bus factor 1",
-    "what is Arjun's email and role",
-    "what happens if Arjun leaves the team",
+    "what is Kishu's email and role",
+    "what happens if Kishu leaves the team",
     "why was Redis replaced with Valkey",
     "Who is Priya Sharma, what's her knowledge risk, and which repository is riskiest?"
   ];

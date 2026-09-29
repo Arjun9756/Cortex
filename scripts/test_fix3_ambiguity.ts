@@ -8,10 +8,10 @@ async function createDuplicateNode() {
     try {
         console.log('\n--- STEP 1: Creating duplicate PERSON node in Neo4j ---');
         const res = await session.run(`
-            MATCH (existing:PERSON {name: "Arjun Kumar"})
+            MATCH (existing:PERSON {name: "Kishu Kumar"})
             CREATE (dup:PERSON {
-                name: "Arjun Kumar",
-                email: "arjun.kumar.test@company.com",
+                name: "Kishu Kumar",
+                email: "kishu.kumar.test@company.com",
                 externalId: "person_test_duplicate_001",
                 role: "Software Engineer",
                 createdAt: timestamp()
@@ -23,7 +23,7 @@ async function createDuplicateNode() {
         // Verify count
         const verifyRes = await session.run(`
             MATCH (n:PERSON)
-            WHERE toLower(n.name) CONTAINS 'arjun'
+            WHERE toLower(n.name) CONTAINS 'kishu'
             RETURN n.name AS name, n.email AS email, n.externalId AS externalId
         `);
         console.log(`Verified ${verifyRes.records.length} matching nodes in Neo4j:`);
@@ -56,12 +56,12 @@ async function main() {
         await createDuplicateNode();
 
         console.log(`\n${'='.repeat(80)}`);
-        console.log(`TEST 3 (WITH AMBIGUITY): "Why did we switch to Valkey and what is Arjun's email?"`);
-        console.log('=' .repeat(80));
+        console.log(`TEST 3 (WITH AMBIGUITY): "Why did we switch to Valkey and what is Kishu's email?"`);
+        console.log('='.repeat(80));
 
         const tStart = Date.now();
         const result = await cortexAgent.invoke({
-            query: "Why did we switch to Valkey and what is Arjun's email?"
+            query: "Why did we switch to Valkey and what is Kishu's email?"
         }, { recursionLimit: 20 });
         const elapsed = Date.now() - tStart;
 

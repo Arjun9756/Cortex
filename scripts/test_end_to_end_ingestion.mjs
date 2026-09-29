@@ -6,18 +6,18 @@
  * AND includes an extensive suite of WORST-CASE / ADVERSARIAL edge cases:
  *
  * 🟢 HEALTHY / GOOD REPOSITORIES (Multi-Contributor, Resilient, Distributed Bus Factor >= 2-4, Low Risk < 50%):
- *   - core-platform-gateway (6 contributors: Arjun, Sarah, Michael, Amit, Rohan, Kavita)
- *   - payment-gateway-v2 (4 contributors: Devendra, Priya, Rohan, Arjun) - [Cross-trained & SPOF eliminated!]
+ *   - core-platform-gateway (6 contributors: Kishu, Sarah, Michael, Amit, Rohan, Kavita)
+ *   - payment-gateway-v2 (4 contributors: Devendra, Priya, Rohan, Kishu) - [Cross-trained & SPOF eliminated!]
  *   - auth-token-vault (4 contributors: Vikram, Rohan, Amit, Sarah) - [Cross-trained & SPOF eliminated!]
  *   - realtime-stream-engine (4 contributors: Neha, Michael, Kavita, Amit) - [Cross-trained & SPOF eliminated!]
  *   - notification-service (4 contributors: Rohan, Kavita, Priya, Sarah)
- *   - customer-portal-next (3 contributors: Sarah, Amina, Arjun)
- *   - billing-engine (4 contributors: Priya, Devendra, Arjun, Sarah)
- *   - inventory-sync-service (4 contributors: Arjun, Rohan, Kavita, Amina)
- *   - search-vector (3 contributors: Neha, Arjun, Kavita)
- *   - infra-k8s (3 contributors: Amit, Michael, Arjun)
+ *   - customer-portal-next (3 contributors: Sarah, Amina, Kishu)
+ *   - billing-engine (4 contributors: Priya, Devendra, Kishu, Sarah)
+ *   - inventory-sync-service (4 contributors: Kishu, Rohan, Kavita, Amina)
+ *   - search-vector (3 contributors: Neha, Kishu, Kavita)
+ *   - infra-k8s (3 contributors: Amit, Michael, Kishu)
  *   - crypto-settlement-engine (3 contributors: Devendra, Priya, Vikram) - [Cross-trained & SPOF eliminated!]
- *   - Cortex (3 contributors: Arjun, Vikram, Neha)
+ *   - Cortex (3 contributors: Kishu, Vikram, Neha)
  *
  * ⚪ EMPTY / SCAFFOLD REPOSITORIES (Bus Factor = 0, Risk = 0%, Status: 'empty'):
  *   - cortex-core (0 commits, scaffold)
@@ -62,7 +62,7 @@
  *      - Multilingual & emoji-heavy message text
  *
  * Cross-Provider Personas (matching across GitHub, Slack, Jira):
- *   1. Arjun Kumar (Principal Backend Lead)       - arjun.kumar@company.com    / Arjun9756    / U0987654321 / acc-arjun-001
+ *   1. Kishu Kumar (Principal Backend Lead)       - kishu.kumar@company.com    / kishu-dev    / U0987654321 / acc-kishu-001
  *   2. Priya Sharma (Staff Fintech Engineer)      - priya.sharma@company.com   / priyasharma  / U555PRIYA1  / acc-priya-002
  *   3. Vikram Patel (Principal Security Architect)- vikram.patel@company.com   / vikrampatel  / U999VIKRAM4 / acc-vikram-003
  *   4. Neha Gupta (Principal Streaming Architect) - neha.gupta@company.com    / nehagupta    / U111NEHA5   / acc-neha-004
@@ -113,11 +113,11 @@ const GITHUB_EVENTS = [
         payload: {
             ref: "refs/heads/main",
             repository: { id: 1313, name: "core-platform-gateway", full_name: "Cortex-Labs/core-platform-gateway" },
-            pusher: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
-            sender: { login: "Arjun9756", id: 1001, email: "arjun.kumar@company.com" },
+            pusher: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
+            sender: { login: "kishu-dev", id: 1001, email: "kishu.kumar@company.com" },
             head_commit: {
                 id: "cp1001a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7",
-                author: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
+                author: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
                 message: "CORE-101: Upgraded Express API gateway routing and OpenTelemetry distributed tracing in core-platform-gateway (commit cp1001a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7).",
                 timestamp: new Date(Date.now() - 3600000 * 24 * 7).toISOString(),
                 modified: ["src/server.ts", "src/tracing/opentelemetry.ts"],
@@ -126,7 +126,7 @@ const GITHUB_EVENTS = [
                 {
                     id: "cp1001a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7",
                     message: "CORE-101: Upgraded Express API gateway routing and OpenTelemetry distributed tracing in core-platform-gateway (commit cp1001a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7).",
-                    author: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
+                    author: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
                     modified: ["src/server.ts", "src/tracing/opentelemetry.ts"],
                 },
                 {
@@ -216,7 +216,7 @@ const GITHUB_EVENTS = [
             ],
         },
     },
-    // Cross-training commits on payment-gateway-v2: Priya Sharma, Rohan Verma, Arjun Kumar
+    // Cross-training commits on payment-gateway-v2: Priya Sharma, Rohan Verma, Kishu Kumar
     {
         eventType: "push",
         deliveryId: crypto.randomUUID(),
@@ -247,8 +247,8 @@ const GITHUB_EVENTS = [
                 },
                 {
                     id: "f1a2b3c4d5e60718293a4b5c6d7e8f9a0b1c2d05",
-                    message: "PAY-922: Implemented OpenTelemetry tracing and PCI audit log exporter in payment-gateway-v2 (commit f1a2b3c4d5e60718293a4b5c6d7e8f9a0b1c2d05) by Arjun Kumar.",
-                    author: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
+                    message: "PAY-922: Implemented OpenTelemetry tracing and PCI audit log exporter in payment-gateway-v2 (commit f1a2b3c4d5e60718293a4b5c6d7e8f9a0b1c2d05) by Kishu Kumar.",
+                    author: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
                     modified: ["internal/telemetry/tracer.go", "internal/audit/logger.go"],
                 },
             ],
@@ -481,8 +481,8 @@ const GITHUB_EVENTS = [
                 },
                 {
                     id: "ar1010a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e8",
-                    message: "PORTAL-508: Optimized dynamic route server-side rendering and Redis session caching in customer-portal-next (commit ar1010a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e8) by Arjun Kumar.",
-                    author: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
+                    message: "PORTAL-508: Optimized dynamic route server-side rendering and Redis session caching in customer-portal-next (commit ar1010a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e8) by Kishu Kumar.",
+                    author: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
                     modified: ["app/api/auth/[...nextauth]/route.ts", "lib/redis.ts"],
                 },
             ],
@@ -522,8 +522,8 @@ const GITHUB_EVENTS = [
                 },
                 {
                     id: "b7e2f91a4c3d8056e1f2a9b8c7d6e5f4a3b2c1d3",
-                    message: "BILL-212: Added distributed transaction lock manager in billing-engine (commit b7e2f91a4c3d8056e1f2a9b8c7d6e5f4a3b2c1d3) by Arjun Kumar.",
-                    author: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
+                    message: "BILL-212: Added distributed transaction lock manager in billing-engine (commit b7e2f91a4c3d8056e1f2a9b8c7d6e5f4a3b2c1d3) by Kishu Kumar.",
+                    author: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
                     modified: ["services/lock/distributedLock.ts"],
                 },
                 {
@@ -545,11 +545,11 @@ const GITHUB_EVENTS = [
         payload: {
             ref: "refs/heads/main",
             repository: { id: 1111, name: "inventory-sync-service", full_name: "Cortex-Labs/inventory-sync-service" },
-            pusher: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
-            sender: { login: "Arjun9756", id: 1001, email: "arjun.kumar@company.com" },
+            pusher: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
+            sender: { login: "kishu-dev", id: 1001, email: "kishu.kumar@company.com" },
             head_commit: {
                 id: "a3b4c5d6e7f8091a2b3c4d5e6f7a8b9c0d1e2f01",
-                author: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
+                author: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
                 message: "INV-201: Configured RabbitMQ dead-letter exchange and Redis distributed locks in inventory-sync-service (commit a3b4c5d6e7f8091a2b3c4d5e6f7a8b9c0d1e2f01).",
                 timestamp: new Date(Date.now() - 3600000 * 24 * 5).toISOString(),
                 modified: ["src/queues/rabbitmq.ts", "src/locks/redisLock.ts"],
@@ -558,7 +558,7 @@ const GITHUB_EVENTS = [
                 {
                     id: "a3b4c5d6e7f8091a2b3c4d5e6f7a8b9c0d1e2f01",
                     message: "INV-201: Configured RabbitMQ dead-letter exchange and Redis distributed locks in inventory-sync-service (commit a3b4c5d6e7f8091a2b3c4d5e6f7a8b9c0d1e2f01).",
-                    author: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
+                    author: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
                     modified: ["src/queues/rabbitmq.ts", "src/locks/redisLock.ts"],
                 },
                 {
@@ -632,12 +632,12 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             ref: "refs/heads/main",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
-            pusher: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
-            sender: { login: "Arjun9756", id: 1001, email: "arjun.kumar@company.com" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
+            pusher: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
+            sender: { login: "kishu-dev", id: 1001, email: "kishu.kumar@company.com" },
             head_commit: {
                 id: "a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e",
-                author: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
+                author: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
                 message: "GRAPH-108: Migrated Redis driver to Valkey drop-in client (commit a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e) due to Redis Inc SSPL licensing changes.",
                 timestamp: new Date(Date.now() - 3600000 * 24 * 6).toISOString(),
                 modified: ["packages/database/redis.ts", "packages/graph/graph.service.ts"],
@@ -646,7 +646,7 @@ const GITHUB_EVENTS = [
                 {
                     id: "a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e",
                     message: "GRAPH-108: Migrated Redis driver to Valkey drop-in client (commit a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e) due to Redis Inc SSPL licensing changes.",
-                    author: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
+                    author: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
                     modified: ["packages/database/redis.ts", "packages/graph/graph.service.ts"],
                 },
                 {
@@ -700,9 +700,9 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             ref: "refs/tags/v2.5.0-rc1",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
-            pusher: { name: "Arjun Kumar", email: "arjun.kumar@company.com" },
-            sender: { login: "Arjun9756", id: 1001, email: "arjun.kumar@company.com" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
+            pusher: { name: "Kishu Kumar", email: "kishu.kumar@company.com" },
+            sender: { login: "kishu-dev", id: 1001, email: "kishu.kumar@company.com" },
             created: true,
             deleted: false,
             forced: false,
@@ -721,7 +721,7 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             ref: "refs/heads/main",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
             pusher: { name: "Vikram Patel", email: "vikram.patel@company.com" },
             sender: { login: "vikrampatel", id: 5005, email: "vikram.patel@company.com" },
             head_commit: {
@@ -750,7 +750,7 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             ref: "refs/heads/feature/anonymous-patch",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
             pusher: null,
             sender: null,
             head_commit: null,
@@ -780,7 +780,7 @@ const GITHUB_EVENTS = [
                 number: 14,
                 title: "CORE-101: Implement OpenTelemetry distributed trace context propagation",
                 body: "Injects traceparent headers across all downstream Go, Node.js, and Python microservices. Approved by Sarah Chen.",
-                user: { login: "Arjun9756", email: "arjun.kumar@company.com" },
+                user: { login: "kishu-dev", email: "kishu.kumar@company.com" },
                 created_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
                 merged_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
                 closed_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
@@ -1017,14 +1017,14 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             action: "closed",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
-            sender: { login: "Arjun9756", id: 1001, email: "arjun.kumar@company.com" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
+            sender: { login: "kishu-dev", id: 1001, email: "kishu.kumar@company.com" },
             pull_request: {
                 id: 991,
                 number: 991,
                 title: "CORE-991: Clock skew test PR with out-of-order timestamps",
                 body: "Merged timestamp was recorded 15 seconds earlier than created_at due to unsynchronized NTP runner clocks.",
-                user: { login: "Arjun9756", email: "arjun.kumar@company.com" },
+                user: { login: "kishu-dev", email: "kishu.kumar@company.com" },
                 created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
                 merged_at: new Date(Date.now() - (3600000 * 12 + 15000)).toISOString(), // 15 seconds BEFORE created_at!
                 closed_at: new Date(Date.now() - 3600000 * 12).toISOString(),
@@ -1047,8 +1047,8 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             action: "closed",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
-            sender: { login: "Arjun9756", id: 1001, email: "arjun.kumar@company.com" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
+            sender: { login: "kishu-dev", id: 1001, email: "kishu.kumar@company.com" },
             pull_request: {
                 id: 777,
                 number: 77,
@@ -1106,7 +1106,7 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             action: "closed",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
             sender: { login: "ghost", id: 101010 },
             pull_request: {
                 id: 666,
@@ -1135,14 +1135,14 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             action: "closed",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
-            sender: { login: "Arjun9756", id: 1001, email: "arjun.kumar@company.com" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
+            sender: { login: "kishu-dev", id: 1001, email: "kishu.kumar@company.com" },
             pull_request: {
                 id: 994,
                 number: 994,
                 title: "TEST-994: PR with corrupt date strings and malformed number strings",
                 body: "Stresses parseSafeDate and parseSafePositiveInt sanitization helpers.",
-                user: { login: "Arjun9756", email: "arjun.kumar@company.com" },
+                user: { login: "kishu-dev", email: "kishu.kumar@company.com" },
                 created_at: "not-a-valid-iso-date-string-xyz",
                 merged_at: new Date(Date.now() - 3600000 * 2).toISOString(),
                 closed_at: new Date(Date.now() - 3600000 * 2).toISOString(),
@@ -1191,7 +1191,7 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             action: "closed",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
             sender: { login: "renovate[bot]", id: 29139614 },
             pull_request: {
                 id: 302,
@@ -1321,7 +1321,7 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             action: "closed",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
             sender: { login: "github-actions[bot]", id: 41898282 },
             pull_request: {
                 id: 307,
@@ -1347,7 +1347,7 @@ const GITHUB_EVENTS = [
         deliveryId: crypto.randomUUID(),
         payload: {
             action: "closed",
-            repository: { id: 101, name: "Cortex", full_name: "Arjun9756/Cortex" },
+            repository: { id: 101, name: "Cortex", full_name: "kishu-dev/Cortex" },
             sender: { login: "custom-ci-auto", id: 991122 },
             pull_request: {
                 id: 308,
@@ -1377,10 +1377,10 @@ const JIRA_EVENTS = [
         issueKey: "CORE-101",
         eventType: "jira:issue_created",
         summary: "OpenTelemetry distributed tracing and Supavisor pooling in core-platform-gateway",
-        description: "Platform engineering team (Arjun Kumar, Sarah Chen, Michael Chen, Amit Shah, Rohan Verma, Kavita Reddy) unified API gateway routing with OpenTelemetry tracing, NGINX rate-limiting, and Supavisor DB pooling.",
-        reporterName: "Arjun Kumar",
-        reporterEmail: "arjun.kumar@company.com",
-        accountId: "acc-arjun-001",
+        description: "Platform engineering team (Kishu Kumar, Sarah Chen, Michael Chen, Amit Shah, Rohan Verma, Kavita Reddy) unified API gateway routing with OpenTelemetry tracing, NGINX rate-limiting, and Supavisor DB pooling.",
+        reporterName: "Kishu Kumar",
+        reporterEmail: "kishu.kumar@company.com",
+        accountId: "acc-kishu-001",
         projectKey: "CORE",
         status: "Done",
     },
@@ -1410,7 +1410,7 @@ const JIRA_EVENTS = [
         issueKey: "PAY-920",
         eventType: "jira:issue_created",
         summary: "[SPOF RESOLVED] Cross-train engineering team on payment-gateway-v2 architecture",
-        description: "Priya Sharma, Rohan Verma, and Arjun Kumar completed cross-training and committed code to payment-gateway-v2. The repository now has 4 active maintainers and Bus Factor >= 2.",
+        description: "Priya Sharma, Rohan Verma, and Kishu Kumar completed cross-training and committed code to payment-gateway-v2. The repository now has 4 active maintainers and Bus Factor >= 2.",
         reporterName: "Priya Sharma",
         reporterEmail: "priya.sharma@company.com",
         accountId: "acc-priya-002",
@@ -1487,7 +1487,7 @@ const JIRA_EVENTS = [
         issueKey: "PORTAL-501",
         eventType: "jira:issue_created",
         summary: "Next.js 14 and GraphQL Apollo schema federation in customer-portal-next",
-        description: "Sarah Chen, Amina Zahra, and Arjun Kumar developed responsive customer invoice portal with Next.js 14, TailwindCSS, Prisma, and GraphQL federation.",
+        description: "Sarah Chen, Amina Zahra, and Kishu Kumar developed responsive customer invoice portal with Next.js 14, TailwindCSS, Prisma, and GraphQL federation.",
         reporterName: "Sarah Chen",
         reporterEmail: "sarah.chen@company.com",
         accountId: "acc-sarah-006",
@@ -1498,7 +1498,7 @@ const JIRA_EVENTS = [
         issueKey: "BILL-204",
         eventType: "jira:issue_created",
         summary: "Stripe webhook idempotency key lock and double-entry ledger in billing-engine",
-        description: "Priya Sharma, Devendra Singh, Arjun Kumar, and Sarah Chen unified Stripe idempotency, double-entry ledger, and PDF invoice rendering.",
+        description: "Priya Sharma, Devendra Singh, Kishu Kumar, and Sarah Chen unified Stripe idempotency, double-entry ledger, and PDF invoice rendering.",
         reporterName: "Priya Sharma",
         reporterEmail: "priya.sharma@company.com",
         accountId: "acc-priya-002",
@@ -1509,10 +1509,10 @@ const JIRA_EVENTS = [
         issueKey: "INV-201",
         eventType: "jira:issue_created",
         summary: "RabbitMQ dead-letter retry exchange and catalog sync in inventory-sync-service",
-        description: "Arjun Kumar, Rohan Verma, Kavita Reddy, and Amina Zahra configured RabbitMQ message queues, Redis locks, and warehouse SKU synchronization.",
-        reporterName: "Arjun Kumar",
-        reporterEmail: "arjun.kumar@company.com",
-        accountId: "acc-arjun-001",
+        description: "Kishu Kumar, Rohan Verma, Kavita Reddy, and Amina Zahra configured RabbitMQ message queues, Redis locks, and warehouse SKU synchronization.",
+        reporterName: "Kishu Kumar",
+        reporterEmail: "kishu.kumar@company.com",
+        accountId: "acc-kishu-001",
         projectKey: "INV",
         status: "Done",
     },
@@ -1661,7 +1661,7 @@ const SLACK_EVENTS = [
     {
         channel: "C0100ENGINEERING",
         user: "U0987654321",
-        userDisplayName: "Arjun Kumar",
+        userDisplayName: "Kishu Kumar",
         text: "🎉 TEAM ANNOUNCEMENT: Our engineering resilience initiative is a complete success! Across payment-gateway-v2, auth-token-vault, and realtime-stream-engine, we have paired up and eliminated every single point of failure (SPOF). Company Bus Factor is now above 2.5 across all active repositories!",
     },
     {
@@ -1785,7 +1785,7 @@ const SLACK_EVENTS = [
     {
         channel: "C0100ENGINEERING",
         user: "U0987654321",
-        userDisplayName: "Arjun Kumar",
+        userDisplayName: "Kishu Kumar",
         subtype: "message_deleted",
         text: "",
         deleted_ts: (Date.now() / 1000 - 30).toFixed(6),

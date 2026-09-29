@@ -65,15 +65,16 @@ export async function resolvePersonContext(session: any, rawName: string, source
 
     // 1. Try PostgreSQL lookup (person_identity, canonical_persons, person_metrics)
     try {
+        const cleanRaw = raw.toLowerCase();
         const identities = await sql`
             SELECT canonical_person_id, display_name, username, email, external_id
             FROM person_identity
             WHERE source IN ${sql(readSources)}
               AND (canonical_person_id = ${raw}
-               OR toLower(display_name) = toLower(${raw})
-               OR toLower(username) = toLower(${raw})
-               OR toLower(email) = toLower(${raw})
-               OR toLower(external_id) = toLower(${raw}))
+               OR LOWER(display_name) = ${cleanRaw}
+               OR LOWER(username) = ${cleanRaw}
+               OR LOWER(email) = ${cleanRaw}
+               OR LOWER(external_id) = ${cleanRaw})
             LIMIT 5
         `;
 
@@ -103,7 +104,7 @@ export async function resolvePersonContext(session: any, rawName: string, source
                 SELECT person_name
                 FROM person_metrics
                 WHERE source IN ${sql(readSources)}
-                  AND toLower(person_name) = toLower(${raw})
+                  AND LOWER(person_name) = ${cleanRaw}
                 LIMIT 1
             `;
             const metric = metrics[0];
@@ -112,8 +113,8 @@ export async function resolvePersonContext(session: any, rawName: string, source
                 namesSet.add(primaryName);
             }
         }
-    } catch {
-        // DB lookup failure handled gracefully
+    } catch (dbErr: any) {
+        console.warn(`[KnowledgeRisk] DB identity lookup warning for ${raw}:`, dbErr?.message);
     }
 
     // 2. Query Neo4j nodes to find aliases / canonical ID if missing

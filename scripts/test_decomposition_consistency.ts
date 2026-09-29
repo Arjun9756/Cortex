@@ -3,7 +3,7 @@ dotenv.config();
 import { cortexAgent } from '../packages/agent/graph/workflow.js';
 import { createGroqChatCompletion } from '../packages/llm/providers/groq.js';
 
-const QUERY = "How many total repositories and technologies are there, which repos have a bus factor of 1, what is Priya Sharma's knowledge risk and what technologies does she use, why did we replace Redis with Valkey and when, and if Arjun Kumar leaves what breaks and who's the best successor?";
+const QUERY = "How many total repositories and technologies are there, which repos have a bus factor of 1, what is Priya Sharma's knowledge risk and what technologies does she use, why did we replace Redis with Valkey and when, and if Kishu Kumar leaves what breaks and who's the best successor?";
 
 async function runDecompositionOnly(modelName: string) {
     const response = await createGroqChatCompletion({
@@ -72,7 +72,7 @@ async function main() {
             hasPriyaTech: ans.toLowerCase().includes('redis') && ans.toLowerCase().includes('stripe'),
             hasValkeyReason: ans.toLowerCase().includes('valkey') && (ans.toLowerCase().includes('drop-in') || ans.toLowerCase().includes('replacement') || ans.toLowerCase().includes('benchmark')),
             hasValkeyWhen: ans.toLowerCase().includes('2026') || ans.toLowerCase().includes('august'),
-            hasArjunBreaks: ans.toLowerCase().includes('arjun') && (ans.toLowerCase().includes('cortex') || ans.toLowerCase().includes('graph-108') || ans.toLowerCase().includes('sole')),
+            hasKishuBreaks: ans.toLowerCase().includes('kishu') && (ans.toLowerCase().includes('cortex') || ans.toLowerCase().includes('graph-108') || ans.toLowerCase().includes('sole')),
             hasSuccessor: ans.toLowerCase().includes('successor')
         };
         console.log(`  📊 Verification Checklist:`, checks);

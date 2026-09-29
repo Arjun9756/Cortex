@@ -139,7 +139,7 @@ async function testQdrantVectorDB() {
 async function testAIChatRAG() {
     console.log('\n🤖 5. --- AI CHAT & GRAPH RAG SYNTHESIS TEST ---');
     const testQueries = [
-        "What is the knowledge risk for Arjun Kumar?",
+        "What is the knowledge risk for Kishu Kumar?",
         "Who is Priya Sharma and what work did she do on billing-service?",
     ];
 

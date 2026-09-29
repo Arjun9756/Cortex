@@ -34,13 +34,13 @@ async function testQuery(label: string, query: string) {
 
 async function checkAmbiguousNames() {
     console.log('\n' + '='.repeat(80));
-    console.log('PRE-CHECK: Finding PERSON nodes with "arjun" in the name');
+    console.log('PRE-CHECK: Finding PERSON nodes with "kishu" in the name');
     console.log('='.repeat(80));
     const session = driver.session();
     try {
-        const result = await session.run(`MATCH (n:PERSON) WHERE toLower(n.name) CONTAINS 'arjun' RETURN n.name AS name`);
+        const result = await session.run(`MATCH (n:PERSON) WHERE toLower(n.name) CONTAINS 'kishu' RETURN n.name AS name`);
         const names = result.records.map((r: any) => r.get('name'));
-        console.log(`Found ${names.length} PERSON nodes matching "arjun": ${JSON.stringify(names)}`);
+        console.log(`Found ${names.length} PERSON nodes matching "kishu": ${JSON.stringify(names)}`);
         return names;
     } finally {
         await session.close();
@@ -49,7 +49,7 @@ async function checkAmbiguousNames() {
 
 async function main() {
     // PRE-CHECK: Find ambiguous names for TEST 3
-    const arjunNames = await checkAmbiguousNames();
+    const kishuNames = await checkAmbiguousNames();
 
     // TEST 1: countByLabel
     await testQuery(
@@ -64,17 +64,17 @@ async function main() {
     );
 
     // TEST 3: Compound query with partial clarification
-    if (arjunNames.length >= 2) {
-        console.log('\n[TEST 3 SETUP] Multiple Arjun names found — testing compound clarification');
+    if (kishuNames.length >= 2) {
+        console.log('\n[TEST 3 SETUP] Multiple Kishu names found — testing compound clarification');
         await testQuery(
-            'TEST 3: Compound + Clarification — "Why did we switch to Valkey and what is Arjun\'s email?"',
-            "Why did we switch to Valkey and what is Arjun's email?"
+            'TEST 3: Compound + Clarification — "Why did we switch to Valkey and what is Kishu\'s email?"',
+            "Why did we switch to Valkey and what is Kishu's email?"
         );
     } else {
-        console.log('\n[TEST 3 SETUP] Only one Arjun found — testing with unambiguous name');
+        console.log('\n[TEST 3 SETUP] Only one Kishu found — testing with unambiguous name');
         await testQuery(
-            'TEST 3: Compound (no ambiguity) — "Why did we switch to Valkey and what is Arjun\'s email?"',
-            "Why did we switch to Valkey and what is Arjun's email?"
+            'TEST 3: Compound (no ambiguity) — "Why did we switch to Valkey and what is Kishu\'s email?"',
+            "Why did we switch to Valkey and what is Kishu's email?"
         );
     }
 

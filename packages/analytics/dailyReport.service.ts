@@ -44,11 +44,14 @@ export async function ensureDailyReportsTable() {
             CREATE TABLE IF NOT EXISTS daily_reports (
                 id SERIAL PRIMARY KEY,
                 source VARCHAR(255) NOT NULL,
-                report_date DATE UNIQUE NOT NULL,
+                report_date DATE NOT NULL,
                 html_content TEXT NOT NULL,
                 summary JSONB NOT NULL,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
+        `;
+        await sql`
+            CREATE UNIQUE INDEX IF NOT EXISTS daily_reports_source_date_idx ON daily_reports (source, report_date)
         `;
         await sql`
             CREATE INDEX IF NOT EXISTS daily_reports_date_idx ON daily_reports (report_date DESC)

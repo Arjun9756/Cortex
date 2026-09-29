@@ -28,13 +28,32 @@ export async function processSlackEvent(eventID: string) {
         // 3. Convert Into Text
         const cleanEventText = JSON.stringify(normalizedPayload)
 
-        // 4. Extract Entities and Relationships
-        const { entities, newEntities, relationships, newRelations, summary } = await extractFromEvent(cleanEventText , 'slack')
+        // 4. Extract Entities and Relationships with Deterministic Fast-Fallback
+        let entities: any[] = []
+        let newEntities: any[] = []
+        let relationships: any[] = []
+        let newRelations: any[] = []
+        let summary = ''
+
+        try {
+            const extracted = await extractFromEvent(cleanEventText, 'slack')
+            entities = extracted.entities || []
+            newEntities = extracted.newEntities || []
+            relationships = extracted.relationships || []
+            newRelations = extracted.newRelations || []
+            summary = extracted.summary || ''
+        } catch (llmErr: any) {
+            console.warn(`[Slack Ingestion] LLM extraction failed (${llmErr?.message}) — executing deterministic graph extraction fallback.`)
+            if (normalizedPayload.author && normalizedPayload.author !== 'unknown' && normalizedPayload.author !== 'Unknown User') {
+                entities.push({ name: normalizedPayload.author, type: 'PERSON' })
+            }
+            summary = `Slack message in #${normalizedPayload.channel || 'general'} by ${normalizedPayload.author || 'unknown'}: ${normalizedPayload.text || 'discussion'}`
+        }
 
         // 5. Resolve canonical identity and build person metadata
         const slackUserId = rawPayload.event?.user ?? rawPayload.user ?? rawPayload.event?.user_id
         const hasValidUser = Boolean(slackUserId && slackUserId !== 'unknown' && slackUserId !== 'USLACKBOT')
-        const authorName = (normalizedPayload.author && normalizedPayload.author !== 'unknown' && normalizedPayload.author !== 'slack_unknown') ? normalizedPayload.author : null
+        const authorName = (normalizedPayload.author && normalizedPayload.author !== 'unknown' && normalizedPayload.author !== 'Unknown User' && normalizedPayload.author !== 'slack_unknown') ? normalizedPayload.author : null
 
         let personMetadata: PersonMetadata[] = []
 
@@ -88,24 +107,28 @@ export async function processSlackEvent(eventID: string) {
             const allEntities = [...entities, ...newEntities.map((e: any) => { return { name: e.name, type: e.suggestedType } })]
             const allRelations = [...relationships, ...newRelations.map((r: any) => { return { from: r.from, to: r.to, type: r.suggestedType } })]
 
-            await upsertVector(crypto.randomUUID(), vectorEmbedding, {
+            // Deterministic UUID derived from eventID to prevent duplicate vectors on retry
+            const hash = crypto.createHash('md5').update(String(eventID)).digest('hex')
+            const stableVectorId = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`
+
+            await upsertVector(stableVectorId, vectorEmbedding, {
                 eventID,
                 source: event.source,
                 summary: effectiveSummary,
                 entities: allEntities,
                 relationships: allRelations,
                 provider: 'slack',
-                text:normalizedPayload.text,
-                author:normalizedPayload.author,
-                channel:normalizedPayload.channel,
-                timestamp:normalizedPayload.timestamp,
-                eventType:normalizedPayload.eventType
+                text: normalizedPayload.text,
+                author: normalizedPayload.author,
+                channel: normalizedPayload.channel,
+                timestamp: normalizedPayload.timestamp,
+                eventType: normalizedPayload.eventType
             })
         }
         console.log(`Event ${eventID} processed. Summary: ${effectiveSummary}`)
     }
     catch (error: any) {
-        console.log(`Error While Processing Slack Event`)
+        console.log(`Error While Processing Slack Event: ${error?.message}`)
         throw error
     }
 }
