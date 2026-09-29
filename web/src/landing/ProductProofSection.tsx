@@ -60,31 +60,34 @@ export const ProductProofSection: React.FC = () => {
   ];
 
   return (
-    <section id="proof" className="py-20 md:py-28 bg-[#0B0F14] relative border-t border-white/10 antialiased">
+    <section id="proof" className="py-12 md:py-16 bg-[#06090F] relative antialiased">
+      {/* Top gradient separator */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent" />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#12181F] border border-white/10 text-slate-300 text-xs font-mono mb-4">
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
+        <div className="text-center max-w-3xl mx-auto mb-8">
+          <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-mono mb-5">
+            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
             <span>Product Proof · Real Interface Views</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight font-sans">
-            Quantifiable engineering risk. Not opinions.
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight font-sans">
+            Quantifiable engineering risk.<br /><span className="gradient-text">Not opinions.</span>
           </h2>
-          <p className="mt-3 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-4 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
             Cortex parses git commits, PR review graphs, and issue discussions into deterministic risk metrics and grounded contextual search.
           </p>
         </div>
 
         {/* Tab Selection Navigation */}
         <div className="flex justify-center mb-8">
-          <div className="inline-flex p-1 rounded-lg bg-[#12181F] border border-white/10 max-w-full overflow-x-auto">
+          <div className="inline-flex p-1 rounded-lg bg-[#0D1117] border border-white/[0.06] max-w-full overflow-x-auto">
             <button
               onClick={() => setActiveTab('spof')}
               className={`px-4 sm:px-5 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'spof'
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -96,7 +99,7 @@ export const ProductProofSection: React.FC = () => {
               onClick={() => setActiveTab('departure')}
               className={`px-4 sm:px-5 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'departure'
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -108,7 +111,7 @@ export const ProductProofSection: React.FC = () => {
               onClick={() => setActiveTab('agent')}
               className={`px-4 sm:px-5 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'agent'
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -130,7 +133,7 @@ export const ProductProofSection: React.FC = () => {
             </div>
 
             {/* Simulated Address Bar */}
-            <div className="flex items-center space-x-2 px-3 py-1 bg-[#090D12] border border-white/5 rounded-md text-[11px] font-mono text-slate-400 w-72 sm:w-96 truncate">
+            <div className="flex items-center space-x-2 px-3 py-1 bg-[#090D12] border border-white/[0.04] rounded-md text-[11px] font-mono text-slate-400 w-72 sm:w-96 truncate">
               <Lock className="w-3 h-3 text-slate-500 shrink-0" />
               <span className="truncate">
                 {activeTab === 'spof' && 'https://cortex.internal/v1/metrics/bus-factor'}
@@ -145,18 +148,18 @@ export const ProductProofSection: React.FC = () => {
           </div>
 
           {/* Browser Window Body Content */}
-          <div className="p-6 sm:p-8 bg-[#12181F]">
+          <div className="p-6 sm:p-8 bg-[#0D1117]">
             
             {/* FRAME 1: REPO SPOF TABLE */}
             {activeTab === 'spof' && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/10 gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/[0.06] gap-3">
                   <div>
                     <div className="flex items-center space-x-2">
                       <h3 className="text-lg font-bold text-white font-sans">
                         Repository Bus Factor Matrix
                       </h3>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-blue-500/20">
                         Formula: Author Dispersion
                       </span>
                     </div>
@@ -167,7 +170,7 @@ export const ProductProofSection: React.FC = () => {
                   <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
                     <span>Export CSV</span>
                     <span>·</span>
-                    <span className="text-blue-400">View Cypher Query</span>
+                    <span className="text-indigo-400">View Cypher Query</span>
                   </div>
                 </div>
 
@@ -175,7 +178,7 @@ export const ProductProofSection: React.FC = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left font-mono text-xs">
                     <thead>
-                      <tr className="border-b border-white/10 text-slate-400 text-[11px]">
+                      <tr className="border-b border-white/[0.06] text-slate-400 text-[11px]">
                         <th className="pb-3 font-semibold">SERVICE</th>
                         <th className="pb-3 font-semibold">BUS FACTOR</th>
                         <th className="pb-3 font-semibold">PRIMARY MAINTAINER</th>
@@ -207,7 +210,7 @@ export const ProductProofSection: React.FC = () => {
                               <div className="flex justify-between text-[10px] text-slate-400">
                                 <span>{repo.commitsPct}% commits</span>
                               </div>
-                              <div className="h-1.5 w-full bg-[#0E131A] rounded-full overflow-hidden">
+                              <div className="h-1.5 w-full bg-[#0A0E16] rounded-full overflow-hidden">
                                 <div className={`h-full ${repo.barColor}`} style={{ width: `${repo.commitsPct}%` }} />
                               </div>
                             </div>
@@ -224,8 +227,8 @@ export const ProductProofSection: React.FC = () => {
                 </div>
 
                 {/* Plain-spoken takeaway */}
-                <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 text-xs text-slate-300 leading-relaxed flex items-start space-x-3">
-                  <div className="w-5 h-5 rounded bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="p-4 rounded-lg bg-[#0A0E16] border border-white/[0.06] text-xs text-slate-300 leading-relaxed flex items-start space-x-3">
+                  <div className="w-5 h-5 rounded bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                   </div>
                   <div>
@@ -241,7 +244,7 @@ export const ProductProofSection: React.FC = () => {
             {/* FRAME 2: DEPARTURE & SUCCESSOR SIMULATION */}
             {activeTab === 'departure' && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/10 gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/[0.06] gap-3">
                   <div>
                     <h3 className="text-lg font-bold text-white font-sans">
                       Departure Impact Simulation: Devendra Singh (Staff Engineer)
@@ -258,40 +261,40 @@ export const ProductProofSection: React.FC = () => {
 
                 {/* At-risk modules grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 space-y-2">
+                  <div className="p-4 rounded-lg bg-[#0A0E16] border border-white/[0.06] space-y-2">
                     <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">
                       Vulnerable Modules &amp; Repositories
                     </span>
                     <div className="space-y-1.5 text-xs font-mono">
-                      <div className="flex justify-between p-2 rounded bg-[#12181F] border border-white/5">
+                      <div className="flex justify-between p-2 rounded bg-[#0D1117] border border-white/[0.04]">
                         <span className="text-white">payment-gateway-v2</span>
                         <span className="text-rose-400">Sole Active Maintainer</span>
                       </div>
-                      <div className="flex justify-between p-2 rounded bg-[#12181F] border border-white/5">
+                      <div className="flex justify-between p-2 rounded bg-[#0D1117] border border-white/[0.04]">
                         <span className="text-white">pci-token-vault</span>
                         <span className="text-amber-400">84% Ownership</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 space-y-2">
+                  <div className="p-4 rounded-lg bg-[#0A0E16] border border-white/[0.06] space-y-2">
                     <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">
                       Associated Technologies &amp; Keys
                     </span>
                     <div className="flex flex-wrap gap-1.5 pt-1 text-xs font-mono">
-                      <span className="px-2 py-1 rounded bg-[#12181F] text-slate-300 border border-white/10">Go gRPC (50k TPS)</span>
-                      <span className="px-2 py-1 rounded bg-[#12181F] text-slate-300 border border-white/10">HashiCorp Vault</span>
-                      <span className="px-2 py-1 rounded bg-[#12181F] text-slate-300 border border-white/10">Stripe PCI-DSS</span>
-                      <span className="px-2 py-1 rounded bg-[#12181F] text-slate-300 border border-white/10">Valkey Cache</span>
+                      <span className="px-2 py-1 rounded bg-[#0D1117] text-slate-300 border border-white/[0.06]">Go gRPC (50k TPS)</span>
+                      <span className="px-2 py-1 rounded bg-[#0D1117] text-slate-300 border border-white/[0.06]">HashiCorp Vault</span>
+                      <span className="px-2 py-1 rounded bg-[#0D1117] text-slate-300 border border-white/[0.06]">Stripe PCI-DSS</span>
+                      <span className="px-2 py-1 rounded bg-[#0D1117] text-slate-300 border border-white/[0.06]">Valkey Cache</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Successor Recommendation */}
-                <div className="p-5 rounded-lg bg-[#0E131A] border border-blue-500/20 space-y-3">
+                <div className="p-5 rounded-lg bg-[#0A0E16] border border-blue-500/20 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs font-mono text-blue-400 font-semibold uppercase tracking-wider flex items-center space-x-2">
-                      <UserCheck className="w-4 h-4 text-blue-400" />
+                    <div className="text-xs font-mono text-indigo-400 font-semibold uppercase tracking-wider flex items-center space-x-2">
+                      <UserCheck className="w-4 h-4 text-indigo-400" />
                       <span>Recommended Successors (4-Factor Jaccard Match)</span>
                     </div>
                     <span className="text-[10px] font-mono text-slate-500">Deterministic Algorithm</span>
@@ -299,7 +302,7 @@ export const ProductProofSection: React.FC = () => {
 
                   <div className="space-y-2.5">
                     {/* Candidate 1 */}
-                    <div className="p-3 rounded-lg bg-[#12181F] border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="p-3 rounded-lg bg-[#0D1117] border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
                         <div className="flex items-center space-x-2">
                           <span className="text-sm font-semibold text-white font-mono">Priya Sharma</span>
@@ -313,13 +316,13 @@ export const ProductProofSection: React.FC = () => {
                         </p>
                       </div>
                       <div className="text-right shrink-0 font-mono">
-                        <div className="text-sm font-bold text-blue-400">38% Composite Match</div>
+                        <div className="text-sm font-bold text-indigo-400">38% Composite Match</div>
                         <div className="text-[10px] text-slate-500">Go, Vault, Postgres overlap</div>
                       </div>
                     </div>
 
                     {/* Candidate 2 */}
-                    <div className="p-3 rounded-lg bg-[#12181F] border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="p-3 rounded-lg bg-[#0D1117] border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
                         <div className="flex items-center space-x-2">
                           <span className="text-sm font-semibold text-white font-mono">Neha Gupta</span>
@@ -338,8 +341,8 @@ export const ProductProofSection: React.FC = () => {
                 </div>
 
                 {/* Plain-spoken takeaway */}
-                <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 text-xs text-slate-300 leading-relaxed flex items-start space-x-3">
-                  <div className="w-5 h-5 rounded bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="p-4 rounded-lg bg-[#0A0E16] border border-white/[0.06] text-xs text-slate-300 leading-relaxed flex items-start space-x-3">
+                  <div className="w-5 h-5 rounded bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                   </div>
                   <div>
@@ -355,7 +358,7 @@ export const ProductProofSection: React.FC = () => {
             {/* FRAME 3: GROUNDED AGENT Q&A */}
             {activeTab === 'agent' && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/10 gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/[0.06] gap-3">
                   <div>
                     <h3 className="text-lg font-bold text-white font-sans">
                       Grounded Codebase Search with Source Citations
@@ -364,14 +367,14 @@ export const ProductProofSection: React.FC = () => {
                       Queries graph topology and vector search in parallel. Returns answers backed by exact Git commits and Jira epics.
                     </p>
                   </div>
-                  <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-mono">
+                  <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-indigo-500/10 border border-blue-500/20 text-indigo-400 text-xs font-mono">
                     <Search className="w-3.5 h-3.5" />
                     <span>Exact Source Citations</span>
                   </div>
                 </div>
 
                 {/* Simulated Query Box */}
-                <div className="p-3.5 rounded-lg bg-[#0E131A] border border-white/10">
+                <div className="p-3.5 rounded-lg bg-[#0A0E16] border border-white/[0.06]">
                   <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
                     Leadership Query:
                   </span>
@@ -381,12 +384,12 @@ export const ProductProofSection: React.FC = () => {
                 </div>
 
                 {/* Execution Trace */}
-                <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 font-mono text-xs space-y-2">
-                  <div className="text-blue-400 font-semibold flex items-center space-x-2 text-[11px]">
+                <div className="p-4 rounded-lg bg-[#0A0E16] border border-white/[0.06] font-mono text-xs space-y-2">
+                  <div className="text-indigo-400 font-semibold flex items-center space-x-2 text-[11px]">
                     <span className="w-2 h-2 rounded-full bg-blue-400" />
                     <span>Graph &amp; Vector Execution Trace:</span>
                   </div>
-                  <div className="space-y-1 text-slate-400 pl-3 border-l border-white/10 text-[11px]">
+                  <div className="space-y-1 text-slate-400 pl-3 border-l border-white/[0.06] text-[11px]">
                     <div>1. <code className="text-slate-200">vector_search("ClickHouse migration rationale")</code> → Retrieved ADR-014 from Slack #data-streaming</div>
                     <div>2. <code className="text-slate-200">{"graph_cypher(\"MATCH (p:Person)-[:AUTHORED]->(c:Commit)-[:TOUCHES]->(:Repo {name: 'realtime-stream'})\")"}</code> → Retrieved Commit d2e3f4a</div>
                     <div>3. <code className="text-slate-200">jira_lookup("STREAM-401")</code> → Epic status: Done by Neha Gupta</div>
@@ -394,7 +397,7 @@ export const ProductProofSection: React.FC = () => {
                 </div>
 
                 {/* Grounded Result Box */}
-                <div className="p-5 rounded-lg bg-[#0E131A] border border-white/10 space-y-3">
+                <div className="p-5 rounded-lg bg-[#0A0E16] border border-white/[0.06] space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-white">
                       Migration Rationale &amp; Author Lineage
@@ -404,24 +407,24 @@ export const ProductProofSection: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
-                    The migration was led by <strong className="text-white">Neha Gupta</strong> (Lead Data Engineer) under Jira ticket <code className="text-blue-400 font-mono">STREAM-401</code> to resolve 75% disk storage bloat. Elasticsearch index compaction issues were eliminated by switching to ClickHouse columnar compression, reducing query latency from 340ms to 45ms for realtime streaming dashboards.
+                    The migration was led by <strong className="text-white">Neha Gupta</strong> (Lead Data Engineer) under Jira ticket <code className="text-indigo-400 font-mono">STREAM-401</code> to resolve 75% disk storage bloat. Elasticsearch index compaction issues were eliminated by switching to ClickHouse columnar compression, reducing query latency from 340ms to 45ms for realtime streaming dashboards.
                   </p>
 
                   {/* Citations list */}
-                  <div className="pt-3 border-t border-white/10 space-y-2 font-mono text-xs">
+                  <div className="pt-3 border-t border-white/[0.06] space-y-2 font-mono text-xs">
                     <span className="text-[11px] text-slate-400 font-medium uppercase tracking-wider block">
                       Verifiable Source Links:
                     </span>
                     <div className="flex flex-wrap gap-2 text-[11px]">
-                      <span className="px-2.5 py-1 rounded bg-[#12181F] border border-white/10 text-slate-300 flex items-center space-x-1.5">
-                        <GitBranch className="w-3 h-3 text-blue-400" />
+                      <span className="px-2.5 py-1 rounded bg-[#0D1117] border border-white/[0.06] text-slate-300 flex items-center space-x-1.5">
+                        <GitBranch className="w-3 h-3 text-indigo-400" />
                         <span>Commit d2e3f4a (merged 2024-08-14)</span>
                       </span>
-                      <span className="px-2.5 py-1 rounded bg-[#12181F] border border-white/10 text-slate-300 flex items-center space-x-1.5">
+                      <span className="px-2.5 py-1 rounded bg-[#0D1117] border border-white/[0.06] text-slate-300 flex items-center space-x-1.5">
                         <ExternalLink className="w-3 h-3 text-purple-400" />
                         <span>Jira Epic STREAM-401</span>
                       </span>
-                      <span className="px-2.5 py-1 rounded bg-[#12181F] border border-white/10 text-slate-300 flex items-center space-x-1.5">
+                      <span className="px-2.5 py-1 rounded bg-[#0D1117] border border-white/[0.06] text-slate-300 flex items-center space-x-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-400" />
                         <span>Slack #data-streaming (thread 1892)</span>
                       </span>
@@ -430,8 +433,8 @@ export const ProductProofSection: React.FC = () => {
                 </div>
 
                 {/* Plain-spoken takeaway */}
-                <div className="p-4 rounded-lg bg-[#0E131A] border border-white/10 text-xs text-slate-300 leading-relaxed flex items-start space-x-3">
-                  <div className="w-5 h-5 rounded bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="p-4 rounded-lg bg-[#0A0E16] border border-white/[0.06] text-xs text-slate-300 leading-relaxed flex items-start space-x-3">
+                  <div className="w-5 h-5 rounded bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                   </div>
                   <div>

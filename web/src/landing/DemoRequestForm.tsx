@@ -148,7 +148,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
 
   if (submitted) {
     return (
-      <div className="p-8 sm:p-10 rounded-2xl bg-[#12181F] border border-white/10 text-center space-y-6">
+      <div className="p-8 sm:p-10 rounded-2xl bg-[#0D1117] border border-white/[0.06] text-center space-y-6">
         <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
           <CheckCircle2 className="w-8 h-8 text-emerald-400" />
         </div>
@@ -163,22 +163,22 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
         </div>
 
         {/* Next Steps Box */}
-        <div className="p-5 rounded-xl bg-[#0E131A] border border-white/10 text-left space-y-3 max-w-md mx-auto text-xs font-mono">
+        <div className="p-5 rounded-xl bg-[#0A0E16] border border-white/[0.06] text-left space-y-3 max-w-md mx-auto text-xs font-mono">
           <div className="text-slate-400 uppercase tracking-wider font-semibold text-[11px] flex items-center space-x-2">
-            <Clock className="w-3.5 h-3.5 text-blue-400" />
+            <Clock className="w-3.5 h-3.5 text-indigo-400" />
             <span>Next Steps:</span>
           </div>
           <ul className="space-y-2 text-slate-300">
             <li className="flex items-start space-x-2">
-              <span className="text-blue-400 font-bold">1.</span>
+              <span className="text-indigo-400 font-bold">1.</span>
               <span>Our founding engineering team will review your {formData.teamSize} setup context.</span>
             </li>
             <li className="flex items-start space-x-2">
-              <span className="text-blue-400 font-bold">2.</span>
+              <span className="text-indigo-400 font-bold">2.</span>
               <span>We will reply to <strong className="text-white">{formData.workEmail}</strong> within 24 hours with an invitation link.</span>
             </li>
             <li className="flex items-start space-x-2">
-              <span className="text-blue-400 font-bold">3.</span>
+              <span className="text-indigo-400 font-bold">3.</span>
               <span>We'll provide your VPC Docker Compose / Helm deployment bundle.</span>
             </li>
           </ul>
@@ -190,9 +190,9 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
             href="https://cal.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center space-x-2 px-5 py-3 rounded-xl bg-[#1E2630] hover:bg-[#25303D] text-slate-200 hover:text-white border border-white/10 text-xs font-mono font-semibold transition-all w-full"
+            className="inline-flex items-center justify-center space-x-2 px-5 py-3 rounded-xl bg-[#1E2630] hover:bg-[#25303D] text-slate-200 hover:text-white border border-white/[0.06] text-xs font-mono font-semibold transition-all w-full"
           >
-            <Calendar className="w-4 h-4 text-blue-400" />
+            <Calendar className="w-4 h-4 text-indigo-400" />
             <span>Optional: Reserve 30-min slot directly on Cal.com</span>
           </a>
         </div>
@@ -217,7 +217,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-            Full Name <span className="text-blue-400">*</span>
+            Full Name <span className="text-indigo-400">*</span>
           </label>
           <input
             type="text"
@@ -226,10 +226,10 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
             value={formData.fullName}
             onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
             onBlur={() => handleBlur('fullName')}
-            className={`w-full px-3.5 py-2.5 bg-[#0E131A] border rounded-lg text-white text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+            className={`w-full px-3.5 py-2.5 bg-[#0A0E16] border rounded-lg text-white text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
               touched.fullName && errors.fullName
                 ? 'border-rose-500/60 focus:border-rose-500'
-                : 'border-white/10 focus:border-blue-500'
+                : 'border-white/[0.06] focus:border-blue-500'
             }`}
           />
           {touched.fullName && errors.fullName && (
@@ -239,7 +239,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
 
         <div>
           <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-            Work Email <span className="text-blue-400">*</span>
+            Work Email <span className="text-indigo-400">*</span>
           </label>
           <input
             type="email"
@@ -248,10 +248,10 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
             value={formData.workEmail}
             onChange={(e) => setFormData({ ...formData, workEmail: e.target.value })}
             onBlur={() => handleBlur('workEmail')}
-            className={`w-full px-3.5 py-2.5 bg-[#0E131A] border rounded-lg text-white text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+            className={`w-full px-3.5 py-2.5 bg-[#0A0E16] border rounded-lg text-white text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
               touched.workEmail && errors.workEmail
                 ? 'border-rose-500/60 focus:border-rose-500'
-                : 'border-white/10 focus:border-blue-500'
+                : 'border-white/[0.06] focus:border-blue-500'
             }`}
           />
           {touched.workEmail && errors.workEmail ? (
@@ -268,7 +268,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-            Company / Organization <span className="text-blue-400">*</span>
+            Company / Organization <span className="text-indigo-400">*</span>
           </label>
           <input
             type="text"
@@ -277,10 +277,10 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
             value={formData.company}
             onChange={(e) => setFormData({ ...formData, company: e.target.value })}
             onBlur={() => handleBlur('company')}
-            className={`w-full px-3.5 py-2.5 bg-[#0E131A] border rounded-lg text-white text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+            className={`w-full px-3.5 py-2.5 bg-[#0A0E16] border rounded-lg text-white text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
               touched.company && errors.company
                 ? 'border-rose-500/60 focus:border-rose-500'
-                : 'border-white/10 focus:border-blue-500'
+                : 'border-white/[0.06] focus:border-blue-500'
             }`}
           />
           {touched.company && errors.company && (
@@ -295,7 +295,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
           <select
             value={formData.role}
             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-            className="w-full px-3.5 py-2.5 bg-[#0E131A] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+            className="w-full px-3.5 py-2.5 bg-[#0A0E16] border border-white/[0.06] rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
           >
             <option value="VP of Engineering">VP of Engineering</option>
             <option value="Chief Technology Officer">Chief Technology Officer</option>
@@ -317,7 +317,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
           <select
             value={formData.teamSize}
             onChange={(e) => setFormData({ ...formData, teamSize: e.target.value })}
-            className="w-full px-3.5 py-2.5 bg-[#0E131A] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+            className="w-full px-3.5 py-2.5 bg-[#0A0E16] border border-white/[0.06] rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
           >
             <option value="1–25 engineers">1–25 engineers</option>
             <option value="26–50 engineers">26–50 engineers</option>
@@ -334,7 +334,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
           <select
             value={formData.trigger}
             onChange={(e) => setFormData({ ...formData, trigger: e.target.value })}
-            className="w-full px-3.5 py-2.5 bg-[#0E131A] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+            className="w-full px-3.5 py-2.5 bg-[#0A0E16] border border-white/[0.06] rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
           >
             <option value="Key engineer departure / turnover risk">Key engineer departure / turnover risk</option>
             <option value="Hiring freeze / team efficiency">Hiring freeze / team efficiency</option>
@@ -360,8 +360,8 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
                 onClick={() => handleStackToggle(tool)}
                 className={`px-3 py-2 rounded-lg text-xs font-mono font-medium border text-center transition-all cursor-pointer ${
                   isChecked
-                    ? 'bg-blue-600/20 border-blue-500/60 text-white font-semibold'
-                    : 'bg-[#0E131A] border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20'
+                    ? 'bg-indigo-600/20 border-blue-500/60 text-white font-semibold'
+                    : 'bg-[#0A0E16] border-white/[0.06] text-slate-400 hover:text-slate-200 hover:border-white/[0.12]'
                 }`}
               >
                 {tool}
@@ -387,7 +387,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
           placeholder="e.g. We have ~18 Go microservices on AWS EKS and want to identify bus factor vulnerabilities before Q4 roadmap planning..."
           value={formData.message}
           onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-          className="w-full px-3.5 py-2.5 bg-[#0E131A] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
+          className="w-full px-3.5 py-2.5 bg-[#0A0E16] border border-white/[0.06] rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
         />
       </div>
 
@@ -398,7 +398,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
             type="checkbox"
             checked={formData.consent}
             onChange={(e) => setFormData({ ...formData, consent: e.target.checked })}
-            className="mt-0.5 rounded bg-[#0E131A] border-white/20 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+            className="mt-0.5 rounded bg-[#0A0E16] border-white/20 text-blue-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
           />
           <span className="text-xs text-slate-300 leading-normal">
             I consent to receiving follow-up communication regarding the Cortex self-hosted design partner program.
@@ -413,7 +413,7 @@ export const DemoRequestForm: React.FC<DemoRequestFormProps> = ({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full py-3.5 px-4 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-lg transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-600/20"
+        className="w-full py-3.5 px-4 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-blue-700 rounded-lg transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-600/20"
       >
         {isSubmitting ? (
           <>

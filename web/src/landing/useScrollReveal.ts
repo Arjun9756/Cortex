@@ -1,34 +1,78 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-/**
- * Custom hook that attaches an IntersectionObserver to elements with `.reveal-on-scroll`
- * and toggles `.is-revealed` when scrolled into view.
- */
-export function useScrollReveal() {
+export function useScrollReveal(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
   useEffect(() => {
-    const observerCallback: IntersectionObserverCallback = (entries, observer) => {
-      entries.forEach((entry) => {
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
         if (entry.isIntersecting) {
-          entry.target.classList.add('is-revealed');
-          observer.unobserve(entry.target);
+          setIsVisible(true);
+          observer.unobserve(element); // Only trigger once
         }
-      });
+      },
+      { threshold, rootMargin: '0px 0px -60px 0px' }
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [threshold]);
+
+  return { ref, isVisible };
+}
+
+export function useCountUp(target: number, duration: number = 2000, startOnVisible: boolean = true) {
+  const [count, setCount] = useState(0);
+  const [hasStarted, setHasStarted] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!startOnVisible) {
+      setHasStarted(true);
+      return;
+    }
+
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasStarted) {
+          setHasStarted(true);
+          observer.unobserve(element);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [startOnVisible, hasStarted]);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    let startTime: number;
+    let animationFrame: number;
+
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // cubic ease-out
+      setCount(Math.floor(eased * target));
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
     };
 
-    const observerOptions: IntersectionObserverInit = {
-      root: null,
-      rootMargin: '0px 0px -60px 0px',
-      threshold: 0.1,
-    };
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [hasStarted, target, duration]);
 
-    const observer = new IntersectionObserver(observerCallback, observerOptions);
-    const targets = document.querySelectorAll('.reveal-on-scroll');
-
-    targets.forEach((el) => observer.observe(el));
-
-    return () => {
-      targets.forEach((el) => observer.unobserve(el));
-      observer.disconnect();
-    };
-  }, []);
+  return { count, ref };
 }

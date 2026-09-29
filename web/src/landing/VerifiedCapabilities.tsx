@@ -48,11 +48,11 @@ export const VerifiedCapabilities: React.FC = () => {
     <div className="bg-[#0A0B0E] space-y-0 text-[#F5F5F7]">
       
       {/* CAPABILITY 1: INTERACTIVE KNOWLEDGE GRAPH */}
-      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/10 reveal-on-scroll">
+      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/[0.06] reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/10 text-[#3B82F6] text-xs font-mono mb-4">
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/[0.06] text-[#3B82F6] text-xs font-mono mb-4">
               <Network className="w-3.5 h-3.5 text-[#3B82F6]" />
               <span>Core Graph Engine</span>
               <span className="text-[#9497A6]">· Demo workspace</span>
@@ -66,8 +66,8 @@ export const VerifiedCapabilities: React.FC = () => {
           </div>
 
           {/* Interactive Graph Node Explorer Card */}
-          <div className="max-w-4xl mx-auto bg-[#12141A] border border-white/10 rounded-2xl p-8 sm:p-10 shadow-2xl relative overflow-hidden">
-            <div className="flex items-center justify-between pb-6 mb-8 border-b border-white/10">
+          <div className="max-w-4xl mx-auto bg-[#12141A] border border-white/[0.06] rounded-2xl p-8 sm:p-10 shadow-2xl relative overflow-hidden">
+            <div className="flex items-center justify-between pb-6 mb-8 border-b border-white/[0.06]">
               <div className="flex items-center space-x-2 text-xs font-mono text-[#9497A6]">
                 <span className="w-2 h-2 rounded-full bg-[#3B82F6] animate-ping" />
                 <span className="text-[#F5F5F7] font-semibold">Interactive Graph Traversal Subgraph</span>
@@ -85,7 +85,7 @@ export const VerifiedCapabilities: React.FC = () => {
                 className={`p-5 rounded-xl border transition-all duration-300 cursor-pointer text-center ${
                   hoveredNode === 'person' || !hoveredNode
                     ? 'bg-[#0A0B0E] border-[#3B82F6] shadow-[0_0_25px_rgba(59,130,246,0.3)] transform -translate-y-1'
-                    : 'bg-[#0A0B0E]/60 border-white/5 opacity-40'
+                    : 'bg-[#0A0B0E]/60 border-white/[0.04] opacity-40'
                 }`}
               >
                 <div className="w-10 h-10 rounded-xl bg-[#3B82F6]/10 border border-[#3B82F6]/30 text-[#3B82F6] mx-auto flex items-center justify-center mb-3">
@@ -103,7 +103,7 @@ export const VerifiedCapabilities: React.FC = () => {
                 className={`p-5 rounded-xl border transition-all duration-300 cursor-pointer text-center ${
                   hoveredNode === 'repo' || !hoveredNode
                     ? 'bg-[#0A0B0E] border-[#3B82F6] shadow-[0_0_25px_rgba(59,130,246,0.3)] transform -translate-y-1'
-                    : 'bg-[#0A0B0E]/60 border-white/5 opacity-40'
+                    : 'bg-[#0A0B0E]/60 border-white/[0.04] opacity-40'
                 }`}
               >
                 <div className="w-10 h-10 rounded-xl bg-[#3B82F6]/10 border border-[#3B82F6]/30 text-[#3B82F6] mx-auto flex items-center justify-center mb-3">
@@ -121,7 +121,7 @@ export const VerifiedCapabilities: React.FC = () => {
                 className={`p-5 rounded-xl border transition-all duration-300 cursor-pointer text-center ${
                   hoveredNode === 'tech' || !hoveredNode
                     ? 'bg-[#0A0B0E] border-[#3B82F6] shadow-[0_0_25px_rgba(59,130,246,0.3)] transform -translate-y-1'
-                    : 'bg-[#0A0B0E]/60 border-white/5 opacity-40'
+                    : 'bg-[#0A0B0E]/60 border-white/[0.04] opacity-40'
                 }`}
               >
                 <div className="w-10 h-10 rounded-xl bg-[#3B82F6]/10 border border-[#3B82F6]/30 text-[#3B82F6] mx-auto flex items-center justify-center mb-3">
@@ -139,7 +139,7 @@ export const VerifiedCapabilities: React.FC = () => {
                 className={`p-5 rounded-xl border transition-all duration-300 cursor-pointer text-center ${
                   hoveredNode === 'issue' || !hoveredNode
                     ? 'bg-[#0A0B0E] border-[#3B82F6] shadow-[0_0_25px_rgba(59,130,246,0.3)] transform -translate-y-1'
-                    : 'bg-[#0A0B0E]/60 border-white/5 opacity-40'
+                    : 'bg-[#0A0B0E]/60 border-white/[0.04] opacity-40'
                 }`}
               >
                 <div className="w-10 h-10 rounded-xl bg-[#3B82F6]/10 border border-[#3B82F6]/30 text-[#3B82F6] mx-auto flex items-center justify-center mb-3">
@@ -153,7 +153,7 @@ export const VerifiedCapabilities: React.FC = () => {
             </div>
 
             {/* Dynamic Graph Relation Description Box */}
-            <div className="mt-8 p-4 rounded-xl bg-[#0A0B0E] border border-white/10 text-xs font-mono leading-relaxed flex items-center justify-between">
+            <div className="mt-8 p-4 rounded-xl bg-[#0A0B0E] border border-white/[0.06] text-xs font-mono leading-relaxed flex items-center justify-between">
               <div>
                 <span className="text-[#3B82F6] font-bold">Graph Edge Relation: </span>
                 <span className="text-[#F5F5F7]">
@@ -171,11 +171,11 @@ export const VerifiedCapabilities: React.FC = () => {
       </section>
 
       {/* CAPABILITY 2: KNOWLEDGE RISK & BUS FACTOR */}
-      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/10 reveal-on-scroll">
+      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/[0.06] reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/10 text-[#3B82F6] text-xs font-mono mb-4">
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/[0.06] text-[#3B82F6] text-xs font-mono mb-4">
               <ShieldAlert className="w-3.5 h-3.5 text-[#3B82F6]" />
               <span>Real Graph Metric</span>
               <span className="text-[#9497A6]">· Demo workspace</span>
@@ -192,7 +192,7 @@ export const VerifiedCapabilities: React.FC = () => {
             {busFactorRepos.map((repo) => (
               <div
                 key={repo.id}
-                className="bg-[#12141A] border border-white/10 hover:border-[#3B82F6]/40 rounded-xl p-6 transition-all duration-300 shadow-xl flex flex-col justify-between group hover:-translate-y-1"
+                className="bg-[#12141A] border border-white/[0.06] hover:border-[#3B82F6]/40 rounded-xl p-6 transition-all duration-300 shadow-xl flex flex-col justify-between group hover:-translate-y-1"
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -204,7 +204,7 @@ export const VerifiedCapabilities: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="my-5 bg-[#0A0B0E] p-4 rounded-xl border border-white/10 flex items-center justify-between">
+                  <div className="my-5 bg-[#0A0B0E] p-4 rounded-xl border border-white/[0.06] flex items-center justify-between">
                     <div>
                       <div className="text-[11px] font-mono text-[#9497A6]">BUS FACTOR</div>
                       <div className="text-4xl font-extrabold text-[#F5F5F7] font-mono mt-0.5">
@@ -225,7 +225,7 @@ export const VerifiedCapabilities: React.FC = () => {
                       <span>Ownership Concentration</span>
                       <span>{repo.riskScore}%</span>
                     </div>
-                    <div className="h-2 w-full bg-[#0A0B0E] rounded-full overflow-hidden border border-white/10">
+                    <div className="h-2 w-full bg-[#0A0B0E] rounded-full overflow-hidden border border-white/[0.06]">
                       <div
                         className={`h-full rounded-full transition-all duration-1000 ${repo.barColor}`}
                         style={{ width: `${repo.riskScore}%` }}
@@ -234,7 +234,7 @@ export const VerifiedCapabilities: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-white/10">
+                <div className="pt-2 border-t border-white/[0.06]">
                   <button
                     onClick={() => toggleWhy(repo.id)}
                     className="w-full flex items-center justify-between text-xs font-mono text-[#3B82F6] hover:underline cursor-pointer py-1"
@@ -248,7 +248,7 @@ export const VerifiedCapabilities: React.FC = () => {
                   </button>
 
                   {expandedWhy[repo.id] && (
-                    <div className="mt-2 p-3 rounded-lg bg-[#0A0B0E] border border-white/10 text-xs text-[#9497A6] leading-relaxed">
+                    <div className="mt-2 p-3 rounded-lg bg-[#0A0B0E] border border-white/[0.06] text-xs text-[#9497A6] leading-relaxed">
                       {repo.reason}
                     </div>
                   )}
@@ -261,11 +261,11 @@ export const VerifiedCapabilities: React.FC = () => {
       </section>
 
       {/* CAPABILITY 3: PR RISK EVALUATION ENGINE */}
-      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/10 reveal-on-scroll">
+      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/[0.06] reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/10 text-[#3B82F6] text-xs font-mono mb-4">
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/[0.06] text-[#3B82F6] text-xs font-mono mb-4">
               <GitPullRequest className="w-3.5 h-3.5 text-[#3B82F6]" />
               <span>PR Risk Scoring Engine</span>
               <span className="text-[#9497A6]">· Demo workspace</span>
@@ -278,8 +278,8 @@ export const VerifiedCapabilities: React.FC = () => {
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto bg-[#12141A] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-white/10 gap-4">
+          <div className="max-w-4xl mx-auto bg-[#12141A] border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-white/[0.06] gap-4">
               <div>
                 <span className="text-xs font-mono text-[#9497A6] uppercase tracking-wider">GitHub Pull Request Event</span>
                 <h3 className="text-xl font-bold text-[#F5F5F7] font-mono mt-0.5">PR #142 · Add rate-limiting worker queue for Twilio SMS dispatcher</h3>
@@ -294,31 +294,31 @@ export const VerifiedCapabilities: React.FC = () => {
 
             {/* 5 Weighted Factor Breakdown Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 font-mono text-xs">
-              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/10">
+              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/[0.06]">
                 <div className="text-[#9497A6] mb-1">1. Subgraph Blast Radius (25%)</div>
                 <div className="text-[#3B82F6] font-bold">Medium (2 Hops Affected)</div>
                 <p className="text-[11px] text-[#9497A6] mt-1">notification-service → twilio-worker</p>
               </div>
 
-              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/10">
+              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/[0.06]">
                 <div className="text-[#9497A6] mb-1">2. Author Departure Risk (20%)</div>
                 <div className="text-amber-400 font-bold">High (Rohan Verma = 95%)</div>
                 <p className="text-[11px] text-[#9497A6] mt-1">Sole active worker contributor</p>
               </div>
 
-              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/10">
+              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/[0.06]">
                 <div className="text-[#9497A6] mb-1">3. Repository Bus Factor (25%)</div>
                 <div className="text-amber-400 font-bold">Fragile (Bus Factor = 0)</div>
                 <p className="text-[11px] text-[#9497A6] mt-1">notification-service</p>
               </div>
 
-              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/10">
+              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/[0.06]">
                 <div className="text-[#9497A6] mb-1">4. SPOF Files Touched (15%)</div>
                 <div className="text-[#F5F5F7] font-bold">2 Critical SPOF Files</div>
                 <p className="text-[11px] text-[#9497A6] mt-1">packages/queue/dispatcher.ts</p>
               </div>
 
-              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/10">
+              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/[0.06]">
                 <div className="text-[#9497A6] mb-1">5. Recent Incidents (15%)</div>
                 <div className="text-[#3B82F6] font-bold">1 Related Incident (30d)</div>
                 <p className="text-[11px] text-[#9497A6] mt-1">Twilio 429 Rate Limit Incident</p>
@@ -337,11 +337,11 @@ export const VerifiedCapabilities: React.FC = () => {
       </section>
 
       {/* CAPABILITY 4: DEPARTURE SIMULATION & CONTINUITY PLANNING */}
-      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/10 reveal-on-scroll">
+      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/[0.06] reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/10 text-[#3B82F6] text-xs font-mono mb-4">
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/[0.06] text-[#3B82F6] text-xs font-mono mb-4">
               <UserCheck className="w-3.5 h-3.5 text-[#3B82F6]" />
               <span>Continuity Planning</span>
               <span className="text-[#9497A6]">· Demo workspace</span>
@@ -354,8 +354,8 @@ export const VerifiedCapabilities: React.FC = () => {
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto bg-[#12141A] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-white/10 gap-4">
+          <div className="max-w-4xl mx-auto bg-[#12141A] border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-white/[0.06] gap-4">
               <div>
                 <span className="text-xs font-mono text-[#9497A6] uppercase tracking-wider">Simulated Departure Profile</span>
                 <h3 className="text-2xl font-bold text-[#F5F5F7] font-mono mt-0.5">Priya Sharma</h3>
@@ -369,31 +369,31 @@ export const VerifiedCapabilities: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/10 space-y-2">
+              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/[0.06] space-y-2">
                 <div className="text-xs font-mono text-[#9497A6]">AFFECTED CODEBASES</div>
                 <div className="flex flex-wrap gap-2 pt-1 font-mono text-xs">
-                  <span className="px-2.5 py-1 rounded-lg bg-[#12141A] border border-white/10 text-[#F5F5F7]">billing-service</span>
-                  <span className="px-2.5 py-1 rounded-lg bg-[#12141A] border border-white/10 text-[#F5F5F7]">billing-worker</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-[#12141A] border border-white/[0.06] text-[#F5F5F7]">billing-service</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-[#12141A] border border-white/[0.06] text-[#F5F5F7]">billing-worker</span>
                 </div>
               </div>
 
-              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/10 space-y-2">
+              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/[0.06] space-y-2">
                 <div className="text-xs font-mono text-[#9497A6]">AFFECTED DEPENDENCIES</div>
                 <div className="flex flex-wrap gap-2 pt-1 font-mono text-xs">
-                  <span className="px-2.5 py-1 rounded-lg bg-[#12141A] border border-white/10 text-[#3B82F6]">Stripe Idempotency API</span>
-                  <span className="px-2.5 py-1 rounded-lg bg-[#12141A] border border-white/10 text-[#3B82F6]">PostgreSQL Billing DB</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-[#12141A] border border-white/[0.06] text-[#3B82F6]">Stripe Idempotency API</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-[#12141A] border border-white/[0.06] text-[#3B82F6]">PostgreSQL Billing DB</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/10 font-mono text-xs text-[#F5F5F7] space-y-1">
+            <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/[0.06] font-mono text-xs text-[#F5F5F7] space-y-1">
               <span className="text-[#3B82F6] font-semibold">Graph Grounded Evidence:</span>
               <p className="text-[#9497A6]">
                 "Only Priya Sharma uses this" — <code className="text-[#F5F5F7]">billing-service</code>, <code className="text-[#F5F5F7]">BILL-204</code> commit <code className="text-[#F5F5F7]">b7e2f91a</code>
               </p>
             </div>
 
-            <div className="pt-2 border-t border-white/10 flex items-center space-x-2 text-xs font-mono text-[#9497A6]">
+            <div className="pt-2 border-t border-white/[0.06] flex items-center space-x-2 text-xs font-mono text-[#9497A6]">
               <CheckCircle2 className="w-4 h-4 text-[#3B82F6] shrink-0" />
               <span>Successor recommendation derived from shared commit graph traversal</span>
             </div>
@@ -403,11 +403,11 @@ export const VerifiedCapabilities: React.FC = () => {
       </section>
 
       {/* CAPABILITY 5: MULTI-TOOL REASONING & GROUNDED AI COPILOT */}
-      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/10 reveal-on-scroll">
+      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/[0.06] reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/10 text-[#3B82F6] text-xs font-mono mb-4">
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/[0.06] text-[#3B82F6] text-xs font-mono mb-4">
               <Sparkles className="w-3.5 h-3.5 text-[#3B82F6]" />
               <span>Decomposed Multi-Tool Reasoning</span>
               <span className="text-[#9497A6]">· Verified Agent Graph</span>
@@ -420,14 +420,14 @@ export const VerifiedCapabilities: React.FC = () => {
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto bg-[#12141A] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 font-mono text-xs sm:text-sm">
+          <div className="max-w-4xl mx-auto bg-[#12141A] border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 font-mono text-xs sm:text-sm">
             
             {/* User Prompt */}
             <div className="flex items-start space-x-3">
               <div className="w-8 h-8 rounded-xl bg-[#3B82F6]/20 border border-[#3B82F6]/40 flex items-center justify-center text-[#3B82F6] font-bold shrink-0">
                 U
               </div>
-              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/10 text-[#F5F5F7] font-semibold w-full">
+              <div className="bg-[#0A0B0E] p-4 rounded-xl border border-white/[0.06] text-[#F5F5F7] font-semibold w-full">
                 "Who is Priya Sharma, what's her knowledge risk, and what technologies does she use?"
               </div>
             </div>
@@ -450,7 +450,7 @@ export const VerifiedCapabilities: React.FC = () => {
               <div className="w-8 h-8 rounded-xl bg-[#3B82F6]/20 border border-[#3B82F6]/40 flex items-center justify-center text-[#3B82F6] shrink-0">
                 <Sparkles className="w-4.5 h-4.5 text-[#3B82F6]" />
               </div>
-              <div className="bg-[#0A0B0E] p-5 rounded-xl border border-white/10 space-y-4 w-full text-[#F5F5F7] leading-relaxed">
+              <div className="bg-[#0A0B0E] p-5 rounded-xl border border-white/[0.06] space-y-4 w-full text-[#F5F5F7] leading-relaxed">
                 <div>
                   <strong className="text-[#3B82F6]">1. Identity &amp; Role:</strong> Priya Sharma is a Software Engineer (<code className="text-[#F5F5F7]">priya.sharma@company.com</code>) who works on and contributes to the <code className="text-[#F5F5F7]">billing-service</code> repository. She authored commit <code className="text-[#F5F5F7]">b7e2f91a</code> and issue <code className="text-[#F5F5F7]">BILL-204</code>.
                 </div>
@@ -463,7 +463,7 @@ export const VerifiedCapabilities: React.FC = () => {
                   <strong className="text-[#3B82F6]">3. Technologies Used:</strong> The indexed system records zero additional unlinked technologies associated with her USES relation.
                 </div>
 
-                <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-[#9497A6]">
+                <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs text-[#9497A6]">
                   <button
                     onClick={() => setExpandedEvidence(!expandedEvidence)}
                     className="text-[#3B82F6] hover:underline flex items-center space-x-1 cursor-pointer"
@@ -475,7 +475,7 @@ export const VerifiedCapabilities: React.FC = () => {
                 </div>
 
                 {expandedEvidence && (
-                  <div className="p-3 rounded-lg bg-[#12141A] border border-white/10 text-[11px] text-[#9497A6] space-y-1">
+                  <div className="p-3 rounded-lg bg-[#12141A] border border-white/[0.06] text-[11px] text-[#9497A6] space-y-1">
                     <div><strong className="text-[#F5F5F7]">[Graph Entity]:</strong> name: "Priya Sharma", email: "priya.sharma@company.com", repo: "billing-service"</div>
                     <div><strong className="text-[#F5F5F7]">[Knowledge Risk]:</strong> totalRisk: 0.25, evidence: {`{"ownership":["commit b7e2f91a"],"expertise":["BILL-204"]}`}</div>
                   </div>
@@ -489,11 +489,11 @@ export const VerifiedCapabilities: React.FC = () => {
       </section>
 
       {/* CAPABILITY 6: CANONICAL IDENTITY RESOLUTION */}
-      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/10 reveal-on-scroll">
+      <section className="py-24 md:py-32 bg-[#0A0B0E] relative overflow-hidden border-t border-white/[0.06] reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/10 text-[#3B82F6] text-xs font-mono mb-4">
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#12141A] border border-white/[0.06] text-[#3B82F6] text-xs font-mono mb-4">
               <User className="w-3.5 h-3.5 text-[#3B82F6]" />
               <span>Multi-Provider Cross-Linking</span>
               <span className="text-[#9497A6]">· Demo workspace</span>
@@ -507,22 +507,22 @@ export const VerifiedCapabilities: React.FC = () => {
           </div>
 
           {/* Identity Resolution Visual Diagram */}
-          <div className="max-w-4xl mx-auto bg-[#12141A] border border-white/10 rounded-2xl p-8 sm:p-10 shadow-2xl">
+          <div className="max-w-4xl mx-auto bg-[#12141A] border border-white/[0.06] rounded-2xl p-8 sm:p-10 shadow-2xl">
             
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-              <div className="bg-[#0A0B0E] border border-white/10 rounded-xl p-4 text-center">
+              <div className="bg-[#0A0B0E] border border-white/[0.06] rounded-xl p-4 text-center">
                 <div className="text-xs font-mono text-[#9497A6] mb-1">GitHub Account</div>
                 <div className="text-sm font-bold text-[#F5F5F7] font-mono">@priyasharma</div>
                 <div className="text-[10px] text-[#3B82F6] mt-1 font-mono">Commits &amp; PRs</div>
               </div>
 
-              <div className="bg-[#0A0B0E] border border-white/10 rounded-xl p-4 text-center">
+              <div className="bg-[#0A0B0E] border border-white/[0.06] rounded-xl p-4 text-center">
                 <div className="text-xs font-mono text-[#9497A6] mb-1">Slack User ID</div>
                 <div className="text-sm font-bold text-[#F5F5F7] font-mono">U555PRIYA1</div>
                 <div className="text-[10px] text-[#3B82F6] mt-1 font-mono">Messages &amp; Threads</div>
               </div>
 
-              <div className="bg-[#0A0B0E] border border-white/10 rounded-xl p-4 text-center">
+              <div className="bg-[#0A0B0E] border border-white/[0.06] rounded-xl p-4 text-center">
                 <div className="text-xs font-mono text-[#9497A6] mb-1">Jira Email</div>
                 <div className="text-sm font-bold text-[#F5F5F7] font-mono">priya.sharma@company.com</div>
                 <div className="text-[10px] text-[#3B82F6] mt-1 font-mono">Tickets &amp; Assignments</div>

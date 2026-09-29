@@ -43,7 +43,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      <div className="relative w-full max-w-xl bg-[#12181F] border border-white/10 rounded-xl p-6 sm:p-8 shadow-2xl my-8">
+      <div className="relative w-full max-w-xl bg-[#0D1117] border border-white/[0.06] rounded-xl p-6 sm:p-8 shadow-2xl my-8">
         
         {/* Close Button */}
         <button
@@ -56,8 +56,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
         {/* Header */}
         <div className="mb-6 text-left">
-          <div className="inline-flex items-center space-x-2 px-2.5 py-1 rounded-md bg-[#0E131A] border border-white/10 text-blue-400 text-xs font-mono mb-3">
-            <Shield className="w-3.5 h-3.5 text-blue-400" />
+          <div className="inline-flex items-center space-x-2 px-2.5 py-1 rounded-md bg-[#0A0E16] border border-white/[0.06] text-indigo-400 text-xs font-mono mb-3">
+            <Shield className="w-3.5 h-3.5 text-indigo-400" />
             <span>Design Partner Program · $0 License Fee</span>
           </div>
           <h2 id="modal-title" className="text-2xl font-bold text-white font-sans tracking-tight">

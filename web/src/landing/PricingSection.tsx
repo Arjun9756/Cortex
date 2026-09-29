@@ -1,5 +1,9 @@
 import React from 'react';
-import { Check, ArrowRight, Shield, Clock, Server } from 'lucide-react';
+import { 
+  Check, 
+  ArrowRight, 
+  Shield
+} from 'lucide-react';
 
 interface PricingSectionProps {
   onOpenContact: (planDetails?: string) => void;
@@ -40,34 +44,35 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onOpenContact })
   ];
 
   return (
-    <section id="pricing" className="py-20 md:py-28 bg-[#0B0F14] relative border-t border-white/10 antialiased">
+    <section id="pricing" className="py-12 md:py-16 bg-[#06090F] relative antialiased">
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#12181F] border border-white/10 text-slate-300 text-xs font-mono mb-4">
-            <Shield className="w-3.5 h-3.5 text-blue-400" />
+        <div className="text-center max-w-3xl mx-auto mb-10">
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-mono mb-5">
+            <Shield className="w-3.5 h-3.5 text-indigo-400" />
             <span>Honest &amp; Transparent Access</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight font-sans">
-            $0 license fee for design partners.
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight font-sans">
+            $0 license fee for <span className="gradient-text">design partners.</span>
           </h2>
 
-          <p className="mt-3 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-4 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
             We are actively partnering with engineering organizations to refine bus factor models and succession simulation. No license fees, seat taxes, or credit cards required.
           </p>
         </div>
 
         {/* Pricing Cards Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto mb-14">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto mb-10">
           
           {/* Card 1: Active Design Partner Tier (Current) */}
-          <div className="p-8 rounded-xl bg-[#12181F] border border-blue-500/30 flex flex-col justify-between space-y-8 shadow-lg relative">
+          <div className="p-8 rounded-2xl bg-[#0D1117] border border-blue-500/40 flex flex-col justify-between space-y-8 shadow-2xl relative">
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <span className="px-2.5 py-1 rounded text-[11px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-blue-500/30 uppercase">
                     Active Design Partner Tier
                   </span>
                   <h3 className="text-2xl font-bold text-white font-sans mt-3">
@@ -75,39 +80,39 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onOpenContact })
                   </h3>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-white font-mono">$0</div>
-                  <div className="text-xs text-slate-400 font-mono">forever free license</div>
+                  <div className="text-3xl sm:text-4xl font-bold text-white font-mono">$0</div>
+                  <div className="text-xs text-slate-400 font-mono">perpetual free license</div>
                 </div>
               </div>
 
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
-                Deploy on your team's AWS, GCP, or Docker infrastructure. You maintain full ownership of all data, graph nodes, and database telemetry.
+                Deploy on your team's AWS, GCP, or Docker infrastructure. You maintain 100% data sovereignty of all graphs, models, and telemetry.
               </p>
 
               {/* Feature Checklist */}
-              <div className="space-y-3 font-sans text-xs sm:text-sm text-slate-300 pt-2 border-t border-white/5">
+              <div className="space-y-3 font-sans text-xs sm:text-sm text-slate-300 pt-3 border-t border-white/[0.04]">
                 <div className="flex items-start space-x-2.5">
-                  <Check className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <span>Unlimited repositories, microservices, and team members</span>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <Check className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                  <span>Continuous webhook ingestion for GitHub, Slack &amp; Jira</span>
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>Continuous scoped webhook ingestion (GitHub, Slack, Jira)</span>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <Check className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <span>Deterministic single-point-of-failure (SPOF) bus factor scoring</span>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <Check className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                  <span>Simulated departure impact &amp; 4-factor successor ranking</span>
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>Departure impact simulation &amp; 4-factor successor candidate ranking</span>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <Check className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                  <span>Grounded natural language search with exact commit &amp; issue citations</span>
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>Grounded natural language search with exact Git commit &amp; issue citations</span>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <Check className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <span>Direct 1-on-1 deployment walkthrough with founding engineers</span>
                 </div>
               </div>
@@ -115,7 +120,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onOpenContact })
 
             <button
               onClick={() => onOpenContact('Self-Hosted Community Edition')}
-              className="w-full py-3 px-4 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
+              className="w-full py-3 px-4 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-indigo-600/20"
             >
               <span>Request Design Partner Setup</span>
               <ArrowRight className="w-4 h-4 text-white" />
@@ -123,11 +128,11 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onOpenContact })
           </div>
 
           {/* Card 2: Enterprise Managed Cloud (Roadmap) */}
-          <div className="p-8 rounded-xl bg-[#0E131A] border border-white/10 flex flex-col justify-between space-y-8 opacity-90">
+          <div className="p-8 rounded-2xl bg-[#0A0E16] border border-white/[0.06] flex flex-col justify-between space-y-8 opacity-90">
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <span className="px-2.5 py-1 rounded text-[11px] font-mono font-medium bg-slate-800 text-slate-400 border border-slate-700 uppercase">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-medium bg-slate-800 text-slate-400 border border-slate-700 uppercase">
                     Future Roadmap Tier
                   </span>
                   <h3 className="text-2xl font-bold text-slate-200 font-sans mt-3">
@@ -135,106 +140,79 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onOpenContact })
                   </h3>
                 </div>
                 <div className="text-right">
-                  <div className="text-xl font-bold text-slate-400 font-mono">Custom</div>
-                  <div className="text-xs text-slate-500 font-mono">annual contract</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-slate-300 font-mono">Custom</div>
+                  <div className="text-xs text-slate-500 font-mono">annual SLA contract</div>
                 </div>
               </div>
 
               <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
-                For enterprise organizations that require Cortex-hosted single-tenant environments, compliance SLAs, and centralized identity governance.
+                Dedicated multi-region high-availability cluster with managed updates, SOC2 Type II compliance pack, and custom SSO/SAML integration.
               </p>
 
               {/* Feature Checklist */}
-              <div className="space-y-3 font-sans text-xs sm:text-sm text-slate-400 pt-2 border-t border-white/5">
+              <div className="space-y-3 font-sans text-xs sm:text-sm text-slate-400 pt-3 border-t border-white/[0.04]">
                 <div className="flex items-start space-x-2.5">
-                  <Clock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                  <span>Fully managed single-tenant dedicated cloud infrastructure</span>
+                  <Check className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                  <span>Everything in Community Edition</span>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <Clock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                  <span>Enterprise SAML / Okta SSO &amp; SCIM automated provisioning</span>
+                  <Check className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                  <span>Dedicated VPC peering or managed private link</span>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <Clock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                  <span>SOC2 Type II audit logging &amp; customizable data retention</span>
+                  <Check className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                  <span>Enterprise Okta / SAML 2.0 &amp; SCIM user provisioning</span>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <Clock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                  <span>99.9% platform availability uptime SLA</span>
+                  <Check className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                  <span>Automated weekly database backups &amp; multi-AZ failover</span>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <Clock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                  <span>Dedicated solutions architect &amp; priority 24/7 incident response</span>
+                  <Check className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                  <span>Guaranteed 99.9% uptime SLA &amp; dedicated Slack channel</span>
                 </div>
               </div>
             </div>
 
             <button
-              onClick={() => onOpenContact('Enterprise Managed Tier Waitlist')}
-              className="w-full py-3 px-4 text-sm font-semibold text-slate-300 hover:text-white bg-[#161B22] hover:bg-[#1E2630] border border-white/10 rounded-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+              onClick={() => onOpenContact('Enterprise Managed Cloud (Roadmap)')}
+              className="w-full py-3 px-4 text-sm font-semibold text-slate-300 hover:text-white bg-[#0D1117] hover:bg-[#151D28] border border-white/[0.08] rounded-xl transition-colors flex items-center justify-center space-x-2 cursor-pointer"
             >
               <span>Join Enterprise Waitlist</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
         </div>
 
-        {/* DETAILED BREAKDOWN: WHAT IS INCLUDED IN THE FREE TIER */}
-        <div className="max-w-5xl mx-auto p-6 sm:p-8 rounded-xl bg-[#12181F] border border-white/10 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/10 gap-2">
-            <div>
-              <span className="text-[11px] font-mono uppercase tracking-widest text-blue-400 font-semibold">
-                Transparent Feature Matrix
-              </span>
-              <h3 className="text-lg font-bold text-white font-sans mt-0.5">
-                What's included in the $0 Free Community Edition
-              </h3>
-            </div>
-            <div className="flex items-center space-x-2 text-xs font-mono text-emerald-400">
-              <span>✓ No seat limits</span>
-              <span>·</span>
-              <span>✓ No credit card</span>
-            </div>
+
+        {/* Detailed Feature Breakdown Categories */}
+        <div className="max-w-5xl mx-auto space-y-6">
+          <div className="text-center">
+            <h3 className="text-lg font-bold text-white font-sans">
+              Comprehensive Feature Breakdown
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Everything included in the Community Edition with zero limits.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {freeTierFeatures.map((group) => (
-              <div key={group.category} className="space-y-3">
-                <h4 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider">
-                  {group.category}
+            {freeTierFeatures.map((cat) => (
+              <div key={cat.category} className="p-6 rounded-2xl bg-[#0D1117] border border-white/[0.06] space-y-4">
+                <h4 className="text-sm font-bold text-white font-sans flex items-center space-x-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  <span>{cat.category}</span>
                 </h4>
-                <ul className="space-y-2 text-xs text-slate-400 leading-relaxed">
-                  {group.items.map((item) => (
-                    <li key={item} className="flex items-start space-x-2">
-                      <Check className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-                      <span>{item}</span>
+                <ul className="space-y-2.5 text-xs text-slate-300 font-sans">
+                  {cat.items.map((it, i) => (
+                    <li key={i} className="flex items-start space-x-2">
+                      <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                      <span>{it}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
           </div>
-
-          {/* Zero Infrastructure Cost Callout */}
-          <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs font-mono text-slate-400">
-            <div className="flex items-center space-x-2">
-              <Server className="w-4 h-4 text-blue-400 shrink-0" />
-              <span>
-                Runs comfortably within Neo4j Aura Free, Qdrant Cloud Free, and local/free LLM limits for small-to-mid engineering teams.
-              </span>
-            </div>
-            <button
-              onClick={() => onOpenContact('Free Tier Walkthrough')}
-              className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap cursor-pointer"
-            >
-              Learn about free cloud setup →
-            </button>
-          </div>
-        </div>
-
-        {/* Reassurance note */}
-        <div className="mt-10 text-center text-xs font-mono text-slate-500 max-w-xl mx-auto">
-          The Self-Hosted Community Edition will remain free and fully functional. We believe engineering knowledge graph primitives should be open and auditable.
         </div>
 
       </div>

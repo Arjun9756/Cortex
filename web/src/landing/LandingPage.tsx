@@ -48,6 +48,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+
+
   const openContactWithPlan = (planTitle?: string) => {
     if (planTitle) {
       setModalMessage(`Interested in: ${planTitle}`);
@@ -58,7 +60,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F14] text-[#F3F4F6] font-sans antialiased selection:bg-blue-600/30 selection:text-white">
+    <div className="min-h-screen bg-[#06090F] text-[#F0F2F5] font-sans antialiased selection:bg-indigo-600/30 selection:text-white">
       {/* 1. Navigation Header */}
       <Navbar 
         onOpenContact={() => setIsModalOpen(true)} 
@@ -97,50 +99,62 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchDemo }) => {
         <FaqSection />
 
         {/* 12. High-Conversion Final CTA & Embedded Setup Request Section */}
-        <section id="contact" className="py-20 md:py-28 bg-[#0B0F14] relative border-t border-white/10 antialiased">
+        <section id="contact" className="py-12 md:py-16 bg-[#06090F] relative antialiased">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-[#12181F] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl">
-              
-              <div className="text-center max-w-2xl mx-auto mb-8">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#0E131A] border border-white/10 text-blue-400 text-xs font-mono mb-4">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>Design Partner Program</span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white font-sans tracking-tight">
-                  Deploy Cortex on your infrastructure.
-                </h2>
-                <p className="mt-2 text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
-                  Schedule a 30-minute architecture walkthrough and receive custom Docker Compose or Kubernetes Helm manifests for your team's VPC.
-                </p>
+            <div className="glass-card p-6 sm:p-10 relative overflow-hidden">
+              {/* Background decoration */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl" />
               </div>
+              
+              <div className="relative z-10">
+                <div className="text-center max-w-2xl mx-auto mb-8">
+                  <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-mono mb-4">
+                    <Shield className="w-3.5 h-3.5" />
+                    <span>Design Partner Program</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white font-sans tracking-tight">
+                    Deploy Cortex on your infrastructure.
+                  </h2>
+                  <p className="mt-2 text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                    Schedule a 30-minute architecture walkthrough and receive custom Docker Compose or Kubernetes Helm manifests for your team's VPC.
+                  </p>
+                </div>
 
-              {/* Embedded High-UX Enterprise Demo Request Form */}
-              <DemoRequestForm source="Landing Page Bottom Section" />
-
+                {/* Embedded High-UX Enterprise Demo Request Form */}
+                <DemoRequestForm source="Landing Page Bottom Section" />
+              </div>
             </div>
           </div>
         </section>
       </main>
 
-      {/* 13. Institutional Footer with Canonical Docs & Invariant References */}
+      {/* 13. Footer */}
       <Footer onOpenContact={() => setIsModalOpen(true)} />
 
       {/* Mobile Sticky Bottom CTA Bar */}
-      {showMobileStickyCta && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-3 bg-[#0B0F14]/95 backdrop-blur-md border-t border-white/10 flex items-center justify-between gap-3 shadow-2xl">
+      <div 
+        className={`md:hidden fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ${
+          showMobileStickyCta 
+            ? 'translate-y-0 opacity-100' 
+            : 'translate-y-full opacity-0'
+        }`}
+      >
+        <div className="p-3 bg-[#06090F]/95 backdrop-blur-xl border-t border-white/[0.06] flex items-center justify-between gap-3 shadow-2xl">
           <div className="flex flex-col min-w-0 pl-1">
             <span className="text-xs font-semibold text-white truncate font-sans">Cortex Self-Hosted</span>
-            <span className="text-[10px] text-blue-400 font-mono">$0 License Fee · VPC</span>
+            <span className="text-[10px] text-indigo-400 font-mono">$0 License Fee · VPC</span>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shrink-0 flex items-center space-x-1.5 cursor-pointer shadow-sm"
+            className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shrink-0 flex items-center space-x-1.5 cursor-pointer shadow-sm shadow-indigo-500/20"
           >
             <span>Request Setup</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
-      )}
+      </div>
 
       {/* Enterprise Contact & Walkthrough Modal */}
       <ContactModal 

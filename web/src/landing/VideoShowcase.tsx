@@ -420,13 +420,13 @@ export const VideoShowcase: React.FC<VideoShowcaseProps> = ({
             setShowCenterPlay(false);
           }
         }}
-        className={`group relative w-full aspect-video rounded-xl overflow-hidden bg-[#090D12] border border-white/10 shadow-2xl focus-visible:ring-2 focus-visible:ring-blue-500 focus:outline-none transition-all duration-200 ${
+        className={`group relative w-full aspect-video rounded-xl overflow-hidden bg-[#090D12] border border-white/[0.06] shadow-2xl focus-visible:ring-2 focus-visible:ring-indigo-500 focus:outline-none transition-all duration-200 ${
           isFullscreen ? 'fixed inset-0 z-50 rounded-none max-w-none border-none' : ''
         }`}
       >
         {/* Subtle Ambient Back Glow */}
         <div 
-          className="absolute -inset-0.5 bg-blue-500/5 rounded-xl blur-lg pointer-events-none -z-10" 
+          className="absolute -inset-0.5 bg-indigo-500/5 rounded-xl blur-lg pointer-events-none -z-10" 
         />
 
         {/* Top Window Bezel Bar (Apple / Linear Showcase Style) */}
@@ -442,7 +442,7 @@ export const VideoShowcase: React.FC<VideoShowcaseProps> = ({
             </div>
 
             <div className="flex items-center space-x-2">
-              <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-md bg-[#12181F] border border-white/10 text-[10px] font-mono text-slate-300">
+              <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-md bg-[#0D1117] border border-white/[0.06] text-[10px] font-mono text-slate-300">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                 <span>Architecture Walkthrough</span>
               </span>

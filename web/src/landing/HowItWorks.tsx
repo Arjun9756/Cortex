@@ -93,31 +93,34 @@ const compositeScore =
   ];
 
   return (
-    <section id="how-it-works" className="py-20 md:py-28 bg-[#0B0F14] relative border-t border-white/10 antialiased">
+    <section id="how-it-works" className="py-12 md:py-16 bg-[#06090F] relative antialiased">
+      {/* Top gradient separator */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-[#12181F] border border-white/10 text-slate-300 text-xs font-mono mb-4">
-            <Cpu className="w-3.5 h-3.5 text-blue-400" />
+        <div className="text-center max-w-3xl mx-auto mb-10">
+          <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-mono mb-5">
+            <Cpu className="w-3.5 h-3.5 text-purple-400" />
             <span>Architecture &amp; Pipeline</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight font-sans">
-            How Cortex operates in production.
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight font-sans">
+            How Cortex operates <span className="gradient-text-blue">in production.</span>
           </h2>
 
-          <p className="mt-3 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-4 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
             From scoped read-only webhooks inside your VPC to a deterministic knowledge graph with verifiable evidence chains.
           </p>
         </div>
 
         {/* Minimal Visual SVG Pipeline Diagram */}
-        <div className="mb-14 p-6 sm:p-8 rounded-2xl bg-[#12181F] border border-white/10 overflow-x-auto">
+        <div className="mb-14 p-6 sm:p-8 rounded-2xl bg-[#0D1117] border border-white/[0.06] overflow-x-auto">
           <div className="min-w-[720px] max-w-5xl mx-auto">
             <div className="flex items-center justify-between text-xs font-mono text-slate-400 mb-3 px-2">
               <span>CUSTOMER INFRASTRUCTURE BOUNDARY (VPC)</span>
-              <span className="text-blue-400">DETERMINISTIC PIPELINE</span>
+              <span className="text-indigo-400">DETERMINISTIC PIPELINE</span>
             </div>
 
             <svg viewBox="0 0 960 160" className="w-full h-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -175,15 +178,15 @@ const compositeScore =
                   onClick={() => setActiveStage(stage.id)}
                   className={`w-full text-left p-5 rounded-xl border transition-all cursor-pointer flex flex-col space-y-2 ${
                     isActive
-                      ? 'bg-[#12181F] border-blue-500/40 shadow-lg'
-                      : 'bg-[#0E131A]/60 border-white/5 hover:border-white/15'
+                      ? 'bg-[#0D1117] border-blue-500/40 shadow-lg'
+                      : 'bg-[#0A0E16]/60 border-white/[0.04] hover:border-white/15'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-blue-400">
+                    <span className="text-xs font-mono font-bold text-indigo-400">
                       STAGE {stage.step}
                     </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-slate-300 border border-white/[0.06]">
                       {stage.badge}
                     </span>
                   </div>
@@ -201,14 +204,14 @@ const compositeScore =
           </div>
 
           {/* Right: Active Stage Deep-Dive & Code Spec */}
-          <div className="lg:col-span-7 bg-[#12181F] border border-white/10 rounded-2xl p-6 sm:p-8 space-y-6">
+          <div className="lg:col-span-7 bg-[#0D1117] border border-white/[0.06] rounded-2xl p-6 sm:p-8 space-y-6">
             {(() => {
               const current = stages.find(s => s.id === activeStage) || stages[0];
               return (
                 <>
-                  <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                  <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
                     <div className="space-y-1">
-                      <span className="text-xs font-mono text-blue-400 uppercase tracking-wider">
+                      <span className="text-xs font-mono text-indigo-400 uppercase tracking-wider">
                         Stage {current.step} Technical Specification
                       </span>
                       <h4 className="text-lg font-bold text-white font-sans">
@@ -220,8 +223,8 @@ const compositeScore =
                   {/* Technical Fact Matrix */}
                   <div className="space-y-3">
                     {current.technicalDetails.map((item, idx) => (
-                      <div key={idx} className="p-3.5 rounded-lg bg-[#0E131A] border border-white/5 space-y-1">
-                        <div className="text-[11px] font-mono text-blue-400 font-semibold">
+                      <div key={idx} className="p-3.5 rounded-lg bg-[#0A0E16] border border-white/[0.04] space-y-1">
+                        <div className="text-[11px] font-mono text-indigo-400 font-semibold">
                           {item.label}
                         </div>
                         <div className="text-xs text-slate-300 font-sans leading-relaxed">
@@ -235,13 +238,13 @@ const compositeScore =
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-mono text-slate-400 px-1">
                       <span className="flex items-center space-x-1.5">
-                        <Terminal className="w-3.5 h-3.5 text-blue-400" />
+                        <Terminal className="w-3.5 h-3.5 text-indigo-400" />
                         <span>Codebase Implementation</span>
                       </span>
                       <span className="text-[10px] text-slate-500">Pure TypeScript</span>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-[#080B0F] border border-white/10 overflow-x-auto">
+                    <div className="p-4 rounded-xl bg-[#080B0F] border border-white/[0.06] overflow-x-auto">
                       <pre className="font-mono text-xs text-slate-300 leading-relaxed">
                         <code>{current.codeSample}</code>
                       </pre>
