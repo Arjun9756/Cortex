@@ -1,20 +1,21 @@
 import crypto from 'crypto'
 import env from '../../config/env.js'
 import sql from '../../config/postgres.js'
+import { decryptSecret } from '../../../../packages/shared/encryption.js'
 
 export async function validateSlackSignature(timestamp: string | undefined, signature: string | undefined, rawBody: Buffer | undefined): Promise<boolean> {
-    let secret = env.SLACK_SECRET;
-
-    // Check database integrations table if .env has dummy placeholder or is empty
-    if (!secret || secret === 'cortex_test_secret_2026') {
-        try {
-            const [conn] = await sql`SELECT webhook_secret FROM integrations WHERE provider = 'slack'`;
-            if (conn?.webhook_secret) {
-                secret = conn.webhook_secret;
-            }
-        } catch (dbErr: any) {
-            console.warn('[Slack Validator] DB lookup failed:', dbErr?.message);
+    let secret: string | undefined = '';
+    try {
+        const [conn] = await sql`SELECT webhook_secret FROM integrations WHERE provider = 'slack'`;
+        if (conn?.webhook_secret) {
+            secret = decryptSecret(conn.webhook_secret) || conn.webhook_secret;
         }
+    } catch (dbErr: any) {
+        console.warn('[Slack Validator] DB lookup failed:', dbErr?.message);
+    }
+
+    if (!secret) {
+        secret = env.SLACK_SECRET;
     }
 
     if (!secret) {

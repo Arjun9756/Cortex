@@ -91,6 +91,11 @@ export async function handleChatQueryStream(req: Request, res: Response) {
         res.setHeader('Cache-Control', 'no-cache')
         res.setHeader('Connection', 'keep-alive')
 
+        let isClientConnected = true;
+        req.on('close', () => {
+            isClientConnected = false;
+        });
+
         // Initial status event
         res.write(`event: status\ndata: ${JSON.stringify({ step: 'Evaluating query intent and dynamic tool plan...' })}\n\n`)
 
@@ -116,6 +121,7 @@ export async function handleChatQueryStream(req: Request, res: Response) {
                 };
 
                 for await (const chunk of stream) {
+                    if (!isClientConnected) break;
                     const nodeName = Object.keys(chunk)[0];
                     if (nodeName && chunk[nodeName]) {
                         Object.assign(accumulatedState, chunk[nodeName]);
@@ -129,26 +135,31 @@ export async function handleChatQueryStream(req: Request, res: Response) {
             }
         } catch (streamErr) {
             console.warn(`Streaming execution fallback to invoke: ${(streamErr as any)?.message}`);
-            res.write(`event: status\ndata: ${JSON.stringify({ step: 'Synthesizing verified natural language response...' })}\n\n`);
+            if (isClientConnected) {
+                res.write(`event: status\ndata: ${JSON.stringify({ step: 'Synthesizing verified natural language response...' })}\n\n`);
+            }
             result = await cortexAgent.invoke({ query }, { recursionLimit: 25 });
         }
 
-        // Stream the answer in realistic chunks for smooth token-by-token rendering
+        if (!isClientConnected) return;
+
+        // Stream the answer in fast, responsive chunks directly to client
         const fullAnswer = result.answer || (result.clarificationQuestion ? result.clarificationQuestion : 'No answer generated.');
         const words = fullAnswer.split(' ');
-        const chunkSize = 3;
+        const chunkSize = 4;
 
         for (let i = 0; i < words.length; i += chunkSize) {
+            if (!isClientConnected) break;
             const chunk = words.slice(i, i + chunkSize).join(' ') + (i + chunkSize < words.length ? ' ' : '');
             res.write(`event: chunk\ndata: ${JSON.stringify({ text: chunk })}\n\n`);
-            // micro-tick for natural reading fluidity
-            await new Promise(r => setTimeout(r, 18));
         }
 
         const finalPayload = formatChatPayload(result, query, fullAnswer);
 
-        res.write(`event: done\ndata: ${JSON.stringify(finalPayload)}\n\n`);
-        res.end();
+        if (isClientConnected) {
+            res.write(`event: done\ndata: ${JSON.stringify(finalPayload)}\n\n`);
+            res.end();
+        }
     }
     catch (error: any) {
         console.warn(`Error in Handle Chat Stream: ${error.message}`);

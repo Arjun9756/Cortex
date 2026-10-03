@@ -41,17 +41,10 @@ export async function processGithubEvent(eventID: string) {
         let newRelations: any[] = []
         let summary = ''
 
-        try {
-            const extracted = await extractFromEvent(cleanEventText, 'github')
-            entities = extracted.entities || []
-            newEntities = extracted.newEntities || []
-            relationships = extracted.relationships || []
-            newRelations = extracted.newRelations || []
-            summary = extracted.summary || ''
-        } catch (llmErr: any) {
-            console.warn(`[GitHub Ingestion] LLM extraction failed (${llmErr?.message}) — executing deterministic graph extraction fallback.`)
-            
-            // Deterministic Fast-Path: extract core entities strictly adhering to ontology.ts
+        const isStandardPush = normalizedPayload.eventType === 'push' && (process.env.FAST_COMMIT_INGESTION ?? 'true') === 'true';
+
+        if (isStandardPush) {
+            // Deterministic Fast-Path: 0 LLM tokens, 0ms latency, immune to 429 rate limits
             if (normalizedPayload.author && normalizedPayload.repository) {
                 entities.push({ name: normalizedPayload.author, type: 'PERSON' })
                 entities.push({ name: normalizedPayload.repository, type: 'REPOSITORY' })
@@ -61,10 +54,33 @@ export async function processGithubEvent(eventID: string) {
                     type: 'WORKS_ON',
                     evidence: 'pushed code'
                 })
-
-                // Contribution rollup edges are created per commit author below
             }
-            summary = `GitHub ${normalizedPayload.eventType || 'push'} by ${normalizedPayload.author || 'contributor'} in ${normalizedPayload.repository || 'repository'}`
+            const commitCount = Array.isArray(normalizedPayload.commits) ? normalizedPayload.commits.length : 1;
+            summary = `GitHub push of ${commitCount} commit(s) by ${normalizedPayload.author || 'contributor'} in ${normalizedPayload.repository || 'repository'}: ${normalizedPayload.message || 'code updates'}`;
+        } else {
+            try {
+                const extracted = await extractFromEvent(cleanEventText, 'github')
+                entities = extracted.entities || []
+                newEntities = extracted.newEntities || []
+                relationships = extracted.relationships || []
+                newRelations = extracted.newRelations || []
+                summary = extracted.summary || ''
+            } catch (llmErr: any) {
+                console.warn(`[GitHub Ingestion] LLM extraction failed (${llmErr?.message}) — executing deterministic graph extraction fallback.`)
+                
+                // Deterministic Fast-Path: extract core entities strictly adhering to ontology.ts
+                if (normalizedPayload.author && normalizedPayload.repository) {
+                    entities.push({ name: normalizedPayload.author, type: 'PERSON' })
+                    entities.push({ name: normalizedPayload.repository, type: 'REPOSITORY' })
+                    relationships.push({
+                        from: normalizedPayload.author,
+                        to: normalizedPayload.repository,
+                        type: 'WORKS_ON',
+                        evidence: 'pushed code'
+                    })
+                }
+                summary = `GitHub ${normalizedPayload.eventType || 'event'} by ${normalizedPayload.author || 'contributor'} in ${normalizedPayload.repository || 'repository'}`
+            }
         }
 
         // P0-1 Defense-in-depth: Filter out any COMMIT entities extracted by LLM paths to prevent node explosion

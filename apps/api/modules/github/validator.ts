@@ -1,24 +1,25 @@
 import crypto from 'crypto'
 import env from '../../config/env.js'
 import sql from '../../config/postgres.js'
+import { decryptSecret } from '../../../../packages/shared/encryption.js'
 
 /**
  * Verify Signature From GitHub Webhook
  * Checks For Timing is Safe or Not
  */
 export async function validateGithubSignature(signature: string | undefined, rawBody: Buffer | undefined): Promise<boolean> {
-    let secret = env.GITHUB_SECRET;
-
-    // Check database integrations table if .env has dummy placeholder or is empty
-    if (!secret || secret === 'cortex_test_secret_2026') {
-        try {
-            const [conn] = await sql`SELECT webhook_secret FROM integrations WHERE provider = 'github'`;
-            if (conn?.webhook_secret) {
-                secret = conn.webhook_secret;
-            }
-        } catch (dbErr: any) {
-            console.warn('[GitHub Validator] DB lookup failed:', dbErr?.message);
+    let secret: string | undefined = '';
+    try {
+        const [conn] = await sql`SELECT webhook_secret FROM integrations WHERE provider = 'github'`;
+        if (conn?.webhook_secret) {
+            secret = decryptSecret(conn.webhook_secret) || conn.webhook_secret;
         }
+    } catch (dbErr: any) {
+        console.warn('[GitHub Validator] DB lookup failed:', dbErr?.message);
+    }
+
+    if (!secret) {
+        secret = env.GITHUB_SECRET;
     }
 
     if (!secret) {

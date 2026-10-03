@@ -2,12 +2,12 @@ import React from 'react';
 import { 
   ShieldCheck, 
   Mail, 
-  GitBranch, 
   Scale, 
   Lock, 
   BookOpen, 
   ArrowUpRight, 
-  Heart
+  Heart,
+  FileText
 } from 'lucide-react';
 import { CortexLogo } from '../components/CortexLogo';
 
@@ -90,14 +90,31 @@ export const Footer: React.FC<FooterProps> = ({ onOpenContact }) => {
             </h5>
             <ul className="space-y-2.5">
               {[
-                { icon: BookOpen, label: 'docs/metrics-definitions.md', color: 'text-indigo-400' },
-                { icon: Scale, label: '13 Invariant Audit Suite', color: 'text-purple-400' },
-                { icon: GitBranch, label: 'Golden Dataset Harness', color: 'text-cyan-400' },
-                { icon: Lock, label: 'BYOC Architecture Spec', color: 'text-indigo-400' },
+                { icon: FileText, label: 'Technical Whitepaper (PDF)', href: '/Cortex_Technical_Whitepaper.pdf', color: 'text-indigo-400', isLink: true },
+                { icon: BookOpen, label: 'docs/metrics-definitions.md', href: '#metrics-defined', color: 'text-indigo-400', isLink: true },
+                { icon: Scale, label: '13 Invariant Audit Suite', href: '#guarantees', color: 'text-purple-400', isLink: true },
+                { icon: Lock, label: 'BYOC Architecture Spec', href: '#security', color: 'text-indigo-400', isLink: true },
               ].map((doc, i) => (
-                <li key={i} className="flex items-center space-x-2 text-xs text-slate-400 group cursor-default">
-                  <doc.icon className={`w-3 h-3 ${doc.color} shrink-0`} />
-                  <span className="font-mono">{doc.label}</span>
+                <li key={i}>
+                  {doc.isLink ? (
+                    <a
+                      href={doc.href}
+                      target={doc.href.endsWith('.pdf') ? '_blank' : undefined}
+                      rel={doc.href.endsWith('.pdf') ? 'noopener noreferrer' : undefined}
+                      className="flex items-center space-x-2 text-xs text-slate-400 hover:text-white transition-colors group"
+                    >
+                      <doc.icon className={`w-3 h-3 ${doc.color} shrink-0`} />
+                      <span className="font-mono group-hover:underline">{doc.label}</span>
+                      {doc.href.endsWith('.pdf') && (
+                        <ArrowUpRight className="w-2.5 h-2.5 text-slate-500 group-hover:text-white transition-colors" />
+                      )}
+                    </a>
+                  ) : (
+                    <div className="flex items-center space-x-2 text-xs text-slate-400 group cursor-default">
+                      <doc.icon className={`w-3 h-3 ${doc.color} shrink-0`} />
+                      <span className="font-mono">{doc.label}</span>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

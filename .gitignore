@@ -5,3 +5,4 @@ postgresql.pem
 neural_docs_cortex.txt
 scratch/
 *.log
+.cortex-license-cache.json

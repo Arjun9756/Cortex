@@ -5,6 +5,7 @@ import { calculateSuccessorCandidates, calculateSuccessorsByRepo } from '../../.
 import { Request, Response } from 'express';
 import { RISK_THRESHOLDS } from '../../../../packages/shared/riskThresholds.js';
 import { DISPLAYABLE_SOURCES } from '../../../../packages/database/provenance.js';
+import { encryptSecret } from '../../../../packages/shared/encryption.js';
 
 // ─── Existing endpoints ────────────────────────────────────────────
 
@@ -860,10 +861,11 @@ export async function updateIntegrationSecret(req: Request, res: Response) {
         }
 
         const trimmedSecret = secret.trim();
+        const encryptedSecret = encryptSecret(trimmedSecret);
 
         await sql`
             UPDATE integrations
-            SET webhook_secret = ${trimmedSecret}, updated_at = CURRENT_TIMESTAMP
+            SET webhook_secret = ${encryptedSecret}, updated_at = CURRENT_TIMESTAMP
             WHERE provider = ${provider}
         `;
 

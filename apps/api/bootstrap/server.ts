@@ -7,17 +7,19 @@ import { ensurePostgresTables } from '../../../packages/database/postgres/schema
 import { startMetricsScheduler } from '../../../packages/workers/scheduler.worker.js'
 import { verifyLicenseOnStartup } from '../../../packages/license/index.js'
 import { verifyNeo4jConnectivity } from '../config/neo4j.js'
-import { warnIfPostgresRlsIsBypassed } from '../config/postgres.js'
+import { warnIfPostgresRlsIsBypassed, ensureDatabaseExists } from '../config/postgres.js'
 
 async function startServer() {
     try {
         // Enforce license verification before initializing any subsystem
         await verifyLicenseOnStartup()
 
-        if (cortexWorker.isRunning()) {
-            console.log("Cortex Queue Works Running")
+        const runWorkersInProcess = (process.env.RUN_WORKERS_IN_API_PROCESS ?? 'true') === 'true'
+        if (runWorkersInProcess && cortexWorker.isRunning()) {
+            console.log("Cortex Ingestion Queue Worker Running (in-process)")
         }
 
+        await ensureDatabaseExists()
         await ensurePostgresTables()
         await warnIfPostgresRlsIsBypassed()
         // Graph enrichment is optional for API reads. Surface the real infrastructure

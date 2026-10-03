@@ -2,28 +2,13 @@
  * Application Feature Flags & Deployment Configuration
  */
 
-// Controls whether the main Cortex AI Chat & Dashboard Demo is enabled.
-// Rule:
-// - LOCAL (localhost / 127.0.0.1 / dev): ALWAYS visible (true)
-// - PRODUCTION (Vercel, public domains, etc.): ALWAYS hidden (false)
+// Controls whether the main Cortex AI Chat & Executive Dashboard is enabled.
+// Allows dashboard to run seamlessly on localhost, internal enterprise IPs, private VPCs, and custom domains.
 export const isDemoEnabled: boolean = (() => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const isLocalhost = 
-      hostname === 'localhost' || 
-      hostname === '127.0.0.1' || 
-      hostname.startsWith('192.168.') ||
-      hostname.endsWith('.local');
-
-    if (isLocalhost) {
-      // Local machine: ALWAYS enable demo
-      return true;
-    }
-
-    // Production (Vercel, custom domains): STRICTLY disable demo
+  if (import.meta.env.VITE_DISABLE_DEMO === 'true' || import.meta.env.VITE_DISABLE_DASHBOARD === 'true') {
     return false;
   }
-
-  // Fallback during Vite build / SSR: only true in DEV
-  return Boolean(import.meta.env.DEV);
+  // Enabled unconditionally across all production domains, VPC internal IPs, and localhost
+  return true;
 })();
+

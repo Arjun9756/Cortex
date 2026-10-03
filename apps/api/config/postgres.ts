@@ -33,6 +33,54 @@ const sql = postgres({
 
 export default Object.freeze(sql)
 
+export async function ensureDatabaseExists(customTargetDb?: string): Promise<void> {
+    const targetDb = customTargetDb || env.POSTGRES_DATABASE || 'cortex';
+    if (targetDb === 'postgres') return;
+
+    const candidates = [
+        process.env.POSTGRES_ADMIN_DATABASE,
+        'postgres',
+        'defaultdb',
+        'template1'
+    ].filter(Boolean) as string[];
+
+    for (const adminDb of candidates) {
+        let adminSql: any = null;
+        try {
+            adminSql = postgres({
+                host: env.POSTGRES_HOST!,
+                port: Number(env.POSTGRES_PORT!),
+                password: env.POSTGRES_PASSWORD!,
+                database: adminDb,
+                user: env.POSTGRES_USER!,
+                max: 1,
+                idle_timeout: 5,
+                connect_timeout: 10,
+                ssl: hasPem
+                    ? { rejectUnauthorized: true, ca: fs.readFileSync(pemPath, 'utf-8') }
+                    : (env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false)
+            });
+
+            const rows = await adminSql`
+                SELECT 1 FROM pg_database WHERE datname = ${targetDb}
+            `;
+            if (rows.length === 0) {
+                console.log(`[Postgres] Target database "${targetDb}" does not exist. Auto-creating database...`);
+                await adminSql.unsafe(`CREATE DATABASE "${targetDb.replace(/"/g, '""')}"`);
+                console.log(`[Postgres] ✅ Database "${targetDb}" created successfully.`);
+            } else {
+                console.log(`[Postgres] ✅ Database "${targetDb}" verified.`);
+            }
+            await adminSql.end({ timeout: 5 }).catch(() => {});
+            return;
+        } catch (error: any) {
+            if (adminSql) await adminSql.end({ timeout: 5 }).catch(() => {});
+            // If this candidate db didn't exist or connect, try next
+            continue;
+        }
+    }
+}
+
 /**
  * RLS is bypassed by PostgreSQL superusers and BYPASSRLS roles, even when
  * FORCE ROW LEVEL SECURITY is configured. Surface this as an operational warning

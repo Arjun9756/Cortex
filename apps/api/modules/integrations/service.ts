@@ -1,5 +1,6 @@
 import sql from '../../config/postgres.js';
 import crypto from 'crypto';
+import { encryptSecret, decryptSecret } from '../../../../packages/shared/encryption.js';
 
 export type SupportedIntegrationProvider = 'github' | 'slack' | 'jira';
 
@@ -309,7 +310,7 @@ export class IntegrationService {
                 updated_at
             )
             VALUES (
-                'github', 'connected', ${accessToken}, ${sql.array(scopes)},
+                'github', 'connected', ${encryptSecret(accessToken)}, ${sql.array(scopes)},
                 ${accountId}, ${accountName}, ${accountEmail}, ${accountAvatar},
                 CURRENT_TIMESTAMP
             )
@@ -370,7 +371,7 @@ export class IntegrationService {
                 account_id, account_name, metadata, updated_at
             )
             VALUES (
-                'slack', 'connected', ${accessToken}, ${sql.array(scopes)},
+                'slack', 'connected', ${encryptSecret(accessToken)}, ${sql.array(scopes)},
                 ${teamId}, ${teamName}, ${JSON.stringify(tokenData)}, CURRENT_TIMESTAMP
             )
             ON CONFLICT (provider) DO UPDATE SET
@@ -455,7 +456,7 @@ export class IntegrationService {
                 account_id, account_name, account_avatar, metadata, updated_at
             )
             VALUES (
-                'jira', 'connected', ${accessToken}, ${refreshToken}, ${expiresAt}, ${sql.array(scopes)},
+                'jira', 'connected', ${encryptSecret(accessToken)}, ${encryptSecret(refreshToken)}, ${expiresAt}, ${sql.array(scopes)},
                 ${cloudId}, ${siteName}, ${siteAvatar}, ${JSON.stringify({ cloudId })}, CURRENT_TIMESTAMP
             )
             ON CONFLICT (provider) DO UPDATE SET
@@ -488,13 +489,14 @@ export class IntegrationService {
             SELECT access_token, status FROM integrations WHERE provider = 'github'
         `;
 
-        if (!conn || !conn.access_token || conn.status !== 'connected') {
+        const token = decryptSecret(conn?.access_token);
+        if (!conn || !token || conn.status !== 'connected') {
             throw new Error('GitHub is not connected. Please complete GitHub OAuth authorization first.');
         }
 
         const res = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member', {
             headers: {
-                Authorization: `Bearer ${conn.access_token}`,
+                Authorization: `Bearer ${token}`,
                 Accept: 'application/vnd.github.v3+json',
                 'User-Agent': 'Cortex-Onboarding/1.0',
             },
@@ -529,13 +531,14 @@ export class IntegrationService {
             SELECT access_token, status FROM integrations WHERE provider = 'slack'
         `;
 
-        if (!conn || !conn.access_token || conn.status !== 'connected') {
+        const slackToken = decryptSecret(conn?.access_token);
+        if (!conn || !slackToken || conn.status !== 'connected') {
             throw new Error('Slack is not connected. Please complete Slack OAuth authorization first.');
         }
 
         const res = await fetch('https://slack.com/api/conversations.list?types=public_channel,private_channel&exclude_archived=true&limit=100', {
             headers: {
-                Authorization: `Bearer ${conn.access_token}`,
+                Authorization: `Bearer ${slackToken}`,
             },
         });
 
@@ -587,7 +590,7 @@ export class IntegrationService {
                     grant_type: 'refresh_token',
                     client_id: clientId,
                     client_secret: clientSecret,
-                    refresh_token: conn.refresh_token,
+                    refresh_token: decryptSecret(conn.refresh_token),
                 }),
             });
 
@@ -601,14 +604,14 @@ export class IntegrationService {
             }
 
             const newAccessToken = tokenData.access_token;
-            const newRefreshToken = tokenData.refresh_token || conn.refresh_token;
+            const newRefreshToken = tokenData.refresh_token || decryptSecret(conn.refresh_token);
             const expiresIn = tokenData.expires_in || 3600;
             const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
             await sql`
                 UPDATE integrations
-                SET access_token = ${newAccessToken},
-                    refresh_token = ${newRefreshToken},
+                SET access_token = ${encryptSecret(newAccessToken)},
+                    refresh_token = ${encryptSecret(newRefreshToken)},
                     token_expires_at = ${newExpiresAt},
                     status = 'connected',
                     updated_at = CURRENT_TIMESTAMP
@@ -632,7 +635,8 @@ export class IntegrationService {
             WHERE provider = 'jira'
         `;
 
-        if (!conn || !conn.access_token || conn.status !== 'connected') {
+        const decryptedAccessToken = decryptSecret(conn?.access_token);
+        if (!conn || !decryptedAccessToken || conn.status !== 'connected') {
             throw new Error('Jira is not connected. Please complete Jira OAuth authorization first.');
         }
 
@@ -641,7 +645,7 @@ export class IntegrationService {
             throw new Error('No Jira Cloud ID found in connection metadata.');
         }
 
-        let token = conn.access_token;
+        let token = decryptedAccessToken;
         const now = Date.now();
         // If expired or expiring within 5 minutes, refresh proactively
         if (conn.token_expires_at && new Date(conn.token_expires_at).getTime() <= now + 5 * 60 * 1000) {
@@ -805,7 +809,8 @@ export class IntegrationService {
             SELECT access_token, status, webhook_secret FROM integrations WHERE provider = 'github'
         `;
 
-        if (!conn || !conn.access_token || conn.status !== 'connected') {
+        const ghAccessToken = decryptSecret(conn?.access_token);
+        if (!conn || !ghAccessToken || conn.status !== 'connected') {
             return {
                 status: 'skipped_no_token',
                 message: 'GitHub is not connected. Scope saved locally.',
@@ -821,7 +826,8 @@ export class IntegrationService {
         }
 
         const targetWebhookUrl = `${resolvedBaseUrl.replace(/\/$/, '')}/api/github/webhook`;
-        const secret = conn.webhook_secret || (process.env.GITHUB_SECRET && process.env.GITHUB_SECRET !== 'cortex_test_secret_2026' ? process.env.GITHUB_SECRET : null) || crypto.randomBytes(32).toString('hex');
+        const rawSecret = decryptSecret(conn.webhook_secret);
+        const secret = rawSecret || (process.env.GITHUB_SECRET && process.env.GITHUB_SECRET !== 'cortex_test_secret_2026' ? process.env.GITHUB_SECRET : null) || crypto.randomBytes(32).toString('hex');
 
         let targetRepos: string[] = [];
         if (rules.allMonitored || rules.monitoredItems.includes('*')) {
@@ -854,7 +860,7 @@ export class IntegrationService {
                 // List existing webhooks on this repository
                 const hooksRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/hooks?per_page=100`, {
                     headers: {
-                        Authorization: `Bearer ${conn.access_token}`,
+                        Authorization: `Bearer ${ghAccessToken}`,
                         Accept: 'application/vnd.github.v3+json',
                         'User-Agent': 'Cortex-Integrations/1.0',
                     },
@@ -889,7 +895,7 @@ export class IntegrationService {
                     const patchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/hooks/${existingHook.id}`, {
                         method: 'PATCH',
                         headers: {
-                            Authorization: `Bearer ${conn.access_token}`,
+                            Authorization: `Bearer ${ghAccessToken}`,
                             Accept: 'application/vnd.github.v3+json',
                             'Content-Type': 'application/json',
                             'User-Agent': 'Cortex-Integrations/1.0',
@@ -908,7 +914,7 @@ export class IntegrationService {
                     const createRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/hooks`, {
                         method: 'POST',
                         headers: {
-                            Authorization: `Bearer ${conn.access_token}`,
+                            Authorization: `Bearer ${ghAccessToken}`,
                             Accept: 'application/vnd.github.v3+json',
                             'Content-Type': 'application/json',
                             'User-Agent': 'Cortex-Integrations/1.0',
@@ -935,7 +941,7 @@ export class IntegrationService {
         if (successCount > 0) {
             await sql`
                 UPDATE integrations
-                SET webhook_registered = true, webhook_secret = ${secret}, updated_at = CURRENT_TIMESTAMP
+                SET webhook_registered = true, webhook_secret = ${encryptSecret(secret)}, updated_at = CURRENT_TIMESTAMP
                 WHERE provider = 'github'
             `;
         }
@@ -964,7 +970,8 @@ export class IntegrationService {
             SELECT access_token, status FROM integrations WHERE provider = 'slack'
         `;
 
-        if (!conn || !conn.access_token || conn.status !== 'connected') {
+        const slackAccessToken = decryptSecret(conn?.access_token);
+        if (!conn || !slackAccessToken || conn.status !== 'connected') {
             return {
                 status: 'skipped_no_token',
                 message: 'Slack is not connected. Scope saved locally.',
@@ -996,7 +1003,7 @@ export class IntegrationService {
                 const joinRes = await fetch('https://slack.com/api/conversations.join', {
                     method: 'POST',
                     headers: {
-                        Authorization: `Bearer ${conn.access_token}`,
+                        Authorization: `Bearer ${slackAccessToken}`,
                         'Content-Type': 'application/json; charset=utf-8',
                     },
                     body: JSON.stringify({ channel: target.id }),

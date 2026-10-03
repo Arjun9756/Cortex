@@ -23,6 +23,10 @@ export async function ensurePostgresTables(): Promise<void> {
         `;
         await sql`CREATE INDEX IF NOT EXISTS events_provider_idx ON events(provider)`;
         await sql`CREATE INDEX IF NOT EXISTS events_created_at_idx ON events(created_at DESC)`;
+        await sql`CREATE INDEX IF NOT EXISTS events_payload_gin_idx ON events USING gin (payload jsonb_path_ops)`;
+        await sql`CREATE INDEX IF NOT EXISTS events_payload_repo_name_idx ON events ((payload->'repository'->>'name'))`;
+        await sql`CREATE INDEX IF NOT EXISTS events_payload_repo_flat_idx ON events ((payload->>'repository'))`;
+        await sql`CREATE INDEX IF NOT EXISTS events_payload_author_name_idx ON events ((payload->'head_commit'->'author'->>'name'))`;
         await sql`DROP INDEX IF EXISTS events_provider_external_id_uniq`;
 
         // 2. Person Metrics Table (Per-person calculated risk & skills)

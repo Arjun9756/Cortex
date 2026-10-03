@@ -1,0 +1,18 @@
+{
+  "lastSuccessfulPingAt": 1791043443567,
+  "successData": {
+    "allowed": true,
+    "status": "active",
+    "client": {
+      "org_name": "CORTEXCO Inc",
+      "contact_name": "Karan Aswal",
+      "email": "karanaswal@gmail.com"
+    },
+    "expiry_date": "2027-09-08T07:18:31.000Z",
+    "expiry_date_12h": "08 Sep 2027, 07:18 AM",
+    "next_ping_interval_hours": 6,
+    "server_time": "2026-10-03T16:04:02.337Z",
+    "server_time_12h": "03 Oct 2026, 04:04:02 PM"
+  },
+  "licenseKey": "NULL"
+}

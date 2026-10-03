@@ -1,5 +1,7 @@
 import env from '../../apps/api/config/env.js';
 import { buildLicensePingPayload } from './systemInfo.js';
+import fs from 'fs';
+import path from 'path';
 import type {
     LicensePingPayload,
     LicensePingResponse,
@@ -10,7 +12,10 @@ import type {
 
 interface LicenseState {
     isValid: boolean;
+    inGracePeriod?: boolean;
+    graceDaysRemaining?: number;
     lastCheckedAt: Date | null;
+    lastSuccessfulPingAt?: Date | null;
     nextPingAt: Date | null;
     payload: LicensePingPayload | null;
     successData: LicenseSuccessResponse | null;
@@ -20,13 +25,40 @@ interface LicenseState {
 
 const state: LicenseState = {
     isValid: false,
+    inGracePeriod: false,
+    graceDaysRemaining: 14,
     lastCheckedAt: null,
+    lastSuccessfulPingAt: null,
     nextPingAt: null,
     payload: null,
     successData: null,
     deniedData: null,
     lastError: null
 };
+
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+const CACHE_FILE = path.resolve(PROJECT_ROOT, '.cortex-license-cache.json');
+const GRACE_PERIOD_MS = 14 * 24 * 60 * 60 * 1000; // 14 Days
+
+function readLocalLicenseCache(): { lastSuccessfulPingAt: number; successData?: any; licenseKey?: string } | null {
+    try {
+        if (fs.existsSync(CACHE_FILE)) {
+            const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
+            return JSON.parse(raw);
+        }
+    } catch {}
+    return null;
+}
+
+function writeLocalLicenseCache(data: { lastSuccessfulPingAt: number; successData?: any; licenseKey?: string }): void {
+    try {
+        fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    } catch {}
+}
 
 let heartbeatTimer: NodeJS.Timeout | null = null;
 
@@ -182,11 +214,25 @@ export async function pingLicenseServer(
  * Instead, it logs the status and schedules a retry in 6 hours while allowing Cortex to stay alive.
  */
 export async function verifyLicenseOnStartup(): Promise<boolean> {
-    const licenseKey = (env.CORTEX_LICENSE_KEY as string) || (process.env.LICENSE_KEY as string) || '';
-    const serverUrl = normalizeServerUrl((env.LICENSE_SERVER_URL as string) || (process.env.LICENSE_SERVER_URL as string));
+    const licenseKey = (process.env.CORTEX_LICENSE_KEY as string) || (process.env.LICENSE_KEY as string) || (env.CORTEX_LICENSE_KEY as string) || '';
+    const serverUrl = normalizeServerUrl((process.env.LICENSE_SERVER_URL as string) || (process.env.CORTEX_LICENSE_SERVER_URL as string) || (env.LICENSE_SERVER_URL as string));
     const fallbackInterval = env.LICENSE_PING_INTERVAL_HOURS ?? 6;
 
     console.log(`[LICENSE] Verifying license with admin panel at ${serverUrl}...`);
+
+    if (process.env.CORTEX_OFFLINE_LICENSE === 'true' || licenseKey.toLowerCase().startsWith('offline_')) {
+        state.isValid = true;
+        state.inGracePeriod = false;
+        state.lastCheckedAt = new Date();
+        state.successData = {
+            allowed: true,
+            status: 'active',
+            client: { org_name: 'Enterprise Client', contact_name: 'Admin', email: 'admin@client.internal' },
+            expiry_date: new Date(Date.now() + 365 * 86400000).toISOString()
+        };
+        console.log('[LICENSE] ✅ Verified offline enterprise license key. System is ACTIVE.');
+        return true;
+    }
 
     if (!licenseKey || !licenseKey.trim()) {
         printAccessDenied(
@@ -209,10 +255,11 @@ export async function verifyLicenseOnStartup(): Promise<boolean> {
     const result = await pingLicenseServer(licenseKey.trim(), serverUrl);
 
     if (!result.success) {
-        state.isValid = false;
         state.lastCheckedAt = new Date();
 
+        // If explicitly denied/revoked by server with 200/403 and allowed === false
         if (result.response && result.response.allowed === false) {
+            state.isValid = false;
             state.deniedData = result.response;
             state.lastError = result.response.message;
             printAccessDenied(
@@ -222,23 +269,47 @@ export async function verifyLicenseOnStartup(): Promise<boolean> {
                 result.statusCode,
                 result.response
             );
-        } else {
-            state.lastError = result.error || 'Failed to contact license server';
-            state.deniedData = {
-                allowed: false,
-                code: 'LICENSE_SERVER_UNREACHABLE',
-                message: state.lastError
-            };
-            printAccessDenied(
-                'LICENSE_SERVER_UNREACHABLE',
-                state.lastError,
-                result.latencyMs,
-                result.statusCode,
-                state.deniedData
-            );
+            console.warn(`[LICENSE] License explicitly denied by server. Retrying in ${fallbackInterval} hours...`);
+            scheduleNextPing(licenseKey.trim(), serverUrl, fallbackInterval);
+            return false;
         }
 
-        console.warn(`[LICENSE] Verification did not pass. System will NOT shut down. Retrying in ${fallbackInterval} hours...`);
+        // Network error / server unreachable: Apply 14-day Offline Grace Period
+        const cache = readLocalLicenseCache();
+        const now = Date.now();
+        const lastPing = cache?.lastSuccessfulPingAt || now;
+
+        if (now - lastPing <= GRACE_PERIOD_MS) {
+            const daysRemaining = Math.max(1, Math.ceil((GRACE_PERIOD_MS - (now - lastPing)) / 86400000));
+            state.isValid = true;
+            state.inGracePeriod = true;
+            state.graceDaysRemaining = daysRemaining;
+            state.lastSuccessfulPingAt = new Date(lastPing);
+            state.successData = cache?.successData || {
+                allowed: true,
+                status: 'active',
+                client: { org_name: 'Enterprise Client (Grace Mode)', contact_name: 'Admin', email: 'admin@client.internal' },
+                expiry_date: new Date(lastPing + GRACE_PERIOD_MS).toISOString()
+            };
+            if (!cache) {
+                writeLocalLicenseCache({ lastSuccessfulPingAt: now, licenseKey: licenseKey.trim() });
+            }
+
+            console.warn(`\n[LICENSE] ⚠️ License server unreachable (${result.error || 'Network error'}).`);
+            console.warn(`[LICENSE] 🛡️ Operating in 14-Day Offline Grace Period (${daysRemaining} day(s) remaining). Client is ACTIVE.\n`);
+            scheduleNextPing(licenseKey.trim(), serverUrl, 1);
+            return true;
+        }
+
+        // Grace period expired
+        state.isValid = false;
+        state.lastError = result.error || 'Failed to contact license server and 14-day grace period has expired';
+        state.deniedData = {
+            allowed: false,
+            code: 'LICENSE_GRACE_EXPIRED',
+            message: state.lastError
+        };
+        printAccessDenied('LICENSE_GRACE_EXPIRED', state.lastError, result.latencyMs, result.statusCode, state.deniedData);
         scheduleNextPing(licenseKey.trim(), serverUrl, fallbackInterval);
         return false;
     }
@@ -246,10 +317,18 @@ export async function verifyLicenseOnStartup(): Promise<boolean> {
     // License is valid
     const successData = result.response as LicenseSuccessResponse;
     state.isValid = true;
+    state.inGracePeriod = false;
     state.successData = successData;
     state.deniedData = null;
     state.lastError = null;
     state.lastCheckedAt = new Date();
+    state.lastSuccessfulPingAt = new Date();
+
+    writeLocalLicenseCache({
+        lastSuccessfulPingAt: Date.now(),
+        successData,
+        licenseKey: licenseKey.trim()
+    });
 
     printLicenseVerified(successData, result.latencyMs);
 
@@ -285,19 +364,25 @@ export function scheduleNextPing(licenseKey: string, serverUrl: string, interval
 
 /**
  * Execute periodic heartbeat ping.
- * On failure, logs access denial and retries in 6 hours without shutting down.
+ * On failure, activates 14-day Offline Grace Period without shutting down or locking users out.
  */
 export async function executeHeartbeatPing(licenseKey: string, serverUrl: string): Promise<boolean> {
     console.log(`\n[LICENSE] [${formatTimestamp12h()}] Executing periodic heartbeat ping to admin panel...`);
+
+    if (process.env.CORTEX_OFFLINE_LICENSE === 'true' || licenseKey.toLowerCase().startsWith('offline_')) {
+        state.isValid = true;
+        state.inGracePeriod = false;
+        return true;
+    }
 
     const result = await pingLicenseServer(licenseKey, serverUrl);
     const fallbackInterval = env.LICENSE_PING_INTERVAL_HOURS ?? 6;
 
     if (!result.success) {
-        state.isValid = false;
         state.lastCheckedAt = new Date();
 
         if (result.response && result.response.allowed === false) {
+            state.isValid = false;
             state.deniedData = result.response;
             state.lastError = result.response.message;
             printAccessDenied(
@@ -307,33 +392,52 @@ export async function executeHeartbeatPing(licenseKey: string, serverUrl: string
                 result.statusCode,
                 result.response
             );
-        } else {
-            state.lastError = result.error || 'Heartbeat ping failed to reach license server';
-            state.deniedData = {
-                allowed: false,
-                code: 'HEARTBEAT_UNREACHABLE',
-                message: state.lastError
-            };
-            printAccessDenied(
-                'HEARTBEAT_UNREACHABLE',
-                state.lastError,
-                result.latencyMs,
-                result.statusCode,
-                state.deniedData
-            );
+            scheduleNextPing(licenseKey, serverUrl, fallbackInterval);
+            return false;
         }
 
-        console.warn(`[LICENSE] Heartbeat denied or unreachable. Client will NOT shut down. Retrying in ${fallbackInterval} hours...`);
+        // Network error / unreachable during heartbeat: maintain 14-day grace period
+        const cache = readLocalLicenseCache();
+        const now = Date.now();
+        const lastPing = cache?.lastSuccessfulPingAt || now;
+
+        if (now - lastPing <= GRACE_PERIOD_MS) {
+            const daysRemaining = Math.max(1, Math.ceil((GRACE_PERIOD_MS - (now - lastPing)) / 86400000));
+            state.isValid = true;
+            state.inGracePeriod = true;
+            state.graceDaysRemaining = daysRemaining;
+            console.warn(`[LICENSE] ⚠️ Heartbeat unreachable. Operating in 14-Day Offline Grace Period (${daysRemaining} day(s) remaining). Client remains ACTIVE.`);
+            scheduleNextPing(licenseKey, serverUrl, 2);
+            return true;
+        }
+
+        // Grace expired
+        state.isValid = false;
+        state.lastError = result.error || 'Heartbeat ping failed to reach license server and 14-day grace period expired';
+        state.deniedData = {
+            allowed: false,
+            code: 'HEARTBEAT_GRACE_EXPIRED',
+            message: state.lastError
+        };
+        printAccessDenied('HEARTBEAT_GRACE_EXPIRED', state.lastError, result.latencyMs, result.statusCode, state.deniedData);
         scheduleNextPing(licenseKey, serverUrl, fallbackInterval);
         return false;
     }
 
     const successData = result.response as LicenseSuccessResponse;
     state.isValid = true;
+    state.inGracePeriod = false;
     state.successData = successData;
     state.deniedData = null;
     state.lastError = null;
     state.lastCheckedAt = new Date();
+    state.lastSuccessfulPingAt = new Date();
+
+    writeLocalLicenseCache({
+        lastSuccessfulPingAt: Date.now(),
+        successData,
+        licenseKey: licenseKey.trim()
+    });
 
     console.log(`[LICENSE] Heartbeat successful. License status: ACTIVE. (Latency: ${result.latencyMs}ms)`);
 

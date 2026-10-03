@@ -28,10 +28,16 @@ export async function ensureIndexes(): Promise<void> {
         await session.run(`CREATE INDEX entity_person_name IF NOT EXISTS FOR (n:PERSON) ON (n.name)`)
         await session.run(`CREATE INDEX entity_repo_name IF NOT EXISTS FOR (n:REPOSITORY) ON (n.name)`)
         await session.run(`CREATE INDEX entity_tech_name IF NOT EXISTS FOR (n:TECHNOLOGY) ON (n.name)`)
-        // Existing graph records without source cannot be attributed from their properties.
-        // Quarantine them, then the shared query policy excludes them from product reads.
-        await runGraphWrite(`MATCH (n) WHERE n.source IS NULL SET n.source = $source RETURN count(n) AS quarantined`, { source: 'seed:legacy-unverified' }, session)
-        await runGraphWrite(`MATCH ()-[r]->() WHERE r.source IS NULL SET r.source = $source RETURN count(r) AS quarantined`, { source: 'seed:legacy-unverified' }, session)
+        
+        // Fast text indexes for case-insensitive search to prevent full label scans
+        try {
+            await session.run(`CREATE TEXT INDEX entity_repo_name_text IF NOT EXISTS FOR (n:REPOSITORY) ON (n.name)`)
+            await session.run(`CREATE TEXT INDEX entity_tech_name_text IF NOT EXISTS FOR (n:TECHNOLOGY) ON (n.name)`)
+            await session.run(`CREATE TEXT INDEX entity_person_name_text IF NOT EXISTS FOR (n:PERSON) ON (n.name)`)
+        } catch (textIndexErr: any) {
+            // Text index may not be available on older Neo4j versions; range index will serve as fallback
+        }
+
         console.log('[Graph] Neo4j indexes ensured (PERSON: canonicalPersonId, name, email, externalId; REPOSITORY: name, externalId; TECHNOLOGY: name)')
     } catch (error: any) {
         console.error('[Graph] Failed to ensure indexes:', error.message)

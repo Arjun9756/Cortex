@@ -23,7 +23,10 @@
   },
   "type": "module",
   "scripts": {
+    "start": "npx tsx apps/api/bootstrap/server.ts",
+    "worker": "npx tsx packages/workers/standalone.ts",
     "test": "npx tsx scripts/verify_provenance_integrity.ts && npx tsx scripts/check_metrics_docs_sync.ts && npx tsx scripts/verify_metrics_golden_dataset.ts --target=local && npx tsx scripts/verify_dashboard_invariants.ts --target=local && npx tsx scripts/test_future_data_integrity.ts --target=local && npx tsx scripts/test_metrics_stress_scenarios.ts --target=local && npx tsx scripts/test_worst_case_pr_resilience.ts --target=local",
+    "test:fixes": "npx tsx scripts/test_p0_p1_all_fixes.ts --target=local",
     "test:provenance": "npx tsx scripts/verify_provenance_integrity.ts",
     "verify:web:artifact": "npx tsx scripts/verify_web_production_artifact.ts",
     "test:invariants": "npx tsx scripts/verify_dashboard_invariants.ts --target=local",

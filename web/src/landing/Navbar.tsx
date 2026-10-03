@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowRight, Sparkles } from 'lucide-react';
+import { Menu, X, ArrowRight, Sparkles, FileText } from 'lucide-react';
 import { isDemoEnabled } from '../config';
 import { CortexLogo } from '../components/CortexLogo';
 
@@ -122,6 +122,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
 
         {/* Right: Action CTAs */}
         <div className="hidden sm:flex items-center space-x-3 shrink-0">
+          <a
+            href="/Cortex_Technical_Whitepaper.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden md:inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.15] rounded-xl transition-all duration-200"
+          >
+            <FileText className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Whitepaper</span>
+          </a>
+
           {onLaunchDemo && isDemoEnabled && (
             <button
               onClick={onLaunchDemo}
@@ -179,6 +189,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenContact, onLaunchDemo }) =
               {item.label}
             </button>
           ))}
+
+          <a
+            href="/Cortex_Technical_Whitepaper.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center space-x-2 py-2.5 px-3 text-slate-300 font-mono text-xs hover:text-white rounded-xl hover:bg-white/[0.03]"
+          >
+            <FileText className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Technical Whitepaper (PDF) ↗</span>
+          </a>
 
           {onLaunchDemo && isDemoEnabled && (
             <button

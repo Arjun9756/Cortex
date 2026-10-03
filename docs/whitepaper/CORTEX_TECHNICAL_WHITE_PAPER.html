@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cortex Technical Whitepaper</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm 20mm 16mm;
+      @bottom-right {
+        content: "Page " counter(page);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+        font-size: 8pt;
+        color: #64748b;
+      }
+      @bottom-left {
+        content: "CORTEX TECHNICAL WHITEPAPER · v2.1.0 · PUBLIC SPECIFICATION";
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+        font-size: 7.5pt;
+        color: #94a3b8;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 9.6pt;
+      line-height: 1.6;
+      color: #0f172a;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Cover Page Styling */
+    .cover-page {
+      page-break-after: always;
+      break-after: page;
+      padding-top: 40px;
+      padding-bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      min-height: 90vh;
+    }
+
+    .cover-top-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 8.5pt;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #4f46e5;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      padding: 4px 10px;
+      border-radius: 4px;
+      width: fit-content;
+      margin-bottom: 24px;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4f46e5;
+      display: inline-block;
+    }
+
+    .cover-title {
+      font-size: 26pt;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      color: #090d16;
+      border-bottom: 3px solid #4f46e5;
+      padding-bottom: 12px;
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+
+    .cover-page h2 {
+      font-size: 13pt;
+      font-weight: 600;
+      line-height: 1.4;
+      color: #475569;
+      border: 0;
+      padding: 0;
+      margin-top: 0;
+      margin-bottom: 32px;
+    }
+
+    .cover-page p {
+      font-size: 9.5pt;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    /* Table of Contents Styling */
+    .toc-page {
+      page-break-after: always;
+      break-after: page;
+      padding-top: 20px;
+    }
+
+    .toc-title {
+      font-size: 16pt;
+      font-weight: 700;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin-top: 0;
+      margin-bottom: 16px;
+      color: #090d16;
+    }
+
+    .toc-page ol {
+      line-height: 1.75;
+      font-size: 9.5pt;
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    .toc-page ol > li {
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+
+    .toc-page ul {
+      line-height: 1.6;
+      font-size: 8.8pt;
+      margin-top: 3px;
+      margin-bottom: 8px;
+      padding-left: 18px;
+      list-style-type: disc;
+    }
+
+    .toc-page ul > li {
+      font-weight: 400;
+      color: #475569;
+      margin-bottom: 2px;
+    }
+
+    .toc-page a {
+      color: #1e293b;
+      font-weight: 500;
+      text-decoration: none;
+    }
+
+    .toc-page a:hover {
+      color: #4f46e5;
+    }
+
+    /* Headings */
+    h1, h2, h3, h4, h5, h6 {
+      color: #090d16;
+      font-weight: 700;
+      line-height: 1.25;
+      margin-top: 1.6em;
+      margin-bottom: 0.6em;
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    h1 {
+      font-size: 18pt;
+      letter-spacing: -0.02em;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 0.25em;
+    }
+
+    h2 {
+      font-size: 13pt;
+      letter-spacing: -0.015em;
+      border-bottom: 1px solid #edf2f7;
+      padding-bottom: 0.2em;
+      margin-top: 2em;
+    }
+
+    h3 {
+      font-size: 10.8pt;
+      margin-top: 1.4em;
+    }
+
+    h4 {
+      font-size: 9.8pt;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    p {
+      margin-top: 0;
+      margin-bottom: 0.85em;
+      text-align: justify;
+    }
+
+    strong {
+      color: #090d16;
+      font-weight: 600;
+    }
+
+    em {
+      color: #334155;
+    }
+
+    a {
+      color: #4338ca;
+      text-decoration: none;
+    }
+
+    hr.divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 2em 0;
+    }
+
+    /* Code blocks & ASCII */
+    pre.code-block {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 10px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 8pt;
+      line-height: 1.45;
+      color: #0f172a;
+      overflow-x: auto;
+      margin: 1em 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    code.inline-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 8.5pt;
+      background: #f1f5f9;
+      color: #334155;
+      padding: 0.15em 0.35em;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Blockquotes */
+    blockquote {
+      margin: 1.1em 0;
+      padding: 8px 14px;
+      background: #f8fafc;
+      border-left: 3px solid #6366f1;
+      color: #334155;
+      font-style: italic;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    blockquote p {
+      margin: 0;
+      text-align: left;
+    }
+
+    /* Lists */
+    ul, ol {
+      margin-top: 0;
+      margin-bottom: 0.85em;
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 0.35em;
+    }
+
+    /* Tables */
+    .table-container {
+      margin: 1.2em 0;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+      text-align: left;
+      border: 1px solid #cbd5e1;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 600;
+      padding: 6px 9px;
+      border: 1px solid #cbd5e1;
+      text-transform: uppercase;
+      font-size: 7.5pt;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 6px 9px;
+      border: 1px solid #cbd5e1;
+      vertical-align: top;
+      color: #334155;
+    }
+
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    /* Math blocks */
+    .math-block {
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+      border-left: 3px solid #7c3aed;
+      border-radius: 4px;
+      padding: 9px 14px;
+      margin: 0.9em 0;
+      text-align: center;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 8.8pt;
+      line-height: 1.5;
+      color: #4c1d95;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow-x: auto;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .inline-math {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 8.8pt;
+      background: #faf5ff;
+      color: #6b21a8;
+      padding: 0.1em 0.35em;
+      border-radius: 3px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .math-block sub, .inline-math sub {
+      font-size: 7.2pt;
+      font-weight: 600;
+      line-height: 1;
+      vertical-align: -0.25em;
+    }
+
+    .math-block sup, .inline-math sup {
+      font-size: 7.2pt;
+      font-weight: 600;
+      line-height: 1;
+      vertical-align: 0.35em;
+    }
+  </style>
+</head>
+<body>
+  <div class="cover-page">
+<div class="cover-top-badge"><span class="badge-dot"></span> CORTEX ARCHITECTURAL SPECIFICATION · SERIES 2026</div>
+<h1 class="cover-title">Cortex Technical Whitepaper</h1>
+<h2 id="deterministic-quantification-of-codebase-continuity-bus-factor-risk-and-architectural-lineage-in-self-hosted-environments">Deterministic Quantification of Codebase Continuity, Bus Factor Risk, and Architectural Lineage in Self-Hosted Environments</h2>
+<p><strong>Document Version:</strong> 2.1.0  </p>
+<p><strong>Publication Date:</strong> September 2026  </p>
+<p><strong>Publisher:</strong> The Cortex Team  </p>
+<p><strong>Classification:</strong> Public Technical Specification & Methodology Standard  </p>
+<p><strong>License:</strong> Business Source License (BSL 1.1) / Open Architecture  </p>
+<p><strong>Notice:</strong> Methodology and algorithms represent current implemented best practices and may be refined over time as software engineering empirical research evolves.</p>
+</div><!-- .cover-page -->
+<div class="toc-page">
+<h2 class="toc-title">Table of Contents</h2>
+<ol start="1">
+<li value="1"><a href="#1-executive-summary">Executive Summary</a>
+</li><li value="2"><a href="#2-the-problem-the-fragility-of-tacit-engineering-knowledge">The Problem: The Fragility of Tacit Engineering Knowledge</a>
+<ul>
+<li>2.1 The Mechanics of Knowledge Concentration
+</li><li>2.2 Why Traditional Knowledge Transfer Fails
+</li><li>2.3 The Business Liability: Attrition, Onboarding, and Incident Resolution
+</li></ul>
+</li><li value="3"><a href="#3-system-architecture--how-cortex-works">System Architecture & How Cortex Works</a>
+<ul>
+<li>3.1 Passive Observability & Ingestion Flow
+</li><li>3.2 The Graph & Vector Substrate
+</li><li>3.3 Separation of Concerns: Deterministic Math vs. Generative Text
+</li><li>3.4 System Flow Architecture Diagram
+</li></ul>
+</li><li value="4"><a href="#4-methodology-metrics-formulas--defensible-design-choices">Methodology: Metrics, Formulas & Defensible Design Choices</a>
+<ul>
+<li>4.1 PR Review Cycle Time (<code class="inline-code">pr_review_cycle_time</code>)
+</li><li>4.2 PR Total Lead Time (<code class="inline-code">pr_total_lead_time</code>)
+</li><li>4.3 Commit Activity Count (<code class="inline-code">commit_activity_count</code>) & Multi-Dimensional Size Context
+</li><li>4.4 Merged Pull Request Count (<code class="inline-code">pr_merged_count</code>)
+</li><li>4.5 Repository Bus Factor (<code class="inline-code">repo_bus_factor</code>)
+</li><li>4.6 Repository Ownership Percentage (<code class="inline-code">repo_ownership_percent</code>) & Recency Decay
+</li><li>4.7 Knowledge Departure Risk Score (<code class="inline-code">knowledge_departure_risk</code>)
+</li><li>4.8 Successor Recommendation Match (<code class="inline-code">successor_match_score</code>)
+</li><li>4.9 Engineering Health Index & Composite Organizational Risk
+</li><li>4.10 Pre-Merge Pull Request Risk Score (<code class="inline-code">pr_risk_score</code>)
+</li></ul>
+</li><li value="5"><a href="#5-data-integrity-provenance--the-evidence-chain-model">Data Integrity, Provenance & The Evidence-Chain Model</a>
+<ul>
+<li>5.1 The Provenance Taxonomy: Trusted vs. Synthetic Quarantine
+</li><li>5.2 Row-Level Security & Ingestion Integrity Guards
+</li><li>5.3 The Self-Healing Invariant Guard
+</li><li>5.4 Debounced Invalidation with Distributed Mutex Locks
+</li></ul>
+</li><li value="6"><a href="#6-security-permission-scopes--the-byoc-model">Security, Permission Scopes & The BYOC Model</a>
+<ul>
+<li>6.1 Bring Your Own Cloud (BYOC) Architectural Isolation
+</li><li>6.2 Data Ingestion Scopes & The Zero-Egress Invariant
+</li><li>6.3 What is Stored vs. What is Ephemeral
+</li></ul>
+</li><li value="7"><a href="#7-what-cortex-guarantees--what-it-honestly-does-not">What Cortex Guarantees & What It Honestly Does Not</a>
+<ul>
+<li>7.1 Explicit System Guarantees
+</li><li>7.2 Explicit System Non-Guarantees & Hard Boundaries
+</li></ul>
+</li><li value="8"><a href="#8-practical-scenarios--operational-use-cases">Practical Scenarios & Operational Use Cases</a>
+<ul>
+<li>8.1 Scenario A: Sudden Senior Architect Resignation
+</li><li>8.2 Scenario B: Mid-Level Engineer Fast-Track Onboarding
+</li><li>8.3 Scenario C: High-Severity Production Incident Triage
+</li><li>8.4 Scenario D: Excavating Stale Legacy Architectural Context
+</li></ul>
+</li><li value="9"><a href="#9-frequently-asked-questions--methodological-steelmanning">Frequently Asked Questions & Methodological Steelmanning</a>
+<ul>
+<li>9.1 "Why should I trust this formula over any other arbitrary score?"
+</li><li>9.2 "What if our engineering culture disagrees with your weights or thresholds?"
+</li><li>9.3 "How is Cortex structurally different from Copilot, Glean, or static code search?"
+</li><li>9.4 "What data does Cortex store, and could our intellectual property leak?"
+</li><li>9.5 "What happens if a calculated metric turns out to be wrong?"
+</li><li>9.6 "Is this tool secretly developer surveillance or a productivity leaderboard?"
+</li></ul>
+</li><li value="10"><a href="#10-product-direction--planned-capabilities">Product Direction & Planned Capabilities</a>
+</li><li value="11"><a href="#11-publication-metadata-references--contact">Publication Metadata, References & Contact</a>
+</li></ol>
+</div><!-- .toc-page -->
+<h2 id="1-executive-summary">1. Executive Summary</h2>
+<p>Software engineering organizations operate under an unhedged operational liability: <strong>institutional memory concentrates inside the minds of individual engineers, while operational infrastructure outlives their tenure.</strong> </p>
+<p>When senior developers, systems architects, or module owners depart an organization, they take unwritten architectural context, undocumented dependencies, and incident-mitigation intuition with them. Traditional documentation efforts fail because documentation is written once and decays silently. Exit interviews and reactive "knowledge transfer" (KT) sprints during two-week notice periods capture only a superficial fraction of system reality.</p>
+<p>Cortex is an architectural continuity platform designed to quantify, track, and protect engineering knowledge within an enterprise. Deployed entirely inside the customer’s private virtual private cloud (VPC) under a Bring-Your-Own-Cloud (BYOC) operational model, Cortex passively connects to an organization's existing development tools—specifically GitHub, Slack, and Jira. </p>
+<p>By observing the natural exhaust of software development (commit diffs, code reviews, issue discussions, and pull request lifecycles), Cortex compiles an auditable, queryable Property Graph in Neo4j coupled with a dense semantic vector index in Qdrant. </p>
+<p>Crucially, Cortex enforces a fundamental architectural tenet:</p>
+<blockquote><strong>Numerical analytics are strictly deterministic.</strong> Risk metrics, Bus Factors, and successor rankings are never calculated, estimated, or adjusted by generative artificial intelligence. They are derived entirely from explicit mathematical formulas, verified graph topology, and relational event ledgers.</blockquote>
+<p>The purpose of this whitepaper is to provide CTOs, VPs of Engineering, systems architects, and skeptical software engineers with a transparent, mathematically rigorous account of how Cortex works. For every metric, we describe:</p>
+<ol start="1">
+<li value="1"><strong>What</strong> it measures in plain English.
+</li><li value="2"><strong>Why</strong> the specific mathematical formula was chosen.
+</li><li value="3"><strong>What</strong> the metric honest-to-goodness does not capture.
+</li><li value="4"><strong>Why</strong> no single "universally correct" formula exists across software engineering.
+</li></ol>
+<p>We do not present our methodology as an unchallengeable universal truth. We present it as a reasoned, auditable, and documented engineering framework—a transparent standard against which technical leadership can evaluate and hedge organizational continuity risk.</p>
+<hr class="divider" />
+<h2 id="2-the-problem-the-fragility-of-tacit-engineering-knowledge">2. The Problem: The Fragility of Tacit Engineering Knowledge</h2>
+<h3 id="21-the-mechanics-of-knowledge-concentration">2.1 The Mechanics of Knowledge Concentration</h3>
+<p>In any software team larger than a single developer, code ownership naturally concentrates. This concentration is rarely the result of deliberate gatekeeping; it is an organic consequence of operational momentum:</p>
+<ul>
+<li><strong>Velocity Pressure:</strong> When an urgent bug strikes the payment processing pipeline, managers assign the task to the engineer who wrote it, because they can fix it in 30 minutes while an unfamiliar engineer would require two days of context-gathering.
+</li><li><strong>The "Hero" Anti-Pattern:</strong> Repeatedly assigning a subsystem to the same person reinforces their exclusive mental model of that subsystem. Over six to twelve months, other team members become actively afraid to touch that service without the primary author's review.
+</li><li><strong>Code Review Asymmetry:</strong> Code reviews in concentrated repositories become rubber-stamps. A second engineer approves the pull request based on trust rather than structural comprehension.
+</li></ul>
+<p>As a direct consequence, the codebase fragments into cognitive silos. While Git records <em>what</em> lines were changed, the <em>why</em>—the historical compromises, avoided pitfalls, and architectural tradeoffs—remains stored as tacit memory exclusively inside the original author's head.</p>
+<h3 id="22-why-traditional-knowledge-transfer-fails">2.2 Why Traditional Knowledge Transfer Fails</h3>
+<p>Most technology organizations rely on two defensive strategies to mitigate this concentration: manual documentation and departure knowledge transfer (KT). Both are structurally flawed:</p>
+<ol start="1">
+<li value="1"><strong>The Documentation Half-Life:</strong> Writing thorough documentation requires deliberate effort that conflicts with sprint delivery commitments. More importantly, documentation suffers from silent rot: code changes every week, but wikis and markdown files are rarely updated in tandem. A wiki page written nine months ago is often more dangerous than no documentation at all, because it provides confident, out-of-date instructions.
+</li><li value="2"><strong>The Two-Week Notice Illusion:</strong> When an engineer resigns, typical corporate policy initiates a transition period of two weeks. It is physically impossible to download three years of accumulated technical intuition, edge-case familiarity, and system topology into a replacement engineer in ten working days. The departing engineer attends back-to-back transition meetings, produces hasty documentation that nobody has time to validate, and departs.
+</li></ol>
+<h3 id="23-the-business-liability-attrition-onboarding-and-incident-resolution">2.3 The Business Liability: Attrition, Onboarding, and Incident Resolution</h3>
+<p>When engineering knowledge is trapped in individuals, routine organizational events transform into acute business risks:</p>
+<ul>
+<li><strong>Attrition Liability (The "Bus Factor"):</strong> If an engineer who single-handedly maintains the core authentication service resigns or becomes unavailable, the team discovers that simple modifications suddenly take three times longer. If an edge-case outage strikes that module, the team must reverse-engineer the code under production pressure.
+</li><li><strong>Onboarding Drag:</strong> New engineering hires spend weeks or months attempting to discover who owns what, which services are deprecated, and why certain architectural decisions were made. In large repositories, developers often spend a substantial fraction of their initial onboarding runway simply navigating team silos and identifying subject matter experts.
+</li><li><strong>Incident Escalation:</strong> During high-severity outages (Sev-1/Sev-2), mean-time-to-resolution (MTTR) is directly governed by how quickly the incident commander can locate the specific individual who understands the failing subsystem's historical failure modes.
+</li></ul>
+<p>Cortex was designed to turn this invisible cognitive reality into a visible, auditable, and actionable engineering system.</p>
+<hr class="divider" />
+<h2 id="3-system-architecture-how-cortex-works">3. System Architecture & How Cortex Works</h2>
+<h3 id="31-passive-observability-ingestion-flow">3.1 Passive Observability & Ingestion Flow</h3>
+<p>Cortex does not require software engineers to install IDE plugins, log hours, or alter their day-to-day development habits. The platform acts as a passive observational layer that ingests standard webhooks emitted by an enterprise's existing collaboration tools:</p>
+<ol start="1">
+<li value="1"><strong>GitHub Ingestion:</strong> Commits, branches, pull request lifecycles (creation, review requests, approvals, merges, closes), and issue discussions.
+</li><li value="2"><strong>Slack Ingestion:</strong> Technical channel discussions, architectural threads, and incident channels.
+</li><li value="3"><strong>Jira Ingestion:</strong> Issue creation, status transitions, sprint epics, and work assignments.
+</li></ol>
+<p>Incoming payloads hit an Express API gateway protected by cryptographic signature validation (HMAC-SHA256 for GitHub, HMAC with 5-minute timestamp validation for Slack, and secure tokens for Jira). Payloads are assigned a Snowflake identifier and written idempotently to a PostgreSQL raw event ledger (<code class="inline-code">events</code> table) using a unique constraint on <code class="inline-code">(provider, external_id)</code>. If an external provider re-delivers a webhook, the database acknowledges the delivery with an HTTP <code class="inline-code">200 OK</code> without re-queuing duplicate work.</p>
+<p>Heavy processing is handed off asynchronously to a Redis-backed queue (<code class="inline-code">BullMQ</code>). Workers dequeue jobs with an automated retry policy (3 attempts with exponential backoff: 2s <span class="inline-math">→</span> 4s <span class="inline-math">→</span> 8s) to prevent transient network spikes from dropping data.</p>
+<h3 id="32-the-graph-vector-substrate">3.2 The Graph & Vector Substrate</h3>
+<p>Once dequeued, events are processed into two distinct, complementary storage engines:</p>
+<ul>
+<li><strong>Neo4j Property Graph:</strong> Models concrete entities (<code class="inline-code">PERSON</code>, <code class="inline-code">REPOSITORY</code>, <code class="inline-code">TECHNOLOGY</code>, <code class="inline-code">PULL_REQUEST</code>, <code class="inline-code">ISSUE</code>, <code class="inline-code">FILE</code>) and their topological relationships (<code class="inline-code">CONTRIBUTED_TO</code>, <code class="inline-code">USES</code>, <code class="inline-code">DEPENDS_ON</code>, <code class="inline-code">WORKS_ON</code>, <code class="inline-code">PART_OF</code>). To prevent graph explosion and out-of-memory errors on large codebases, Cortex compacts individual Git commit nodes into direct <code class="inline-code">CONTRIBUTED_TO</code> edges carrying metadata properties (<code class="inline-code">commitCount</code>, <code class="inline-code">lastCommitAt</code>).
+</li><li><strong>Qdrant Vector Database:</strong> Stores high-dimensional dense embeddings (384 dimensions via Google Gemini embeddings) of unstructured architectural rationale extracted from pull request bodies, Slack problem-solving threads, and Jira issue resolutions. Every vector point is indexed under a deterministic RFC-4122 UUID generated from the SHA-256 hash of the originating event, eliminating duplicate embedding drift on re-runs.
+</li></ul>
+<h3 id="33-separation-of-concerns-deterministic-math-vs-generative-text">3.3 Separation of Concerns: Deterministic Math vs. Generative Text</h3>
+<p>A core architectural principle governs Cortex:</p>
+<pre class="code-block language-"><code>┌───────────────────────────────────────────────────────────────┐
+│                    ARCHITECTURAL SEPARATION                   │
+├───────────────────────────────┬───────────────────────────────┤
+│    DETERMINISTIC ENGINE       │      SEMANTIC LLM LAYER       │
+│    (Pure TypeScript Math)     │      (Groq LPU Cascade)       │
+├───────────────────────────────┼───────────────────────────────┤
+│ • Bus Factor Calculation      │ • Ingestion Entity Extraction │
+│ • Knowledge Risk Scoring      │ • Semantic Summary Generation │
+│ • Successor Jaccard Ranks     │ • Natural Language Inquiries  │
+│ • Cycle Time &amp; Lead Times     │ • Evidence Formatting         │
+│ • Deterministic Calculation   │ • Never Generates Any Numbers │
+└───────────────────────────────┴───────────────────────────────┘</code></pre>
+<p>Numerical metrics are calculated solely by deterministic TypeScript services executing Cypher graph queries and SQL aggregations. Large Language Models (LLMs) are strictly confined to extracting entities from raw text during ingestion and synthesizing verified structured graph data into human-readable answers during conversational inquiries.</p>
+<h3 id="34-system-flow-architecture-diagram">3.4 System Flow Architecture Diagram</h3>
+<p>The flow of data from ingestion through storage to consumer interfaces proceeds as follows:</p>
+<pre class="code-block language-"><code>[GitHub / Slack / Jira]
+        │
+        │ Cryptographic Webhook (HMAC-SHA256)
+        ▼
+[API Gateway: Ingestion Controller]
+        │
+        │ Idempotent Write (ON CONFLICT DO NOTHING)
+        ▼
+[PostgreSQL: events Table (Raw Ledger)]
+        │
+        │ BullMQ Job Enqueue (exponential backoff)
+        ▼
+[Processing Worker: ingest.worker.ts]
+        │
+        ├──► [Groq LPU Cascade]: Entity &amp; Relation Extraction
+        │           │
+        │           ├──► [Neo4j Property Graph]: Nodes &amp; CONTRIBUTED_TO Edges
+        │           │
+        │           └──► [Qdrant Vector DB]: Dense Semantic Embeddings
+        │
+        ▼
+[Deterministic Analytics Engine: packages/analytics/]
+        │
+        │ (Bus Factor, Knowledge Risk, Successor Ranks, Lead Times)
+        ▼
+[PostgreSQL Metrics Tables]: person_metrics, repo_metrics, etc.
+        │
+        ├──► [React Dashboard]: Executive KPIs &amp; Health Grade
+        │
+        └──► [LangGraph Agent]: Multi-Tool Grounded Query Interface</code></pre>
+<hr class="divider" />
+<h2 id="4-methodology-metrics-formulas-defensible-design-choices">4. Methodology: Metrics, Formulas & Defensible Design Choices</h2>
+<p>Every metric in Cortex follows an explicit four-part structure:</p>
+<ol start="1">
+<li value="1"><strong>WHAT</strong> it measures (plain-English definition followed by technical precision).
+</li><li value="2"><strong>WHY</strong> we measure it this way (the reasoning and mathematical justification).
+</li><li value="3"><strong>WHAT IT DOESN'T CAPTURE</strong> (honest, unhedged operational limitations).
+</li><li value="4"><strong>WHY THERE ISN'T ONE "CORRECT" FORMULA</strong> (acknowledgment of differing heuristics).
+</li></ol>
+<hr class="divider" />
+<h3 id="41-pr-review-cycle-time-pr_review_cycle_time">4.1 PR Review Cycle Time (<code class="inline-code">pr_review_cycle_time</code>)</h3>
+<h4 id="1-what-it-measures">1. What It Measures</h4>
+<p>In plain English: <strong>"The Waiting Room Time."</strong> When an engineer finishes writing a piece of code and signals that it is ready for human review, how many hours does it take for a colleague to examine it, approve it, and merge it into the codebase?</p>
+<p>Mathematically:</p>
+<div class="math-block">ReviewDuration = T<sub>merged_at</sub> − T<sub>ready_for_review_at</sub></div>
+<p>The metric measures elapsed wall-clock hours from the exact timestamp a pull request transitions out of draft status (<code class="inline-code">ready_for_review_at</code>, or <code class="inline-code">created_at</code> if created as ready) to the timestamp it is merged into the default branch (<code class="inline-code">merged_at</code>). The headline organizational metric is reported as the <strong>median (p50)</strong> across all qualified human pull requests, alongside 90th percentile (p90) and interquartile ranges (IQR).</p>
+<h4 id="2-why-we-measure-it-this-way">2. Why We Measure It This Way</h4>
+<ul>
+<li><strong>Exclusion of Draft Time:</strong> When an engineer opens a pull request as a "Draft" to run continuous integration tests or experiment with architecture, that time is excluded. Measuring from creation date penalizes engineers for sharing early work and incentivizes them to hide code locally until the last minute.
+</li><li><strong>Use of Median (p50) Instead of Mean:</strong> In software engineering, review times follow a heavily right-skewed log-normal distribution. If a team merges 19 pull requests in 4 hours each, but one experimental pull request sits open for 45 days before being merged, the arithmetic average would report <span class="inline-math">≈ 60</span> hours (<span class="inline-math">≈ 2.5</span> days), presenting a fast, responsive team as sluggish. The median correctly reflects the typical engineer's experience: 4 hours.
+</li><li><strong>Segregation of Extreme Outliers (<span class="inline-math">>30</span> Days):</strong> Pull requests that remain open longer than 30 calendar days are automatically segregated into a separate <code class="inline-code">stale_outliers</code> inspection ledger. They are not discarded—they remain visible for auditing—but they are excluded from velocity metrics to prevent abandoned side-projects from corrupting team baselines.
+</li><li><strong>Bot Exclusions:</strong> Pull requests generated by automated tools (<code class="inline-code">dependabot[bot]</code>, <code class="inline-code">renovate[bot]</code>, <code class="inline-code">github-actions</code>) are filtered out so that automated dependency bumps do not distort human collaboration speed.
+</li></ul>
+<h4 id="3-what-it-doesnt-capture">3. What It Doesn't Capture</h4>
+<ul>
+<li><strong>Review Thoroughness:</strong> A review cycle time of 15 minutes might indicate an exceptional, responsive team—or it might indicate a team that rubber-stamps code without reading it. Cortex does not evaluate whether the reviewer carefully examined line 42.
+</li><li><strong>Offline / Synchronous Reviews:</strong> If two engineers sit together in a pair-programming session, write code, and immediately merge it, Cortex records a near-zero review time. It cannot distinguish between an instant rubber-stamp and a rigorous two-hour synchronous pairing session.
+</li><li><strong>Non-Working Hours Nuance:</strong> Wall-clock time counts nights and weekends. While Cortex provides an optional business-hours calculator (Monday–Friday 09:00–18:00 UTC), teams distributed across global time zones (e.g., US West Coast and India) have overlapping asynchronous shifts that make a single "business hours" filter arbitrary.
+</li></ul>
+<h4 id="4-why-there-isnt-one-correct-formula">4. Why There Isn't One "Correct" Formula</h4>
+<p>Some engineering platforms calculate cycle time from the very first commit on a local branch. Others calculate it from PR creation to the first reviewer comment. Neither is objectively superior:</p>
+<ul>
+<li>Measuring from first commit conflates authoring speed with review speed.
+</li><li>Measuring to first comment measures acknowledgment, not resolution (a reviewer might say "taking a look" and disappear for three days).
+</li></ul>
+<p>Cortex chose <strong>ready-to-review <span class="inline-math">→</span> merge</strong> because it precisely isolates the organizational handoff window: the period during which code is finished but waiting on human collaboration. Teams can adjust the outlier threshold (default: 30 days) and toggle bot inclusion within configuration parameters.</p>
+<hr class="divider" />
+<h3 id="42-pr-total-lead-time-pr_total_lead_time">4.2 PR Total Lead Time (<code class="inline-code">pr_total_lead_time</code>)</h3>
+<h4 id="1-what-it-measures">1. What It Measures</h4>
+<p>In plain English: <strong>"The Complete Delivery Journey."</strong> From the very first moment an engineer creates a pull request until that code is finally merged into the main production branch, how long did the entire lifecycle take?</p>
+<p>Mathematically:</p>
+<div class="math-block">TotalLeadTime = T<sub>merged_at</sub> − T<sub>created_at</sub></div>
+<h4 id="2-why-we-measure-it-this-way">2. Why We Measure It This Way</h4>
+<p>While Review Cycle Time measures reviewer responsiveness, Total Lead Time measures end-to-end work-in-progress (WIP) duration. Tracking both allows technical leadership to immediately diagnose bottlenecks:</p>
+<ul>
+<li>If Lead Time is 5 days but Review Cycle Time is 4 hours, the delay is in authoring and draft iteration.
+</li><li>If Lead Time is 5 days and Review Cycle Time is 4.8 days, the delay is reviewer inertia and cross-team dependency blocking.
+</li></ul>
+<h4 id="3-what-it-doesnt-capture">3. What It Doesn't Capture</h4>
+<ul>
+<li><strong>Pre-PR Local Incubation:</strong> If an engineer develops a feature locally on their laptop for three weeks before pushing a branch and opening a pull request, Cortex cannot observe those three weeks. It observes only the period during which the work was visible on the central repository.
+</li><li><strong>Post-Merge Deployment Pipeline:</strong> Lead time in Cortex concludes when code is merged into the target branch. It does not measure downstream continuous deployment (CD) steps, staging smoke tests, or canary deployment rollouts to production Kubernetes clusters.
+</li></ul>
+<h4 id="4-why-there-isnt-one-correct-formula">4. Why There Isn't One "Correct" Formula</h4>
+<p>The DevOps Research and Assessment (DORA) consortium defines "Lead Time for Changes" from the moment of the first commit to the moment code runs in production. Implementing pure DORA lead time requires deep, brittle integration into every deployment pipeline and feature-flag service. Cortex adopts the repository boundary (PR creation <span class="inline-math">→</span> merge) as the standard, defensible measure of collaborative engineering delivery.</p>
+<hr class="divider" />
+<h3 id="43-commit-activity-count-commit_activity_count-multi-dimensional-size-context">4.3 Commit Activity Count (<code class="inline-code">commit_activity_count</code>) & Multi-Dimensional Size Context</h3>
+<h4 id="1-what-it-measures">1. What It Measures</h4>
+<p>In plain English: A verified tally of code contributions made by an engineer or merged into a repository, accompanied by additions (<span class="inline-math">+</span>), deletions (<span class="inline-math">-</span>), and total modified files.</p>
+<h4 id="2-why-we-measure-it-this-way">2. Why We Measure It This Way</h4>
+<ul>
+<li><strong>Commit Counts Are NOT Productivity:</strong> Cortex explicitly documents in its database schema and UI: <strong>"Engineering Activity (Not a measure of individual productivity or output)."</strong> Evaluating an engineer by raw commit volume is a direct invitation for Goodhart's Law: developers split clean work into artificial micro-commits or commit generated vendor libraries.
+</li><li><strong>Mandatory Multi-Dimensional Size Context:</strong> Every display of commit activity in Cortex is programmatically coupled with lines added, lines deleted, and files changed. A commit modifying 5 lines of configuration is structurally separated from an architectural commit modifying 2,000 lines across 30 files.
+</li><li><strong>Git Trailer Co-Author Support:</strong> Commits containing <code class="inline-code">Co-authored-by: Name <email></code> in Git commit trailers automatically attribute contribution credit to both engineers, recognizing pair-programming.
+</li><li><strong>Squash-Merge Normalization:</strong> When a pull request containing 20 exploratory commits is squashed and merged into <code class="inline-code">main</code>, the mainline repository ledger records <strong>exactly one</strong> clean contribution, reflecting the merged state.
+</li></ul>
+<h4 id="3-what-it-doesnt-capture">3. What It Doesn't Capture</h4>
+<ul>
+<li><strong>Negative Code & Refactoring Value:</strong> One of the most valuable engineering contributions is deleting 5,000 lines of obsolete, vulnerable code and replacing it with a 20-line library call. Raw commit activity tallies lines, not architectural elegance.
+</li><li><strong>Architectural Mentorship:</strong> Senior engineers often spend their most impactful hours unblocking colleagues, reviewing designs, or writing architectural specifications—none of which produces raw code commits.
+</li></ul>
+<h4 id="4-why-there-isnt-one-correct-formula">4. Why There Isn't One "Correct" Formula</h4>
+<p>No consensus exists on how to quantify software contribution. Some tools measure "churn" (additions plus deletions), others measure "impact" (a proprietary algorithmic weighting of file centrality). Cortex avoids opaque, proprietary impact scores: it presents raw, verified Git contribution facts with mandatory size context, leaving qualitative evaluation to human leaders.</p>
+<hr class="divider" />
+<h3 id="44-merged-pull-request-count-pr_merged_count">4.4 Merged Pull Request Count (<code class="inline-code">pr_merged_count</code>)</h3>
+<h4 id="1-what-it-measures">1. What It Measures</h4>
+<p>In plain English: The verified count of merged, human-authored pull requests associated with an engineer or repository.</p>
+<h4 id="2-why-we-measure-it-this-way">2. Why We Measure It This Way</h4>
+<p>Unlike commits, which can be generated arbitrarily on a local terminal, a merged pull request represents a collaborative milestone: code that passed continuous integration checks and received organizational approval. Closed, unmerged pull requests and open drafts are strictly excluded.</p>
+<h4 id="3-what-it-doesnt-capture">3. What It Doesn't Capture</h4>
+<p>Pull request complexity. A pull request that upgrades a documentation typo counts as 1. A pull request that migrates the primary relational database from PostgreSQL to CockroachDB counts as 1. The metric measures throughput volume, never semantic difficulty.</p>
+<h4 id="4-why-there-isnt-one-correct-formula">4. Why There Isn't One "Correct" Formula</h4>
+<p>Some methodologies attempt to weight pull requests by story points or t-shirt sizes (S, M, L). Story points are notoriously inconsistent across teams and sprint cycles. Cortex reports unweighted merged counts alongside multi-dimensional size context (lines, files) to provide an objective factual baseline.</p>
+<hr class="divider" />
+<h3 id="45-repository-bus-factor-repo_bus_factor">4.5 Repository Bus Factor (<code class="inline-code">repo_bus_factor</code>)</h3>
+<h4 id="1-what-it-measures">1. What It Measures</h4>
+<p>In plain English: <strong>"If key developers leave tomorrow, what is the minimum number of people whose departure would take more than 50% of the codebase's historical authoring context with them?"</strong></p>
+<p>Technically: The minimum cardinality of an active contributor set whose aggregated historical contributions account for <span class="inline-math">≥ 50%</span> of the repository's total commit volume.</p>
+<h4 id="2-why-we-measure-it-this-way">2. Why We Measure It This Way</h4>
+<p>The step-by-step algorithm implemented in <code class="inline-code">packages/analytics/repoMetrics.service.ts</code>:</p>
+<ol start="1">
+<li value="1">Query verified <code class="inline-code">CONTRIBUTED_TO</code> relationship edges in Neo4j for repository <span class="inline-math">R</span>, filtered to trusted production sources (<code class="inline-code">r.source IN $trustedSources</code>).
+</li><li value="2">Filter out bot accounts (<code class="inline-code">dependabot</code>, <code class="inline-code">github-actions</code>, etc.) via <code class="inline-code">CYPHER_BOT_FILTER</code> and <code class="inline-code">isBotAccount</code>.
+</li><li value="3">Filter out departed personnel (<code class="inline-code">p.employmentStatus <> 'alumni'</code>). A developer who resigned six months ago cannot maintain code today, even if they authored 90% of it historically.
+</li><li value="4">Resolve multiple identities (e.g. personal GitHub email vs. corporate Slack username) to a single canonical engineer profile using PostgreSQL <code class="inline-code">person_identity</code> mapping.
+</li><li value="5">Rank active engineers descending by contribution volume.
+</li><li value="6">Accumulate contributions until the cumulative sum reaches or exceeds <span class="inline-math">50%</span> of the repository's total commits.
+</li><li value="7">The count of engineers required is the <strong>Bus Factor</strong>.
+</li></ol>
+<pre class="code-block language-"><code>Status Categorization:
+• Bus Factor = 1:   'fragile'       (Critical Single Point of Failure)
+• Bus Factor = 2:   'concentrated'  (Elevated Risk; only two people understand the system)
+• Bus Factor &gt;= 3:  'healthy'       (Resilient; knowledge is distributed)
+• Commits = 0:      'empty'         (Scaffold / zero-commit repository)</code></pre>
+<p>Mathematical Invariants Enforced in Code (<code class="inline-code">integrityGuard.service.ts</code>):</p>
+<ul>
+<li><span class="inline-math">BusFactor ≤ ContributorCount</span> (A repository with 2 contributors cannot have a Bus Factor of 3).
+</li><li><span class="inline-math">BusFactor = 0 ⟺ CommitCount = 0</span> (An active repository always has <span class="inline-math">BusFactor ≥ 1</span>).
+</li><li><span class="inline-math">∑ ContributorPercentages = 100.0%</span> (Strict normalization prevents rounding drift).
+</li></ul>
+<h4 id="3-what-it-doesnt-capture">3. What It Doesn't Capture</h4>
+<ul>
+<li><strong>Passive Code Comprehension:</strong> An engineer might never have written a commit to a repository, but might understand its architecture thoroughly because they reviewed every PR or attended every architectural design review. Cortex bases Bus Factor on recorded authoring history, not passive reading.
+</li><li><strong>Code Simplicity & Modularity:</strong> A microservice with 200 lines of straightforward CRUD logic may have a Bus Factor of 1, yet present virtually zero operational risk because any competent engineer could rewrite it in an afternoon. Bus Factor measures author concentration, not architectural difficulty.
+</li></ul>
+<h4 id="4-why-there-isnt-one-correct-formula">4. Why There Isn't One "Correct" Formula</h4>
+<p>In academic literature, Bus Factor thresholds vary widely:</p>
+<ul>
+<li>Some algorithms (e.g. Rigby et al., Avelino et al.) use 80% coverage thresholds.
+</li><li>Others apply Degree of Authorship (DOA) formulas factoring in file additions vs. modifications.
+</li></ul>
+<p>Cortex uses a <strong>50% majority threshold</strong> combined with active-contributor filtering. Fifty percent represents the tipping point where the majority of code context is concentrated in a known minority. The threshold is an auditable design choice, not an indisputable law of nature.</p>
+<hr class="divider" />
+<h3 id="46-repository-ownership-percentage-repo_ownership_percent-recency-decay">4.6 Repository Ownership Percentage (<code class="inline-code">repo_ownership_percent</code>) & Recency Decay</h3>
+<h4 id="1-what-it-measures">1. What It Measures</h4>
+<p>In plain English: <strong>"What proportion of this specific codebase does an individual engineer understand and actively maintain today?"</strong></p>
+<h4 id="2-why-we-measure-it-this-way">2. Why We Measure It This Way</h4>
+<p>Code written yesterday represents fresh operational familiarity; code written three years ago decays in recall. Cortex applies a <strong>continuous exponential half-life decay model</strong> to historical contributions (<code class="inline-code">packages/analytics/knowledge.risk.predict.ts</code>):</p>
+<div class="math-block">w(Δt) = exp(−λ · Δt) = exp(−0.693 × (Age in Days / 180))</div>
+<div class="math-block">WeightedContribution = ∑<sub>k ∈ Commits</sub> w(Age<sub>k</sub>)</div>
+<p>With a configured half-life of <span class="inline-math">T<sub>1/2</sub> = 180 days</span> (<span class="inline-math">λ = (\ln(2) / 180) ≈ 0.00385 day<sup>-1</sup></span>):</p>
+<ul>
+<li><strong>Day 0 (Today):</strong> A commit authored today carries full ownership weight: <span class="inline-math">w(0) = 1.0</span>.
+</li><li><strong>Day 180 (6 Months):</strong> Commit context weight decays to half: <span class="inline-math">w(180) = 0.50</span>.
+</li><li><strong>Day 360 (1 Year):</strong> Commit context weight decays to a quarter: <span class="inline-math">w(360) = 0.25</span>.
+</li><li><strong>Day 540 (18 Months):</strong> Commit context weight retains an eighth: <span class="inline-math">w(540) = 0.125</span>.
+</li></ul>
+<p>This mathematical model prevents historical "ghost ownership." If Developer A wrote 500 commits in 2023 but has not touched the repository since, and Developer B wrote 100 commits over the last 60 days refactoring the service, Developer B's active recency-weighted ownership is appropriately recognized as dominant, while Developer A's foundational architecture decays smoothly without artificial step discontinuities.</p>
+<h4 id="3-what-it-doesnt-capture">3. What It Doesn't Capture</h4>
+<p>Non-linear individual memory variance. Human memory retention is not an identical exponential curve across all engineering disciplines. A developer who designed a mission-critical consensus protocol may retain perfect recall of every edge case for five years, while a developer who wrote boilerplate configuration glue may forget it in two weeks. Continuous exponential decay is an objective mathematical proxy for operational freshness, not neurobiology.</p>
+<h4 id="4-why-there-isnt-one-correct-formula">4. Why There Isn't One "Correct" Formula</h4>
+<p>Some systems use rigid step-down windows (e.g. 30/90/180-day discrete buckets) or strict 90-day rolling cutoffs that create artificial cliffs where code drops 30% in value overnight. Others use unweighted cumulative commits, giving developers lifelong ownership of services they haven't maintained in years. Cortex chose a continuous 180-day half-life exponential decay (<span class="inline-math">e<sup>-λ t</sup></span>) because it eliminates cliff effects while smoothly balancing foundational authorship against active operational stewardship.</p>
+<hr class="divider" />
+<h3 id="47-knowledge-departure-risk-score-knowledge_departure_risk">4.7 Knowledge Departure Risk Score (<code class="inline-code">knowledge_departure_risk</code>)</h3>
+<h4 id="1-what-it-measures">1. What It Measures</h4>
+<p>In plain English: <strong>"If this specific engineer resigns tomorrow morning, how severe is the operational blast radius to the engineering organization?"</strong></p>
+<p>Technically: A composite percentage score (<span class="inline-math">0% to 100%</span>) computed for each active engineer across six weighted risk dimensions.</p>
+<h4 id="2-why-we-measure-it-this-way">2. Why We Measure It This Way</h4>
+<p>The exact mathematical formula implemented in <code class="inline-code">packages/analytics/knowledge.service.ts</code>:</p>
+<div class="math-block">KnowledgeRisk = 0.30 · S<sub>ownership</sub> + 0.20 · S<sub>dependency</sub> + 0.15 · S<sub>activity</sub> + 0.15 · S<sub>documentation</sub> + 0.10 · S<sub>expertise</sub> + 0.10 · S<sub>pendingWork</sub></div>
+<p>Where each component represents a normalized score (<span class="inline-math">0.0 to 1.0</span>):</p>
+<ol start="1">
+<li value="1"><strong>Ownership (<span class="inline-math">30%</span> weight):</strong> The proportion of repositories where this individual is the primary owner or holds an ownership concentration <span class="inline-math">≥ 70%</span>.
+</li><li value="2"><strong>Dependency (<span class="inline-math">20%</span> weight):</strong> The number of downstream services and core repositories that depend on subsystems maintained by this engineer.
+</li><li value="3"><strong>Activity (<span class="inline-math">15%</span> weight):</strong> Recency and volume of contributions. An engineer actively driving critical changes represents higher immediate departure disruption than one in maintenance mode.
+</li><li value="4"><strong>Documentation (<span class="inline-math">15%</span> weight):</strong> The ratio of documented vs. undocumented architecture. If an engineer authors thousands of lines of complex logic but writes zero READMEs, architectural documentation, or explanatory Jira tickets, their departure risk elevates.
+</li><li value="5"><strong>Sole Expertise (<span class="inline-math">10%</span> weight):</strong> Whether this person is the <em>only</em> engineer in the organization with verified experience in a specific critical technology (e.g. the sole Rust developer, the sole Kafka cluster operator).
+</li><li value="6"><strong>Pending Work (<span class="inline-math">10%</span> weight):</strong> The volume of unmerged pull requests, active sprint tickets, and in-flight epics assigned to this engineer that would stall upon departure.
+</li></ol>
+<pre class="code-block language-"><code>Risk Classification Tiers:
+• &gt;= 60%:   Critical Risk  (Red Alert: Immediate succession planning required)
+• 40% - 59%: High Risk      (Amber Alert: Pair-programming and documentation handover advised)
+• 25% - 39%: Moderate Risk  (Blue: Healthy, normal senior contributor)
+• &lt; 25%:     Low Risk       (Green: Broadly shared knowledge or new joiner)</code></pre>
+<h4 id="3-what-it-doesnt-capture">3. What It Doesn't Capture</h4>
+<ul>
+<li><strong>Notice Period Negotiation:</strong> An executive who agrees to a 3-month transition window presents less operational risk than an engineer who quits effective immediately. Cortex models the structural impact of departure, not the length of notice.
+</li><li><strong>Teammate Learning Velocity:</strong> A team of exceptional senior engineers might absorb an orphaned service in three days, whereas a junior team might struggle for months. Cortex evaluates organizational exposure, not human learning speed.
+</li></ul>
+<h4 id="4-why-there-isnt-one-correct-formula">4. Why There Isn't One "Correct" Formula</h4>
+<p>The 30/20/15/15/10/10 weight allocation is a reasoned engineering judgment reflecting the relative severity of continuity threats. In an early-stage startup, sole technology expertise might matter far more than documentation; in a heavily regulated enterprise bank, documentation and dependency might outweigh active commits. Cortex documents these weights transparently so leadership understands exactly what drives the score.</p>
+<hr class="divider" />
+<h3 id="48-successor-recommendation-match-successor_match_score">4.8 Successor Recommendation Match (<code class="inline-code">successor_match_score</code>)</h3>
+<h4 id="1-what-it-measures">1. What It Measures</h4>
+<p>In plain English: <strong>"If an engineer leaves, who among their current teammates is best equipped to take over their repositories?"</strong></p>
+<p>Technically: A compatibility score (<span class="inline-math">0 to 100</span>) evaluating peer candidates against an outgoing engineer's portfolio across four structural dimensions.</p>
+<h4 id="2-why-we-measure-it-this-way">2. Why We Measure It This Way</h4>
+<p>The exact implementation in <code class="inline-code">packages/analytics/successor.service.ts</code>:</p>
+<div class="math-block">CompositeScore = 0.40 · J<sub>tech</sub> + 0.25 · R<sub>repo</sub> + 0.20 · A<sub>recent</sub> + 0.15 · C<sub>workload</sub></div>
+<p>Where:</p>
+<ul>
+<li><strong><span class="inline-math">J<sub>tech</sub></span> (<span class="inline-math">40%</span> weight) — Technology Jaccard Similarity:</strong>
+</li></ul>
+<div class="math-block">J<sub>tech</sub> = (|Tech<sub>target</sub> ∩ Tech<sub>candidate</sub>| / |Tech<sub>target</sub> ∪ Tech<sub>candidate</sub>|)</div>
+<p>  Evaluates whether the candidate has verified production experience in the identical programming languages, frameworks, and databases required by the target's repositories.</p>
+<ul>
+<li><strong><span class="inline-math">R<sub>repo</sub></span> (<span class="inline-math">25%</span> weight) — Repository Overlap Ratio:</strong>
+</li></ul>
+<div class="math-block">R<sub>repo</sub> = (|Repos<sub>target</sub> ∩ Repos<sub>candidate</sub>| / |Repos<sub>target</sub>|)</div>
+<p>  Measures whether the candidate has previously authored commits, merged PRs, or reviewed code inside the specific repositories owned by the outgoing engineer.</p>
+<ul>
+<li><strong><span class="inline-math">A<sub>recent</sub></span> (<span class="inline-math">20%</span> weight) — Recent Activity Recency Factor:</strong>
+</li></ul>
+<p>  Evaluates candidate freshness based on days since their last recorded Git/Jira activity:</p>
+<ul>
+<li><span class="inline-math">≤ 30</span> days: Factor <span class="inline-math">= 1.0</span> (Active)
+</li><li><span class="inline-math">31 to 60</span> days: Linear decay from <span class="inline-math">1.0 → 0.5</span>
+</li><li><span class="inline-math">61 to 90</span> days: Linear decay from <span class="inline-math">0.5 → 0.2</span>
+</li><li><span class="inline-math">> 90</span> days: Factor <span class="inline-math">= 0.1</span> (Dormant)
+</li></ul>
+<ul>
+<li><strong><span class="inline-math">C<sub>workload</sub></span> (<span class="inline-math">15%</span> weight) — Workload Capacity Headroom:</strong>
+</li></ul>
+<div class="math-block">C<sub>workload</sub> = max(0, 1.0 − KnowledgeRisk<sub>candidate</sub> − (SPOFRepos<sub>candidate</sub> × 0.15))</div>
+<p>  Penalizes candidates who are already overwhelmed. Recommending an engineer who is already the sole owner of 4 other critical repositories would simply create a catastrophic secondary bottleneck.</p>
+<p>Critical Safety Disqualifications Enforced in Code:</p>
+<ol start="1">
+<li value="1"><strong>The Disqualification Threshold:</strong> If a candidate has <span class="inline-math">0%</span> shared technology overlap AND zero direct commits to the repository, they are excluded from recommendations entirely.
+</li><li value="2"><strong>The "Cross-Training" Score Cap:</strong> If a candidate shares technology expertise but has <strong>zero direct commits</strong> to the specific repository, their category is strictly designated as <code class="inline-code">'cross_training_candidate'</code>, and their maximum composite score is <strong>programmatically capped at 25</strong>. Cortex strictly refuses to award a high score to someone who has never touched the target codebase.
+</li><li value="3"><strong>The Critical Overload Warning:</strong> If a candidate already maintains 3 or more SPOF repositories (<code class="inline-code">spofReposCount >= 3</code>), Cortex flags them with an explicit warning label: <code class="inline-code">'Not Recommended — Already Maintains 3+ Critical Repositories'</code>.
+</li></ol>
+<h4 id="3-what-it-doesnt-capture">3. What It Doesn't Capture</h4>
+<ul>
+<li><strong>Interpersonal Willingness & Career Goals:</strong> An engineer may be the perfect technical match to inherit a legacy billing system, but may have zero interest in maintaining it. Cortex measures technical suitability, not personal career preference.
+</li><li><strong>Contractual / Organizational Boundaries:</strong> Cortex does not know if two engineers belong to different budgetary cost centers, different business units, or separate legal entities that prohibit work reassignment.
+</li></ul>
+<h4 id="4-why-there-isnt-one-correct-formula">4. Why There Isn't One "Correct" Formula</h4>
+<p>Some tools recommend successors based purely on organizational chart hierarchy (reassigning work to the immediate manager or direct report). Others use semantic chat similarity. Cortex grounds succession in concrete codebase evidence: verified technology overlap, historical code review participation, and workload capacity.</p>
+<hr class="divider" />
+<h3 id="49-engineering-health-index-composite-organizational-risk">4.9 Engineering Health Index & Composite Organizational Risk</h3>
+<h4 id="1-what-it-measures">1. What It Measures</h4>
+<p>In plain English: A single headline grade (<span class="inline-math">0 to 100</span>) representing the overall organizational continuity health of the entire engineering department.</p>
+<h4 id="2-why-we-measure-it-this-way">2. Why We Measure It This Way</h4>
+<div class="math-block">CompositeRisk = (0.35 · AvgKnowledgeRisk) + (0.35 · SPOFPct) + (0.30 · BusFactorPenalty)</div>
+<div class="math-block">BusFactorPenalty = max(0, 100 − (AvgBusFactor × 25))</div>
+<div class="math-block">HealthScore = 100 − CompositeRisk</div>
+<p>Where:</p>
+<ul>
+<li><span class="inline-math">AvgKnowledgeRisk ∈ [0, 100]</span>: The arithmetic mean departure risk across all active engineers.
+</li><li><span class="inline-math">SPOFPct ∈ [0, 100]</span>: The percentage of active repositories with <span class="inline-math">BusFactor ≤ 1</span>.
+</li><li><span class="inline-math">BusFactorPenalty ∈ [0, 100]</span>: The penalty assessed against the organization's average repository Bus Factor (<code class="inline-code">apps/api/modules/dashboard/controller.ts</code>):
+</li></ul>
+<div class="math-block">BusFactorPenalty = max(0, 100 − 25 · AvgBusFactor)</div>
+<p>  The benchmark standard is an organization-wide average Bus Factor of <span class="inline-math">AvgBusFactor ≥ 4.0</span>, at which the penalty reaches zero. For every point below <span class="inline-math">4.0</span>, the penalty scales linearly by <span class="inline-math">25</span> points (<span class="inline-math">AvgBusFactor = 2.0 ⟹ Penalty = 50</span>; <span class="inline-math">AvgBusFactor = 1.0 ⟹ Penalty = 75</span>; <span class="inline-math">AvgBusFactor = 0 ⟹ Penalty = 100</span>). In executive daily reports (<code class="inline-code">packages/analytics/dailyReport.service.ts</code>), the scheduled report variant assesses <span class="inline-math">BusFactorPenalty = (2.0 − min(AvgBusFactor, 2.0)) × 15</span> against a <span class="inline-math">2.0</span> minimum operational baseline.</p>
+<p>Grades are assigned as:</p>
+<ul>
+<li><strong>Grade A (85–100):</strong> Healthy, resilient, shared knowledge distribution.
+</li><li><strong>Grade B (70–84):</strong> Moderate resilience with isolated single-owner services.
+</li><li><strong>Grade C (50–69):</strong> Elevated vulnerability across multiple core systems.
+</li><li><strong>Grade D (< 50):</strong> Critical operational fragility; majority of services reliant on single points of failure.
+</li></ul>
+<h4 id="3-what-it-doesnt-capture">3. What It Doesn't Capture</h4>
+<p>Macro-level scores condense hundreds of complex systems into a single scalar number. A company with a Health Score of 85 (Grade A) might still possess one catastrophic single-point-of-failure in a critical payment gateway. Executives must inspect the underlying risk radar, not rely solely on the headline grade.</p>
+<h4 id="4-why-there-isnt-one-correct-formula">4. Why There Isn't One "Correct" Formula</h4>
+<p>Aggregating disparate engineering signals into a single score is an executive communication convenience. Cortex displays the constituent metrics (active SPOFs, technology silos, individual risks) alongside the aggregate grade so that no detail is obscured.</p>
+<hr class="divider" />
+<h3 id="410-pre-merge-pull-request-risk-score-pr_risk_score">4.10 Pre-Merge Pull Request Risk Score (<code class="inline-code">pr_risk_score</code>)</h3>
+<h4 id="1-what-it-measures">1. What It Measures</h4>
+<p>In plain English: <strong>"Before this code is merged into production, how dangerous is this specific change to system stability?"</strong></p>
+<p>Technically: An automated pre-merge evaluation score (<span class="inline-math">0 to 100</span>) computed in <code class="inline-code">packages/analytics/prRisk.service.ts</code> across five inspection gates:</p>
+<ol start="1">
+<li value="1"><strong>Idempotency Lock:</strong> Dedupes CI webhooks within a 60-second window via Redis distributed locks.
+</li><li value="2"><strong>Repository Fragility:</strong> Assesses if the target service is fragile (<span class="inline-math">BusFactor ≤ 1</span>, mapping baseline risk to 90 points; <span class="inline-math">BusFactor = 2 ⟹ 50 points</span>; <span class="inline-math">BusFactor ≥ 3 ⟹ 20 points</span>).
+</li><li value="3"><strong>Author Unfamiliarity:</strong> Queries Neo4j to evaluate if the PR author has historical commits on the specific files modified. Unfamiliar developers modifying core logic trigger elevated scrutiny (<span class="inline-math">0 to 100</span>).
+</li><li value="4"><strong>Blast Radius Dependency:</strong> Traverses graph dependencies up to 2 hops to count downstream services reliant on modified files (<span class="inline-math">S<sub>blast_radius</sub> = min(100, DownstreamCount × 10)</span>).
+</li><li value="5"><strong>Composite Mapping & Normalization:</strong>
+</li></ol>
+<div class="math-block">RawRiskScore = (0.35 · S<sub>unfamiliarity</sub>) + (0.30 · S<sub>blast_radius</sub>) + (0.20 · S<sub>repo_fragility</sub>) + (0.15 · S<sub>author_risk</sub>)</div>
+<div class="math-block">PRRiskScore = max(0, min(100, round(RawRiskScore)))</div>
+<p>Where each constituent sub-score <span class="inline-math">S<sub>i</sub></span> is normalized to <span class="inline-math">[0, 100]</span> prior to weighting, guaranteeing that <span class="inline-math">PRRiskScore ∈ [0, 100]</span> (enforced in <code class="inline-code">packages/analytics/prRisk.service.ts</code> line 145 with operational safety clamps <span class="inline-math">max(5, min(99, RawRiskScore))</span> to avoid uncalibrated extremes).</p>
+<p>Tiering:</p>
+<ul>
+<li><strong>0–30 (<code class="inline-code">LOW</code>):</strong> Safe for standard merge.
+</li><li><strong>31–60 (<code class="inline-code">MEDIUM</code>):</strong> Standard peer review recommended.
+</li><li><strong>61–80 (<code class="inline-code">HIGH</code>):</strong> Mandatory approval from the primary repository owner.
+</li><li><strong>81–100 (<code class="inline-code">CRITICAL</code>):</strong> Merge gated; architecture lead signoff required.
+</li></ul>
+<hr class="divider" />
+<h2 id="5-data-integrity-provenance-the-evidence-chain-model">5. Data Integrity, Provenance & The Evidence-Chain Model</h2>
+<h3 id="51-the-provenance-taxonomy-trusted-vs-synthetic-quarantine">5.1 The Provenance Taxonomy: Trusted vs. Synthetic Quarantine</h3>
+<p>A central hazard of analytics engines is <strong>metric pollution</strong>: test scripts, developer fixtures, or synthetic demo data corrupting production metrics. </p>
+<p>To eliminate this vulnerability, Cortex enforces a strict <strong>Data Provenance Standard</strong> across all storage tiers (<code class="inline-code">PostgreSQL</code>, <code class="inline-code">Neo4j</code>, and <code class="inline-code">Qdrant</code>), as audited in <code class="inline-code">docs/data-provenance-audit.md</code>:</p>
+<pre class="code-block language-"><code>┌────────────────────────────────────────────────────────┐
+│               DATA PROVENANCE TAXONOMY                 │
+├──────────────────────────┬─────────────────────────────┤
+│  TRUSTED PRODUCTION      │  QUARANTINED SYNTHETIC      │
+│  (source IN ...)         │  (Excluded from Analytics)  │
+├──────────────────────────┼─────────────────────────────┤
+│ • 'webhook'              │ • 'seed'                    │
+│   (Verified live events) │   (Local test fixtures)     │
+│ • 'backfill'             │ • 'seed:legacy-unverified'  │
+│   (Historical Git/Jira)  │   (Pre-audit untagged rows) │
+└──────────────────────────┴─────────────────────────────┘</code></pre>
+<ol start="1">
+<li value="1"><strong>Explicit Source Tagging:</strong> Every row across all 9 PostgreSQL tables (<code class="inline-code">events</code>, <code class="inline-code">person_metrics</code>, <code class="inline-code">repo_metrics</code>, <code class="inline-code">technology_metrics</code>, <code class="inline-code">workspace_metrics</code>, <code class="inline-code">person_identity</code>, <code class="inline-code">identity_merge_log</code>, <code class="inline-code">potential_duplicates</code>, <code class="inline-code">daily_reports</code>) includes a mandatory <code class="inline-code">source</code> column.
+</li><li value="2"><strong>Query-Level Enforcement:</strong> All analytical queries, dashboard endpoints, and background worker jobs strictly enforce:
+</li></ol>
+<pre class="code-block language-sql"><code>   WHERE source IN ('webhook', 'backfill')</code></pre>
+<p>   Any record tagged with <code class="inline-code">'seed'</code> or <code class="inline-code">'seed:legacy-unverified'</code> is structurally invisible to calculation engines.</p>
+<h3 id="52-row-level-security-ingestion-integrity-guards">5.2 Row-Level Security & Ingestion Integrity Guards</h3>
+<ul>
+<li><strong>PostgreSQL Row-Level Security (RLS):</strong> Forced RLS policies prevent application queries from accidentally reading untagged or synthetic records.
+</li><li><strong>Neo4j Graph Write Isolation:</strong> Graph relationships carry a <code class="inline-code">source</code> property. Multi-source writes are rejected in batches; every node and relationship in a write batch must share identical provenance.
+</li><li><strong>Qdrant Vector Isolation:</strong> Vectors carry payload source tags. Searches filter strictly against trusted sources, quarantining test vectors.
+</li><li><strong>Test Database Host Guards:</strong> All testing and seed scripts must invoke <code class="inline-code">assertSafeTestDatabase</code> before executing any write or query. Scripts targeting production or staging database hosts are terminated immediately.
+</li></ul>
+<h3 id="53-the-self-healing-invariant-guard">5.3 The Self-Healing Invariant Guard</h3>
+<p>To guarantee mathematical consistency across concurrent updates, Cortex executes an automated <strong>Post-Recalculation Integrity Guard</strong> (<code class="inline-code">packages/analytics/integrityGuard.service.ts</code>) after every batch calculation:</p>
+<ol start="1">
+<li value="1"><strong>Zero-Commit / Scaffold Invariant:</strong>
+</li></ol>
+<p>   If a repository has 0 commits, the guard verifies that:</p>
+<div class="math-block">contributor_count = 0 ∧ primary_owner = NULL ∧ bus_factor = 0 ∧ status = 'empty' ∧ technologies = []</div>
+<p>   If an orphaned repository contains lingering ghost contributor nodes from project assignments, the guard automatically remediates the row.</p>
+<ol start="2">
+<li value="2"><strong>Bus Factor Upper Bound Invariant:</strong>
+</li></ol>
+<div class="math-block">bus_factor ≤ contributor_count</div>
+<p>   If a race condition or concurrent ingestion batch ever produces a Bus Factor greater than the count of distinct active contributors, the guard automatically clamps the value to <code class="inline-code">contributor_count</code>. When a clamp occurs, the guard emits a structured application warning log (<code class="inline-code">console.warn</code>) with the anomaly details (<code class="inline-code">[IntegrityGuard] ⚠️ VIOLATION DETECTED: Repo "..." had bus_factor > contributor_count</code>) and returns the remediation in the execution summary ledger to ensure operational visibility.</p>
+<ol start="3">
+<li value="3"><strong>Cross-Table Parity Invariant:</strong>
+</li></ol>
+<p>   The sum of commits recorded for an engineer across <code class="inline-code">repo_metrics.top_contributors</code> must maintain 100% mathematical parity with <code class="inline-code">person_metrics.commit_count</code>. Mismatches trigger automatic re-synchronization.</p>
+<h3 id="54-debounced-invalidation-with-distributed-mutex-locks">5.4 Debounced Invalidation with Distributed Mutex Locks</h3>
+<p>In an active enterprise, developers push dozens of commits every minute. Recalculating full-graph analytics on every single commit would trigger catastrophic database contention.</p>
+<p>Cortex implements an <strong>Event-Driven Debounced Metrics Invalidator</strong> (<code class="inline-code">packages/analytics/metricsInvalidator.service.ts</code>):</p>
+<ul>
+<li><strong>The Elevator Analogy:</strong> Inbound events act like passengers entering an elevator. Each new passenger resets a 45-second quiet timer (<code class="inline-code">METRICS_DEBOUNCE_MS</code>).
+</li><li><strong>Starvation Cap:</strong> If continuous commits arrive without pause, a hard 3-minute cap (<code class="inline-code">METRICS_MAX_DELAY_MS</code>) forces recalculation so dashboards never remain stale.
+</li><li><strong>Distributed Mutex Lock:</strong> Redis <code class="inline-code">SET cortex:metrics:lock <token> EX 180 NX</code> ensures only one worker in a multi-replica cluster executes recalculation at any time.
+</li></ul>
+<hr class="divider" />
+<h2 id="6-security-permission-scopes-the-byoc-model">6. Security, Permission Scopes & The BYOC Model</h2>
+<h3 id="61-bring-your-own-cloud-byoc-architectural-isolation">6.1 Bring Your Own Cloud (BYOC) Architectural Isolation</h3>
+<p>Enterprise security teams rightly refuse to transmit proprietary source code to multi-tenant third-party SaaS clouds. Cortex is architected strictly as a <strong>Bring Your Own Cloud (BYOC)</strong> application:</p>
+<pre class="code-block language-"><code>┌─────────────────────────────────────────────────────────────┐
+│               CUSTOMER'S PRIVATE VPC BOUNDARY               │
+│                                                             │
+│   [GitHub Enterprise / Slack / Jira Integrations]           │
+│                         │                                   │
+│                         ▼                                   │
+│   [Cortex API Gateway &amp; Ingestion Workers]                  │
+│                         │                                   │
+│         ┌───────────────┼───────────────┐                   │
+│         ▼               ▼               ▼                   │
+│   [PostgreSQL]      [Neo4j Graph]  [Qdrant Vectors]         │
+│   (Private Subnet) (Private Subnet) (Private Subnet)        │
+│                                                             │
+│   • ZERO RAW source code leaves this perimeter.             │
+│   • ZERO multi-tenant data co-mingling.                     │
+│   • Complete customer sovereignty over storage &amp; keys.      │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+<p>The entire system—PostgreSQL, Neo4j, Qdrant, Redis, worker queues, and API gateways—runs inside the customer's Amazon Web Services (AWS), Google Cloud Platform (GCP), Microsoft Azure virtual network, or on-premises Docker cluster.</p>
+<h3 id="62-data-ingestion-scopes-the-zero-egress-invariant">6.2 Data Ingestion Scopes & The Zero-Egress Invariant</h3>
+<ul>
+<li><strong>Read-Only Scopes:</strong> Cortex requests strictly read-only permissions:
+<ul>
+<li><strong>GitHub:</strong> <code class="inline-code">repo:read</code>, <code class="inline-code">read:org</code>, <code class="inline-code">read:user</code> (no write permissions, no ability to alter code or branches).
+</li><li><strong>Slack:</strong> <code class="inline-code">channels:history</code>, <code class="inline-code">groups:history</code> (read-only monitoring of designated public technical channels).
+</li><li><strong>Jira:</strong> <code class="inline-code">read:jira-work</code> (read-only issue status and assignment history).
+</li></ul>
+</li><li><strong>The Zero-Egress Invariant:</strong> Full file raw source code and proprietary intellectual property <strong>never leave the customer VPC</strong> (zero raw code egress). Cortex parses metadata, diff sizes, and AST structures locally. Only compact, high-level semantic summaries are transmitted to enterprise zero-retention inference endpoints (via Groq LPUs with explicit zero-data-retention agreements).
+</li></ul>
+<h3 id="63-what-is-stored-vs-what-is-ephemeral">6.3 What is Stored vs. What is Ephemeral</h3>
+<div class="table-container"><table><thead><tr><th>Data Class</th><th>Stored Locally in Customer VPC</th><th>Transmitted Externally</th><th>Retention Policy</th></tr></thead><tbody><tr><td><strong>Full File Source Code</strong></td><td><strong>NEVER STORED</strong> (Analyzed in-memory diffs)</td><td><strong>NEVER TRANSMITTED</strong></td><td>Zero retention</td></tr><tr><td><strong>Commit Metadata & Hashes</strong></td><td>Stored in PostgreSQL <code class="inline-code">events</code></td><td>Never transmitted</td><td>90 days default (configurable)</td></tr><tr><td><strong>Graph Topology & Ownership</strong></td><td>Stored in Neo4j property graph</td><td>Never transmitted</td><td>Retained for active lineage</td></tr><tr><td><strong>Unstructured Rationale Summaries</strong></td><td>Stored as dense vectors in Qdrant</td><td>Ephemeral Groq prompt</td><td>Customer controlled</td></tr><tr><td><strong>User Identifiers & Emails</strong></td><td>Stored in PostgreSQL <code class="inline-code">person_identity</code></td><td>Never transmitted</td><td>Active employee directory lifecycle</td></tr></tbody></table></div>
+<hr class="divider" />
+<h2 id="7-what-cortex-guarantees-what-it-honestly-does-not">7. What Cortex Guarantees & What It Honestly Does Not</h2>
+<p>Defensibility requires absolute honesty regarding capabilities and limitations. Below is the explicit contract maintained between Cortex and its users.</p>
+<h3 id="71-explicit-system-guarantees">7.1 Explicit System Guarantees</h3>
+<ol start="1">
+<li value="1"><strong>Deterministic Calculation:</strong> Cortex guarantees that numerical scores (Bus Factor, Knowledge Risk, Successor Match, Cycle Time, Lead Time) are computed by explicit mathematical algorithms over verified data, never generated or estimated by a Large Language Model.
+</li><li value="2"><strong>Single Source of Truth:</strong> Cortex guarantees that the React dashboard, conversational agent, scheduled executive reports, and REST API endpoints execute the identical underlying analytics functions in <code class="inline-code">packages/analytics/</code>. There are no disparate calculation paths.
+</li><li value="3"><strong>Cryptographic Ingestion Verification:</strong> Cortex guarantees that incoming GitHub, Slack, and Jira payloads are cryptographically verified using HMAC signatures before any data is accepted.
+</li><li value="4"><strong>Idempotency & Deduplication:</strong> Cortex guarantees that duplicate webhook deliveries are acknowledged with HTTP 200 and deduplicated via unique constraints, preventing double-counting of commits or pull requests.
+</li><li value="5"><strong>No Synthetic Contamination:</strong> Cortex guarantees that test fixtures, seed data, and development artifacts are structurally quarantined via forced Row-Level Security and query-level provenance filters.
+</li></ol>
+<h3 id="72-explicit-system-non-guarantees-hard-boundaries">7.2 Explicit System Non-Guarantees & Hard Boundaries</h3>
+<ol start="1">
+<li value="1"><strong>Offline & Unrecorded Activity:</strong> Cortex <strong>cannot and does not</strong> guarantee capture of architectural decisions made during in-person whiteboard sessions, private unrecorded phone calls, or discussions within unintegrated third-party tools.
+</li><li value="2"><strong>Syntactic Code Quality or Bug-Freeness:</strong> Cortex measures organizational knowledge distribution and continuity risk; it <strong>does not</strong> measure code quality, algorithmic efficiency, or test coverage. A codebase with a Bus Factor of 4 can still be riddled with security vulnerabilities and poor code.
+</li><li value="3"><strong>No Employee Surveillance or Productivity Evaluation:</strong> Cortex <strong>does not</strong> rank developers by productivity, typing speed, or working hours. Commit counts are explicitly qualified as activity footprint indicators, never performance scores. Cortex refuses feature requests for developer ranking leaderboards.
+</li><li value="4"><strong>No Guarantee of Successor Willingness:</strong> Cortex calculates technical and contextual compatibility for potential successors; it <strong>cannot</strong> guarantee that a candidate is willing, contracted, or interpersonally suited to inherit a given service.
+</li><li value="5"><strong>No Autonomous Code Modification:</strong> Cortex is an observational intelligence layer; it <strong>never</strong> alters repository code, auto-merges pull requests, or modifies production configurations.
+</li></ol>
+<hr class="divider" />
+<h2 id="8-practical-scenarios-operational-use-cases">8. Practical Scenarios & Operational Use Cases</h2>
+<h3 id="81-scenario-a-sudden-senior-architect-resignation">8.1 Scenario A: Sudden Senior Architect Resignation</h3>
+<ul>
+<li><strong>The Situation:</strong> Elena, a senior architect who has been with the company for four years, unexpectedly resigns to join an early-stage startup. Her notice period is two weeks.
+</li><li><strong>Traditional Outcome:</strong> The engineering manager scrambles to schedule daily 2-hour knowledge transfer meetings. Elena lists repositories from memory. Three weeks after she leaves, the team discovers that an obscure Redis caching worker fails in production, and nobody knows how it was deployed or configured.
+</li><li><strong>Cortex Action:</strong>
+<ol start="1">
+<li value="1">The manager opens Elena's profile and clicks <strong>'Simulate Departure'</strong> (<code class="inline-code">packages/analytics/offboarding.service.ts</code>).
+</li><li value="2">In under two seconds, Cortex audits Neo4j and PostgreSQL, identifying the three repositories where Elena holds <span class="inline-math">>70%</span> ownership and where her departure will drop the Bus Factor to 0 or 1 (<code class="inline-code">billing-worker</code>, <code class="inline-code">redis-event-router</code>, <code class="inline-code">auth-pkce</code>).
+</li><li value="3">The engine computes the recovery milestone horizon. Elena's portfolio across her three concentrated repositories (<code class="inline-code">billing-worker</code>, <code class="inline-code">redis-event-router</code>, <code class="inline-code">auth-pkce</code>) comprises an estimated <strong>84 person-days of transfer workload</strong> (accumulated tacit architectural context, active sprint backlog issues, and in-flight pull requests), while Marcus and the receiving team have a dedicated transfer bandwidth of <strong>20 person-days per week</strong> (one full-time equivalent across the handover period):
+</li></ol>
+</li></ul>
+<div class="math-block">RecoveryWeeks = max(1, ⌈ (TransferWorkload (84 person-days) / WeeklyBandwidth (20 person-days/week)) ⌉) = ⌈ 4.2 ⌉ = 5 Weeks</div>
+<p>     (In the live engine <code class="inline-code">packages/analytics/offboarding.service.ts</code>, estimated recovery weeks are derived from active Single Points of Failure and technology footprint: <span class="inline-math">RecoveryWeeks = max(2, round(2 + 2.5 · spofCount + ...))</span>, yielding a concordant recovery timeline across concentrated domains).</p>
+<ol start="4">
+<li value="4">Cortex cross-references active teammates and pairs Elena with Marcus (Compatibility Score: 68, high shared Go/Redis stack similarity, capacity headroom available).
+</li><li value="5">The manager structures Elena's remaining ten days around transferring the specific three highlighted codebases directly to Marcus.
+</li></ol>
+<h3 id="82-scenario-b-mid-level-engineer-fast-track-onboarding">8.2 Scenario B: Mid-Level Engineer Fast-Track Onboarding</h3>
+<ul>
+<li><strong>The Situation:</strong> Priya joins the team as a mid-level frontend and Node.js engineer. She is assigned to work on the inventory management dashboard.
+</li><li><strong>Traditional Outcome:</strong> Priya spends her first three weeks asking in general Slack channels: <em>"Who owns the catalog microservice?"</em> and <em>"Why do we use two different database connections here?"</em> Senior engineers are repeatedly interrupted with repetitive onboarding questions.
+</li><li><strong>Cortex Action:</strong>
+<ol start="1">
+<li value="1">Priya opens the Cortex natural language interface and asks: <em>"Who is the primary maintainer of inventory-service and what were the major architectural changes over the last 90 days?"</em>
+</li><li value="2">The LangGraph agent executes a multi-tool traversal: querying Neo4j for the primary owner (Devendra Singh, 84% ownership) and retrieving semantic summaries from Qdrant of recent PR discussions detailing the migration to PostgreSQL partitions.
+</li><li value="3">Priya receives an evidence-backed dossier citing exact Git commit SHAs and Jira issue tickets, establishing self-serve architectural context without interrupting senior colleagues.
+</li></ol>
+</li></ul>
+<h3 id="83-scenario-c-high-severity-production-incident-triage">8.3 Scenario C: High-Severity Production Incident Triage</h3>
+<ul>
+<li><strong>The Situation:</strong> At 02:00 UTC, a critical Sev-1 incident strikes the payment settlement pipeline. Transactions are timing out. The on-call engineer is unfamiliar with the settlement code.
+</li><li><strong>Traditional Outcome:</strong> The on-call engineer pages three different engineering managers, guessing who might understand the settlement service. Two hours are lost before the right engineer is located.
+</li><li><strong>Cortex Action:</strong>
+<ol start="1">
+<li value="1">The incident responder queries Cortex: <em>"Who holds primary ownership over settlement-worker, and what microservices depend on it downstream?"</em>
+</li><li value="2">Cortex traverses the property graph in under 50 milliseconds, identifying Devendra Singh as the primary author and flagging that <code class="inline-code">order-fulfillment</code> and <code class="inline-code">invoicing-engine</code> are directly impacted downstream.
+</li><li value="3">The responder pages Devendra immediately and isolates the exact downstream blast radius, significantly reducing MTTR by eliminating cross-team paging delays and guesswork.
+</li></ol>
+</li></ul>
+<h3 id="84-scenario-d-excavating-stale-legacy-architectural-context">8.4 Scenario D: Excavating Stale Legacy Architectural Context</h3>
+<ul>
+<li><strong>The Situation:</strong> A team must refactor an authentication gateway written 18 months ago. The original author left the company last year. The code contains complex token-refresh logic with zero comments.
+</li><li><strong>Traditional Outcome:</strong> The team spends days reading raw code, wondering if certain bizarre checks are essential security patches or obsolete workarounds.
+</li><li><strong>Cortex Action:</strong>
+<ol start="1">
+<li value="1">The team asks Cortex: <em>"Why does the auth gateway force token revocation on clock skew?"</em>
+</li><li value="2">Cortex queries Qdrant vector embeddings, identifying a Slack thread from March 2025 and an associated Jira security ticket where an edge-case replay vulnerability was discovered and patched.
+</li><li value="3">Cortex returns the exact historical rationale, complete with links to the original Jira issue discussion.
+</li></ol>
+</li></ul>
+<hr class="divider" />
+<h2 id="9-frequently-asked-questions-methodological-steelmanning">9. Frequently Asked Questions & Methodological Steelmanning</h2>
+<p>This section addresses the most rigorous, skeptical objections that technical buyers, enterprise architects, and senior engineers pose when evaluating Cortex.</p>
+<h3 id="91-why-should-i-trust-this-formula-over-any-other-arbitrary-score">9.1 "Why should I trust this formula over any other arbitrary score?"</h3>
+<p><strong>The Honest Answer:</strong> You should <strong>not</strong> treat any mathematical formula as an infallible universal truth. In software engineering, no single formula for "Bus Factor" or "Knowledge Risk" has been handed down by an international standards body. </p>
+<p>Different platforms use different heuristics: some count lines of code, others count pull request approvals, others look at chat frequency. </p>
+<p>What makes Cortex trustworthy is <strong>not</strong> that our formula is the only conceivable one—it is that <strong>our formula is fully published, documented, and deterministic</strong>. When Cortex reports that an engineer has a Knowledge Risk of 72%, you can click the score and inspect the exact mathematical constituents: <span class="inline-math">30%</span> ownership concentration, <span class="inline-math">20%</span> downstream dependency count, <span class="inline-math">15%</span> activity recency, <span class="inline-math">15%</span> documentation coverage, <span class="inline-math">10%</span> sole technology expertise, and <span class="inline-math">10%</span> pending sprint backlog. </p>
+<p>Every single input traces directly to verified events in your Git and Jira history. We do not hide behind an opaque "AI confidence score."</p>
+<h3 id="92-what-if-our-engineering-culture-disagrees-with-your-weights-or-thresholds">9.2 "What if our engineering culture disagrees with your weights or thresholds?"</h3>
+<p><strong>The Honest Answer:</strong> Every engineering organization operates with distinct architectural dynamics. A high-growth 20-person startup may consider a Bus Factor of 1 to be completely acceptable for non-core services; a regulated bank managing payment rails may consider a Bus Factor of 2 to be an unacceptable emergency.</p>
+<p>Cortex's analytical architecture is built with <strong>configurable parameters</strong>:</p>
+<ul>
+<li>The recency-decay half-life (<span class="inline-math">T<sub>1/2</sub></span>, default: 180 days) and decay rate parameter (<span class="inline-math">λ = (\ln(2) / T<sub>1/2</sub>)</span>) can be adjusted to match organizational development velocity.
+</li><li>Stale outlier thresholds (default: 30 days) can be modified.
+</li><li>Bot filtering lists can be customized to include internal corporate automation scripts.
+</li><li>The headline Bus Factor threshold (default: 50% contribution volume) can be configured to 70% or 80% to fit enterprise governance standards.
+</li></ul>
+<p>Our published default formulas represent reasoned, battle-tested best practices, but they are never dogma.</p>
+<h3 id="93-how-is-cortex-structurally-different-from-copilot-glean-or-static-code-search">9.3 "How is Cortex structurally different from Copilot, Glean, or static code search?"</h3>
+<p><strong>The Honest Answer:</strong> These tools solve entirely different operational problems:</p>
+<ul>
+<li><strong>GitHub Copilot / CodeRabbit:</strong> These are <em>in-the-moment code synthesis and review assistants</em>. They operate at the syntax and autocomplete level. They do not know who holds organizational ownership over a service, nor do they model the blast radius if an engineer resigns.
+</li><li><strong>Glean / Enterprise Search:</strong> Glean is a <em>horizontal enterprise search index</em> across Google Drive, Confluence, Slack, and Jira. It indexes documents to answer "Where is the marketing deck?" Cortex is a <em>specialized vertical property graph</em> focused on codebase topology, architectural continuity, and continuity risk quantification.
+</li><li><strong>Static Code Search (Sourcegraph):</strong> Sourcegraph provides deep, syntactic code search across repositories (AST patterns, symbol definitions). It answers <em>"Where is function <code class="inline-code">authenticateToken</code> called?"</em> Cortex answers <em>"Who understands that function, how fragile is that repository, who should inherit it if the author leaves, and what broke downstream?"</em>
+</li></ul>
+<h3 id="94-what-data-does-cortex-store-and-could-our-intellectual-property-leak">9.4 "What data does Cortex store, and could our intellectual property leak?"</h3>
+<p><strong>The Honest Answer:</strong> Cortex operates entirely inside your private VPC. Full source code files are <strong>never stored</strong> in Cortex databases. During webhook ingestion, commit diffs are analyzed in-memory to extract metadata (author, timestamp, lines added, lines deleted, modified file paths, and high-level architectural summaries). </p>
+<p>The only persistent data stored consists of:</p>
+<ol start="1">
+<li value="1">Relational event metadata in PostgreSQL (commit hashes, author emails, PR timestamps).
+</li><li value="2">Topological nodes and edges in Neo4j (who touched which file, which repo uses which technology).
+</li><li value="3">Semantic summaries in Qdrant (high-level pull request descriptions and architectural threads).
+</li></ol>
+<p>Under the BYOC model, this data resides exclusively inside your cloud perimeter. No external entity—including Cortex—can access your data.</p>
+<h3 id="95-what-happens-if-a-calculated-metric-turns-out-to-be-wrong">9.5 "What happens if a calculated metric turns out to be wrong?"</h3>
+<p><strong>The Honest Answer:</strong> Because all calculations are deterministic, an unexpected metric is never a random "AI hallucination"—it is the predictable output of specific historical Git data. </p>
+<p>For example, if an engineer appears with an unexpectedly high ownership score on a repository they barely remember touching, the explanation is almost always one of three historical data realities:</p>
+<ol start="1">
+<li value="1">They performed an automated bulk refactor (e.g. updating an import path across 500 files), which generated massive commit volume.
+</li><li value="2">They squashed a feature branch containing hundreds of legacy commits.
+</li><li value="3">They are the only active human contributor remaining because all previous authors were marked as alumni.
+</li></ol>
+<p>Because Cortex maintains full data provenance, an engineer or manager can click any metric and view the exact evidence chain: the list of qualifying commits, timestamps, and mathematical weights that produced the score. Furthermore, the <strong>Post-Recalculation Integrity Guard</strong> continuously audits the database, automatically self-healing cross-table parity violations.</p>
+<h3 id="96-is-this-tool-secretly-developer-surveillance-or-a-productivity-leaderboard">9.6 "Is this tool secretly developer surveillance or a productivity leaderboard?"</h3>
+<p><strong>The Honest Answer:</strong> Absolutely not. We explicitly refuse to build developer leaderboards, ranking screens, or individual productivity metrics. </p>
+<p>Software engineering history proves that grading developers by lines of code, commit counts, or pull request volume triggers Goodhart's Law: engineers begin splitting single pull requests into ten tiny PRs, committing trivial changes, and avoiding difficult, non-coding architectural tasks.</p>
+<p>Cortex measures <strong>systemic vulnerability and continuity risk</strong>, not individual productivity:</p>
+<ul>
+<li>A high commit count does not mean an engineer is "good"; it means technical ownership is dangerously concentrated in their hands.
+</li><li>A Bus Factor of 1 is not a badge of honor for the author; it is an organizational alert indicating that the team has failed to cross-train a backup.
+</li></ul>
+<p>Cortex protects engineers from being the sole 24/7 bottleneck on call, freeing them from single-point-of-failure stress.</p>
+<hr class="divider" />
+<h2 id="10-product-direction-planned-capabilities">10. Product Direction & Planned Capabilities</h2>
+<p>To maintain technical credibility, Cortex clearly distinguishes between capabilities that are verified and operational today versus features that are planned on our development roadmap.</p>
+<h3 id="verified-operational-today-v210">Verified & Operational Today (v2.1.0):</h3>
+<ul>
+<li>Full BYOC air-gapped deployment in customer VPCs.
+</li><li>Cryptographic webhook ingestion for GitHub, Slack, and Jira.
+</li><li>Deterministic 6-factor Knowledge Risk scoring.
+</li><li>Deterministic 4-factor Successor Recommendation with overload safeguards.
+</li><li>Repository Bus Factor and recency-decayed ownership calculations.
+</li><li>Post-recalculation self-healing invariant enforcement.
+</li><li>Debounced event-driven metrics invalidation with distributed Redis locks.
+</li><li>Strict data provenance with Row-Level Security quarantining synthetic fixtures.
+</li><li>Grounded, zero-fabrication LangGraph conversational agent.
+</li></ul>
+<h3 id="planned-directions-roadmap">Planned Directions (Roadmap):</h3>
+<ul>
+<li><strong>Automated Incident Response Routing:</strong> Integration with PagerDuty and Opsgenie to automatically route Sev-1 incident escalations to mathematically verified code owners and active successors.
+</li><li><strong>Enterprise Multi-Role RBAC:</strong> Granular permission boundaries allowing segregation of view privileges between engineering managers, team leads, and executive leadership.
+</li><li><strong>Automated Cross-Training PR Generator:</strong> Automated GitHub bots that deliberately assign code review requests to recommended successors on low-risk PRs, organically raising the repository Bus Factor over time.
+</li><li><strong>Multi-VPC Federated Topologies:</strong> Federated graph synchronization for enterprise conglomerates operating across multiple isolated cloud accounts.
+</li></ul>
+<hr class="divider" />
+<h2 id="11-publication-metadata-references-contact">11. Publication Metadata, References & Contact</h2>
+<h3 id="references-foundational-literature">References & Foundational Literature</h3>
+<ol start="1">
+<li value="1">Brooks, Frederick P. <em>The Mythical Man-Month: Essays on Software Engineering.</em> Addison-Wesley, 1975. (Foundational analysis of communication overhead and knowledge dissemination in software teams).
+</li><li value="2">Conway, Melvin E. "How Do Committees Invent?" <em>Datamation</em>, 14(4):28–31, 1968. (Conway's Law: system architecture mirrors organizational communication structures).
+</li><li value="3">Rigby, Peter C., et al. "Quantifying the Bus Factor of Open Source Software Projects." <em>IEEE Transactions on Software Engineering</em>, 2016.
+</li><li value="4">Avelino, Guilherme, et al. "A Novel Approach for Estimating Truck Factors." <em>IEEE International Conference on Software Maintenance and Evolution (ICSME)</em>, 2016.
+</li><li value="5">Goodhart, Charles. "Problems of Monetary Management: The UK Experience." <em>Papers in Monetary Economics</em>, 1975. ("When a measure becomes a target, it ceases to be a good measure").
+</li><li value="6">Forsgren, Nicole, Humble, Jez, & Kim, Gene. <em>Accelerate: The Science of Lean Software and DevOps.</em> IT Revolution Press, 2018. (DORA metrics framework and deployment velocity research).
+</li></ol>
+<h3 id="publication-metadata">Publication Metadata</h3>
+<ul>
+<li><strong>Document Identifier:</strong> <code class="inline-code">CORTEX-WP-2026-V2</code>
+</li><li><strong>Canonical Repository:</strong> <code class="inline-code">docs/whitepaper/CORTEX_TECHNICAL_WHITE_PAPER.md</code>
+</li><li><strong>Release Channel:</strong> Official Technical Architecture Specification
+</li><li><strong>Engine Version Compatibility:</strong> Cortex Engine Core v1.4.2+
+</li><li><strong>Contact & Enterprise Inquiries:</strong> 
+<ul>
+<li>Architecture Walkthroughs: <code class="inline-code">https://cortex.internal/#contact</code>
+</li><li>Inquiries: <code class="inline-code">enterprise@cortex.internal</code>
+</li></ul>
+</li></ul>
+<hr class="divider" />
+<p><em>© 2026 The Cortex Team. Published under the Business Source License 1.1 (BSL 1.1). Open Architecture Specification.</em></p>
+</body>
+</html>

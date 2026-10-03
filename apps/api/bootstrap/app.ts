@@ -2,7 +2,6 @@ import express from 'express'
 import os from 'os'
 import bodyParser from 'body-parser'
 import cors from 'cors'
-import dns from 'dns'
 import helmet from 'helmet'
 import env from '../config/env.js'
 import githubRouter from '../modules/github/router.js'
@@ -18,18 +17,30 @@ import { licenseGuard, getLicenseState } from '../../../packages/license/index.j
 
 const app = express()
 
-// Cors Config - Allow all origins dynamically with credentials
+// Strict Environment-Aware CORS Config
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || env.FRONTEND_URL || '')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
+
 app.use(cors({
-    origin: true,
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like server-to-server, curl, webhooks)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.length === 0 || env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+            return callback(null, true);
+        }
+        return callback(new Error(`Origin '${origin}' not allowed by CORS`));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'x-cortex-seed-source']
 }))
 
-// Dns Config of Google & Cloudflare
-dns.setServers(['8.8.8.8' , '1.1.1.1'])
-
-// Helmet Config - Allow cross-origin requests from frontend
+// Helmet Config - Allow cross-origin resources
 app.use(helmet({
     crossOriginResourcePolicy: false,
 }))

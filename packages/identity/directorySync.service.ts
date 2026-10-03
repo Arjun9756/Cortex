@@ -3,6 +3,7 @@ import { resolveIdentity, setPersonActiveStatus } from './canonicalPerson.servic
 import { markMetricsDirty } from '../analytics/metricsInvalidator.service.js';
 import { assertDataSource, type DataSource } from '../database/provenance.js';
 import { integrationService } from '../../apps/api/modules/integrations/service.js';
+import { decryptSecret } from '../shared/encryption.js';
 
 export interface ProviderSyncStats {
     provider: string;
@@ -49,6 +50,12 @@ export class DirectorySyncService {
                 return stats;
             }
 
+            const slackToken = decryptSecret(conn.access_token);
+            if (!slackToken) {
+                stats.error = 'Slack access token is invalid';
+                return stats;
+            }
+
             stats.status = 'success';
             let cursor: string | undefined = undefined;
             const seenIds = new Set<string>();
@@ -60,7 +67,7 @@ export class DirectorySyncService {
 
                 const res = await fetch(url.toString(), {
                     headers: {
-                        Authorization: `Bearer ${conn.access_token}`,
+                        Authorization: `Bearer ${slackToken}`,
                     },
                 });
 
@@ -275,9 +282,15 @@ export class DirectorySyncService {
                 return stats;
             }
 
+            const ghToken = decryptSecret(conn.access_token);
+            if (!ghToken) {
+                stats.error = 'GitHub access token is invalid';
+                return stats;
+            }
+
             stats.status = 'success';
             const headers = {
-                Authorization: `Bearer ${conn.access_token}`,
+                Authorization: `Bearer ${ghToken}`,
                 Accept: 'application/vnd.github.v3+json',
                 'User-Agent': 'Cortex-Directory-Sync/1.0',
             };
