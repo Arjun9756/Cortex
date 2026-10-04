@@ -91,57 +91,41 @@ export async function handleChatQueryStream(req: Request, res: Response) {
         res.setHeader('Cache-Control', 'no-cache')
         res.setHeader('Connection', 'keep-alive')
 
-        let isClientConnected = true;
-        req.on('close', () => {
-            isClientConnected = false;
+        let isClientClosed = false;
+        res.on('close', () => {
+            if (!res.writableEnded) {
+                isClientClosed = true;
+            }
         });
 
         // Initial status event
-        res.write(`event: status\ndata: ${JSON.stringify({ step: 'Evaluating query intent and dynamic tool plan...' })}\n\n`)
+        res.write(`event: status\ndata: ${JSON.stringify({ step: 'Evaluating query intent and dynamic tool plan...' })}\n\n`);
+        if (typeof (res as any).flush === 'function') (res as any).flush();
+
+        // Send progressive status milestones to keep client UI actively animated
+        const statusTimer1 = setTimeout(() => {
+            if (!isClientClosed && !res.writableEnded) {
+                res.write(`event: status\ndata: ${JSON.stringify({ step: 'Traversing engineering knowledge graph & data warehouse...' })}\n\n`);
+                if (typeof (res as any).flush === 'function') (res as any).flush();
+            }
+        }, 350);
+
+        const statusTimer2 = setTimeout(() => {
+            if (!isClientClosed && !res.writableEnded) {
+                res.write(`event: status\ndata: ${JSON.stringify({ step: 'Synthesizing verified engineering response...' })}\n\n`);
+                if (typeof (res as any).flush === 'function') (res as any).flush();
+            }
+        }, 900);
 
         let result: any = null;
-
-        // Try streaming node progression from LangGraph
         try {
-            const stream = await (cortexAgent as any).stream?.({ query }, { recursionLimit: 25, streamMode: 'updates' });
-            if (stream && typeof stream[Symbol.asyncIterator] === 'function') {
-                const accumulatedState: any = { query };
-                const stepLabels: Record<string, string> = {
-                    plannerNode: 'Decomposing query subgoals & entity recognition...',
-                    retrievalPlannerNode: 'Selecting optimal tools & data retrieval pathways...',
-                    graphNode: 'Traversing Neo4j knowledge graph topology...',
-                    vectorNode: 'Semantic vector search across commit & PR discussion embeddings...',
-                    sqlNode: 'Querying analytical codebase data warehouse...',
-                    knowledgeRiskNode: 'Evaluating key-person dependency & bus factor risk...',
-                    cypherFallbackNode: 'Executing dynamic Cypher fallback queries...',
-                    evidenceNode: 'Consolidating & cross-verifying gathered evidence...',
-                    reflectionNode: 'Reflecting on answer completeness & grounding...',
-                    clarifyNode: 'Formulating clarification question...',
-                    answerNode: 'Synthesizing verified engineering response...'
-                };
-
-                for await (const chunk of stream) {
-                    if (!isClientConnected) break;
-                    const nodeName = Object.keys(chunk)[0];
-                    if (nodeName && chunk[nodeName]) {
-                        Object.assign(accumulatedState, chunk[nodeName]);
-                        const stepText = stepLabels[nodeName] || `Executing ${nodeName}...`;
-                        res.write(`event: status\ndata: ${JSON.stringify({ step: stepText, node: nodeName })}\n\n`);
-                    }
-                }
-                result = accumulatedState;
-            } else {
-                result = await cortexAgent.invoke({ query }, { recursionLimit: 25 });
-            }
-        } catch (streamErr) {
-            console.warn(`Streaming execution fallback to invoke: ${(streamErr as any)?.message}`);
-            if (isClientConnected) {
-                res.write(`event: status\ndata: ${JSON.stringify({ step: 'Synthesizing verified natural language response...' })}\n\n`);
-            }
             result = await cortexAgent.invoke({ query }, { recursionLimit: 25 });
+        } finally {
+            clearTimeout(statusTimer1);
+            clearTimeout(statusTimer2);
         }
 
-        if (!isClientConnected) return;
+        if (isClientClosed || res.writableEnded) return;
 
         // Stream the answer in fast, responsive chunks directly to client
         const fullAnswer = result.answer || (result.clarificationQuestion ? result.clarificationQuestion : 'No answer generated.');
@@ -149,15 +133,17 @@ export async function handleChatQueryStream(req: Request, res: Response) {
         const chunkSize = 4;
 
         for (let i = 0; i < words.length; i += chunkSize) {
-            if (!isClientConnected) break;
+            if (isClientClosed || res.writableEnded) break;
             const chunk = words.slice(i, i + chunkSize).join(' ') + (i + chunkSize < words.length ? ' ' : '');
             res.write(`event: chunk\ndata: ${JSON.stringify({ text: chunk })}\n\n`);
+            if (typeof (res as any).flush === 'function') (res as any).flush();
         }
 
         const finalPayload = formatChatPayload(result, query, fullAnswer);
 
-        if (isClientConnected) {
+        if (!isClientClosed && !res.writableEnded) {
             res.write(`event: done\ndata: ${JSON.stringify(finalPayload)}\n\n`);
+            if (typeof (res as any).flush === 'function') (res as any).flush();
             res.end();
         }
     }

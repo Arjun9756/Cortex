@@ -23,9 +23,24 @@ import {
   getPrMetrics,
   getBusFactor,
   type PrMetricsReport,
-  type RepoMetric
+  type RepoMetric,
+  type EvaluatedPrItem
 } from '../lib/api';
 import { OutlierPrModal } from '../components/OutlierPrModal';
+
+export function formatPrDuration(hours: number | null | undefined): string {
+  if (hours === null || hours === undefined) return '—';
+  if (hours <= 0) return '0h';
+  if (hours < 0.1) {
+    const mins = Math.max(1, Math.round(hours * 60));
+    return `${mins}m (${hours.toFixed(2)}h)`;
+  }
+  if (hours < 1) {
+    const mins = Math.round(hours * 60);
+    return `${mins}m (${hours.toFixed(1)}h)`;
+  }
+  return `${Math.round(hours * 10) / 10}h`;
+}
 
 export const PullRequestsPage: React.FC = () => {
   // Filters
@@ -53,9 +68,7 @@ export const PullRequestsPage: React.FC = () => {
       try {
         const res = await getBusFactor();
         if (res.repos && res.repos.length > 0) {
-          const names = res.repos
-            .filter((r: RepoMetric) => r.status !== 'empty' && r.status !== 'scaffold')
-            .map((r: RepoMetric) => r.repo_name);
+          const names = res.repos.map((r: RepoMetric) => r.repo_name).filter(Boolean);
           setAvailableRepos(names);
         }
       } catch (err) {
@@ -80,6 +93,10 @@ export const PullRequestsPage: React.FC = () => {
       if (res.status && res.metrics) {
         setHeadlineMetrics(res.metrics);
         setRepoBreakdown(res.repoBreakdown || []);
+        if (res.repoBreakdown && res.repoBreakdown.length > 0) {
+          const breakdownNames = res.repoBreakdown.map((r: any) => r.repoName).filter(Boolean);
+          setAvailableRepos(prev => [...new Set([...prev, ...breakdownNames])]);
+        }
       } else {
         throw new Error('API returned unsuccessful response');
       }
@@ -348,7 +365,7 @@ export const PullRequestsPage: React.FC = () => {
 
           <div className="flex items-baseline space-x-2">
             <span className="text-3xl font-extrabold text-[var(--text-primary)] tracking-tight">
-              {headlineMetrics ? `${headlineMetrics.reviewCycleTime.headlineHours}h` : '0h'}
+              {headlineMetrics ? formatPrDuration(headlineMetrics.reviewCycleTime.headlineHours) : '0h'}
             </span>
             <span className="text-xs font-medium text-[var(--text-muted)] font-mono">
               Median (Wall-Clock)
@@ -356,8 +373,8 @@ export const PullRequestsPage: React.FC = () => {
           </div>
 
           <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] text-[var(--text-secondary)] font-mono">
-            <span>p90: {headlineMetrics?.reviewCycleTime.wallClockHours.p90 ?? 0}h</span>
-            <span>IQR: {headlineMetrics ? (Math.round((headlineMetrics.reviewCycleTime.wallClockHours.p75 - headlineMetrics.reviewCycleTime.wallClockHours.p25) * 10) / 10) : 0}h</span>
+            <span>p90: {headlineMetrics ? formatPrDuration(headlineMetrics.reviewCycleTime.wallClockHours.p90) : '0h'}</span>
+            <span>IQR: {headlineMetrics ? formatPrDuration(headlineMetrics.reviewCycleTime.wallClockHours.p75 - headlineMetrics.reviewCycleTime.wallClockHours.p25) : '0h'}</span>
           </div>
         </div>
 
@@ -378,7 +395,7 @@ export const PullRequestsPage: React.FC = () => {
 
           <div className="flex items-baseline space-x-2">
             <span className="text-3xl font-extrabold text-[var(--text-primary)] tracking-tight">
-              {headlineMetrics ? `${headlineMetrics.totalLeadTime.headlineHours}h` : '0h'}
+              {headlineMetrics ? formatPrDuration(headlineMetrics.totalLeadTime.headlineHours) : '0h'}
             </span>
             <span className="text-xs font-medium text-[var(--text-muted)] font-mono">
               Median (Wall-Clock)
@@ -386,8 +403,8 @@ export const PullRequestsPage: React.FC = () => {
           </div>
 
           <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] text-[var(--text-secondary)] font-mono">
-            <span>p90: {headlineMetrics?.totalLeadTime.wallClockHours.p90 ?? 0}h</span>
-            <span>Avg: {headlineMetrics?.totalLeadTime.wallClockHours.average ?? 0}h</span>
+            <span>p90: {headlineMetrics ? formatPrDuration(headlineMetrics.totalLeadTime.wallClockHours.p90) : '0h'}</span>
+            <span>Avg: {headlineMetrics ? formatPrDuration(headlineMetrics.totalLeadTime.wallClockHours.average) : '0h'}</span>
           </div>
         </div>
 
@@ -466,12 +483,12 @@ export const PullRequestsPage: React.FC = () => {
           <div className="flex items-center space-x-2 text-xs font-mono text-[var(--text-secondary)]">
             <span className="flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500" />
-              <span>Headline Median: <strong>{headlineMetrics?.reviewCycleTime.headlineHours ?? 0}h</strong></span>
+              <span>Headline Median: <strong>{formatPrDuration(headlineMetrics?.reviewCycleTime.headlineHours)}</strong></span>
             </span>
           </div>
         </div>
 
-        {distributionData.every(d => d.hours === 0) ? (
+        {counts.mergedHumanPrs === 0 && (!includeBots || counts.mergedBotPrs === 0) ? (
           <div className="py-12 flex flex-col items-center justify-center text-center space-y-2 text-[var(--text-muted)] text-xs">
             <Clock className="w-8 h-8 opacity-40" />
             <p className="font-medium text-[var(--text-secondary)]">No merged pull requests available in this timeframe.</p>
@@ -503,7 +520,7 @@ export const PullRequestsPage: React.FC = () => {
                     color: 'var(--text-primary)',
                   }}
                   formatter={(value: any, _name: any, item: any) => [
-                    `${value} wall-clock hours`,
+                    `${formatPrDuration(Number(value))}`,
                     item.payload.label || 'Duration',
                   ]}
                   cursor={{ fill: 'rgba(99, 102, 241, 0.04)' }}
@@ -656,14 +673,14 @@ export const PullRequestsPage: React.FC = () => {
                       <td className="text-right font-mono text-xs text-[var(--text-primary)]">
                         {isPartial ? (
                           <span className="text-[var(--text-muted)] italic" title="Sample size <5 PRs">
-                            {r.reviewCycleTime.headlineHours}h*
+                            {formatPrDuration(r.reviewCycleTime.headlineHours)}*
                           </span>
                         ) : (
-                          `${r.reviewCycleTime.headlineHours}h`
+                          formatPrDuration(r.reviewCycleTime.headlineHours)
                         )}
                       </td>
                       <td className="text-right font-mono text-xs text-[var(--text-secondary)]">
-                        {r.totalLeadTime.headlineHours}h
+                        {formatPrDuration(r.totalLeadTime.headlineHours)}
                       </td>
                       <td className="text-right font-mono text-xs font-semibold text-[var(--text-primary)]">
                         {r.counts.mergedHumanPrs}
@@ -709,7 +726,114 @@ export const PullRequestsPage: React.FC = () => {
         )}
       </div>
 
-      {/* ─── 4. Noise & Bot Transparency Footnote ──────────────────── */}
+      {/* ─── 4. Evaluated Pull Requests Activity Log ───────────────── */}
+      <div className="cortex-card p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
+          <div>
+            <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center space-x-2">
+              <GitPullRequest className="w-4 h-4 text-indigo-400" />
+              <span>Evaluated Pull Requests Activity Log</span>
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              Live audit trail of all pull requests evaluated across active repositories.
+            </p>
+          </div>
+
+          <span className="text-xs font-mono text-[var(--text-muted)]">
+            {(headlineMetrics?.evaluatedPrs || []).length} Pull Requests Logged
+          </span>
+        </div>
+
+        {(!headlineMetrics?.evaluatedPrs || headlineMetrics.evaluatedPrs.length === 0) ? (
+          <div className="py-12 flex flex-col items-center justify-center text-center space-y-2 text-[var(--text-muted)] text-xs">
+            <GitPullRequest className="w-8 h-8 opacity-40" />
+            <p className="font-medium text-[var(--text-secondary)]">No pull requests evaluated in this timeframe.</p>
+            <p className="text-[11px]">Open or merge a pull request on a connected repository to see it tracked here in real time.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto border border-[var(--border-subtle)] rounded-lg">
+            <table className="cortex-table">
+              <thead>
+                <tr>
+                  <th>PR # &amp; Title</th>
+                  <th>Repository</th>
+                  <th>Author</th>
+                  <th>State</th>
+                  <th className="text-right">Review Cycle Time</th>
+                  <th className="text-right">Total Lead Time</th>
+                  <th className="text-right">Changes</th>
+                  <th>Created At</th>
+                  <th>Merged / Closed At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {headlineMetrics.evaluatedPrs.map((pr: EvaluatedPrItem) => {
+                  const stateBadge = pr.state === 'merged' 
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    : pr.state === 'open'
+                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                      : 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+
+                  const formatTimestamp = (iso: string | null | undefined) => {
+                    if (!iso) return '—';
+                    const d = new Date(iso);
+                    return isNaN(d.getTime()) ? '—' : d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                  };
+
+                  return (
+                    <tr key={pr.prId || `${pr.repoName}#${pr.number}`}>
+                      <td>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono text-xs font-bold text-indigo-400">#{pr.number}</span>
+                          <span className="font-medium text-xs text-[var(--text-primary)] max-w-xs truncate" title={pr.title}>
+                            {pr.title}
+                          </span>
+                          {pr.isDraft && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                              Draft
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="font-mono text-xs text-[var(--text-secondary)]">
+                        {pr.repoName}
+                      </td>
+                      <td className="text-xs text-[var(--text-secondary)]">
+                        <span className="font-mono">{pr.author}</span>
+                        {pr.isBot && <span className="ml-1 text-[10px] text-amber-400 font-semibold">[BOT]</span>}
+                      </td>
+                      <td>
+                        <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border ${stateBadge}`}>
+                          {pr.state}
+                        </span>
+                      </td>
+                      <td className="text-right font-mono text-xs font-semibold text-[var(--text-primary)]">
+                        {pr.state === 'merged' ? formatPrDuration(pr.reviewTimeWallClockHours) : '—'}
+                      </td>
+                      <td className="text-right font-mono text-xs text-[var(--text-secondary)]">
+                        {pr.state === 'merged' ? formatPrDuration(pr.totalLeadTimeHours) : '—'}
+                      </td>
+                      <td className="text-right font-mono text-xs">
+                        <span className="text-emerald-400">+{pr.additions}</span>
+                        <span className="text-[var(--text-muted)] mx-1">/</span>
+                        <span className="text-rose-400">-{pr.deletions}</span>
+                      </td>
+                      <td className="font-mono text-xs text-[var(--text-muted)]">
+                        {formatTimestamp(pr.createdAt)}
+                      </td>
+                      <td className="font-mono text-xs text-[var(--text-muted)]">
+                        {formatTimestamp(pr.mergedAt || pr.closedAt)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ─── 5. Noise & Bot Transparency Footnote ──────────────────── */}
       <div className="p-4 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[var(--text-muted)] font-mono">
         <div className="flex items-center space-x-2">
           <Bot className="w-4 h-4 text-[var(--text-secondary)] shrink-0" />

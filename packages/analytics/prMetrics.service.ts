@@ -94,6 +94,7 @@ export interface PrMetricsReport {
         suspectBotAuthors: string[];
         warning?: string | undefined;
     };
+    evaluatedPrs?: PrMetricRecord[];
     transparencyTooltip: string;
 }
 
@@ -170,6 +171,12 @@ export function calculateBusinessHours(startDate: Date, endDate: Date): number {
     return Math.round(businessHours * 10) / 10;
 }
 
+export function roundDuration(v: number): number {
+    if (v <= 0) return 0;
+    if (v < 0.1) return Math.round(v * 100) / 100;
+    return Math.round(v * 10) / 10;
+}
+
 /**
  * Computes deterministic distribution percentiles (p50, p90, p75, p25, min, max, avg)
  */
@@ -192,15 +199,15 @@ export function calculatePercentiles(values: number[]): DistributionStats {
     };
 
     const sum = sorted.reduce((acc, v) => acc + v, 0);
-    const average = Math.round((sum / n) * 10) / 10;
+    const average = roundDuration(sum / n);
 
     return {
-        median: Math.round(getP(50) * 10) / 10,
-        p90: Math.round(getP(90) * 10) / 10,
-        p75: Math.round(getP(75) * 10) / 10,
-        p25: Math.round(getP(25) * 10) / 10,
-        min: Math.round(sorted[0]! * 10) / 10,
-        max: Math.round(sorted[n - 1]! * 10) / 10,
+        median: roundDuration(getP(50)),
+        p90: roundDuration(getP(90)),
+        p75: roundDuration(getP(75)),
+        p25: roundDuration(getP(25)),
+        min: roundDuration(sorted[0]!),
+        max: roundDuration(sorted[n - 1]!),
         average,
     };
 }
@@ -282,7 +289,7 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
     for (const row of rows) {
         const p = row.payload || {};
         const pr = p.pull_request || p;
-        const rName = p.repository?.name || p.repository?.full_name || p.repository || repoName || 'unknown';
+        const rName = p.repository?.full_name || p.repository?.name || p.repository || repoName || 'unknown';
         const prNumber = pr.number || row.external_id || row.id;
         const key = `${rName}#${prNumber}`;
 
@@ -320,6 +327,7 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
     }
 
     const prRecords: PrMetricRecord[] = [];
+    const allEvaluatedPrs: PrMetricRecord[] = [];
     let totalEvaluated = 0;
     let mergedBotPrs = 0;
     let openPrs = 0;
@@ -338,15 +346,16 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
 
         const isDraft = Boolean(pr.draft);
         const createdAtStr = pr.created_at || item.created_at || new Date().toISOString();
-        const mergedAtStr = pr.merged_at || (pr.merged ? pr.updated_at : null);
-        const closedAtStr = pr.closed_at || null;
+        const mergedAtStr = pr.merged_at || (pr.merged ? (pr.updated_at || item.created_at) : null);
+        const closedAtStr = pr.closed_at || (item.payload?.action === 'closed' ? item.created_at : null);
 
         const createdDate = parseSafeDate(createdAtStr) || new Date();
-        const mergedDate = parseSafeDate(mergedAtStr);
+        let mergedDate = parseSafeDate(mergedAtStr);
         const closedDate = parseSafeDate(closedAtStr);
 
         let state: 'open' | 'merged' | 'closed' = 'open';
-        if (mergedDate) {
+        if (mergedDate || pr.merged) {
+            if (!mergedDate) mergedDate = parseSafeDate(pr.updated_at) || parseSafeDate(item.created_at) || createdDate;
             state = 'merged';
         } else if (closedDate) {
             state = 'closed';
@@ -355,29 +364,24 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             openPrs++;
         }
 
-        if (state !== 'merged' || !mergedDate) continue;
-
-        if (isBot) {
-            mergedBotPrs++;
-        }
-
-        // Ready for review timestamp: if draft, ready_for_review_at; else created_at
         const rawReadyDate = parseSafeDate(pr.ready_for_review_at);
         const readyForReviewDate = rawReadyDate || createdDate;
 
-        const wallClockReviewHours = Math.max(0, (mergedDate.getTime() - readyForReviewDate.getTime()) / (1000 * 60 * 60));
-        const businessReviewHours = calculateBusinessHours(readyForReviewDate, mergedDate);
-        const totalLeadHours = Math.max(0, (mergedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60));
+        let wallClockReviewHours: number | null = null;
+        let totalLeadHours: number | null = null;
+        let isOutlier = false;
 
-        // Ensure review durations are finite numbers
-        if (!Number.isFinite(wallClockReviewHours) || !Number.isFinite(totalLeadHours)) {
-            console.warn(`[PrMetrics] Skipping PR ${key} with non-finite duration (${wallClockReviewHours}h)`);
-            continue;
+        if (state === 'merged' && mergedDate) {
+            const rawReview = Math.max(0, (mergedDate.getTime() - readyForReviewDate.getTime()) / (1000 * 60 * 60));
+            const rawLead = Math.max(0, (mergedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60));
+            if (Number.isFinite(rawReview) && Number.isFinite(rawLead)) {
+                wallClockReviewHours = roundDuration(rawReview);
+                totalLeadHours = roundDuration(rawLead);
+                isOutlier = rawReview > outlierThresholdHours;
+            }
         }
 
-        const isOutlier = wallClockReviewHours > outlierThresholdHours;
-
-        prRecords.push({
+        const record: PrMetricRecord = {
             prId: key,
             repoName: item.repoName,
             number: Number(item.prNumber) || 0,
@@ -387,17 +391,27 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             isDraft,
             createdAt: createdDate.toISOString(),
             readyForReviewAt: readyForReviewDate.toISOString(),
-            mergedAt: mergedDate.toISOString(),
+            mergedAt: mergedDate ? mergedDate.toISOString() : null,
             closedAt: closedDate ? closedDate.toISOString() : null,
-            state: 'merged',
-            reviewTimeWallClockHours: Math.round(wallClockReviewHours * 10) / 10,
-            totalLeadTimeHours: Math.round(totalLeadHours * 10) / 10,
+            state,
+            reviewTimeWallClockHours: wallClockReviewHours,
+            totalLeadTimeHours: totalLeadHours,
             isOutlier,
             additions: parseSafePositiveInt(pr.additions, 0),
             deletions: parseSafePositiveInt(pr.deletions, 0),
             changedFiles: parseSafePositiveInt(pr.changed_files, 0),
             commitsCount: parseSafePositiveInt(pr.commits, 1),
-        });
+        };
+
+        allEvaluatedPrs.push(record);
+
+        if (state !== 'merged' || !mergedDate) continue;
+
+        if (isBot) {
+            mergedBotPrs++;
+        }
+
+        prRecords.push(record);
     }
 
     // Segregate human PRs and outliers
@@ -476,6 +490,7 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             suspectBotAuthors: suspectList,
             warning: suspectBotWarning,
         },
+        evaluatedPrs: allEvaluatedPrs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
         transparencyTooltip: 'Review Cycle Time measures median business hours (Mon-Fri 09:00-18:00) from ready-for-review to merge. Extreme outliers (>30d) and automated bots are excluded from the headline median. Sourced from PostgreSQL events table.',
     };
 }

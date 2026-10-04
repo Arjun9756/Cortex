@@ -369,6 +369,7 @@ async function runTestSuite() {
     const originalServerUrl = process.env.LICENSE_SERVER_URL;
     const originalLicenseKey = process.env.CORTEX_LICENSE_KEY;
     const originalOfflineFlag = process.env.CORTEX_OFFLINE_LICENSE;
+    const originalCacheBackup = fs.existsSync(CACHE_FILE) ? fs.readFileSync(CACHE_FILE, 'utf-8') : null;
 
     try {
         // Test 6.1 Online Verification
@@ -454,6 +455,11 @@ async function runTestSuite() {
     } finally {
         if (licenseMockServer) {
             try { (licenseMockServer as http.Server).close(); } catch {}
+        }
+        if (originalCacheBackup !== null) {
+            fs.writeFileSync(CACHE_FILE, originalCacheBackup, 'utf-8');
+        } else if (fs.existsSync(CACHE_FILE)) {
+            try { fs.unlinkSync(CACHE_FILE); } catch {}
         }
         // Restore environment
         if (originalServerUrl) process.env.LICENSE_SERVER_URL = originalServerUrl;

@@ -3,6 +3,7 @@ import sql from "../../apps/api/config/postgres.js";
 import { getGraphSchema } from "../database/neo4j/schemaCache.js";
 import { CYPHER_BOT_FILTER, isBotAccount } from "../shared/botDetection.js";
 import { aggregationSources, type DataSource } from '../database/provenance.js';
+import { detectTechnologiesFromFiles } from '../extraction/deterministicTech.js';
 
 /**
  * Migration note: repo_metrics table must have these columns for this service to work:
@@ -15,6 +16,102 @@ import { aggregationSources, type DataSource } from '../database/provenance.js';
  *
  * risk_score is stored as a 0–100 INTEGER (percentage).
  */
+/**
+ * Resolves verified technologies for a repository by combining:
+ * 1. Neo4j graph relationships ((r)-[:USES]->(t:TECHNOLOGY))
+ * 2. Deterministic file analysis from PostgreSQL events if graph relationships are not yet populated.
+ */
+async function resolveRepoTechnologies(
+    session: any,
+    repoName: string,
+    trustedSources: readonly string[],
+    isEmpty: boolean
+): Promise<string[]> {
+    if (isEmpty) return [];
+
+    let technologies: string[] = [];
+    try {
+        const techResult = await session.run(
+            `MATCH (r:REPOSITORY) WHERE toLower(r.name) = toLower($repoName) AND r.source IN $trustedSources
+             OPTIONAL MATCH (r)-[:USES|DEPENDS_ON|MENTIONED_IN]->(t1:TECHNOLOGY)
+             OPTIONAL MATCH (r)<-[:PART_OF]-(:PULL_REQUEST|ISSUE)-[:USES|MENTIONED_IN]->(t2:TECHNOLOGY)
+             RETURN collect(DISTINCT t1.name) + collect(DISTINCT t2.name) AS techs`,
+            { repoName, trustedSources }
+        );
+        const rawTechs = techResult.records[0]?.get('techs') || [];
+        technologies = Array.from(new Set<string>((rawTechs as unknown[]).filter((v: unknown): v is string => typeof v === 'string' && v.length > 0)));
+    } catch (techErr: any) {
+        console.warn(`[RepoMetrics] Technologies query failed for ${repoName}:`, techErr?.message);
+    }
+
+    // Deterministic fallback: extract tech from files and metadata committed to this repo in PostgreSQL events
+    if (technologies.length === 0) {
+        try {
+            const evRows = await sql`
+                SELECT payload->'commits' as commits, 
+                       payload->'filesChanged' as files_changed,
+                       payload->'repository'->>'language' as repo_language,
+                       payload->'repository'->'topics' as repo_topics
+                FROM events
+                WHERE source IN ${sql(trustedSources)}
+                  AND (
+                      lower(COALESCE(payload->'repository'->>'full_name', payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
+                      OR (
+                          lower(COALESCE(payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
+                          AND payload->'repository'->>'full_name' IS NULL
+                      )
+                  )
+                ORDER BY created_at DESC
+                LIMIT 50
+            `;
+            const fileSet = new Set<string>();
+            let repoLanguage: string | null = null;
+            const topicSet = new Set<string>();
+            for (const row of evRows) {
+                if (Array.isArray(row.commits)) {
+                    for (const c of row.commits) {
+                        if (Array.isArray(c.added)) c.added.forEach((f: string) => fileSet.add(f));
+                        if (Array.isArray(c.modified)) c.modified.forEach((f: string) => fileSet.add(f));
+                        if (Array.isArray(c.filesChanged)) c.filesChanged.forEach((f: string) => fileSet.add(f));
+                    }
+                }
+                if (Array.isArray(row.files_changed)) {
+                    row.files_changed.forEach((f: string) => fileSet.add(f));
+                }
+                if (!repoLanguage && row.repo_language) {
+                    repoLanguage = row.repo_language;
+                }
+                if (Array.isArray(row.repo_topics)) {
+                    row.repo_topics.forEach((t: string) => topicSet.add(t));
+                }
+            }
+            if (fileSet.size > 0 || repoLanguage || topicSet.size > 0) {
+                const detected = detectTechnologiesFromFiles(Array.from(fileSet), repoLanguage, Array.from(topicSet));
+                if (detected.length > 0) {
+                    technologies = detected;
+                    // Ensure Neo4j graph stores these verified technologies
+                    try {
+                        await session.run(`
+                            MERGE (r:REPOSITORY {name: $repoName})
+                            ON CREATE SET r.source = $source
+                            WITH r
+                            UNWIND $detected AS tech
+                            MERGE (t:TECHNOLOGY {name: tech, source: $source})
+                            MERGE (r)-[:USES {source: $source}]->(t)
+                        `, { repoName, detected, source: trustedSources[0] || 'webhook' });
+                    } catch (neoTechErr: any) {
+                        console.warn(`[RepoMetrics] Neo4j technology merge warning for ${repoName}:`, neoTechErr?.message);
+                    }
+                }
+            }
+        } catch (evErr: any) {
+            console.warn(`[RepoMetrics] Event files tech fallback warning for ${repoName}:`, evErr?.message);
+        }
+    }
+
+    return technologies;
+}
+
 export async function calculateAllRepoMetrics(source: DataSource) {
     const session = neo4jSession();
     const trustedSources = aggregationSources(source);
@@ -33,11 +130,45 @@ export async function calculateAllRepoMetrics(source: DataSource) {
     }
 
     try {
-        const repos = await session.run(`MATCH (r:REPOSITORY) WHERE r.source IN $trustedSources RETURN r.name AS name, r.externalId AS externalId`, { trustedSources });
+        // Discover repositories from BOTH Neo4j graph AND PostgreSQL events table
+        const repoMap = new Map<string, string>(); // name -> externalId
 
-        for (const record of repos.records) {
-            const repoName = record.get("name");
-            const externalId = record.get("externalId") || repoName;
+        // A. From Neo4j
+        try {
+            const repos = await session.run(`MATCH (r:REPOSITORY) WHERE r.source IN $trustedSources RETURN r.name AS name, r.externalId AS externalId`, { trustedSources });
+            for (const r of repos.records) {
+                const name = r.get("name");
+                if (name) {
+                    repoMap.set(name, r.get("externalId") || name);
+                }
+            }
+        } catch (neoErr: any) {
+            console.warn('[RepoMetrics] Neo4j repo list query warning:', neoErr?.message);
+        }
+
+        // B. From PostgreSQL events table (ensures newly ingested repos like Demo are ALWAYS included)
+        try {
+            const pgRepos = await sql`
+                SELECT DISTINCT 
+                    COALESCE(payload->'repository'->>'full_name', payload->'repository'->>'name', payload->>'repository') as name,
+                    COALESCE(payload->'repository'->>'full_name', payload->'repository'->>'id'::text, payload->'repository'->>'name', payload->>'repository') as external_id
+                FROM events
+                WHERE source IN ${sql(trustedSources)}
+            `;
+            for (const r of pgRepos) {
+                if (r.name && !repoMap.has(r.name)) {
+                    repoMap.set(r.name, r.external_id || r.name);
+                }
+            }
+        } catch (pgErr: any) {
+            console.warn('[RepoMetrics] PG repo list query warning:', pgErr?.message);
+        }
+
+        const repoRecords: Array<{ name: string; externalId: string }> = Array.from(repoMap.entries()).map(([name, externalId]) => ({ name, externalId }));
+
+        for (const record of repoRecords) {
+            const repoName = record.name;
+            const externalId = record.externalId || repoName;
 
             if (!externalId) {
                 console.warn(`[RepoMetrics] Skipping repo without name/externalId`);
@@ -56,18 +187,7 @@ export async function calculateAllRepoMetrics(source: DataSource) {
                 const contributorCount = isEmpty ? 0 : contributors.length;
 
                 // Invariant 1: tech stack must be empty for 0-commit repositories
-                let technologies: string[] = [];
-                if (!isEmpty) {
-                    const techResult = await session.run(
-                        `MATCH (r:REPOSITORY) WHERE toLower(r.name) = toLower($repoName) AND r.source IN $trustedSources
-                         OPTIONAL MATCH (r)-[:USES|DEPENDS_ON|MENTIONED_IN]->(t1:TECHNOLOGY)
-                         OPTIONAL MATCH (r)<-[:PART_OF]-(:PULL_REQUEST|ISSUE)-[:USES|MENTIONED_IN]->(t2:TECHNOLOGY)
-                         RETURN collect(DISTINCT t1.name) + collect(DISTINCT t2.name) AS techs`,
-                        { repoName, trustedSources }
-                    );
-                    const rawTechs = techResult.records[0]?.get("techs") || [];
-                    technologies = Array.from(new Set<string>((rawTechs as unknown[]).filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)));
-                }
+                const technologies = await resolveRepoTechnologies(session, repoName, trustedSources, isEmpty);
 
                 const primaryOwnerPercentage = !isEmpty && contributors.length > 0 && totalCommits > 0 
                     ? Math.round(contributors[0]!.percentage) 
@@ -126,7 +246,7 @@ export async function calculateAllRepoMetrics(source: DataSource) {
         }
 
         // Final cleanup: delete any rows from repo_metrics not in active Neo4j repos
-        const activeNames = repos.records.map((r: any) => r.get("name"));
+        const activeNames = repoRecords.map((r: any) => r.name);
         if (activeNames.length > 0) {
             await sql`DELETE FROM repo_metrics WHERE source = ${source} AND repo_name NOT IN ${sql(activeNames)}`;
         }
@@ -163,18 +283,7 @@ export async function upsertRepoMetrics(repoName: string, externalId: string, so
         const isEmpty = totalCommits === 0 || contributors.length === 0;
         const contributorCount = isEmpty ? 0 : contributors.length;
 
-        let technologies: string[] = [];
-        if (!isEmpty) {
-            const techResult = await session.run(
-                `MATCH (r:REPOSITORY) WHERE toLower(r.name) = toLower($repoName) AND r.source IN $trustedSources
-                 OPTIONAL MATCH (r)-[:USES|DEPENDS_ON|MENTIONED_IN]->(t1:TECHNOLOGY)
-                 OPTIONAL MATCH (r)<-[:PART_OF]-(:PULL_REQUEST|ISSUE)-[:USES|MENTIONED_IN]->(t2:TECHNOLOGY)
-                 RETURN collect(DISTINCT t1.name) + collect(DISTINCT t2.name) AS techs`,
-                { repoName, trustedSources }
-            );
-            const rawTechs = techResult.records[0]?.get('techs') || [];
-            technologies = Array.from(new Set<string>((rawTechs as unknown[]).filter((v: unknown): v is string => typeof v === 'string' && v.length > 0)));
-        }
+        const technologies = await resolveRepoTechnologies(session, repoName, trustedSources, isEmpty);
 
         const primaryOwnerPercentage = !isEmpty && contributors.length > 0 && totalCommits > 0
             ? Math.round(contributors[0]!.percentage)
@@ -220,6 +329,17 @@ export async function upsertRepoMetrics(repoName: string, externalId: string, so
                 top_contributors         = EXCLUDED.top_contributors,
                 computed_at              = EXCLUDED.computed_at
         `;
+
+        // Ensure REPOSITORY node exists in Neo4j
+        try {
+            await session.run(`
+                MERGE (r:REPOSITORY {name: $repoName})
+                ON CREATE SET r.externalId = $externalId, r.source = $source, r.createdAt = datetime()
+                ON MATCH SET r.externalId = COALESCE(r.externalId, $externalId)
+            `, { repoName, externalId, source });
+        } catch (neoMergeErr: any) {
+            // Non-fatal
+        }
 
         console.log(`[RepoMetrics] upsertRepoMetrics: ${repoName} (${externalId}): status=${status}, busFactor=${busFactorFinal}, commits=${totalCommits}, contributors=${contributorCount}`);
     } catch (err: any) {
@@ -299,8 +419,11 @@ export async function calculateBusFactorAndOwner(
     const qualification = "Engineering Activity (Not a measure of individual productivity or output).";
 
     try {
-        // 1. Primary path: query CONTRIBUTED_TO relationship rollup
-        const contribRes = await session.run(
+        // 1. Primary path: query CONTRIBUTED_TO relationship rollup (with fallback)
+        let rows: Array<{ person: string; commits: number }> = [];
+        let contribRes: any = { records: [] };
+        try {
+            contribRes = await session.run(
             `MATCH (p:PERSON)-[rel:CONTRIBUTED_TO]->(r:REPOSITORY)
              WHERE toLower(r.name) = toLower($repoName) AND r.source IN $trustedSources AND p.source IN $trustedSources AND rel.source IN $trustedSources
                AND (p.name IS NOT NULL OR p.canonicalPersonId IS NOT NULL OR p.externalId IS NOT NULL)
@@ -315,7 +438,6 @@ export async function calculateBusFactorAndOwner(
             { repoName, trustedSources }
         );
 
-        let rows: Array<{ person: string; commits: number }> = [];
 
         if (contribRes.records.length > 0) {
             rows = contribRes.records.map((r: any) => ({
@@ -323,10 +445,14 @@ export async function calculateBusFactorAndOwner(
                 commits: r.get("commits")?.toNumber ? r.get("commits").toNumber() : Number(r.get("commits") || 0),
             })).filter((r: { person: string; commits: number }) => r.commits > 0);
         }
+        } catch (neoErr: any) {
+            console.warn(`[RepoMetrics] Neo4j CONTRIBUTED_TO query warning for ${repoName}:`, neoErr?.message);
+        }
 
         // 2. Fallback path for legacy graphs with uncompacted COMMIT nodes
         if (rows.length === 0) {
-            const legacyRes = await session.run(
+            try {
+                const legacyRes = await session.run(
                 `MATCH (p:PERSON)-[:AUTHORED]->(c:COMMIT)-[:PART_OF]->(r:REPOSITORY)
                  WHERE toLower(r.name) = toLower($repoName) AND r.source IN $trustedSources AND p.source IN $trustedSources
                    AND (p.name IS NOT NULL OR p.canonicalPersonId IS NOT NULL OR p.externalId IS NOT NULL)
@@ -347,6 +473,9 @@ export async function calculateBusFactorAndOwner(
                     commits: r.get("commits")?.toNumber ? r.get("commits").toNumber() : Number(r.get("commits") || 0),
                 }));
             }
+            } catch (neoLegacyErr: any) {
+                console.warn(`[RepoMetrics] Neo4j legacy query warning for ${repoName}:`, neoLegacyErr?.message);
+            }
         }
 
         // 3. Robust Fallback: check PostgreSQL events if Neo4j graph has not ingested graph nodes yet
@@ -361,7 +490,16 @@ export async function calculateBusFactorAndOwner(
                             payload->>'author',
                             'Contributor'
                         ) AS author_name,
-                        COUNT(*)::int AS commits
+                        COALESCE(
+                            SUM(
+                                CASE 
+                                    WHEN jsonb_typeof(payload->'commits') = 'array' AND jsonb_array_length(payload->'commits') > 0
+                                    THEN jsonb_array_length(payload->'commits')
+                                    ELSE 1
+                                END
+                            ),
+                            COUNT(*)
+                        )::int AS commits
                     FROM events
                     WHERE source IN ${sql(trustedSources)} AND (
                         lower(COALESCE(payload->'repository'->>'full_name', payload->'repository'->>'name', payload->>'repository', '')) = lower(${repoName})
@@ -370,7 +508,11 @@ export async function calculateBusFactorAndOwner(
                             AND payload->'repository'->>'full_name' IS NULL
                         )
                     )
-                    AND (provider = 'github' OR event_type ILIKE '%push%' OR event_type ILIKE '%commit%')
+                    AND (
+                        event_type ILIKE '%push%' 
+                        OR event_type ILIKE '%commit%'
+                        OR (event_type = 'pull_request' AND payload->>'action' = 'closed' AND (payload->'pull_request'->>'merged')::boolean = true)
+                    )
                     GROUP BY 1
                     ORDER BY commits DESC
                 `;

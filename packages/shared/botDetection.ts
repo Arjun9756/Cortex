@@ -61,7 +61,7 @@ export function isBotAccount(
 
     for (const cand of candidates) {
         if (cand.endsWith('[bot]')) return true;
-        if (cand.startsWith('bot-') || cand.endsWith('-bot')) return true;
+        if (cand.startsWith('bot-') || cand.startsWith('bot_') || cand.endsWith('-bot') || cand.endsWith('_bot')) return true;
         if (KNOWN_BOT_USERNAMES.has(cand)) return true;
     }
 

@@ -182,8 +182,11 @@ export async function getDashboardOverview(req: Request, res: Response) {
             if (rawWeekly && rawWeekly.length > 0) {
                 rawWeekly.forEach((row: any, idx: number) => {
                     const d = new Date(row.week_start);
+                    const endD = new Date(d.getTime() + 6 * 86400000);
                     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    const label = `${monthNames[d.getMonth()]} ${d.getDate()}`;
+                    const label = d.getMonth() !== endD.getMonth()
+                        ? `${monthNames[d.getMonth()]} ${d.getDate()} - ${monthNames[endD.getMonth()]} ${endD.getDate()}`
+                        : `${monthNames[d.getMonth()]} ${d.getDate()} - ${endD.getDate()}`;
                     activityTrend.push({
                         week: label,
                         count: Number(row.count || 0),
@@ -557,10 +560,11 @@ export async function getRepoDetails(req: Request, res: Response) {
     try {
         // 1. Fetch from Postgres repo_metrics
         const [metric] = await sql`
-            SELECT repo_name, bus_factor, risk_score, contributor_count, primary_owner, status, computed_at
+            SELECT *
             FROM repo_metrics
             WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
-              AND lower(repo_name) = lower(${repoName})
+              AND (lower(repo_name) = lower(${repoName}) OR lower(repo_name) LIKE '%' || lower(${repoName}))
+            ORDER BY computed_at DESC
             LIMIT 1
         `;
 
@@ -657,6 +661,19 @@ export async function getRepoDetails(req: Request, res: Response) {
             console.warn('[RepoDetails] Neo4j enrichment unavailable:', graphError);
         }
 
+        // Graceful fallback for contributors and technologies when graph query yields 0 records
+        if (contributors.length === 0 && Array.isArray(metric.top_contributors) && metric.top_contributors.length > 0) {
+            contributors = metric.top_contributors.map((tc: any) => ({
+                name: tc.person,
+                email: null,
+                role: 'Maintainer',
+                commitCount: Number(tc.commits || 1)
+            }));
+        }
+        if (technologies.length === 0 && Array.isArray(metric.technologies) && metric.technologies.length > 0) {
+            technologies = metric.technologies;
+        }
+
         // If no activity in graph (e.g. commits are not stored as graph nodes), fetch from Postgres events table
         if (recentActivity.length === 0) {
             try {
@@ -691,6 +708,7 @@ export async function getRepoDetails(req: Request, res: Response) {
                     WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND (
                         payload->'repository'->>'name' ILIKE ${repoName}
                         OR payload->'repository'->>'full_name' ILIKE ${'%' + repoName}
+                        OR lower(COALESCE(payload->'repository'->>'full_name', payload->'repository'->>'name', '')) = lower(${repoName})
                     )
                     ORDER BY created_at DESC
                     LIMIT 10
@@ -711,10 +729,16 @@ export async function getRepoDetails(req: Request, res: Response) {
             }
         }
 
-        const totalCommits = contributors.reduce((acc, c) => acc + c.commitCount, 0);
+        const totalCommits = contributors.reduce((acc, c) => acc + c.commitCount, 0) || Number(metric.commit_count || 0);
         const graphOwner = contributors[0] || null;
         const primaryOwner = metric.primary_owner
-            ? { name: metric.primary_owner, ownershipPercentage: graphOwner && totalCommits > 0 ? Math.round((graphOwner.commitCount / totalCommits) * 100) : null, commitCount: graphOwner?.commitCount ?? null }
+            ? {
+                name: metric.primary_owner,
+                ownershipPercentage: graphOwner && totalCommits > 0 
+                    ? Math.round((graphOwner.commitCount / totalCommits) * 100) 
+                    : (Number(metric.primary_owner_percentage) || 100),
+                commitCount: graphOwner?.commitCount ?? Number(metric.commit_count ?? 1)
+              }
             : graphOwner ? { ...graphOwner, ownershipPercentage: totalCommits > 0 ? Math.round((graphOwner.commitCount / totalCommits) * 100) : 100 } : null;
         const busFactor = Number(metric.bus_factor ?? 0);
         const riskScore = Number(metric.risk_score ?? 0);
@@ -904,17 +928,19 @@ export async function getPrCycleTimeMetrics(req: Request, res: Response) {
             const repoRows = await sql`
                 SELECT DISTINCT repo_name
                 FROM repo_metrics
-                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])} AND status NOT IN ('empty', 'scaffold')
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
                 ORDER BY repo_name ASC
             `;
-            const repoList = repoRows.map(r => r.repo_name);
-
-            const targetRepos = repoList.length > 0 ? repoList : (await sql`
-                SELECT DISTINCT COALESCE(payload->'repository'->>'name', payload->>'repository') as repo_name
+            const eventRepos = await sql`
+                SELECT DISTINCT COALESCE(payload->'repository'->>'full_name', payload->'repository'->>'name', payload->>'repository') as repo_name
                 FROM events
                 WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
                   AND provider = 'github' AND (event_type ILIKE '%pull_request%' OR payload ? 'pull_request')
-            `).map(r => r.repo_name).filter(Boolean);
+            `;
+            const targetRepos = [...new Set([
+                ...repoRows.map((r: any) => r.repo_name),
+                ...eventRepos.map((r: any) => r.repo_name)
+            ])].filter(Boolean);
 
             repoBreakdown = await Promise.all(
                 targetRepos.map((rName: string) => calculatePrMetrics({

@@ -354,10 +354,11 @@ export async function executeGetRepoContributors(input: GetRepoContributorsInput
     let busFactor = 1.0;
     let status = 'healthy';
     let storedContributorCount = 0;
+    let storedCommitCount = 0;
 
     try {
         const [rmRow] = await sql`
-            SELECT repo_name, primary_owner, bus_factor, status, contributor_count
+            SELECT repo_name, primary_owner, bus_factor, status, contributor_count, commit_count
             FROM repo_metrics
             WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
               AND (lower(repo_name) = lower(${normalizedRepo})
@@ -372,6 +373,7 @@ export async function executeGetRepoContributors(input: GetRepoContributorsInput
             busFactor = Number(rmRow.bus_factor ?? 1.0);
             status = rmRow.status || 'healthy';
             storedContributorCount = Number(rmRow.contributor_count ?? 0);
+            storedCommitCount = Number(rmRow.commit_count ?? 0);
 
             if (status === 'empty' || busFactor === 0 || storedContributorCount === 0) {
                 return {
@@ -424,7 +426,9 @@ export async function executeGetRepoContributors(input: GetRepoContributorsInput
 
         // If primaryOwner is recorded in PostgreSQL but wasn't in graph contributors list, add them
         if (primaryOwner && !contributors.some(c => c.name.toLowerCase() === primaryOwner!.toLowerCase())) {
-            contributors.unshift({ name: primaryOwner, commits: 1, role: 'Primary Owner' });
+            contributors.unshift({ name: primaryOwner, commits: storedCommitCount > 0 ? storedCommitCount : 1, role: 'Primary Owner' });
+        } else if (contributors.length === 1 && storedCommitCount > contributors[0].commits) {
+            contributors[0].commits = storedCommitCount;
         }
 
         const finalContributorCount = Math.max(contributors.length, storedContributorCount);
@@ -948,7 +952,7 @@ export async function executeGetRelatedEntities(input: GetRelatedEntitiesInput):
             relType: input.relationType?.toUpperCase()
         });
 
-        const connections = res.records.map((r: any) => {
+        let connections = res.records.map((r: any) => {
             const labels: string[] = r.get('targetLabels') || [];
             return {
                 targetName: r.get('targetName') || 'Unknown',
@@ -957,9 +961,78 @@ export async function executeGetRelatedEntities(input: GetRelatedEntitiesInput):
             };
         });
 
+        // Robust Fallback: check PostgreSQL repo_metrics if Neo4j returned 0 connections
+        if (connections.length === 0) {
+            try {
+                const repoMatch = await sql`
+                    SELECT repo_name, technologies
+                    FROM repo_metrics
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                      AND (
+                          lower(repo_name) = lower(${entity})
+                          OR lower(repo_name) LIKE lower(${'%' + entity + '%'})
+                      )
+                    LIMIT 5
+                `;
+                for (const row of repoMatch) {
+                    if (Array.isArray(row.technologies)) {
+                        for (const tech of row.technologies) {
+                            if (tech) {
+                                connections.push({
+                                    targetName: tech,
+                                    targetType: 'TECHNOLOGY',
+                                    relation: 'USES'
+                                });
+                            }
+                        }
+                    }
+                }
+            } catch (pgErr: any) {
+                console.warn('[GetRelatedEntities] Postgres repo fallback warning:', pgErr?.message);
+            }
+        }
+
+        // Robust Fallback: check PostgreSQL technology_metrics if query was for a technology
+        if (connections.length === 0) {
+            try {
+                const techMatch = await sql`
+                    SELECT tech_name, repos
+                    FROM technology_metrics
+                    WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                      AND (
+                          lower(tech_name) = lower(${entity})
+                          OR lower(tech_name) LIKE lower(${'%' + entity + '%'})
+                      )
+                    LIMIT 5
+                `;
+                for (const row of techMatch) {
+                    if (Array.isArray(row.repos)) {
+                        for (const r of row.repos) {
+                            connections.push({
+                                targetName: r,
+                                targetType: 'REPOSITORY',
+                                relation: 'USED_BY'
+                            });
+                        }
+                    }
+                }
+            } catch (pgErr: any) {
+                console.warn('[GetRelatedEntities] Postgres tech fallback warning:', pgErr?.message);
+            }
+        }
+
+        // Deduplicate connections
+        const seen = new Set<string>();
+        const uniqueConnections = connections.filter(c => {
+            const key = `${c.targetName}:${c.targetType}:${c.relation}`.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
         return {
             entity,
-            connections,
+            connections: uniqueConnections,
         };
     } finally {
         await session.close();

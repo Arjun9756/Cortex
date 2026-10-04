@@ -79,6 +79,27 @@ export async function plannerNode(state: AgentStateType): Promise<Partial<AgentS
 
     // 1. Check for Out-of-Scope / purely conversational non-data query
     if (!isDataQuestion(state.query)) {
+        const qTrim = state.query.toLowerCase().trim().replace(/[?!.,]+$/, '');
+        const isGreeting = /^(hi|hello|hey|greetings|good morning|good afternoon|good evening|yo|who are you|what can you do|help)$/i.test(qTrim) ||
+                           /^(hi|hello|hey)\s+(cortex|there|team|bot)/i.test(qTrim);
+
+        if (isGreeting) {
+            console.log(`[Planner] Conversational greeting detected: "${state.query}". Returning helpful welcome message.`);
+            const welcomeAnswer = `Hello! I am **Cortex**, your enterprise engineering intelligence assistant.\n\nI can analyze your codebase repositories, Git commit velocity, pull requests, issues, developer ownership, bus factor risk, and architecture dependencies.\n\n**Here are a few things you can ask me:**\n- *"What repositories are tracked in the system?"*\n- *"Who worked on crtxco/Demo?"*\n- *"Which repositories have high bus factor risk?"*\n- *"What is the average PR cycle time?"*\n- *"Who is the recommended successor for the primary owner of crtxco/Ecommerce?"*`;
+            return {
+                answer: welcomeAnswer,
+                pendingTools: [],
+                plan: [],
+                subgoals: [],
+                clarificationQuestion: '',
+                entities: [],
+                metrics: {
+                    ...state.metrics,
+                    plannerLatencyMs: Date.now() - tStart,
+                }
+            };
+        }
+
         console.log(`[Planner] Non-data / out-of-scope query detected: "${state.query}". Returning polite decline.`);
         const declineAnswer = "I am Cortex, an engineering knowledge intelligence assistant. I can only answer questions about your organization's codebases, repositories, commits, developers, architecture, dependencies, and risk.";
         return {

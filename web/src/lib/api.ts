@@ -668,6 +668,28 @@ export interface StaleOutlierPr {
     author: string;
 }
 
+export interface EvaluatedPrItem {
+    prId: string;
+    repoName: string;
+    number: number;
+    title: string;
+    author: string;
+    isBot: boolean;
+    isDraft: boolean;
+    createdAt: string;
+    readyForReviewAt?: string;
+    mergedAt: string | null;
+    closedAt: string | null;
+    state: 'open' | 'merged' | 'closed';
+    reviewTimeWallClockHours: number | null;
+    totalLeadTimeHours: number | null;
+    isOutlier: boolean;
+    additions: number;
+    deletions: number;
+    changedFiles: number;
+    commitsCount: number;
+}
+
 export interface PrMetricsReport {
     repoName?: string | undefined;
     timeframeDays?: number | undefined;
@@ -710,6 +732,7 @@ export interface PrMetricsReport {
         suspectBotAuthors: string[];
         warning?: string | undefined;
     };
+    evaluatedPrs?: EvaluatedPrItem[];
     transparencyTooltip: string;
 }
 

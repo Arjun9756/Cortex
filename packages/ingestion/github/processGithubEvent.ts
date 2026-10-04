@@ -12,6 +12,7 @@ import { ContentEmbedding } from '@google/genai'
 import { isBotAccount } from '../../shared/botDetection.js'
 import { assertDataSource, type DataSource } from '../../database/provenance.js'
 import { upsertRepoMetrics } from '../../analytics/repoMetrics.service.js'
+import { detectTechnologiesFromFiles } from '../../extraction/deterministicTech.js'
 
 export async function processGithubEvent(eventID: string) {
     try {
@@ -80,6 +81,38 @@ export async function processGithubEvent(eventID: string) {
                     })
                 }
                 summary = `GitHub ${normalizedPayload.eventType || 'event'} by ${normalizedPayload.author || 'contributor'} in ${normalizedPayload.repository || 'repository'}`
+            }
+        }
+
+        // Deterministic Technology Detection from changed files (0 LLM tokens, 100% reliable ground truth)
+        const allFiles: string[] = [];
+        if (Array.isArray(normalizedPayload.commits)) {
+            for (const c of normalizedPayload.commits) {
+                if (Array.isArray(c.filesChanged)) {
+                    allFiles.push(...c.filesChanged);
+                }
+            }
+        }
+        if (Array.isArray(normalizedPayload.filesChanged)) {
+            allFiles.push(...normalizedPayload.filesChanged);
+        }
+        const repoLanguage = rawPayload.repository?.language;
+        const repoTopics = Array.isArray(rawPayload.repository?.topics) ? rawPayload.repository.topics : [];
+
+        if (normalizedPayload.repository && (allFiles.length > 0 || repoLanguage || repoTopics.length > 0)) {
+            const detectedTechs = detectTechnologiesFromFiles(allFiles, repoLanguage, repoTopics);
+            for (const tech of detectedTechs) {
+                if (!entities.some((e: any) => e.name === tech)) {
+                    entities.push({ name: tech, type: 'TECHNOLOGY' });
+                }
+                if (!relationships.some((r: any) => r.from === normalizedPayload.repository && r.to === tech)) {
+                    relationships.push({
+                        from: normalizedPayload.repository,
+                        to: tech,
+                        type: 'USES',
+                        evidence: 'detected from repository files or metadata'
+                    });
+                }
             }
         }
 
@@ -430,32 +463,36 @@ export async function processGithubEvent(eventID: string) {
             }
         }
 
+        // 6. Save Onto Graph Database (with enriched PERSON and ENTITY metadata + rollback traceability)
+        try {
+            await saveExtractionToGraph(
+                entities,
+                newEntities,
+                relationships,
+                newRelations,
+                { source: event.source as DataSource, sourceEventId: eventID, confidence: 1.0 },
+                personMetadata,
+                entityMetadata
+            )
+        } catch (graphErr: any) {
+            console.error('[GitHub Ingestion] saveExtractionToGraph error: ' + graphErr?.message);
+        }
+
         // 6b. Immediately sync repo_metrics for this specific repo so the Dashboard
-        //     reflects the same commit count that the Chat Agent sees from Neo4j.
-        //     This closes the 45-180 second debounce gap between the two data paths.
-        //     NOTE: runs BEFORE saveExtractionToGraph so it succeeds even if the graph write
-        //     encounters a transient Cypher error; the scheduler will reconcile Neo4j later.
+        //     reflects the exact same commit count that Neo4j now contains.
+        //     NOTE: runs AFTER saveExtractionToGraph so Neo4j already holds the latest commit count.
         if (normalizedPayload.repository && normalizedPayload.repository !== 'unknown') {
             const repoExternalId =
                 rawPayload.repository?.full_name ||
                 rawPayload.repository?.node_id ||
                 rawPayload.repository?.id?.toString() ||
                 normalizedPayload.repository;
-            upsertRepoMetrics(normalizedPayload.repository, repoExternalId, event.source).catch((e) => {
+            try {
+                await upsertRepoMetrics(normalizedPayload.repository, repoExternalId, event.source);
+            } catch (e: any) {
                 console.warn('[GitHub Ingestion] Inline repo_metrics sync failed: ' + e?.message);
-            });
+            }
         }
-
-        // 6. Save Onto Graph Database (with enriched PERSON and ENTITY metadata + rollback traceability)
-        await saveExtractionToGraph(
-            entities,
-            newEntities,
-            relationships,
-            newRelations,
-            { source: event.source as DataSource, sourceEventId: eventID, confidence: 1.0 },
-            personMetadata,
-            entityMetadata
-        )
 
         // 7.Process The Summary To Create Vector Embeddings For Semantic Search
         const effectiveSummary = summary && summary.trim().length > 0 

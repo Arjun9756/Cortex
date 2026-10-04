@@ -56,6 +56,8 @@ export async function calculateAllPersonMetrics(source: DataSource) {
                 SELECT canonical_person_id, provider, external_id, username, email, display_name, is_active
                 FROM person_identity
                 WHERE source IN ${sql(trustedSources)}
+                  AND (is_bot = false OR is_bot IS NULL)
+                  AND canonical_person_id NOT LIKE 'bot_%'
             `;
         } catch (dbErr: any) {
             console.warn(`[PersonMetrics] Failed to load person_identity: ${dbErr?.message}`);

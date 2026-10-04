@@ -86,7 +86,10 @@ analyticsRouter.get('/trends', async (req, res) => {
             monday.setHours(0, 0, 0, 0);
 
             const key = monday.toISOString().split('T')[0] ?? '';
-            const label = `${monthNames[monday.getMonth()]} ${monday.getDate()}`;
+            const sunday = new Date(monday.getTime() + 6 * 86400000);
+            const label = monday.getMonth() !== sunday.getMonth()
+                ? `${monthNames[monday.getMonth()]} ${monday.getDate()} - ${monthNames[sunday.getMonth()]} ${sunday.getDate()}`
+                : `${monthNames[monday.getMonth()]} ${monday.getDate()} - ${sunday.getDate()}`;
 
             let weekData = eventWeekMap.get(key);
             if (!weekData) {
