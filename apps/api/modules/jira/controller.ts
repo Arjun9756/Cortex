@@ -32,7 +32,7 @@ export async function pushJiraEventToDatabase(parsedEvent:IJiraParsedEvent, sour
                 delay:2000
             },
             removeOnComplete:true,
-            removeOnFail:true,
+            removeOnFail: false,
         })
 
         return {status:true , message:"Data Saved to Database"}

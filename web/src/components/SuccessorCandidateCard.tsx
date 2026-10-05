@@ -35,7 +35,7 @@ export const SuccessorCandidateCard: React.FC<SuccessorCandidateCardProps> = ({ 
 
   return (
     <div
-      className={`p-3.5 rounded-lg bg-[var(--bg-subtle)] border transition-colors space-y-2.5 ${
+      className={`p-3.5 rounded-lg bg-[var(--bg-subtle)] border transition-colors flex flex-col justify-between h-full min-h-[170px] ${
         isOverloaded
           ? 'border-rose-500/40 bg-rose-950/10'
           : isCrossTraining
@@ -43,66 +43,68 @@ export const SuccessorCandidateCard: React.FC<SuccessorCandidateCardProps> = ({ 
           : 'border-[var(--border-subtle)] hover:border-[var(--border-strong)]'
       }`}
     >
-      {/* Overloaded Warning Banner */}
-      {candidate.warningLabel && (
-        <div className="px-2.5 py-1 rounded bg-rose-500/10 border border-rose-500/20 text-[10px] text-rose-300 font-semibold flex items-center gap-1.5">
-          <AlertTriangle className="h-3.5 w-3.5 text-rose-400 shrink-0" />
-          <span>{candidate.warningLabel}</span>
-        </div>
-      )}
-
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start space-x-2.5 min-w-0">
-          <div
-            className={`h-7 w-7 rounded-md border flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
-              isOverloaded
-                ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-                : isCrossTraining
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-            }`}
-          >
-            {candidate.name.charAt(0)}
+      <div className="space-y-2.5">
+        {/* Overloaded Warning Banner */}
+        {candidate.warningLabel && (
+          <div className="px-2.5 py-1 rounded bg-rose-500/10 border border-rose-500/20 text-[10px] text-rose-300 font-semibold flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 text-rose-400 shrink-0" />
+            <span className="truncate">{candidate.warningLabel}</span>
           </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="font-bold text-[var(--text-primary)] text-sm block leading-tight truncate">
-              {candidate.name}
-            </span>
-            <span
-              className={`text-[10px] font-medium block leading-tight ${
+        )}
+
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start space-x-2.5 min-w-0">
+            <div
+              className={`h-7 w-7 rounded-md border flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
                 isOverloaded
-                  ? 'text-rose-400'
+                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
                   : isCrossTraining
-                  ? 'text-amber-400'
-                  : 'text-emerald-400'
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
               }`}
             >
-              {isOverloaded
-                ? 'Overloaded Contributor (3+ SPOFs)'
-                : isCrossTraining
-                ? 'Cross-Training Candidate — No Direct Repo Experience'
-                : 'Recommended Successor — Direct Repo Experience'}
-            </span>
+              {candidate.name.charAt(0)}
+            </div>
+            <div className="space-y-0.5 min-w-0">
+              <span className="font-bold text-[var(--text-primary)] text-sm block leading-tight truncate">
+                {candidate.name}
+              </span>
+              <span
+                className={`text-[10px] font-medium block leading-tight truncate ${
+                  isOverloaded
+                    ? 'text-rose-400'
+                    : isCrossTraining
+                    ? 'text-amber-400'
+                    : 'text-emerald-400'
+                }`}
+              >
+                {isOverloaded
+                  ? 'Overloaded Contributor (3+ SPOFs)'
+                  : isCrossTraining
+                  ? 'Cross-Training Candidate'
+                  : 'Recommended Successor'}
+              </span>
+            </div>
           </div>
+          <span
+            className={`text-xs font-semibold px-2 py-0.5 rounded border shrink-0 ${
+              isOverloaded
+                ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
+                : isCrossTraining
+                ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+            }`}
+          >
+            {candidate.score}% Match
+          </span>
         </div>
-        <span
-          className={`text-xs font-semibold px-2 py-0.5 rounded border shrink-0 ${
-            isOverloaded
-              ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
-              : isCrossTraining
-              ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-              : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-          }`}
-        >
-          {candidate.score}% Match
-        </span>
+
+        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed font-mono line-clamp-3">
+          {candidate.rationale}
+        </p>
       </div>
 
-      <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed font-mono">
-        {candidate.rationale}
-      </p>
-
-      <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] border-t border-[var(--border-subtle)] pt-2">
+      <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] border-t border-[var(--border-subtle)] pt-2 mt-3">
         <span className="truncate pr-2">
           Shared Tech: <strong className="text-[var(--text-secondary)]">{sharedTechList.length > 0 ? sharedTechList.join(', ') : 'General stack'}</strong>
         </span>

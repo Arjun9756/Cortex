@@ -541,8 +541,9 @@ export const PullRequestsPage: React.FC = () => {
 
         {/* Backend Trendline Note Callout */}
         <div className="p-3 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-lg flex items-center justify-between text-xs text-[var(--text-muted)] font-mono">
-          <span>
-            ℹ️ <strong>Trend Line Status:</strong> Time-bucketed weekly historical progression is a planned analytics backend aggregation. Cortex renders grounded event snapshots without client-side interpolation.
+          <span className="flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span><strong>Trend Line Status:</strong> Time-bucketed weekly historical progression is a planned analytics backend aggregation. Cortex renders grounded event snapshots without client-side interpolation.</span>
           </span>
         </div>
       </div>

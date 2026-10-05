@@ -2,6 +2,8 @@ import env from '../../../apps/api/config/env.js'
 import sql from '../../../apps/api/config/postgres.js'
 import { DISPLAYABLE_SOURCES } from '../../database/provenance.js'
 
+import { decryptSecret } from '../../shared/encryption.js'
+
 // ─── Slack User Profile Cache ─────────────────────────────────────────────────
 
 interface SlackUserProfile {
@@ -19,9 +21,9 @@ const profileCache = new Map<string, SlackUserProfile>()
  * Caches the full profile object so a single Slack API call covers all 3 fields.
  *
  * 1. Checks in-process cache.
- * 2. If SLACK_BOT_TOKEN is present, queries Slack Web API (users.info).
- * 3. If token is absent or API fails, queries PostgreSQL person_identity table.
- * 4. Fallback: returns minimal profile with raw userId as name.
+ * 2. If SLACK_BOT_TOKEN is present in env or integrations table, queries Slack Web API (users.info).
+ * 3. If token is expired or unauthorized, updates integrations table status to 'needs_reauth'.
+ * 4. Fallback: returns minimal profile with raw userId as name and email = null.
  */
 export async function resolveSlackUserProfile(userId?: string | null): Promise<SlackUserProfile> {
     if (!userId || userId === 'unknown') {
@@ -32,9 +34,22 @@ export async function resolveSlackUserProfile(userId?: string | null): Promise<S
         return profileCache.get(userId)!
     }
 
-    const token = (env as any).SLACK_BOT_TOKEN
+    let token = (env as any).SLACK_BOT_TOKEN
     if (!token) {
-        // Fallback to PostgreSQL person_identity table when Slack Bot token is not configured
+        try {
+            const [row] = await sql`
+                SELECT access_token, status FROM integrations WHERE provider = 'slack' LIMIT 1
+            `
+            if (row?.access_token) {
+                token = decryptSecret(row.access_token)
+            }
+        } catch (dbErr: any) {
+            console.warn(`[Slack] Failed to read token from integrations table: ${dbErr?.message}`)
+        }
+    }
+
+    if (!token) {
+        // Fallback to PostgreSQL person_identity table when Slack token is not configured
         try {
             const [identity] = await sql`
                 SELECT display_name, email, username
@@ -71,6 +86,12 @@ export async function resolveSlackUserProfile(userId?: string | null): Promise<S
 
         if (!data.ok) {
             console.warn(`[Slack] users.info failed for ${userId}: ${data.error}`)
+            if (['token_expired', 'invalid_auth', 'not_authed', 'account_inactive', 'token_revoked'].includes(data.error)) {
+                try {
+                    await sql`UPDATE integrations SET status = 'needs_reauth' WHERE provider = 'slack'`
+                    console.log(`[Slack] Marked Slack integration as needs_reauth due to ${data.error}`)
+                } catch {}
+            }
             const minimal: SlackUserProfile = { name: userId, email: null, role: null, avatarUrl: null }
             profileCache.set(userId, minimal)
             return minimal

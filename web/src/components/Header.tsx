@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { RefreshCw, Database } from 'lucide-react';
+import { RefreshCw, Database, Link2 } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
@@ -94,9 +94,9 @@ export const Header: React.FC<HeaderProps> = ({
         {onGoOnboarding && (
           <button
             onClick={onGoOnboarding}
-            className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-xs font-medium text-indigo-300 hover:text-indigo-200 transition-colors cursor-pointer"
+            className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-xs font-medium text-indigo-300 hover:text-indigo-200 transition-colors cursor-pointer"
           >
-            <span>⚡</span>
+            <Link2 className="h-3.5 w-3.5 text-indigo-400" />
             <span>Connect Tools</span>
           </button>
         )}

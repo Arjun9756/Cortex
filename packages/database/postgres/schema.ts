@@ -28,6 +28,25 @@ export async function ensurePostgresTables(): Promise<void> {
         await sql`CREATE INDEX IF NOT EXISTS events_payload_repo_flat_idx ON events ((payload->>'repository'))`;
         await sql`CREATE INDEX IF NOT EXISTS events_payload_author_name_idx ON events ((payload->'head_commit'->'author'->>'name'))`;
         await sql`DROP INDEX IF EXISTS events_provider_external_id_uniq`;
+        // 1.5 Failed Events Table (Dead-letter store for permanently failed jobs)
+        await sql`
+            CREATE TABLE IF NOT EXISTS failed_events (
+                id VARCHAR(255) PRIMARY KEY,
+                source VARCHAR(255) NOT NULL,
+                provider VARCHAR(50) NOT NULL,
+                job_id VARCHAR(255),
+                event_id VARCHAR(255),
+                error_message TEXT,
+                stack_trace TEXT,
+                attempts_made INT DEFAULT 1,
+                status VARCHAR(50) DEFAULT 'unresolved',
+                failed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+        await sql`CREATE INDEX IF NOT EXISTS failed_events_provider_idx ON failed_events(provider)`;
+        await sql`CREATE INDEX IF NOT EXISTS failed_events_failed_at_idx ON failed_events(failed_at DESC)`;
+        await sql`CREATE INDEX IF NOT EXISTS failed_events_event_id_idx ON failed_events(event_id)`;
+
 
         // 2. Person Metrics Table (Per-person calculated risk & skills)
         await sql`
@@ -224,7 +243,7 @@ export async function ensurePostgresTables(): Promise<void> {
         const provenanceTables = [
             'events', 'person_metrics', 'repo_metrics', 'technology_metrics',
             'workspace_metrics', 'person_identity', 'identity_merge_log',
-            'potential_duplicates', 'daily_reports'
+            'potential_duplicates', 'daily_reports', 'failed_events'
         ] as const;
         for (const table of provenanceTables) {
             await sql.unsafe(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS source VARCHAR(255)`);

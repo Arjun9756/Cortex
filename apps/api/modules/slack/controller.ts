@@ -33,7 +33,7 @@ export async function pushSlackEventToDatabase(parsedEvent:ISlackParsedEvent, so
                 delay:2000
             },
             removeOnComplete:true,
-            removeOnFail:true,
+            removeOnFail: false,
         })
 
         return {status:true , message:"Data Inserted in Database"}

@@ -578,7 +578,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
   const handleExportTranscript = () => {
     const mdContent = messages.map(m => {
-      const role = m.sender === 'user' ? '### 👤 User' : '### 🤖 Cortex Assistant';
+      const role = m.sender === 'user' ? '### User' : '### Cortex Assistant';
       const body = m.error ? `**Error:** ${m.error.message}` : m.text;
       return `${role} (${m.timestamp})\n\n${body}\n\n---\n`;
     }).join('\n');
@@ -621,25 +621,25 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
   // Enterprise starter prompts organized by knowledge pillar
   const starterPrompts = [
     {
-      category: '🚨 Departure & Key-Person Risk',
+      category: 'Departure & Key-Person Risk',
       title: 'Departure Simulation: Vikram Patel',
       desc: 'What breaks if Vikram Patel leaves',
       badge: 'High Impact',
     },
     {
-      category: '🛡️ Bus Factor & SPOFs',
+      category: 'Bus Factor & Single Points of Failure',
       title: 'Identify Single Points of Failure',
       desc: 'Which repository has higher risk',
       badge: 'Audit',
     },
     {
-      category: '🏗️ Architecture & Ownership',
+      category: 'Architecture & Codebase Ownership',
       title: 'Codebase Ownership & Stack',
       desc: 'Which repos does Vikram Patel work in',
       badge: 'Ownership',
     },
     {
-      category: '👥 People & Team Verification',
+      category: 'Personnel & Verified Identities',
       title: 'Maintainer Profile & Verified Role',
       desc: 'What is the email and role of Sarah Chen',
       badge: 'Identity',

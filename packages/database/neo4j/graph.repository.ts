@@ -28,6 +28,8 @@ export async function ensureIndexes(): Promise<void> {
         await session.run(`CREATE INDEX entity_person_name IF NOT EXISTS FOR (n:PERSON) ON (n.name)`)
         await session.run(`CREATE INDEX entity_repo_name IF NOT EXISTS FOR (n:REPOSITORY) ON (n.name)`)
         await session.run(`CREATE INDEX entity_tech_name IF NOT EXISTS FOR (n:TECHNOLOGY) ON (n.name)`)
+        await session.run(`CREATE INDEX entity_person_isbot IF NOT EXISTS FOR (n:PERSON) ON (n.isBot)`)
+        await session.run(`CREATE INDEX entity_person_isactive IF NOT EXISTS FOR (n:PERSON) ON (n.isActive)`)
         
         // Fast text indexes for case-insensitive search to prevent full label scans
         try {

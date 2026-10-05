@@ -198,7 +198,7 @@ export async function calculateAllRepoMetrics(source: DataSource) {
                 // Invariant 5: bus_factor == 0 <=> contributors == 0
                 // Invariant 7: a repo with 0 commits cannot appear in 'Healthy' (only in 'empty')
                 const busFactorFinal = isEmpty ? 0 : Math.min(busFactor, contributorCount);
-                const riskScore = isEmpty ? 0 : Math.max(0, 100 - busFactorFinal * 20);
+                const riskScore = isEmpty ? 0 : Math.max(5, 100 - busFactorFinal * 20);
                 const status = isEmpty
                     ? 'empty'
                     : (riskScore >= 80 ? 'fragile' : riskScore > 50 ? 'concentrated' : 'healthy');
@@ -290,7 +290,7 @@ export async function upsertRepoMetrics(repoName: string, externalId: string, so
             : 0;
 
         const busFactorFinal = isEmpty ? 0 : Math.min(busFactor, contributorCount);
-        const riskScore = isEmpty ? 0 : Math.max(0, 100 - busFactorFinal * 20);
+        const riskScore = isEmpty ? 0 : Math.max(5, 100 - busFactorFinal * 20);
         const status = isEmpty
             ? 'empty'
             : (riskScore >= 80 ? 'fragile' : riskScore > 50 ? 'concentrated' : 'healthy');
@@ -599,7 +599,7 @@ export async function calculateBusFactorAndOwner(
 
         // Invariant 4: bus factor cannot exceed total distinct contributors
         const busFactor = Math.min(count, contributors.length);
-        const riskScore = Math.max(0, 100 - busFactor * 20);
+        const riskScore = Math.max(5, 100 - busFactor * 20);
         const status = riskScore >= 80 ? 'fragile' : riskScore > 50 ? 'concentrated' : 'healthy';
 
         return {

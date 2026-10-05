@@ -115,6 +115,7 @@ The exact number of approved and merged pull requests authored by a developer or
   - **Bus Factor = 1:** `fragile` (Red Alert: Single Point of Failure).
   - **Bus Factor = 2:** `concentrated` (Yellow Alert: High risk; only two people know the system).
   - **Bus Factor $\ge 3$:** `healthy` (Green: Knowledge is safely shared across 3 or more engineers).
+- **Baseline Risk Floor (5%):** In real-world software engineering, is an active codebase ever truly at "0% risk"? Even when 5 or 6 skilled developers actively maintain a repository, there is always irreducible operational friction: third-party dependencies release breaking updates, requirements shift, and team members rotate. Cortex floors the minimum risk score for any active repository at **5%** (`Math.max(5, 100 - busFactor * 20)`). A repository with a Bus Factor of 5 or higher receives this healthy 5% baseline, rather than an unrealistic 0%. Completely empty repositories (scaffolds with 0 commits) correctly remain at 0%.
 
 ---
 
@@ -235,20 +236,31 @@ When an executive, manager, or engineer opens the Cortex Dashboard, they immedia
 
 ## 6. How Integrations & Background Sync Work (Layman's Guide)
 
-To keep all of the above metrics 100% accurate in real time without burdening developers or IT administrators, Cortex uses five purpose-built mechanisms:
+To keep all of the above metrics 100% accurate in real time without burdening developers or IT administrators, Cortex uses six purpose-built reliability and identity mechanisms:
 
 1. **Zero-Touch Dynamic Webhook Auto-Registration:**
    - When an administrator connects GitHub, Slack, or Jira via OAuth, Cortex automatically contacts the provider's API, registers the webhook endpoint, generates cryptographic secrets, and saves them in PostgreSQL. Developers never have to manually copy and paste webhook URLs or secrets.
-2. **Slack Sub-50ms Immediate ACK (No Timeout Cascades):**
-   - Slack enforces a strict 3,000ms response timeout. If a server takes longer than 3 seconds to process a message, Slack assumes failure and retries the message 3 times, causing massive duplicate storms.
-   - Cortex solves this by cryptographically validating the HMAC signature, acknowledging Slack with `200 OK` in less than 20 milliseconds, and handing off the heavy analysis asynchronously to BullMQ (Redis). Slack never retries, and server CPU remains calm.
-3. **Jira Token Auto-Refresh Lifecycle:**
-   - Atlassian OAuth tokens strictly expire every 60 minutes.
-   - Cortex maintains a proactive rotation service: if a token has less than 5 minutes remaining, or if an hourly cron triggers, Cortex automatically exchanges the stored refresh token for a brand-new access token without human intervention.
+
+2. **Durable Pre-Queue Storage & Sub-50ms Response:**
+   - When GitHub, Slack, or Jira sends a webhook, Cortex does not simply put it in a temporary memory queue. It immediately saves the raw event to PostgreSQL's `events` table with a unique cryptographic fingerprint.
+   - Slack enforces a strict 3,000ms response window. Cortex confirms receipt in under 20ms with an HTTP `200 OK`, completely eliminating webhook retry storms.
+   - Because the event is permanently written to disk before being placed into background processing queues (BullMQ), an unexpected server reboot or Redis hiccup can never cause data loss.
+
+3. **Retry Protection & Dead-Letter Audit (`failed_events`):**
+   - Background workers process events with automated retries (3 attempts with exponential backoff: 2s $\to$ 4s $\to$ 8s).
+   - If an event fails all retries (for example, due to upstream data corruption), it is never discarded into the void. The failed job is preserved in the queue (`removeOnFail: false`) and automatically logged into a persistent `failed_events` dead-letter table with its full error message and stack trace for administrator review.
+
 4. **GitHub Polite Pacing & Rate-Limit Shield:**
    - Traversing GitHub contributors and repositories can quickly hit GitHub's 5,000 req/hr rate limit or trigger secondary burst blocks.
    - Cortex introduces polite 60ms pacing delays between contributor queries and monitors the `x-ratelimit-remaining` header. If quota drops below 10 requests, directory sync politely pauses rather than failing or risking an account block.
-5. **Strict Identity Resolution ("Two Nodes are Better Than a False Merge"):**
-   - In real engineering teams, developers often use different emails across tools (e.g. `panukishu.dev@gmail.com` on GitHub vs `panukishu@company.com` on Slack).
-   - Cortex enforces a strict principle: *"A wrong merge is far more dangerous than having two separate accounts."*
-   - Auto-merging is permitted **only** when there is an exact verified email match or a strong, clean, non-generic username. Fuzzy name matching is strictly forbidden, ensuring that two different people named "Alex" or "Kishu" are never accidentally combined into one person.
+
+5. **Strict Identity Resolution ("The One Real Person Standard"):**
+   - Developers naturally use different usernames and tools across the company (for example, `@alice` on Slack, `@asmith-gh` on GitHub, and an ID on Jira).
+   - Cortex links these profiles together into one real human **only when there is an exact, verified email match**.
+   - **No Guessing or Fuzzy Merging:** Cortex strictly prohibits merging people based on similar names or usernames across tools. Having two separate records for "Alex" is far safer than accidentally merging two different employees into one corrupted profile.
+   - **GDPR Privacy Handling in Jira:** Jira Cloud often hides email addresses in webhook notifications for privacy reasons. Rather than giving up or guessing, Cortex automatically uses its secure integration to query the Atlassian user profile API, safely resolving the verified email in the background.
+   - **Graceful Token Fallback:** If an OAuth token ever expires, Cortex does not drop incoming webhooks or crash. It flags the connection as `needs_reauth` so admins can refresh it with one click, while safely attributing incoming work to an unmerged profile so zero engineering history is lost.
+
+6. **High-Speed Neo4j Graph Indexing:**
+   - To make sure team leaders and executives never wait on slow dashboards, Cortex maintains specialized property indexes in its graph database (`isBot`, `isActive`, `canonicalPersonId`, `name`, `email`).
+   - Even in enterprise environments with 1,000 repositories, 500 developers, and tens of thousands of relationships, complex queries (like computing Bus Factors across the entire company) complete in ~100 milliseconds.

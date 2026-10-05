@@ -167,29 +167,33 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
               ? Object.entries(person.top_technologies).map(([name, score]) => ({ name, score: Number(score) }))
               : [];
 
-            const maxScore = Math.max(...techList.map(t => t.score || 1), 1);
             const reposList: string[] = Array.isArray(person.repos) ? person.repos : [];
             const isSimulating = simLoading === (person.external_id || person.person_name);
 
             return (
               <div
                 key={person.external_id || person.person_name}
-                className="cortex-card p-5 flex flex-col justify-between space-y-4 hover:border-[var(--border-strong)] transition-colors"
+                className="cortex-card p-5 flex flex-col justify-between h-[360px] hover:border-[var(--border-strong)] transition-all group"
               >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-9 w-9 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-strong)] flex items-center justify-center font-bold text-xs text-[var(--text-primary)]">
-                        {(person?.person_name || person?.external_id || 'Person').charAt(0).toUpperCase()}
+                <div className="space-y-3.5 min-w-0">
+                  {/* Header: Avatar, Name, ID, Risk Badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="h-9 w-9 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-strong)] flex items-center justify-center font-bold text-xs text-[var(--text-primary)] shrink-0">
+                        {(person?.person_name || person?.external_id || 'P').charAt(0).toUpperCase()}
                       </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">{person?.person_name || person?.external_id || 'Person'}</h4>
-                        <p className="text-[11px] text-[var(--text-muted)] font-mono">ID: {person?.external_id}</p>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-[var(--text-primary)] tracking-tight truncate" title={person?.person_name || person?.external_id}>
+                          {person?.person_name || person?.external_id || 'Person'}
+                        </h4>
+                        <p className="text-[11px] text-[var(--text-muted)] font-mono truncate max-w-[130px]" title={person?.external_id}>
+                          {person?.external_id ? `ID: ${person.external_id}` : 'Canonical Profile'}
+                        </p>
                       </div>
                     </div>
 
                     <span
-                      className={`text-xs font-semibold px-2 py-0.5 rounded border flex items-center space-x-1 ${
+                      className={`text-xs font-semibold px-2 py-0.5 rounded border flex items-center space-x-1 shrink-0 ${
                         isCriticalRisk
                           ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
                           : isHighRisk
@@ -204,74 +208,108 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mt-3.5 p-2 bg-[var(--bg-subtle)] rounded-lg border border-[var(--border-subtle)] text-xs">
-                    <div className="flex items-center space-x-2">
-                      <GitCommit className="h-3.5 w-3.5 text-[var(--text-muted)]" />
-                      <span className="text-[var(--text-secondary)]">Commits: <strong className="text-[var(--text-primary)]">{person.commit_count ?? 0}</strong></span>
+                  {/* Governance Metrics */}
+                  <div className="grid grid-cols-2 gap-2 p-2 bg-[var(--bg-subtle)] rounded-lg border border-[var(--border-subtle)] text-xs">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <GitCommit className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                      <div className="truncate">
+                        <span className="text-[10px] text-[var(--text-muted)] block uppercase">Volume</span>
+                        <strong className="text-[var(--text-primary)] font-mono font-bold tabular-nums">
+                          {(person.commit_count ?? 0).toLocaleString()}
+                        </strong>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <FolderGit2 className="h-3.5 w-3.5 text-[var(--text-muted)]" />
-                      <span className="text-[var(--text-secondary)]">Repos: <strong className="text-[var(--text-primary)]">{reposList.length}</strong></span>
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <FolderGit2 className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                      <div className="truncate">
+                        <span className="text-[10px] text-[var(--text-muted)] block uppercase">Codebases</span>
+                        <strong className="text-[var(--text-primary)] font-mono font-bold">
+                          {reposList.length} {reposList.length === 1 ? 'Repo' : 'Repos'}
+                        </strong>
+                      </div>
                     </div>
                   </div>
 
-                  {techList.length > 0 && (
-                    <div className="mt-3.5 space-y-2">
-                      <div className="flex items-center space-x-1 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-                        <Award className="h-3 w-3 text-indigo-400" />
-                        <span>Top Skills & Usage</span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {techList.slice(0, 4).map((tech, idx) => {
-                          const pct = Math.round((tech.score / maxScore) * 100);
-                          return (
-                            <div key={idx} className="space-y-0.5">
-                              <div className="flex justify-between text-xs">
-                                <span className="text-[var(--text-secondary)] font-medium">{tech.name}</span>
-                                <span className="text-[var(--text-muted)] text-[10px]">{tech.score} items</span>
-                              </div>
-                              <div className="w-full bg-[var(--bg-app)] h-1.5 rounded-full overflow-hidden">
-                                <div
-                                  className="bg-indigo-500 h-full rounded-full"
-                                  style={{ width: `${Math.max(8, pct)}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                  {/* Standardized Skills & Usage Ribbon */}
+                  <div className="space-y-1.5 h-[64px]">
+                    <div className="flex items-center space-x-1 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                      <Award className="h-3 w-3 text-indigo-400" />
+                      <span>Top Skills &amp; Stack</span>
                     </div>
-                  )}
+                    {techList.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 overflow-hidden max-h-[44px]">
+                        {techList.slice(0, 3).map((tech, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[11px] bg-[var(--bg-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] px-2 py-0.5 rounded-md font-mono flex items-center gap-1.5 shrink-0"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                            <span className="truncate max-w-[90px]">{tech.name}</span>
+                            <span className="text-[10px] text-[var(--text-muted)]">({tech.score})</span>
+                          </span>
+                        ))}
+                        {techList.length > 3 && (
+                          <span className="text-[10px] bg-[var(--bg-subtle)] text-[var(--text-muted)] border border-[var(--border-subtle)] px-1.5 py-0.5 rounded-md font-mono shrink-0">
+                            +{techList.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-[var(--text-muted)] italic pt-1">
+                        General stack &amp; multi-module commits
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Standardized Scoped Repositories */}
+                  <div className="pt-2 border-t border-[var(--border-subtle)] h-[48px]">
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                      <FolderGit2 className="h-3 w-3 text-indigo-400" />
+                      <span>Repositories ({reposList.length})</span>
+                    </div>
+                    {reposList.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 overflow-hidden max-h-[26px]">
+                        {reposList.slice(0, 2).map((r, i) => (
+                          <span
+                            key={i}
+                            className="text-[10px] bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] px-2 py-0.5 rounded font-mono truncate max-w-[130px] shrink-0"
+                            title={r}
+                          >
+                            {r}
+                          </span>
+                        ))}
+                        {reposList.length > 2 && (
+                          <span className="text-[10px] bg-[var(--bg-elevated)] text-[var(--text-muted)] border border-[var(--border-subtle)] px-1.5 py-0.5 rounded font-mono shrink-0">
+                            +{reposList.length - 2} more
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-[var(--text-muted)] italic">No assigned repositories</p>
+                    )}
+                  </div>
                 </div>
 
-                {reposList.length > 0 && (
-                  <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-wrap gap-1.5">
-                    {reposList.map((r, i) => (
-                      <span key={i} className="text-[10px] bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] px-2 py-0.5 rounded font-mono">
-                        {r}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
                 {/* Simulate Departure Button */}
-                <button
-                  onClick={() => handleSimulateDeparture(person)}
-                  disabled={isSimulating}
-                  className="w-full py-2 bg-[var(--bg-elevated)] hover:bg-[var(--border-subtle)] border border-[var(--border-strong)] text-xs font-medium text-[var(--text-primary)] hover:border-rose-500/40 rounded-lg transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {isSimulating ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Simulating…</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserMinus className="h-3.5 w-3.5 text-rose-400" />
-                      <span>Simulate Departure</span>
-                    </>
-                  )}
-                </button>
+                <div className="pt-3 border-t border-[var(--border-subtle)]">
+                  <button
+                    onClick={() => handleSimulateDeparture(person)}
+                    disabled={isSimulating}
+                    className="w-full py-2 bg-[var(--bg-elevated)] hover:bg-[var(--border-subtle)] border border-[var(--border-strong)] text-xs font-medium text-[var(--text-primary)] hover:border-rose-500/40 rounded-lg transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isSimulating ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Simulating…</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserMinus className="h-3.5 w-3.5 text-rose-400" />
+                        <span>Simulate Departure</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -323,9 +361,9 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                       <p className="text-[10px] text-[var(--text-muted)] font-semibold uppercase mt-0.5">Knowledge Risk</p>
                     </div>
                     <div className="flex-1 space-y-1 text-xs text-[var(--text-secondary)]">
-                      <p><strong className="text-[var(--text-primary)] font-mono">{simulation.details.ownedItems}</strong> owned items at risk</p>
-                      <p><strong className="text-[var(--text-primary)] font-mono">{simulation.commitCount}</strong> commits authored</p>
-                      <p><strong className="text-[var(--text-primary)] font-mono">{simulation.affectedRepos.length}</strong> {simulation.affectedRepos.length === 1 ? 'repository' : 'repositories'} affected</p>
+                      <p><strong className="text-[var(--text-primary)] font-mono">{(simulation.details.ownedItems ?? 0).toLocaleString()}</strong> owned items at risk</p>
+                      <p><strong className="text-[var(--text-primary)] font-mono">{(simulation.commitCount ?? 0).toLocaleString()}</strong> commits authored</p>
+                      <p><strong className="text-[var(--text-primary)] font-mono">{(simulation.affectedRepos?.length ?? 0).toLocaleString()}</strong> {simulation.affectedRepos.length === 1 ? 'repository' : 'repositories'} affected</p>
                     </div>
                   </div>
                 </div>
@@ -352,7 +390,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {simulation.affectedRepos.map((repo, i) => (
-                        <span key={i} className="text-xs bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2.5 py-1 rounded font-mono">
+                        <span key={i} className="text-xs bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2.5 py-1 rounded font-mono truncate max-w-[220px]" title={repo}>
                           {repo}
                         </span>
                       ))}
@@ -369,7 +407,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {simulation.affectedTechnologies.map((tech, i) => (
-                        <span key={i} className="text-xs bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] px-2.5 py-1 rounded font-mono">
+                        <span key={i} className="text-xs bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] px-2.5 py-1 rounded font-mono truncate max-w-[200px]" title={tech.name}>
                           {tech.name}
                           <span className="ml-1 text-[10px] text-[var(--text-muted)]">({tech.score})</span>
                         </span>

@@ -29,16 +29,18 @@ export const StatCard: React.FC<StatCardProps> = ({
         onClick ? 'cursor-pointer hover:border-[var(--border-strong)] hover:bg-[var(--bg-elevated)]' : ''
       }`}
     >
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1 min-w-0 flex-1">
+          <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block truncate">
             {title}
           </span>
-          <div className="text-2xl font-bold text-[var(--text-primary)] tracking-tight flex items-baseline gap-2">
-            <AnimatedNumber value={value} />
+          <div className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight flex items-baseline flex-wrap gap-x-2 gap-y-0.5 min-w-0">
+            <span className="truncate">
+              <AnimatedNumber value={value} />
+            </span>
             {trend && (
               <span
-                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${
                   trend.positive
                     ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
                     : 'text-rose-400 bg-rose-500/10 border-rose-500/20'
@@ -49,7 +51,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             )}
           </div>
           {subtext && (
-            <p className="text-[11px] text-[var(--text-secondary)] leading-tight">
+            <p className="text-[11px] text-[var(--text-secondary)] leading-tight truncate">
               {subtext}
             </p>
           )}

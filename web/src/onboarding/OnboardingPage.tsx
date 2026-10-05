@@ -46,7 +46,11 @@ const DisconnectModal: React.FC<DisconnectModalProps> = ({ provider, onConfirm, 
         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#0f1623] border border-slate-700/80 rounded-2xl max-w-sm w-full p-6 shadow-2xl">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-lg">⚠</div>
+                    <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
                     <div>
                         <h3 className="text-sm font-bold text-white">Disconnect {providerNames[provider]}?</h3>
                         <p className="text-xs text-slate-400 mt-0.5">This will remove stored credentials and pause ingestion.</p>
@@ -645,11 +649,11 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
             } : prev);
             setGithubSaveState('saved');
             if (selectedRepos.length === 0) {
-                showToast(`✓ GitHub scope cleared (0 repositories monitored — monitoring paused).`, 'info');
+                showToast(`GitHub scope cleared (0 repositories monitored — monitoring paused).`, 'info');
             } else if (res.webhookSync?.status === 'installed') {
-                showToast(`🎉 GitHub scope saved & webhook auto-installed for ${selectedRepos.length} repository(ies)!`, 'success');
+                showToast(`GitHub scope saved & webhook auto-installed for ${selectedRepos.length} repository(ies).`, 'success');
             } else if (res.webhookSync?.status === 'skipped_localhost') {
-                showToast(`Scope saved! Enter your Port Shift / Tunnel URL above to auto-install on GitHub.`, 'info');
+                showToast(`Scope saved. Enter your Public Tunnel URL above to auto-install on GitHub.`, 'info');
             } else {
                 showToast(`GitHub scope saved (${selectedRepos.length} repositories monitored).`, 'success');
             }
@@ -681,9 +685,9 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
             } : prev);
             setSlackSaveState('saved');
             if (selectedChannels.length === 0) {
-                showToast(`✓ Slack scope cleared (0 channels monitored — bot paused).`, 'info');
+                showToast(`Slack scope cleared (0 channels monitored — bot paused).`, 'info');
             } else if (res.webhookSync?.status === 'channels_joined') {
-                showToast(`🎉 Slack scope saved & bot joined ${selectedChannels.length} channel(s)!`, 'success');
+                showToast(`Slack scope saved & bot joined ${selectedChannels.length} channel(s).`, 'success');
             } else {
                 showToast(`Slack scope saved (${selectedChannels.length} channels monitored).`, 'success');
             }
@@ -715,11 +719,11 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
             } : prev);
             setJiraSaveState('saved');
             if (selectedProjects.length === 0) {
-                showToast(`✓ Jira scope cleared (0 projects monitored — monitoring paused).`, 'info');
+                showToast(`Jira scope cleared (0 projects monitored — monitoring paused).`, 'info');
             } else if (res.webhookSync?.status === 'installed') {
-                showToast(`🎉 Jira scope saved & dynamic webhook registered!`, 'success');
+                showToast(`Jira scope saved & dynamic webhook registered.`, 'success');
             } else if (res.webhookSync?.status === 'skipped_localhost') {
-                showToast(`Scope saved! Enter your Port Shift / Tunnel URL above to auto-register Jira webhooks.`, 'info');
+                showToast(`Scope saved. Enter your Public Tunnel URL above to auto-register Jira webhooks.`, 'info');
             } else {
                 showToast(`Jira scope saved (${selectedProjects.length} projects monitored).`, 'success');
             }
@@ -901,7 +905,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                             'bg-indigo-950/90 border-indigo-500/30 text-indigo-300 shadow-indigo-500/10'
                         }`}
                     >
-                        <span className="text-sm">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}</span>
+                        <span className="text-xs font-mono font-bold">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'i'}</span>
                         <span className="flex-1">{toast.message}</span>
                         <button onClick={() => setToast(null)} className="opacity-60 hover:opacity-100 cursor-pointer ml-1">✕</button>
                     </div>
@@ -964,48 +968,6 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                     </div>
                 </div>
 
-                {/* ── Official App Logos & Brand Assets Bar ── */}
-                <div className="bg-gradient-to-r from-slate-900/80 via-slate-900/60 to-indigo-950/40 border border-slate-800 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-sm shadow-xl shadow-black/20">
-                    <div className="flex items-center gap-3.5">
-                        <img src="/cortex-app-icon-512.png" alt="Cortex Logo" className="w-11 h-11 rounded-xl border border-slate-700/80 shadow-md object-cover bg-[#0B0F15]" />
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h4 className="text-xs font-bold text-white tracking-wide">Official Cortex App Icons</h4>
-                                <span className="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-semibold">512×512 PNG</span>
-                            </div>
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                                Download the official app icon to upload into your Slack Bot, GitHub App, or Jira Developer Portal.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                        <a
-                            href="/cortex-slack-app-icon.png"
-                            download="cortex-slack-app-icon.png"
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
-                        >
-                            <span className="w-3.5 h-3.5"><SlackIcon /></span>
-                            Slack Icon
-                        </a>
-                        <a
-                            href="/cortex-github-app-icon.png"
-                            download="cortex-github-app-icon.png"
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
-                        >
-                            <span className="w-3.5 h-3.5"><GitHubIcon /></span>
-                            GitHub Icon
-                        </a>
-                        <a
-                            href="/cortex-jira-app-icon.png"
-                            download="cortex-jira-app-icon.png"
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
-                        >
-                            <span className="w-3.5 h-3.5"><JiraIcon /></span>
-                            Jira Icon
-                        </a>
-                    </div>
-                </div>
-
                 {/* ── Provider cards ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-10">
 
@@ -1017,7 +979,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                         const info = connectors?.github;
 
                         return (
-                            <div className={`relative bg-[#0c1222] border rounded-2xl p-5 flex flex-col transition-all duration-300 ${
+                            <div className={`relative bg-[#0c1222] border rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 min-h-[500px] ${
                                 isConnected ? 'border-emerald-500/40 shadow-xl shadow-emerald-500/5' :
                                 info?.status === 'needs_reauth' ? 'border-amber-500/30 shadow-lg shadow-amber-500/5' :
                                 'border-slate-800 hover:border-slate-700 hover:shadow-lg hover:shadow-black/30'
@@ -1031,59 +993,61 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                     />
                                 )}
 
-                                {/* Provider header */}
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-white">
-                                            <GitHubIcon />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-white">GitHub</h3>
-                                            <p className="text-[11px] text-slate-500">Repositories & PRs</p>
-                                        </div>
-                                    </div>
-                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                                        isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                        info?.status === 'needs_reauth' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                        'bg-slate-800 text-slate-500 border-slate-700'
-                                    }`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : info?.status === 'needs_reauth' ? 'bg-amber-400' : 'bg-slate-600'}`} />
-                                        {isConnected ? 'Connected' : info?.status === 'needs_reauth' ? 'Needs Re-auth' : 'Not connected'}
-                                    </span>
-                                </div>
-
-                                {/* Description */}
-                                <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                                    Ingest commit attribution, PR lifecycles, branch ownership, and co-author graphs into your Knowledge Graph.
-                                </p>
-
-                                {/* Connected account pill */}
-                                {isConnected && info && (
-                                    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 mb-4 flex items-center gap-2.5">
-                                        {info.accountAvatar ? (
-                                            <img src={info.accountAvatar} alt="" className="w-7 h-7 rounded-full border border-slate-700 shrink-0" />
-                                        ) : (
-                                            <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs shrink-0">
+                                <div className="space-y-3">
+                                    {/* Provider header */}
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-white shrink-0">
                                                 <GitHubIcon />
                                             </div>
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-semibold text-slate-200 truncate">{info.accountName || 'Authorized Account'}</p>
-                                            {info.accountEmail && <p className="text-[10px] text-slate-500 truncate">{info.accountEmail}</p>}
+                                            <div>
+                                                <h3 className="text-sm font-bold text-white">GitHub</h3>
+                                                <p className="text-[11px] text-slate-500">Repositories & PRs</p>
+                                            </div>
                                         </div>
-                                        <button
-                                            onClick={() => setConfirmDisconnect('github')}
-                                            disabled={isDisconnecting}
-                                            className="text-[10px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer shrink-0 px-2 py-1 rounded hover:bg-rose-500/10 disabled:opacity-50"
-                                        >
-                                            {isDisconnecting ? '…' : 'Disconnect'}
-                                        </button>
+                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                                            isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                            info?.status === 'needs_reauth' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                            'bg-slate-800 text-slate-500 border-slate-700'
+                                        }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : info?.status === 'needs_reauth' ? 'bg-amber-400' : 'bg-slate-600'}`} />
+                                            {isConnected ? 'Connected' : info?.status === 'needs_reauth' ? 'Needs Re-auth' : 'Not connected'}
+                                        </span>
                                     </div>
-                                )}
 
-                                {/* Scoping section */}
-                                {isConnected && (
-                                    <div className="border-t border-slate-800/60 pt-4 space-y-2.5 flex-1">
+                                    {/* Description */}
+                                    <p className="text-xs text-slate-400 leading-relaxed">
+                                        Ingest commit attribution, PR lifecycles, branch ownership, and co-author graphs into your Knowledge Graph.
+                                    </p>
+
+                                    {/* Connected account pill */}
+                                    {isConnected && info && (
+                                        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center gap-2.5">
+                                            {info.accountAvatar ? (
+                                                <img src={info.accountAvatar} alt="" className="w-7 h-7 rounded-full border border-slate-700 shrink-0" />
+                                            ) : (
+                                                <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs shrink-0">
+                                                    <GitHubIcon />
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-semibold text-slate-200 truncate">{info.accountName || 'Authorized Account'}</p>
+                                                {info.accountEmail && <p className="text-[10px] text-slate-500 truncate">{info.accountEmail}</p>}
+                                            </div>
+                                            <button
+                                                onClick={() => setConfirmDisconnect('github')}
+                                                disabled={isDisconnecting}
+                                                className="text-[10px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer shrink-0 px-2 py-1 rounded hover:bg-rose-500/10 disabled:opacity-50"
+                                            >
+                                                {isDisconnecting ? '…' : 'Disconnect'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Scoping section (if connected) OR Capabilities list (if not connected) */}
+                                {isConnected ? (
+                                    <div className="border-t border-slate-800/60 pt-3 my-2 space-y-2 flex-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-slate-200">Repository Scope</span>
                                             <div className="flex items-center gap-2">
@@ -1099,11 +1063,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                                 <QuotaBadge selected={selectedRepos.length} limit={GITHUB_REPO_LIMIT} />
                                             </div>
                                         </div>
-                                        <p className="text-[11px] text-slate-500">Choose up to {GITHUB_REPO_LIMIT} repositories to monitor.</p>
                                         <SearchBox value={repoSearch} onChange={setRepoSearch} placeholder="Search repos…" />
-                                        <div className="max-h-52 overflow-y-auto space-y-1.5 rounded-xl border border-slate-800/80 bg-slate-950/60 p-2">
+                                        <div className="max-h-36 overflow-y-auto space-y-1.5 rounded-xl border border-slate-800/80 bg-slate-950/60 p-2">
                                             {loadingRepos ? (
-                                                <div className="p-2"><ResourceSkeleton rows={4} /></div>
+                                                <div className="p-2"><ResourceSkeleton rows={3} /></div>
                                             ) : filteredRepos.length === 0 ? (
                                                 <div className="text-center py-4 text-xs text-slate-500">
                                                     {repoSearch ? 'No repos match your search.' : 'No repositories found.'}
@@ -1150,17 +1113,44 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                             )}
                                         </div>
                                         <SaveButton state={githubSaveState} onClick={handleSaveGithubScope} disabled={!isConnected} count={selectedRepos.length} />
-                                        {isConnected && (
-                                            <div className="flex items-center justify-between text-[11px] pt-1">
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-900/50 border border-slate-800/60 rounded-xl p-3.5 my-auto space-y-2.5">
+                                        <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400 block">Capabilities & Lineage</span>
+                                        <div className="space-y-2 text-xs text-slate-300">
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                <span className="leading-tight">Commit lineage &amp; co-author knowledge graphs</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                <span className="leading-tight">Bus factor &amp; single point of failure alerts</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                <span className="leading-tight">Real-time webhook sync on pushes &amp; PR events</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-800/40">
+                                            Read-only metadata &bull; Zero code stored &bull; VPC isolated
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Bottom section: Status & Action */}
+                                <div className="mt-3 pt-3 border-t border-slate-800/60">
+                                    {isConnected ? (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between text-[11px]">
                                                 {info?.webhookRegistered ? (
                                                     <span className="text-emerald-400 font-medium flex items-center gap-1.5">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                                        Webhook Active on GitHub
+                                                        Webhook Active
                                                     </span>
                                                 ) : (
                                                     <span className="text-slate-400 flex items-center gap-1.5">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-                                                        Webhook auto-installs on save
+                                                        Auto-installs on save
                                                     </span>
                                                 )}
                                                 <button
@@ -1170,13 +1160,12 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                                     Sync Webhook
                                                 </button>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Action button */}
-                                <div className="mt-4 pt-4 border-t border-slate-800/60">
-                                    {!isConnected ? (
+                                            <div className="flex items-center justify-center gap-2 text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-500/20 py-2 rounded-xl font-medium">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                OAuth authenticated
+                                            </div>
+                                        </div>
+                                    ) : (
                                         <button
                                             onClick={() => handleConnect('github')}
                                             disabled={isConnecting || !!connectingProvider}
@@ -1194,11 +1183,6 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                                 </>
                                             )}
                                         </button>
-                                    ) : (
-                                        <div className="flex items-center justify-center gap-2 text-xs text-emerald-400">
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                            OAuth authenticated
-                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -1213,7 +1197,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                         const info = connectors?.slack;
 
                         return (
-                            <div className={`relative bg-[#0c1222] border rounded-2xl p-5 flex flex-col transition-all duration-300 ${
+                            <div className={`relative bg-[#0c1222] border rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 min-h-[500px] ${
                                 isConnected ? 'border-emerald-500/40 shadow-xl shadow-emerald-500/5' :
                                 info?.status === 'needs_reauth' ? 'border-amber-500/30' :
                                 'border-slate-800 hover:border-slate-700 hover:shadow-lg hover:shadow-black/30'
@@ -1226,51 +1210,53 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                     />
                                 )}
 
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-[#4A154B]/30 border border-[#e01e5a]/20 flex items-center justify-center text-[#e01e5a]">
-                                            <SlackIcon />
+                                <div className="space-y-3">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-[#4A154B]/30 border border-[#e01e5a]/20 flex items-center justify-center text-[#e01e5a] shrink-0">
+                                                <SlackIcon />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-bold text-white">Slack</h3>
+                                                <p className="text-[11px] text-slate-500">Channels & Teams</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-white">Slack</h3>
-                                            <p className="text-[11px] text-slate-500">Channels & Teams</p>
-                                        </div>
+                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                                            isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                            info?.status === 'needs_reauth' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                            'bg-slate-800 text-slate-500 border-slate-700'
+                                        }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : info?.status === 'needs_reauth' ? 'bg-amber-400' : 'bg-slate-600'}`} />
+                                            {isConnected ? 'Connected' : info?.status === 'needs_reauth' ? 'Needs Re-auth' : 'Not connected'}
+                                        </span>
                                     </div>
-                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                                        isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                        info?.status === 'needs_reauth' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                        'bg-slate-800 text-slate-500 border-slate-700'
-                                    }`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : info?.status === 'needs_reauth' ? 'bg-amber-400' : 'bg-slate-600'}`} />
-                                        {isConnected ? 'Connected' : info?.status === 'needs_reauth' ? 'Needs Re-auth' : 'Not connected'}
-                                    </span>
+
+                                    <p className="text-xs text-slate-400 leading-relaxed">
+                                        Correlate engineer identities, architectural decisions, and cross-team knowledge sharing from Slack threads.
+                                    </p>
+
+                                    {isConnected && info && (
+                                        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center gap-2.5">
+                                            <div className="w-7 h-7 rounded-lg bg-[#4A154B]/40 border border-[#e01e5a]/20 flex items-center justify-center text-[#e01e5a] shrink-0 text-xs">
+                                                <SlackIcon />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-semibold text-slate-200 truncate">{info.accountName || 'Slack Workspace'}</p>
+                                                <p className="text-[10px] text-slate-500">Workspace connected</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setConfirmDisconnect('slack')}
+                                                disabled={isDisconnecting}
+                                                className="text-[10px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer shrink-0 px-2 py-1 rounded hover:bg-rose-500/10 disabled:opacity-50"
+                                            >
+                                                {isDisconnecting ? '…' : 'Disconnect'}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
-                                <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                                    Correlate engineer identities, architectural decisions, and cross-team knowledge sharing from Slack threads.
-                                </p>
-
-                                {isConnected && info && (
-                                    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 mb-4 flex items-center gap-2.5">
-                                        <div className="w-7 h-7 rounded-lg bg-[#4A154B]/40 border border-[#e01e5a]/20 flex items-center justify-center text-[#e01e5a] shrink-0 text-xs">
-                                            <SlackIcon />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-semibold text-slate-200 truncate">{info.accountName || 'Slack Workspace'}</p>
-                                            <p className="text-[10px] text-slate-500">Workspace connected</p>
-                                        </div>
-                                        <button
-                                            onClick={() => setConfirmDisconnect('slack')}
-                                            disabled={isDisconnecting}
-                                            className="text-[10px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer shrink-0 px-2 py-1 rounded hover:bg-rose-500/10 disabled:opacity-50"
-                                        >
-                                            {isDisconnecting ? '…' : 'Disconnect'}
-                                        </button>
-                                    </div>
-                                )}
-
-                                {isConnected && (
-                                    <div className="border-t border-slate-800/60 pt-4 space-y-2.5 flex-1">
+                                {isConnected ? (
+                                    <div className="border-t border-slate-800/60 pt-3 my-2 space-y-2 flex-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-slate-200">Channel Scope</span>
                                             <div className="flex items-center gap-2">
@@ -1286,11 +1272,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                                 <QuotaBadge selected={selectedChannels.length} limit={SLACK_CHANNEL_LIMIT} />
                                             </div>
                                         </div>
-                                        <p className="text-[11px] text-slate-500">Choose up to {SLACK_CHANNEL_LIMIT} channels to monitor.</p>
                                         <SearchBox value={channelSearch} onChange={setChannelSearch} placeholder="Search channels…" />
-                                        <div className="max-h-52 overflow-y-auto space-y-1.5 rounded-xl border border-slate-800/80 bg-slate-950/60 p-2">
+                                        <div className="max-h-36 overflow-y-auto space-y-1.5 rounded-xl border border-slate-800/80 bg-slate-950/60 p-2">
                                             {loadingChannels ? (
-                                                <div className="p-2"><ResourceSkeleton rows={4} /></div>
+                                                <div className="p-2"><ResourceSkeleton rows={3} /></div>
                                             ) : filteredChannels.length === 0 ? (
                                                 <div className="text-center py-4 text-xs text-slate-500">
                                                     {channelSearch ? 'No channels match your search.' : 'No accessible channels found.'}
@@ -1314,12 +1299,12 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center gap-1.5">
-                                                                    <span className="text-xs text-slate-200 font-semibold">#{ch.name}</span>
+                                                                    <span className="text-xs text-slate-200 font-semibold truncate">#{ch.name}</span>
                                                                     {ch.isPrivate && (
                                                                         <span className="text-[9px] bg-slate-800/90 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700/60 shrink-0 font-mono">Private</span>
                                                                     )}
                                                                     {ch.memberCount > 0 && (
-                                                                        <span className="text-[10px] text-slate-500 font-mono ml-auto">{ch.memberCount} members</span>
+                                                                        <span className="text-[10px] text-slate-500 font-mono ml-auto shrink-0">{ch.memberCount} members</span>
                                                                     )}
                                                                 </div>
                                                                 {ch.topic && (
@@ -1332,8 +1317,34 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                             )}
                                         </div>
                                         <SaveButton state={slackSaveState} onClick={handleSaveSlackScope} disabled={!isConnected} count={selectedChannels.length} />
-                                        {isConnected && (
-                                            <div className="flex items-center justify-between text-[11px] pt-1">
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-900/50 border border-slate-800/60 rounded-xl p-3.5 my-auto space-y-2.5">
+                                        <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400 block">Capabilities & Lineage</span>
+                                        <div className="space-y-2 text-xs text-slate-300">
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-3.5 h-3.5 text-[#e01e5a] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                <span className="leading-tight">Technical discussion &amp; architectural thread context</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-3.5 h-3.5 text-[#e01e5a] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                <span className="leading-tight">Cross-team collaboration &amp; mentor graph mapping</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-3.5 h-3.5 text-[#e01e5a] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                <span className="leading-tight">Scoped channel access &amp; zero private DM ingestion</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-800/40">
+                                            Granular channel scope &bull; No DM access &bull; VPC isolated
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mt-3 pt-3 border-t border-slate-800/60">
+                                    {isConnected ? (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between text-[11px]">
                                                 {info?.webhookRegistered ? (
                                                     <span className="text-emerald-400 font-medium flex items-center gap-1.5">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -1352,12 +1363,12 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                                     Sync Channels
                                                 </button>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                <div className="mt-4 pt-4 border-t border-slate-800/60">
-                                    {!isConnected ? (
+                                            <div className="flex items-center justify-center gap-2 text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-500/20 py-2 rounded-xl font-medium">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                OAuth authenticated
+                                            </div>
+                                        </div>
+                                    ) : (
                                         <button
                                             onClick={() => handleConnect('slack')}
                                             disabled={isConnecting || !!connectingProvider}
@@ -1375,11 +1386,6 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                                 </>
                                             )}
                                         </button>
-                                    ) : (
-                                        <div className="flex items-center justify-center gap-2 text-xs text-emerald-400">
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                            OAuth authenticated
-                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -1394,7 +1400,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                         const info = connectors?.jira;
 
                         return (
-                            <div className={`relative bg-[#0c1222] border rounded-2xl p-5 flex flex-col transition-all duration-300 ${
+                            <div className={`relative bg-[#0c1222] border rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 min-h-[500px] ${
                                 isConnected ? 'border-emerald-500/40 shadow-xl shadow-emerald-500/5' :
                                 info?.status === 'needs_reauth' ? 'border-amber-500/30' :
                                 'border-slate-800 hover:border-slate-700 hover:shadow-lg hover:shadow-black/30'
@@ -1407,51 +1413,53 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                     />
                                 )}
 
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-[#0052CC]/20 border border-[#2684FF]/20 flex items-center justify-center text-[#2684FF]">
-                                            <JiraIcon />
+                                <div className="space-y-3">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-[#0052CC]/20 border border-[#2684FF]/20 flex items-center justify-center text-[#2684FF] shrink-0">
+                                                <JiraIcon />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-bold text-white">Jira</h3>
+                                                <p className="text-[11px] text-slate-500">Projects & Sprints</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-white">Jira</h3>
-                                            <p className="text-[11px] text-slate-500">Projects & Sprints</p>
-                                        </div>
+                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                                            isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                            info?.status === 'needs_reauth' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                            'bg-slate-800 text-slate-500 border-slate-700'
+                                        }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : info?.status === 'needs_reauth' ? 'bg-amber-400' : 'bg-slate-600'}`} />
+                                            {isConnected ? 'Connected' : info?.status === 'needs_reauth' ? 'Needs Re-auth' : 'Not connected'}
+                                        </span>
                                     </div>
-                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                                        isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                        info?.status === 'needs_reauth' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                        'bg-slate-800 text-slate-500 border-slate-700'
-                                    }`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : info?.status === 'needs_reauth' ? 'bg-amber-400' : 'bg-slate-600'}`} />
-                                        {isConnected ? 'Connected' : info?.status === 'needs_reauth' ? 'Needs Re-auth' : 'Not connected'}
-                                    </span>
+
+                                    <p className="text-xs text-slate-400 leading-relaxed">
+                                        Ingest sprint velocity, ticket reassignments, pending workloads, and issue resolution lead times.
+                                    </p>
+
+                                    {isConnected && info && (
+                                        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center gap-2.5">
+                                            <div className="w-7 h-7 rounded-lg bg-[#0052CC]/20 border border-[#2684FF]/20 flex items-center justify-center text-[#2684FF] shrink-0 text-xs">
+                                                <JiraIcon />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-semibold text-slate-200 truncate">{info.accountName || 'Atlassian Cloud'}</p>
+                                                <p className="text-[10px] text-slate-500">Atlassian Cloud connected</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setConfirmDisconnect('jira')}
+                                                disabled={isDisconnecting}
+                                                className="text-[10px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer shrink-0 px-2 py-1 rounded hover:bg-rose-500/10 disabled:opacity-50"
+                                            >
+                                                {isDisconnecting ? '…' : 'Disconnect'}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
-                                <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                                    Ingest sprint velocity, ticket reassignments, pending workloads, and issue resolution lead times.
-                                </p>
-
-                                {isConnected && info && (
-                                    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 mb-4 flex items-center gap-2.5">
-                                        <div className="w-7 h-7 rounded-lg bg-[#0052CC]/20 border border-[#2684FF]/20 flex items-center justify-center text-[#2684FF] shrink-0 text-xs">
-                                            <JiraIcon />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-semibold text-slate-200 truncate">{info.accountName || 'Atlassian Cloud'}</p>
-                                            <p className="text-[10px] text-slate-500">Atlassian Cloud connected</p>
-                                        </div>
-                                        <button
-                                            onClick={() => setConfirmDisconnect('jira')}
-                                            disabled={isDisconnecting}
-                                            className="text-[10px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer shrink-0 px-2 py-1 rounded hover:bg-rose-500/10 disabled:opacity-50"
-                                        >
-                                            {isDisconnecting ? '…' : 'Disconnect'}
-                                        </button>
-                                    </div>
-                                )}
-
-                                {isConnected && (
-                                    <div className="border-t border-slate-800/60 pt-4 space-y-2.5 flex-1">
+                                {isConnected ? (
+                                    <div className="border-t border-slate-800/60 pt-3 my-2 space-y-2 flex-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-slate-200">Project Scope</span>
                                             <div className="flex items-center gap-2">
@@ -1467,11 +1475,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                                 <QuotaBadge selected={selectedProjects.length} limit={JIRA_PROJECT_LIMIT} />
                                             </div>
                                         </div>
-                                        <p className="text-[11px] text-slate-500">Choose up to {JIRA_PROJECT_LIMIT} projects to monitor.</p>
                                         <SearchBox value={projectSearch} onChange={setProjectSearch} placeholder="Search projects…" />
-                                        <div className="max-h-52 overflow-y-auto space-y-1.5 rounded-xl border border-slate-800/80 bg-slate-950/60 p-2">
+                                        <div className="max-h-36 overflow-y-auto space-y-1.5 rounded-xl border border-slate-800/80 bg-slate-950/60 p-2">
                                             {loadingProjects ? (
-                                                <div className="p-2"><ResourceSkeleton rows={4} /></div>
+                                                <div className="p-2"><ResourceSkeleton rows={3} /></div>
                                             ) : filteredProjects.length === 0 ? (
                                                 <div className="text-center py-4 text-xs text-slate-500">
                                                     {projectSearch ? 'No projects match your search.' : 'No Jira projects found.'}
@@ -1508,8 +1515,34 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                             )}
                                         </div>
                                         <SaveButton state={jiraSaveState} onClick={handleSaveJiraScope} disabled={!isConnected} count={selectedProjects.length} />
-                                        {isConnected && (
-                                            <div className="flex items-center justify-between text-[11px] pt-1">
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-900/50 border border-slate-800/60 rounded-xl p-3.5 my-auto space-y-2.5">
+                                        <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400 block">Capabilities & Lineage</span>
+                                        <div className="space-y-2 text-xs text-slate-300">
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-3.5 h-3.5 text-[#2684FF] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                <span className="leading-tight">Sprint velocity &amp; workload distribution tracking</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-3.5 h-3.5 text-[#2684FF] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                <span className="leading-tight">Ticket reassignment &amp; knowledge loss prevention</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-3.5 h-3.5 text-[#2684FF] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                <span className="leading-tight">Bi-directional webhook sync on project issue events</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-800/40">
+                                            Project-level scoping &bull; Atlassian Cloud &bull; VPC isolated
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mt-3 pt-3 border-t border-slate-800/60">
+                                    {isConnected ? (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between text-[11px]">
                                                 {info?.webhookRegistered ? (
                                                     <span className="text-emerald-400 font-medium flex items-center gap-1.5">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -1528,12 +1561,12 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                                     Sync Webhook
                                                 </button>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                <div className="mt-4 pt-4 border-t border-slate-800/60">
-                                    {!isConnected ? (
+                                            <div className="flex items-center justify-center gap-2 text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-500/20 py-2 rounded-xl font-medium">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                OAuth authenticated
+                                            </div>
+                                        </div>
+                                    ) : (
                                         <button
                                             onClick={() => handleConnect('jira')}
                                             disabled={isConnecting || !!connectingProvider}
@@ -1551,11 +1584,6 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                                                 </>
                                             )}
                                         </button>
-                                    ) : (
-                                        <div className="flex items-center justify-center gap-2 text-xs text-emerald-400">
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                            OAuth authenticated
-                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -1608,7 +1636,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                     <div className="bg-[#0f1623] border border-slate-700/80 rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl">
                         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
                             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                                <span className="text-base">🛠</span>
+                                <svg className="w-4 h-4 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
                                 Register {setupModalProvider.charAt(0).toUpperCase() + setupModalProvider.slice(1)} OAuth App
                             </h3>
                             <button onClick={() => setSetupModalProvider(null)} className="text-slate-400 hover:text-white cursor-pointer w-7 h-7 rounded-lg hover:bg-slate-800 flex items-center justify-center text-xs">✕</button>

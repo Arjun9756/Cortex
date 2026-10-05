@@ -79,11 +79,42 @@ export async function processJiraEvent(eventID: string) {
         const displayName = (normalizedPayload.author !== 'Unknown' && normalizedPayload.author !== 'unknown') 
             ? normalizedPayload.author 
             : (userObj.displayName ?? username ?? externalId)
-        const email = normalizedPayload.authorEmail 
+        let email = normalizedPayload.authorEmail 
             ?? userObj.emailAddress 
             ?? issueFields.reporter?.emailAddress 
             ?? issueFields.assignee?.emailAddress 
             ?? undefined
+
+        // If email is missing (e.g. Jira Cloud webhook privacy redaction), fetch via Jira User REST API
+        const accountId = userObj.accountId ?? issueFields.reporter?.accountId ?? issueFields.assignee?.accountId
+        if (!email && accountId) {
+            try {
+                const { integrationService } = await import('../../../apps/api/modules/integrations/service.js')
+                const { accessToken, cloudId } = await integrationService.getValidJiraAccessToken()
+                const userRes = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/user?accountId=${encodeURIComponent(accountId)}`, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        Accept: 'application/json',
+                    },
+                })
+                if (userRes.ok) {
+                    const userData = (await userRes.json()) as any
+                    if (userData.emailAddress) {
+                        email = userData.emailAddress
+                    }
+                } else if (userRes.status === 401 || userRes.status === 403) {
+                    await sql`UPDATE integrations SET status = 'needs_reauth' WHERE provider = 'jira'`
+                    console.log(`[Jira Ingestion] Marked Jira integration as needs_reauth due to ${userRes.status} on user API`)
+                }
+            } catch (jiraApiErr: any) {
+                if (jiraApiErr?.message?.includes('expired') || jiraApiErr?.message?.includes('authorization') || jiraApiErr?.message?.includes('not connected')) {
+                    try {
+                        await sql`UPDATE integrations SET status = 'needs_reauth' WHERE provider = 'jira'`
+                    } catch {}
+                }
+                console.warn(`[Jira Ingestion] Could not fetch Jira user email via REST API: ${jiraApiErr?.message}`)
+            }
+        }
 
         let canonicalPersonId: string | null = null
         const hasAuthorInfo = Boolean(

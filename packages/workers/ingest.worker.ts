@@ -1,5 +1,7 @@
 import env from "../../apps/api/config/env.js";
 import redis from "../../apps/api/config/redis.js";
+import sql from "../../apps/api/config/postgres.js";
+import { snowflake } from "../../apps/Utils/Snowflake.js";
 import { JOBS } from "../queue/jobs.js";
 import {Worker} from 'bullmq'
 import {processGithubEvent} from '../ingestion/github/processGithubEvent.js'
@@ -42,3 +44,47 @@ export const cortexWorker = new Worker('processing-queue' , async (job)=>{
     } : {}),
     autorun: true,
 })
+
+// Dead-letter handler for jobs that exhausted all retry attempts
+cortexWorker.on('failed', async (job, err) => {
+    if (!job) return;
+    const maxAttempts = job.opts.attempts || 1;
+    if (job.attemptsMade >= maxAttempts) {
+        console.error(`[Worker] Job ${job.id} (${job.name}) permanently failed after ${job.attemptsMade} attempts: ${err?.message}`);
+        try {
+            const failId = `failed_${snowflake.nextID()}`;
+            const eventId = job.data?.id || null;
+            let source = 'webhook';
+            let provider = 'unknown';
+
+            if (eventId) {
+                const [eventRow] = await sql`SELECT source, provider FROM events WHERE id = ${eventId}`;
+                if (eventRow) {
+                    source = eventRow.source;
+                    provider = eventRow.provider;
+                }
+            }
+
+            await sql`
+                INSERT INTO failed_events (
+                    id, source, provider, job_id, event_id, error_message, stack_trace, attempts_made, status
+                ) VALUES (
+                    ${failId},
+                    ${source},
+                    ${provider},
+                    ${String(job.id)},
+                    ${eventId},
+                    ${err?.message || 'Unknown job failure'},
+                    ${err?.stack || null},
+                    ${job.attemptsMade},
+                    'exhausted'
+                )
+            `;
+            console.log(`[Worker] Recorded exhausted job ${job.id} into failed_events table (id: ${failId})`);
+        } catch (dbErr: any) {
+            console.error(`[Worker] Failed to record failed event to DB: ${dbErr?.message}`);
+        }
+    } else {
+        console.warn(`[Worker] Job ${job.id} (${job.name}) attempt ${job.attemptsMade}/${maxAttempts} failed: ${err?.message}. Scheduled for retry.`);
+    }
+});

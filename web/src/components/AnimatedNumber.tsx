@@ -89,13 +89,14 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
     return <span className={className}>{prefix}{value}{suffix}</span>;
   }
 
+  const rounded = Math.round(displayValue);
   const formatted = resolvedDecimals > 0
     ? displayValue.toFixed(resolvedDecimals)
-    : Math.round(displayValue).toString();
+    : rounded.toLocaleString();
 
   return (
     <span
-      className={`inline-block transition-colors duration-500 ${
+      className={`inline-block tabular-nums transition-colors duration-500 ${
         flash === 'up'
           ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]'
           : flash === 'down'

@@ -411,7 +411,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           subtext="Target: ≥ 2.0 per repo"
           icon={<ShieldAlert className="h-5 w-5" />}
           accentColor={stats.avgBusFactor <= 1.2 ? 'rose' : 'emerald'}
-          trend={{ value: stats.avgBusFactor <= 1.2 ? '⚠ Below Target' : '✓ Healthy', positive: stats.avgBusFactor > 1.2 }}
+          trend={{ value: stats.avgBusFactor <= 1.2 ? 'Below Target' : 'Healthy', positive: stats.avgBusFactor > 1.2 }}
           onClick={() => onNavigate('bus-factor')}
         />
         <StatCard

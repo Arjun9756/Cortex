@@ -233,15 +233,15 @@ export function App() {
   }
 
   if (viewMode === 'request') {
-    return <RequestPage onGoBack={() => setViewMode('landing')} onLaunchDemo={() => setViewMode('dashboard')} />;
+    return <RequestPage onGoBack={() => setViewMode('landing')} onLaunchDemo={isDemoEnabled ? () => setViewMode('dashboard') : undefined} />;
   }
 
   if (viewMode === 'pricing') {
-    return <PricingPage onGoBack={() => setViewMode('landing')} onLaunchDemo={() => setViewMode('dashboard')} />;
+    return <PricingPage onGoBack={() => setViewMode('landing')} onLaunchDemo={isDemoEnabled ? () => setViewMode('dashboard') : undefined} />;
   }
 
   if (viewMode === 'landing') {
-    return <LandingPage onLaunchDemo={() => setViewMode('dashboard')} />;
+    return <LandingPage onLaunchDemo={isDemoEnabled ? () => setViewMode('dashboard') : undefined} />;
   }
 
   return (

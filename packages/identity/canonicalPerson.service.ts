@@ -244,56 +244,9 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
         }
     }
 
-    // Tier 2: Strong Exact Username Match (High-Confidence Auto-Merge, e.g. github:rohanverma == slack:rohanverma)
-    // STRICT POLICY:
-    // - NO auto-merge if incoming email is a noreply address (requires explicit linking or admin confirmation)
-    // - NO auto-merge if both accounts are on the same provider with different externalIds (must have exact email in Tier 1)
-    // - NO auto-merge if incoming email and existing identity email are both non-null and differ (multi-email requires confirmation)
-    const isNoreply = cleanEmail ? (cleanEmail.includes('users.noreply.github.com') || cleanEmail.includes('noreply')) : false;
-
-    if (!isNoreply && cleanUsername && isStrongUsername(cleanUsername)) {
-        try {
-            const [userMatch] = await sql`
-                SELECT canonical_person_id, display_name, provider, email
-                FROM person_identity
-                WHERE LOWER(username) = ${cleanUsername}
-                  AND source IN ${sql(trustedSources)}
-                  AND (is_bot IS FALSE OR is_bot IS NULL)
-                LIMIT 1
-            `;
-
-            const hasEmailConflict = Boolean(cleanEmail && userMatch?.email && cleanEmail.toLowerCase() !== userMatch.email.toLowerCase());
-            const sameProviderDifferentAccount = Boolean(userMatch && userMatch.provider === provider);
-
-            if (userMatch && !hasEmailConflict && !sameProviderDifferentAccount) {
-                const canonicalId = userMatch.canonical_person_id;
-                await linkIdentityAndAudit({
-                    canonicalId,
-                    incoming: input,
-                    cleanEmail,
-                    cleanUsername,
-                    cleanDisplayName,
-                    matchedBy: 'USERNAME_MATCH',
-                    confidence: 0.98,
-                    reason: `Matched username "${cleanUsername}" across providers`,
-                    source: input.source,
-                });
-
-                return {
-                    canonicalPersonId: canonicalId,
-                    confidence: 0.98,
-                    reason: `Username match on "${cleanUsername}"`,
-                    matchedBy: 'USERNAME_MATCH',
-                };
-            }
-        } catch (err: any) {
-            console.warn(`[IdentityResolution] Tier 2 Username error: ${err?.message}`);
-        }
-    }
-
-    // Tier 3 & Tier 4: Low-Confidence / Name Similarity / LLM Guess — STRICTLY BLOCKED FROM AUTO-MERGING
-    // Policy: "Wrong merge is worse than having 2 separate entries."
-    // If only name similarity matches, create a new separate canonical person and record potential duplicate for review.
+    // Tier 2 & Beyond: Exact email match is the SOLE auto-merge criterion.
+    // As confirmed: No fuzzy name-matching, no cross-provider username auto-merging.
+    // If no exact email match was found, create a new separate canonical person.
     const newCanonicalId = `person_${snowflake.nextID()}`;
     await linkIdentityAndAudit({
         canonicalId: newCanonicalId,
@@ -303,94 +256,11 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
         cleanDisplayName,
         matchedBy: 'NEW_PERSON',
         confidence: 1.0,
-        reason: 'No high-confidence email or username match; created new canonical person (name-only auto-merge prohibited)',
+        reason: cleanEmail 
+            ? `New canonical person created (no existing verified email match for ${cleanEmail})`
+            : `New canonical person created without verified email (externalId: ${externalId})`,
         source: input.source,
     });
-
-    // Audit check: If display name, username, or noreply email matches an existing person, log to potential_duplicates table (status = 'pending')
-    try {
-        let noreplyUsername: string | null = null;
-        if (cleanEmail && cleanEmail.includes('@users.noreply.github.com')) {
-            const local = cleanEmail.split('@')[0] || '';
-            noreplyUsername = local.includes('+') ? local.split('+')[1] || null : local;
-        }
-
-        const candidateIdentities = await sql`
-            SELECT DISTINCT canonical_person_id, display_name, username, email, provider, created_at
-            FROM person_identity
-            WHERE source IN ${sql(trustedSources)}
-              AND canonical_person_id != ${newCanonicalId}
-              AND (is_bot IS FALSE OR is_bot IS NULL)
-            ORDER BY created_at DESC
-            LIMIT 250
-        `;
-
-        let bestCandidate: any = null;
-        let highestScore = 0;
-        let bestReason = '';
-
-        for (const cand of candidateIdentities) {
-            const candName = (cand.display_name || cand.username || '').trim();
-            const candUser = (cand.username || '').trim().toLowerCase();
-            const candEmail = (cand.email || '').trim().toLowerCase();
-
-            const simScore = cleanDisplayName && candName ? calculateNameSimilarity(cleanDisplayName, candName) : 0;
-            const userMatch = Boolean(
-                (cleanUsername && candUser && cleanUsername.toLowerCase() === candUser) ||
-                (noreplyUsername && candUser && noreplyUsername.toLowerCase() === candUser) ||
-                (noreplyUsername && cand.display_name && cand.display_name.trim().toLowerCase() === noreplyUsername.toLowerCase())
-            );
-            const exactDisplayNameMatch = Boolean(cleanDisplayName && candName && cleanDisplayName.toLowerCase() === candName.toLowerCase());
-            const cleanPrefix = cleanEmail ? cleanEmail.split('@')[0]?.toLowerCase() : null;
-            const candPrefix = candEmail ? candEmail.split('@')[0]?.toLowerCase() : null;
-            const prefixMatch = Boolean(cleanPrefix && candPrefix && cleanPrefix === candPrefix && cleanPrefix.length >= 4);
-
-            let effectiveScore = 0;
-            let reason = '';
-
-            if (userMatch && exactDisplayNameMatch) {
-                effectiveScore = 0.99;
-                reason = `Matching username (${cleanUsername || noreplyUsername}) and identical display name "${candName}". Flagged for admin merge confirmation.`;
-            } else if (userMatch) {
-                effectiveScore = 0.98;
-                reason = `Username match (${cleanUsername || noreplyUsername} vs ${candUser}). Kept separate under strict policy.`;
-            } else if (exactDisplayNameMatch) {
-                effectiveScore = 0.95;
-                reason = `Identical display name "${candName}". Kept separate under strict policy.`;
-            } else if (prefixMatch) {
-                effectiveScore = 0.92;
-                reason = `Email prefix collision (${cleanPrefix}). Kept separate under strict policy.`;
-            } else if (simScore >= 0.85) {
-                effectiveScore = Number(simScore.toFixed(3));
-                reason = `High display name similarity (${Math.round(simScore * 100)}%) with "${candName}". Auto-merge blocked by strict identity resolution policy.`;
-            }
-
-            if (effectiveScore > highestScore) {
-                highestScore = effectiveScore;
-                bestCandidate = cand;
-                bestReason = reason;
-            }
-        }
-
-        if (bestCandidate && highestScore >= 0.85) {
-            await recordPotentialDuplicate({
-                personAId: bestCandidate.canonical_person_id,
-                personAName: bestCandidate.display_name || bestCandidate.username || 'Unknown',
-                personAProvider: bestCandidate.provider,
-                personAUsername: bestCandidate.username,
-                personBId: newCanonicalId,
-                personBName: cleanDisplayName || cleanUsername || 'Unknown',
-                personBProvider: provider,
-                personBUsername: cleanUsername,
-                similarityScore: highestScore,
-                reason: bestReason,
-                source: input.source,
-            });
-            console.log(`[IdentityResolution] [STRICT POLICY] Flagged collision to potential_duplicates: "${cleanDisplayName || cleanUsername}" vs "${bestCandidate.display_name}" (${bestReason})`);
-        }
-    } catch (auditErr: any) {
-        console.warn(`[IdentityResolution] Potential duplicate audit warning: ${auditErr?.message}`);
-    }
 
     return {
         canonicalPersonId: newCanonicalId,
