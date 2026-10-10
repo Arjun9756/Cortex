@@ -62,6 +62,7 @@ const envObject = {
 
     TAVILY_API_KEY:process.env.TAVILY_API_KEY,
 
+    CORTEX_ADMIN_URL:process.env.CORTEX_ADMIN_URL || process.env.ADMIN_SERVER_URL || "https://admin.cortexco.in",
     CORTEX_LICENSE_KEY:process.env.CORTEX_LICENSE_KEY || process.env.LICENSE_KEY,
     LICENSE_SERVER_URL:process.env.LICENSE_SERVER_URL || process.env.CORTEX_LICENSE_SERVER_URL || "https://admin.cortexco.in/api/license/ping",
     CORTEX_MACHINE_ID:process.env.CORTEX_MACHINE_ID || "",
