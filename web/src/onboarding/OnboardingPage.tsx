@@ -1592,14 +1592,14 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
                 </div>
 
                 {/* ── CTA ── */}
-                <div className="flex flex-col items-center gap-4 py-4">
+                <div className="flex flex-col items-center gap-4 py-4 w-full">
                     {hasAnyConnected ? (
                         <button
                             onClick={onComplete}
-                            className="group px-8 py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm rounded-xl shadow-2xl shadow-indigo-600/30 transition-all duration-200 cursor-pointer flex items-center gap-3 active:scale-[0.99]"
+                            className="group w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xl shadow-indigo-600/30 transition-all duration-200 cursor-pointer flex items-center justify-center gap-2.5 sm:gap-3 active:scale-[0.99]"
                         >
-                            <CortexLogo className="w-5 h-5" />
-                            Proceed to Executive Dashboard
+                            <CortexLogo className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <span>Proceed to Executive Dashboard</span>
                             <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
                         </button>
                     ) : (
@@ -1735,7 +1735,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({
             )}
 
             {/* ── Footer ── */}
-            <footer className="border-t border-slate-800/60 px-6 py-4 flex items-center justify-between">
+            <footer className="border-t border-slate-800/60 px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
                 <div className="flex items-center gap-2">
                     <CortexLogo className="w-5 h-5" />
                     <span className="text-[11px] text-slate-600 font-mono">Cortex Intelligence Platform</span>

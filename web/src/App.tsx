@@ -15,6 +15,13 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { PullRequestsPage } from './pages/PullRequestsPage';
 import { OnboardingPage } from './onboarding/OnboardingPage';
 
+import { 
+  LayoutDashboard, 
+  Network, 
+  FolderGit2, 
+  MessageSquareCode, 
+  Menu 
+} from 'lucide-react';
 import { isDemoEnabled } from './config';
 
 const STORAGE_VIEW_KEY = 'cortex_current_view';
@@ -115,6 +122,12 @@ export function App() {
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(new Date());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+
+  // Auto-close mobile drawer whenever active tab or view mode changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [activeTab, viewMode]);
 
   const handleManualRefresh = () => {
     setIsRefreshing(true);
@@ -246,8 +259,13 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)] flex">
-      {/* Navigation Sidebar */}
-      <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} />
+      {/* Navigation Sidebar (Docked on desktop, Slide drawer on mobile) */}
+      <Sidebar 
+        activeTab={activeTab} 
+        onSelectTab={setActiveTab} 
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -258,11 +276,74 @@ export function App() {
           onRefresh={handleManualRefresh}
           isRefreshing={isRefreshing}
           lastSyncedAt={lastSyncedAt}
+          onToggleMobileMenu={() => setMobileMenuOpen(prev => !prev)}
         />
-        <main className="flex-1 overflow-y-auto">
+        <main className={`flex-1 min-w-0 ${activeTab === 'chat' ? 'overflow-hidden pb-14 lg:pb-0' : 'overflow-y-auto pb-20 lg:pb-0'}`}>
           {renderActivePage()}
         </main>
       </div>
+
+      {/* Mobile App Bottom Navigation Bar */}
+      <nav 
+        className="fixed bottom-0 left-0 right-0 z-30 bg-[var(--bg-panel)]/95 backdrop-blur-lg border-t border-[var(--border-subtle)] px-2 py-1.5 flex items-center justify-around lg:hidden select-none shadow-2xl safe-area-bottom"
+        aria-label="Mobile Navigation"
+      >
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg text-[10px] font-medium transition-colors cursor-pointer ${
+            activeTab === 'overview'
+              ? 'text-indigo-400 font-semibold'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+          }`}
+        >
+          <LayoutDashboard className="w-4 h-4 mb-0.5" />
+          <span>Overview</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('graph')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg text-[10px] font-medium transition-colors cursor-pointer ${
+            activeTab === 'graph'
+              ? 'text-indigo-400 font-semibold'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+          }`}
+        >
+          <Network className="w-4 h-4 mb-0.5" />
+          <span>Graph</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('bus-factor')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg text-[10px] font-medium transition-colors cursor-pointer ${
+            activeTab === 'bus-factor'
+              ? 'text-indigo-400 font-semibold'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+          }`}
+        >
+          <FolderGit2 className="w-4 h-4 mb-0.5" />
+          <span>SPOF</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg text-[10px] font-medium transition-colors cursor-pointer ${
+            activeTab === 'chat'
+              ? 'text-indigo-400 font-semibold'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+          }`}
+        >
+          <MessageSquareCode className="w-4 h-4 mb-0.5" />
+          <span>AI Chat</span>
+        </button>
+
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="flex flex-col items-center justify-center py-1 px-2.5 rounded-lg text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+        >
+          <Menu className="w-4 h-4 mb-0.5" />
+          <span>More</span>
+        </button>
+      </nav>
     </div>
   );
 }

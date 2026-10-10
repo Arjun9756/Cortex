@@ -62,7 +62,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({ onSyncUpdated }) => 
 
   if (loading) {
     return (
-      <div className="p-8 space-y-6 animate-pulse">
+      <div className="p-4 sm:p-6 md:p-8 space-y-6 animate-pulse">
         <div className="h-8 w-64 bg-[var(--bg-elevated)] rounded"></div>
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map(i => (
@@ -75,10 +75,10 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({ onSyncUpdated }) => 
 
   if (error) {
     return (
-      <div className="p-8">
-        <div className="p-5 bg-rose-500/10 border border-rose-500/20 rounded-lg flex items-center justify-between">
+      <div className="p-4 sm:p-6 md:p-8">
+        <div className="p-4 sm:p-5 bg-rose-500/10 border border-rose-500/20 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-3 text-rose-300">
-            <AlertTriangle className="h-5 w-5 text-rose-400" />
+            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] text-sm">Failed to Load Timeline</h4>
               <p className="text-xs text-rose-300/80 mt-0.5">{error}</p>
@@ -86,7 +86,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({ onSyncUpdated }) => 
           </div>
           <button
             onClick={fetchTimeline}
-            className="px-3.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-200 text-xs font-medium rounded-md flex items-center space-x-1.5 cursor-pointer transition-colors"
+            className="px-3.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-200 text-xs font-medium rounded-md flex items-center justify-center space-x-1.5 cursor-pointer transition-colors self-start sm:self-auto"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             <span>Retry</span>
@@ -97,11 +97,11 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({ onSyncUpdated }) => 
   }
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
-            <History className="h-5 w-5 text-[var(--accent-default)]" />
+          <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+            <History className="h-5 w-5 text-[var(--accent-default)] shrink-0" />
             <span>Activity Timeline</span>
           </h3>
           <p className="text-xs text-[var(--text-secondary)] mt-1">
@@ -110,7 +110,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({ onSyncUpdated }) => 
         </div>
         <button
           onClick={fetchTimeline}
-          className="cortex-btn-secondary px-3 py-1.5 text-xs rounded-md flex items-center space-x-1.5 cursor-pointer"
+          className="cortex-btn-secondary px-3 py-1.5 text-xs rounded-md flex items-center space-x-1.5 cursor-pointer self-start sm:self-auto"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span>Refresh</span>
@@ -126,7 +126,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({ onSyncUpdated }) => 
           </p>
         </div>
       ) : (
-        <div className="relative border-l border-[var(--border-subtle)] ml-3 pl-6 space-y-4">
+        <div className="relative border-l border-[var(--border-subtle)] ml-2.5 sm:ml-3 pl-4 sm:pl-6 space-y-4">
           {events.map(event => {
             const title = event.title || 'Activity Event';
             const author = event.author || 'System';
@@ -135,7 +135,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({ onSyncUpdated }) => 
 
             return (
               <div key={event.id} className="relative group">
-                <div className="absolute -left-[33px] top-2 p-1 rounded-full bg-[var(--bg-app)] border border-[var(--border-strong)]">
+                <div className="absolute -left-[27px] sm:-left-[33px] top-2 p-1 rounded-full bg-[var(--bg-app)] border border-[var(--border-strong)]">
                   {getProviderIcon(event.provider)}
                 </div>
 

@@ -70,7 +70,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
 
   if (loading) {
     return (
-      <div className="p-8 space-y-6 animate-pulse">
+      <div className="p-4 sm:p-6 md:p-8 space-y-6 animate-pulse">
         <div className="h-8 w-64 bg-[var(--bg-elevated)] rounded-lg"></div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4].map(i => (
@@ -83,10 +83,10 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
 
   if (error) {
     return (
-      <div className="p-8">
-        <div className="p-5 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center justify-between">
+      <div className="p-4 sm:p-6 md:p-8">
+        <div className="p-4 sm:p-5 bg-rose-500/10 border border-rose-500/20 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-3 text-rose-300">
-            <AlertTriangle className="h-5 w-5 text-rose-400" />
+            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] text-sm">Failed to Load People Metrics</h4>
               <p className="text-xs text-rose-300/80">{error}</p>
@@ -94,7 +94,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
           </div>
           <button
             onClick={fetchPeople}
-            className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2 transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center justify-center space-x-2 transition-colors cursor-pointer self-start sm:self-auto"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             <span>Retry</span>
@@ -125,11 +125,11 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
   };
 
   return (
-    <div className="p-8 space-y-6 relative bg-[var(--bg-app)] min-h-screen">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 relative bg-[var(--bg-app)] min-h-screen">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
-            <Users className="h-5 w-5 text-indigo-400" />
+          <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+            <Users className="h-5 w-5 text-indigo-400 shrink-0" />
             <span>People & Knowledge Loss Risk</span>
           </h3>
           <p className="text-xs text-[var(--text-muted)] mt-1">
@@ -138,7 +138,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
         </div>
         <button
           onClick={fetchPeople}
-          className="px-3 py-1.5 bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-xs text-[var(--text-secondary)] hover:text-white rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
+          className="self-start sm:self-auto px-3 py-1.5 bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-xs text-[var(--text-secondary)] hover:text-white rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span>Refresh</span>
@@ -318,20 +318,20 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
 
       {/* ─── Simulate Departure Impact Panel (Modal Overlay) ──────── */}
       {(simulation || simError) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="w-full max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-xl shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4">
+          <div className="w-full max-w-3xl lg:max-w-4xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-xl shadow-2xl relative">
             {/* Close button */}
             <button
               onClick={closeSimulation}
-              className="absolute top-4 right-4 p-1.5 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-white transition-colors z-10 cursor-pointer"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-1.5 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-white transition-colors z-10 cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
 
             {simError ? (
-              <div className="p-8 space-y-4">
+              <div className="p-5 sm:p-8 space-y-4">
                 <div className="flex items-center space-x-3 text-rose-300">
-                  <AlertTriangle className="h-5 w-5 text-rose-400" />
+                  <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />
                   <div>
                     <h4 className="font-bold text-[var(--text-primary)] text-base">Simulation Failed</h4>
                     <p className="text-xs text-rose-300/80">{simError}</p>
@@ -339,25 +339,25 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ onSyncUpdated }) => {
                 </div>
               </div>
             ) : simulation && (
-              <div className="p-6 space-y-6">
+              <div className="p-4 sm:p-6 space-y-6">
                 {/* Header — visually distinct "simulation" framing */}
-                <div className="space-y-3">
+                <div className="space-y-3 pr-8 sm:pr-0">
                   <div className="flex items-center space-x-2.5">
-                    <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                    <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 shrink-0">
                       <UserMinus className="h-5 w-5 text-rose-400" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">DEPARTURE IMPACT SIMULATION</p>
-                      <h3 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
+                      <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] tracking-tight truncate">
                         Impact Assessment: {simulation.person}
                       </h3>
                     </div>
                   </div>
 
                   {/* Risk score hero */}
-                  <div className="flex items-center space-x-5 p-4 bg-[var(--bg-subtle)] rounded-lg border border-[var(--border-subtle)]">
-                    <div className="text-center pr-5 border-r border-[var(--border-subtle)]">
-                      <span className="text-3xl font-extrabold text-rose-400 font-mono">{simulation.riskScore}%</span>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-5 p-3.5 sm:p-4 bg-[var(--bg-subtle)] rounded-lg border border-[var(--border-subtle)]">
+                    <div className="text-left sm:text-center sm:pr-5 sm:border-r border-[var(--border-subtle)] w-full sm:w-auto pb-2 sm:pb-0 border-b sm:border-b-0">
+                      <span className="text-2xl sm:text-3xl font-extrabold text-rose-400 font-mono">{simulation.riskScore}%</span>
                       <p className="text-[10px] text-[var(--text-muted)] font-semibold uppercase mt-0.5">Knowledge Risk</p>
                     </div>
                     <div className="flex-1 space-y-1 text-xs text-[var(--text-secondary)]">

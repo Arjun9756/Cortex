@@ -94,7 +94,7 @@ export const TechnologiesPage: React.FC<TechnologiesPageProps> = ({ onSyncUpdate
 
   if (loading) {
     return (
-      <div className="p-6 md:p-8 space-y-6 animate-pulse bg-[var(--bg-app)] min-h-screen">
+      <div className="p-4 sm:p-6 md:p-8 space-y-6 animate-pulse bg-[var(--bg-app)] min-h-screen">
         <div className="h-6 w-64 bg-[var(--bg-panel)] rounded"></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {[1, 2, 3, 4].map(i => (
@@ -112,10 +112,10 @@ export const TechnologiesPage: React.FC<TechnologiesPageProps> = ({ onSyncUpdate
 
   if (error) {
     return (
-      <div className="p-6 md:p-8 bg-[var(--bg-app)] min-h-screen">
-        <div className="p-5 bg-rose-500/10 border border-rose-500/20 rounded-lg flex items-center justify-between">
+      <div className="p-4 sm:p-6 md:p-8 bg-[var(--bg-app)] min-h-screen">
+        <div className="p-4 sm:p-5 bg-rose-500/10 border border-rose-500/20 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-3 text-rose-300">
-            <AlertTriangle className="h-5 w-5 text-rose-400" />
+            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] text-sm">Failed to Load Technology Metrics</h4>
               <p className="text-xs text-rose-300/80 mt-0.5">{error}</p>
@@ -123,7 +123,7 @@ export const TechnologiesPage: React.FC<TechnologiesPageProps> = ({ onSyncUpdate
           </div>
           <button
             onClick={fetchTech}
-            className="px-3.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-200 text-xs font-medium rounded-md flex items-center space-x-1.5 cursor-pointer transition-colors"
+            className="px-3.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-200 text-xs font-medium rounded-md flex items-center justify-center space-x-1.5 cursor-pointer transition-colors self-start sm:self-auto"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             <span>Retry</span>
@@ -134,12 +134,12 @@ export const TechnologiesPage: React.FC<TechnologiesPageProps> = ({ onSyncUpdate
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6 bg-[var(--bg-app)] min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 bg-[var(--bg-app)] min-h-screen">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
-            <Cpu className="h-5 w-5 text-[var(--accent-default)]" />
+          <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+            <Cpu className="h-5 w-5 text-[var(--accent-default)] shrink-0" />
             <span>Technology Stack & Adoption Metrics</span>
           </h3>
           <p className="text-xs text-[var(--text-secondary)] mt-1 font-mono">

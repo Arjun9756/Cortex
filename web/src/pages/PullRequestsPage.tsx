@@ -218,7 +218,7 @@ export const PullRequestsPage: React.FC = () => {
   // ─── Error State ─────────────────────────────────────────────────────
   if (error && !headlineMetrics) {
     return (
-      <div className="p-8 bg-[var(--bg-app)] min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 bg-[var(--bg-app)] min-h-screen">
         <div className="p-6 bg-rose-500/10 border border-rose-500/20 rounded-xl flex flex-col items-center justify-center space-y-4 max-w-lg mx-auto text-center mt-16">
           <div className="p-3 bg-rose-500/20 rounded-full text-rose-400">
             <AlertTriangle className="w-8 h-8" />
@@ -251,16 +251,16 @@ export const PullRequestsPage: React.FC = () => {
   const isSmallSample = headlineMetrics?.dataCompleteness === 'partial';
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 bg-[var(--bg-app)] min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 bg-[var(--bg-app)] min-h-screen">
       {/* ─── Header & Title ────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shrink-0">
               <GitPullRequest className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
+              <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] tracking-tight">
                 Pull Requests & Delivery Velocity
               </h2>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">
@@ -271,7 +271,7 @@ export const PullRequestsPage: React.FC = () => {
         </div>
 
         {/* ─── Filter Bar ────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-2.5 bg-[var(--bg-panel)] p-1.5 border border-[var(--border-subtle)] rounded-lg shadow-xs">
+        <div className="flex flex-wrap items-center gap-2 bg-[var(--bg-panel)] p-1.5 border border-[var(--border-subtle)] rounded-lg shadow-xs w-full sm:w-auto">
           {/* Timeframe selector */}
           <div className="flex items-center space-x-1 text-xs">
             <Clock className="w-3.5 h-3.5 text-[var(--text-muted)] ml-1.5" />

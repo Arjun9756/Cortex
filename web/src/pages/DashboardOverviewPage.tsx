@@ -313,29 +313,29 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 bg-[var(--bg-app)] min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6 bg-[var(--bg-app)] min-h-screen">
       {/* ─── ROW 1: HEADLINE HEALTH SCORE ───────────────────────────────────── */}
-      <div className="p-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)]">
+      <div className="p-4 sm:p-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)]">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           {/* Headline score visualization */}
-          <div className="flex items-center space-x-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6 text-center sm:text-left">
             <div className="relative flex items-center justify-center shrink-0">
               <div
-                className={`w-24 h-24 rounded-full border-2 flex flex-col items-center justify-center ${getHealthBadgeStyle(
+                className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 flex flex-col items-center justify-center ${getHealthBadgeStyle(
                   health.score
                 )}`}
               >
-                <span className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">
+                <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">
                   <AnimatedNumber value={health.score} />
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                   Grade {health.grade}
                 </span>
               </div>
             </div>
 
             <div className="space-y-1.5 max-w-xl">
-              <div className="flex items-center space-x-2.5">
+              <div className="flex items-center justify-center sm:justify-start space-x-2.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                   ENGINEERING HEALTH INDEX
                 </span>
@@ -354,7 +354,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
                 </span>
               </div>
 
-              <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
+              <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] tracking-tight">
                 {health.score >= 80
                   ? 'Your engineering organization is operating with low risk'
                   : health.score >= 70
@@ -369,7 +369,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           </div>
 
           {/* Metric breakdown summary pills */}
-          <div className="flex flex-wrap lg:flex-col gap-2 shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] pt-4 lg:pt-0 lg:pl-6 text-xs font-mono">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-2 shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] pt-4 lg:pt-0 lg:pl-6 text-xs font-mono w-full lg:w-auto">
             <div className="p-2.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-between gap-4">
               <span className="text-[var(--text-muted)]">Avg Bus Factor:</span>
               <span className="font-semibold text-cyan-400">
@@ -553,7 +553,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
 
         {activityTrend.length > 0 ? (
           <>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5">
               <div className="p-2.5 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)] text-center">
                 <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Recent Commits (12W)</span>
                 <span className="text-base font-bold text-indigo-400">
@@ -628,7 +628,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
 
         {prData ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
               <div className="p-3 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)]">
                 <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Median Review Turnaround</span>
                 <div className="flex items-baseline gap-1 mt-1">

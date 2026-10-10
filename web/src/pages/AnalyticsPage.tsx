@@ -103,7 +103,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
 
   if (loading) {
     return (
-      <div className="p-8 space-y-6 bg-[var(--bg-app)] min-h-screen animate-pulse">
+      <div className="p-4 sm:p-6 md:p-8 space-y-6 bg-[var(--bg-app)] min-h-screen animate-pulse">
         <div className="h-8 w-64 bg-[var(--bg-elevated)] rounded-lg" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="h-72 bg-[var(--bg-panel)] rounded-xl border border-[var(--border-subtle)]" />
@@ -115,10 +115,10 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
 
   if (error || !data) {
     return (
-      <div className="p-8 bg-[var(--bg-app)] min-h-screen">
-        <div className="p-5 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center justify-between">
+      <div className="p-4 sm:p-6 md:p-8 bg-[var(--bg-app)] min-h-screen">
+        <div className="p-4 sm:p-5 bg-rose-500/10 border border-rose-500/20 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-3 text-rose-300">
-            <AlertTriangle className="h-5 w-5 text-rose-400" />
+            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] text-sm">Failed to Load Analytics</h4>
               <p className="text-xs text-rose-300/80">{error}</p>
@@ -126,7 +126,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
           </div>
           <button
             onClick={fetchTrends}
-            className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center space-x-2 transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-lg flex items-center justify-center space-x-2 transition-colors cursor-pointer self-start sm:self-auto"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             <span>Retry</span>
@@ -137,12 +137,12 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
   }
 
   return (
-    <div className="p-8 space-y-6 bg-[var(--bg-app)] min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 bg-[var(--bg-app)] min-h-screen">
       {/* Header with real database status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-indigo-400" />
+          <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-indigo-400 shrink-0" />
             <span>Analytics & Knowledge Trends</span>
           </h3>
           <p className="text-xs text-[var(--text-muted)] mt-1">
@@ -431,7 +431,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onSyncUpdated }) =
         {effectiveHeatmap.length === 0 ? (
           <p className="text-xs text-[var(--text-muted)] py-4">No historical event heatmap is stored yet. Waiting for webhook events.</p>
         ) : (
-          <div className="space-y-1.5 overflow-x-auto py-2">
+          <div className="space-y-1.5 overflow-x-auto py-2 -webkit-overflow-scrolling-touch">
             {effectiveHeatmap.map((dayItem, dIdx) => (
               <div key={dIdx} className="flex items-center space-x-1.5 text-[10px] text-[var(--text-muted)] font-mono">
                 <span className="w-8">{dayItem.day}</span>

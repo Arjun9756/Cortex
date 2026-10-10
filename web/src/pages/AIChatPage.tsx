@@ -672,12 +672,12 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
   };
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-65px)] bg-[var(--bg-app)] font-sans antialiased text-[var(--text-primary)]">
+    <div className="relative flex flex-col h-[calc(100vh-128px)] lg:h-[calc(100vh-65px)] bg-[var(--bg-app)] font-sans antialiased text-[var(--text-primary)]">
       {/* Top Action Utility Bar */}
-      <div className="absolute top-3.5 right-6 z-30 flex items-center space-x-2">
+      <div className="absolute top-2.5 right-3 sm:top-3.5 sm:right-6 z-30 flex items-center space-x-1.5 sm:space-x-2">
         <button
           onClick={handleExportTranscript}
-          className="text-xs text-[var(--text-secondary)] hover:text-white bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-strong)] px-2.5 py-1 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
+          className="text-xs text-[var(--text-secondary)] hover:text-white bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-strong)] px-2 sm:px-2.5 py-1 rounded-lg flex items-center space-x-1 sm:space-x-1.5 transition-colors cursor-pointer"
           title="Download full chat session transcript as Markdown"
         >
           <Download className="h-3.5 w-3.5 text-indigo-400" />
@@ -686,7 +686,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
         <button
           onClick={handleCopyTranscript}
-          className="text-xs text-[var(--text-secondary)] hover:text-white bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-strong)] px-2.5 py-1 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
+          className="text-xs text-[var(--text-secondary)] hover:text-white bg-[var(--bg-panel)] hover:bg-[var(--bg-elevated)] border border-[var(--border-strong)] px-2 sm:px-2.5 py-1 rounded-lg flex items-center space-x-1 sm:space-x-1.5 transition-colors cursor-pointer"
           title="Copy session transcript to clipboard"
         >
           {copiedTranscript ? (
@@ -704,7 +704,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
 
         <button
           onClick={handleClearChat}
-          className="text-xs text-[var(--text-secondary)] hover:text-rose-300 bg-[var(--bg-panel)] hover:bg-rose-950/30 border border-[var(--border-strong)] hover:border-rose-500/40 px-2.5 py-1 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
+          className="text-xs text-[var(--text-secondary)] hover:text-rose-300 bg-[var(--bg-panel)] hover:bg-rose-950/30 border border-[var(--border-strong)] hover:border-rose-500/40 px-2 sm:px-2.5 py-1 rounded-lg flex items-center space-x-1 sm:space-x-1.5 transition-colors cursor-pointer"
           title="Clear all messages in this conversation"
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -713,7 +713,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
       </div>
 
       {/* Main Messages Feed */}
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-8 md:p-10 pt-12 space-y-6">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-10 pt-14 sm:pt-14 space-y-4 sm:space-y-6">
         {messages.map((msg, index) => {
           const isUser = msg.sender === 'user';
           const isLastMsg = index === messages.length - 1;
@@ -1556,7 +1556,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
       </div>
 
       {/* Docked Multi-Line Input Bar */}
-      <div className="p-4 bg-[var(--bg-panel)] border-t border-[var(--border-subtle)]">
+      <div className="p-2.5 sm:p-4 bg-[var(--bg-panel)] border-t border-[var(--border-subtle)]">
         <form
           onSubmit={e => {
             e.preventDefault();
@@ -1564,7 +1564,7 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
           }}
           className="max-w-4xl mx-auto flex flex-col space-y-2"
         >
-          <div className="flex items-end space-x-3">
+          <div className="flex items-end space-x-2 sm:space-x-3">
             <div className="relative flex-1">
               <textarea
                 ref={textareaRef}
@@ -1576,17 +1576,17 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
                     handleSend();
                   }
                 }}
-                placeholder="Ask Cortex about codebase knowledge, SPOF, risk, or dependencies..."
+                placeholder="Ask Cortex about knowledge, SPOF, risk..."
                 disabled={loading}
                 rows={1}
                 style={{ height: '44px', minHeight: '44px', maxHeight: '160px' }}
-                className={`w-full bg-[var(--bg-app)] border border-[var(--border-strong)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] rounded-md pl-3.5 ${query ? 'pr-16' : 'pr-3.5'} py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none transition-colors resize-none leading-relaxed overflow-hidden scrollbar-thin scrollbar-thumb-slate-800`}
+                className={`w-full bg-[var(--bg-app)] border border-[var(--border-strong)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] rounded-md pl-3 sm:pl-3.5 ${query ? 'pr-14 sm:pr-16' : 'pr-3 sm:pr-3.5'} py-2.5 text-xs sm:text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none transition-colors resize-none leading-relaxed overflow-hidden scrollbar-thin scrollbar-thumb-slate-800`}
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery('')}
-                  className="absolute right-3 top-2.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-medium bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] px-2 py-0.5 rounded border border-[var(--border-subtle)] transition-colors"
+                  className="absolute right-2.5 top-2.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-[11px] font-medium bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] px-1.5 sm:px-2 py-0.5 rounded border border-[var(--border-subtle)] transition-colors"
                 >
                   Clear
                 </button>
@@ -1596,17 +1596,17 @@ export const AIChatPage: React.FC<AIChatPageProps> = ({ initialQuery, onSyncUpda
             <button
               type="submit"
               disabled={!query.trim() || loading}
-              className="cortex-btn-primary px-5 py-2.5 text-xs font-semibold rounded-md disabled:opacity-50 transition-colors flex items-center space-x-2 shrink-0 h-[44px] cursor-pointer"
+              className="cortex-btn-primary px-3.5 sm:px-5 py-2.5 text-xs font-semibold rounded-md disabled:opacity-50 transition-colors flex items-center space-x-1.5 sm:space-x-2 shrink-0 h-[44px] cursor-pointer"
             >
               {loading ? (
                 <>
                   <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  <span>Reasoning...</span>
+                  <span className="hidden sm:inline">Reasoning...</span>
                 </>
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" />
-                  <span>Send</span>
+                  <span className="hidden sm:inline">Send</span>
                 </>
               )}
             </button>

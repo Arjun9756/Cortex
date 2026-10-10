@@ -44,17 +44,17 @@ export const OutlierPrModal: React.FC<OutlierPrModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="outlier-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="cortex-card w-full max-w-3xl max-h-[85vh] flex flex-col bg-[var(--bg-panel)] border border-[var(--border-strong)] shadow-2xl rounded-xl overflow-hidden"
+        className="cortex-card w-full max-w-3xl max-h-[90vh] sm:max-h-[85vh] flex flex-col bg-[var(--bg-panel)] border border-[var(--border-strong)] shadow-2xl rounded-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-subtle)]">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-subtle)]">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
               <Clock className="w-5 h-5" />
             </div>
             <div>

@@ -84,20 +84,20 @@ export const UrgentRisksModal: React.FC<UrgentRisksModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="relative w-full max-w-4xl max-h-[88vh] bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-xl shadow-2xl flex flex-col overflow-hidden"
+        className="relative w-full max-w-4xl max-h-[92vh] sm:max-h-[88vh] bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-xl shadow-2xl flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-5 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center justify-between shrink-0">
-          <div className="flex items-center space-x-3.5">
-            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400">
-              <ShieldAlert className="h-6 w-6" />
+        <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center justify-between shrink-0">
+          <div className="flex items-center space-x-3 sm:space-x-3.5">
+            <div className="p-2 sm:p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 shrink-0">
+              <ShieldAlert className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h3 className="text-base font-bold text-[var(--text-primary)] tracking-tight">
+              <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-[var(--text-primary)] tracking-tight">
                   Active Urgent Risk Alerts ({alerts.length})
                 </h3>
                 <div className="flex items-center gap-1.5">
@@ -125,10 +125,10 @@ export const UrgentRisksModal: React.FC<UrgentRisksModalProps> = ({
         </div>
 
         {/* Filter Tabs */}
-        <div className="px-5 pt-3 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)] flex items-center space-x-2 overflow-x-auto text-xs font-mono">
+        <div className="px-3 sm:px-5 pt-3 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)] flex items-center space-x-2 overflow-x-auto text-xs font-mono">
           <button
             onClick={() => setActiveCategory('all')}
-            className={`px-3 py-1.5 rounded-t border-b-2 font-medium transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 rounded-t border-b-2 font-medium transition-colors cursor-pointer shrink-0 ${
               activeCategory === 'all'
                 ? 'border-indigo-500 text-[var(--text-primary)] bg-[var(--bg-subtle)]'
                 : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'

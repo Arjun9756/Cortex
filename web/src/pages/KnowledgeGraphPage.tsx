@@ -149,10 +149,10 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
   };
 
   return (
-    <div className="p-8 space-y-6 relative min-h-screen bg-[var(--bg-app)]">
+    <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 relative min-h-screen bg-[var(--bg-app)]">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+          <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
             <Network className="h-5 w-5 text-indigo-400" />
             <span>Risk Knowledge Graph</span>
           </h3>
@@ -161,7 +161,7 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div
             title={'Data as of ' + (generatedAt ? new Date(generatedAt).toLocaleTimeString() : 'now') + (isCachedSummary ? ' (cached)' : '')}
             className="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] font-mono"
@@ -189,45 +189,47 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
         </div>
       </div>
 
-      <div className="cortex-card p-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="cortex-card p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <div className="flex items-center space-x-1.5 text-xs text-[var(--text-muted)] font-medium mr-1">
             <Filter className="h-3.5 w-3.5 text-indigo-400" />
             <span>Scope:</span>
           </div>
 
-          <select
-            value={selectedRepo}
-            onChange={(e) => setSelectedRepo(e.target.value)}
-            className="bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
-          >
-            <option value="">All Repositories</option>
-            {availableRepos.map(repo => (
-              <option key={repo} value={repo}>{repo}</option>
-            ))}
-          </select>
+          <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
+            <select
+              value={selectedRepo}
+              onChange={(e) => setSelectedRepo(e.target.value)}
+              className="bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors w-full sm:w-auto"
+            >
+              <option value="">All Repositories</option>
+              {availableRepos.map(repo => (
+                <option key={repo} value={repo}>{repo}</option>
+              ))}
+            </select>
 
-          <select
-            value={selectedPerson}
-            onChange={(e) => setSelectedPerson(e.target.value)}
-            className="bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
-          >
-            <option value="">All Engineers</option>
-            {availablePeople.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+            <select
+              value={selectedPerson}
+              onChange={(e) => setSelectedPerson(e.target.value)}
+              className="bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors w-full sm:w-auto"
+            >
+              <option value="">All Engineers</option>
+              {availablePeople.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
 
-          <select
-            value={limit}
-            onChange={(e) => setLimit(Number(e.target.value))}
-            className="bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
-          >
-            <option value={50}>Top 50 nodes</option>
-            <option value={100}>Top 100 nodes</option>
-            <option value={150}>Top 150 nodes</option>
-            <option value={200}>Top 200 nodes (max)</option>
-          </select>
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors w-full sm:w-auto"
+            >
+              <option value={50}>Top 50 nodes</option>
+              <option value={100}>Top 100 nodes</option>
+              <option value={150}>Top 150 nodes</option>
+              <option value={200}>Top 200 nodes (max)</option>
+            </select>
+          </div>
         </div>
 
         {(selectedRepo || selectedPerson || limit !== 100) && (
@@ -269,13 +271,13 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
             <p className="text-xs text-[var(--text-muted)]">Try clearing active repo or engineer filters above.</p>
           </div>
         ) : (
-          <div className="w-full flex-1 min-h-[680px]">
+          <div className="w-full flex-1 min-h-[440px] sm:min-h-[580px] lg:min-h-[680px]">
             <ForceGraph nodes={nodes} edges={edges} onNodeClick={handleNodeClick} />
           </div>
         )}
 
         {selectedNode && (
-          <aside className="absolute top-2 right-2 bottom-2 w-96 max-w-[92%] bg-[var(--bg-panel)]/95 backdrop-blur-xl border border-[var(--border-strong)] rounded-xl p-5 shadow-2xl flex flex-col justify-between z-30 overflow-y-auto animate-in slide-in-from-right duration-200">
+          <aside className="fixed sm:absolute inset-x-2 bottom-2 sm:inset-x-auto sm:top-2 sm:right-2 sm:bottom-2 w-auto sm:w-96 max-w-[96vw] max-h-[82vh] sm:max-h-none bg-[var(--bg-panel)]/95 backdrop-blur-xl border border-[var(--border-strong)] rounded-xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between z-30 overflow-y-auto animate-in slide-in-from-bottom sm:slide-in-from-right duration-200">
             <div>
               <div className="flex items-start justify-between pb-3.5 border-b border-[var(--border-subtle)]">
                 <div className="space-y-1">
