@@ -22,7 +22,8 @@ export interface IntegrationStatus {
 
 export class IntegrationService {
     public getAdminBaseUrl(): string {
-        const raw = process.env.LICENSE_SERVER_URL || process.env.CORTEX_LICENSE_SERVER_URL || 'https://app.cortexco.in';
+        let raw = process.env.LICENSE_SERVER_URL || process.env.CORTEX_LICENSE_SERVER_URL || 'https://admin.cortexco.in';
+        raw = raw.replace('app.cortexco.in', 'admin.cortexco.in');
         return raw.replace(/\/api\/license.*$/, '').replace(/\/$/, '');
     }
 
@@ -153,18 +154,39 @@ export class IntegrationService {
             throw new Error('Claim ticket is required');
         }
 
-        const adminBase = this.getAdminBaseUrl();
+        const candidateBases = [
+            this.getAdminBaseUrl(),
+            'https://admin.cortexco.in',
+            'https://cortex-admin-two.vercel.app'
+        ];
+        const uniqueBases = [...new Set(candidateBases.map(b => b.replace(/\/$/, '')))];
         const licenseKey = this.getLicenseKey();
 
-        const claimRes = await fetch(`${adminBase}/api/oauth/claim`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticket, license_key: licenseKey })
-        });
+        let claimData: any = null;
+        let lastError: any = null;
 
-        const claimData = (await claimRes.json()) as any;
-        if (!claimRes.ok || !claimData.success || !claimData.accessToken) {
-            throw new Error(claimData.error || 'Failed to claim access token from Cortex-Admin broker');
+        for (const adminBase of uniqueBases) {
+            try {
+                const claimRes = await fetch(`${adminBase}/api/oauth/claim`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticket, license_key: licenseKey }),
+                    signal: AbortSignal.timeout(10000)
+                });
+
+                claimData = (await claimRes.json()) as any;
+                if (claimRes.ok && claimData.success && claimData.accessToken) {
+                    break;
+                } else if (claimData && claimData.error) {
+                    lastError = new Error(claimData.error);
+                }
+            } catch (err: any) {
+                lastError = err;
+            }
+        }
+
+        if (!claimData || !claimData.success || !claimData.accessToken) {
+            throw lastError || new Error('Failed to claim access token from Cortex-Admin broker');
         }
 
         const accessToken = claimData.accessToken;
@@ -759,14 +781,27 @@ export class IntegrationService {
 
         // Sync disconnect with Cortex-Admin
         try {
-            const adminBase = this.getAdminBaseUrl();
+            const candidateBases = [
+                this.getAdminBaseUrl(),
+                'https://admin.cortexco.in',
+                'https://cortex-admin-two.vercel.app'
+            ];
+            const uniqueBases = [...new Set(candidateBases.map(b => b.replace(/\/$/, '')))];
             const licenseKey = this.getLicenseKey();
             if (licenseKey) {
-                await fetch(`${adminBase}/api/oauth/disconnect`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ license_key: licenseKey, provider })
-                });
+                for (const base of uniqueBases) {
+                    try {
+                        const res = await fetch(`${base}/api/oauth/disconnect`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ license_key: licenseKey, provider }),
+                            signal: AbortSignal.timeout(5000)
+                        });
+                        if (res.ok) break;
+                    } catch {
+                        // ignore and try next candidate
+                    }
+                }
             }
         } catch (syncErr: any) {
             console.warn('[Integrations] Could not sync disconnect to Admin:', syncErr?.message);

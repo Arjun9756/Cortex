@@ -68,7 +68,7 @@ let heartbeatTimer: NodeJS.Timeout | null = null;
 export function normalizeServerUrl(rawUrl?: string): string {
     let url = (rawUrl || '').trim();
     if (!url) {
-        return 'https://app.cortexco.in/api/license/ping';
+        return 'https://admin.cortexco.in/api/license/ping';
     }
     if (url.endsWith('/')) {
         url = url.slice(0, -1);
@@ -151,12 +151,17 @@ export async function pingLicenseServer(
     licenseKey: string,
     serverUrl?: string
 ): Promise<LicenseVerificationResult> {
-    const primaryUrl = normalizeServerUrl(serverUrl || (env.LICENSE_SERVER_URL as string));
+    const rawPrimary = normalizeServerUrl(serverUrl || (env.LICENSE_SERVER_URL as string));
+    // If primary was pointed to non-existent app.cortexco.in, immediately rewrite to admin.cortexco.in
+    const primaryUrl = rawPrimary.replace('app.cortexco.in', 'admin.cortexco.in');
     const payload = buildLicensePingPayload(licenseKey);
     state.payload = payload;
 
     const urlsToTry = [primaryUrl];
-    if (primaryUrl.includes('app.cortexco.in')) {
+    if (!urlsToTry.includes('https://admin.cortexco.in/api/license/ping')) {
+        urlsToTry.push('https://admin.cortexco.in/api/license/ping');
+    }
+    if (!urlsToTry.includes('https://cortex-admin-two.vercel.app/api/license/ping')) {
         urlsToTry.push('https://cortex-admin-two.vercel.app/api/license/ping');
     }
 

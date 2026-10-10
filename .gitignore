@@ -6,3 +6,4 @@ neural_docs_cortex.txt
 scratch/
 *.log
 .cortex-license-cache.json
+aggresive.md
