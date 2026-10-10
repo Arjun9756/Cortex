@@ -674,6 +674,10 @@ export interface EvaluatedPrItem {
     number: number;
     title: string;
     author: string;
+    authorEmail?: string | null;
+    mergedBy?: string | null;
+    mergerEmail?: string | null;
+    reviewers?: Array<{ name: string; email?: string }>;
     isBot: boolean;
     isDraft: boolean;
     createdAt: string;
@@ -733,6 +737,7 @@ export interface PrMetricsReport {
         warning?: string | undefined;
     };
     evaluatedPrs?: EvaluatedPrItem[];
+    paginatedEvaluatedPrs?: EvaluatedPrItem[];
     transparencyTooltip: string;
 }
 
@@ -740,6 +745,12 @@ export interface PrMetricsResponse {
     status: boolean;
     metrics: PrMetricsReport;
     repoBreakdown?: PrMetricsReport[];
+    pagination?: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+    };
 }
 
 export interface GetPrMetricsOptions {
@@ -747,6 +758,8 @@ export interface GetPrMetricsOptions {
     days?: number | undefined;
     includeBots?: boolean | undefined;
     breakdown?: boolean | undefined;
+    page?: number | undefined;
+    pageSize?: number | undefined;
 }
 
 export async function getPrMetrics(options?: GetPrMetricsOptions): Promise<PrMetricsResponse> {
@@ -755,6 +768,8 @@ export async function getPrMetrics(options?: GetPrMetricsOptions): Promise<PrMet
     if (options?.days !== undefined) params.set('days', options.days.toString());
     if (options?.includeBots) params.set('includeBots', 'true');
     if (options?.breakdown) params.set('breakdown', 'true');
+    if (options?.page) params.set('page', options.page.toString());
+    if (options?.pageSize) params.set('pageSize', options.pageSize.toString());
 
     const qs = params.toString();
     const endpoint = `/api/dashboard/pr-metrics${qs ? `?${qs}` : ''}`;

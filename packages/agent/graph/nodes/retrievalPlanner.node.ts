@@ -173,7 +173,7 @@ export async function retrievalPlannerNode(state: AgentStateType): Promise<Parti
                     } else if (call.name === 'get_person_identity') {
                         combinedSql.push({
                             person: res.data.displayName,
-                            identities: res.data.knownAliases.map((a: string) => ({ provider: 'cortex', username: a, email: res.data.email })),
+                            identities: res.data.knownAliases.map((a: string) => ({ provider: 'identity', username: a, email: res.data.email })),
                             person_name: res.data.displayName,
                             commit_count: res.data.commitCount,
                             repos: res.data.repos,
@@ -214,11 +214,24 @@ export async function retrievalPlannerNode(state: AgentStateType): Promise<Parti
                         combinedSql.push({
                             type: 'pr_cycle_time',
                             repo: res.data.repoName,
-                            reviewCycleTimeHours: res.data.reviewCycleTime.headlineHours,
-                            leadTimeHours: res.data.totalLeadTime.headlineHours,
-                            p90ReviewHours: res.data.reviewCycleTime.businessHours.p90,
-                            mergedHumanPrs: res.data.counts.mergedHumanPrs,
-                            outliersCount: res.data.counts.staleOutliersCount,
+                            reviewCycleTimeHours: res.data.reviewCycleTime?.headlineHours ?? 0,
+                            leadTimeHours: res.data.totalLeadTime?.headlineHours ?? 0,
+                            p90ReviewHours: res.data.reviewCycleTime?.wallClockHours?.p90 ?? res.data.reviewCycleTime?.headlineHours ?? 0,
+                            mergedHumanPrs: res.data.counts?.mergedHumanPrs ?? 0,
+                            outliersCount: res.data.counts?.staleOutliersCount ?? 0,
+                        });
+                    } else if (call.name === 'get_pr_risk') {
+                        const prRepo = call.args?.repo || call.args?.repository || (res.data?.affectedRepositories && res.data.affectedRepositories.length > 0 ? res.data.affectedRepositories[0] : 'unspecified');
+                        combinedSql.push({
+                            type: 'pr_risk',
+                            repo: prRepo,
+                            riskScore: res.data?.riskScore ?? 0,
+                            riskLevel: res.data?.severity || 'LOW',
+                            breakdown: {
+                                criticalFiles: res.data?.criticalFiles || [],
+                                affectedPeople: res.data?.affectedPeople || [],
+                            },
+                            recommendations: res.data?.recommendations || [],
                         });
                     }
                 }

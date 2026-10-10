@@ -244,40 +244,38 @@ export const KnowledgeGraphPage: React.FC<KnowledgeGraphPageProps> = ({ onSyncUp
         )}
       </div>
 
-      <div className="relative flex gap-6">
-        <div className="flex-1 cortex-card p-2 min-h-[720px] flex flex-col justify-center items-center relative overflow-hidden">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center space-y-3">
-              <div className="h-8 w-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-              <p className="text-xs text-[var(--text-muted)]">Loading risk summary graph...</p>
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center space-y-3 max-w-md text-center p-6">
-              <AlertTriangle className="h-8 w-8 text-rose-400" />
-              <h4 className="text-sm font-semibold text-[var(--text-primary)]">Knowledge Graph Unavailable</h4>
-              <p className="text-xs text-[var(--text-muted)]">{error}</p>
-              <button
-                onClick={() => fetchGraph(false)}
-                className="mt-2 px-3 py-1.5 cortex-btn-primary text-xs cursor-pointer"
-              >
-                Retry
-              </button>
-            </div>
-          ) : nodes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center space-y-3 max-w-md text-center p-6">
-              <Layers className="h-8 w-8 text-[var(--text-muted)]" />
-              <h4 className="text-sm font-semibold text-[var(--text-primary)]">No Graph Nodes Match Scope</h4>
-              <p className="text-xs text-[var(--text-muted)]">Try clearing active repo or engineer filters above.</p>
-            </div>
-          ) : (
-            <div className="w-full h-full flex-1">
-              <ForceGraph nodes={nodes} edges={edges} onNodeClick={handleNodeClick} />
-            </div>
-          )}
-        </div>
+      <div className="relative cortex-card p-2 min-h-[720px] flex flex-col justify-start items-stretch overflow-hidden">
+        {loading ? (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-3 py-24">
+            <div className="h-8 w-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+            <p className="text-xs text-[var(--text-muted)]">Loading risk summary graph...</p>
+          </div>
+        ) : error ? (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-3 max-w-md mx-auto text-center p-6 py-24">
+            <AlertTriangle className="h-8 w-8 text-rose-400" />
+            <h4 className="text-sm font-semibold text-[var(--text-primary)]">Knowledge Graph Unavailable</h4>
+            <p className="text-xs text-[var(--text-muted)]">{error}</p>
+            <button
+              onClick={() => fetchGraph(false)}
+              className="mt-2 px-3 py-1.5 cortex-btn-primary text-xs cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
+        ) : nodes.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-3 max-w-md mx-auto text-center p-6 py-24">
+            <Layers className="h-8 w-8 text-[var(--text-muted)]" />
+            <h4 className="text-sm font-semibold text-[var(--text-primary)]">No Graph Nodes Match Scope</h4>
+            <p className="text-xs text-[var(--text-muted)]">Try clearing active repo or engineer filters above.</p>
+          </div>
+        ) : (
+          <div className="w-full flex-1 min-h-[680px]">
+            <ForceGraph nodes={nodes} edges={edges} onNodeClick={handleNodeClick} />
+          </div>
+        )}
 
         {selectedNode && (
-          <aside className="w-96 bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-xl p-5 shadow-2xl flex flex-col justify-between shrink-0">
+          <aside className="absolute top-2 right-2 bottom-2 w-96 max-w-[92%] bg-[var(--bg-panel)]/95 backdrop-blur-xl border border-[var(--border-strong)] rounded-xl p-5 shadow-2xl flex flex-col justify-between z-30 overflow-y-auto animate-in slide-in-from-right duration-200">
             <div>
               <div className="flex items-start justify-between pb-3.5 border-b border-[var(--border-subtle)]">
                 <div className="space-y-1">

@@ -14,7 +14,7 @@ function formatChatPayload(result: any, query: string, fullAnswer?: string) {
     for (const ev of structuredEvidence) {
         enrichedSources.push({
             id: ev.id,
-            provider: ev.sourceType === 'sql' ? 'postgres' : ev.sourceType === 'analytics' ? 'analytics' : ev.sourceType === 'graph' ? 'neo4j' : 'cortex',
+            provider: ev.sourceType === 'sql' ? 'postgres' : ev.sourceType === 'analytics' ? 'analytics' : ev.sourceType === 'graph' ? 'neo4j' : (ev.provider || 'system'),
             summary: ev.summary,
             queryExplanation: ev.queryExplanation,
             confidence: ev.confidence,

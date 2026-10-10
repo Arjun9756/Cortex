@@ -15,7 +15,19 @@ if (!uri || !username || !password) {
 // `neo4j+s://` is correct for Aura clusters and requires routing discovery.
 // The database name must be supplied on every session (and connectivity check),
 // otherwise the driver silently uses its default database rather than NEO4J_DATABASE.
-export const neo4jDatabase = env.NEO4J_DATABASE || 'neo4j'
+export function resolveNeo4jDatabase(raw?: string): string {
+    if (!raw || !raw.trim()) return 'neo4j';
+    const trimmed = raw.trim();
+    if (env.AURA_INSTANCEID && trimmed.toLowerCase() === env.AURA_INSTANCEID.toLowerCase()) {
+        return 'neo4j';
+    }
+    if (/^[0-9a-f]{8}$/i.test(trimmed)) {
+        return 'neo4j';
+    }
+    return trimmed;
+}
+
+export const neo4jDatabase = resolveNeo4jDatabase(env.NEO4J_DATABASE);
 export const driver = neo4j.driver(uri, neo4j.auth.basic(username, password), {
     maxConnectionPoolSize: 20,
     connectionAcquisitionTimeout: 5_000,
@@ -24,7 +36,8 @@ export const driver = neo4j.driver(uri, neo4j.auth.basic(username, password), {
 
 const originalSession = driver.session.bind(driver)
 driver.session = function (config: any = {}) {
-    const session = originalSession({ database: neo4jDatabase, ...config })
+    const targetDb = config.database || neo4jDatabase
+    const session = originalSession({ database: targetDb, ...config })
     return new Proxy(session, {
         get(target, property) {
             if (property === 'run') return (cypher: string, params: Record<string, unknown> = {}) => {
@@ -53,7 +66,11 @@ export async function verifyNeo4jConnectivity(attempts = 3): Promise<void> {
     let lastError: unknown
     for (let attempt = 1; attempt <= attempts; attempt++) {
         try {
-            await driver.verifyConnectivity({ database: neo4jDatabase })
+            try {
+                await driver.verifyConnectivity({ database: neo4jDatabase })
+            } catch {
+                await driver.verifyConnectivity()
+            }
             const session = neo4jSession()
             try {
                 await session.run('RETURN 1 AS ok')

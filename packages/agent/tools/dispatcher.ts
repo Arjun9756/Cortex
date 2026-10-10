@@ -34,7 +34,7 @@ export interface ToolExecutionResult {
 }
 
 /**
- * Validates and executes any of the 10 Core Tools.
+ * Validates and executes any of the Core Tools.
  * Rejects invalid payloads with descriptive Zod errors.
  */
 export async function dispatchCoreTool(toolName: string, rawArgs: any): Promise<ToolExecutionResult> {
@@ -126,7 +126,27 @@ export async function dispatchCoreTool(toolName: string, rawArgs: any): Promise<
                 const parsed = GetPrCycleTimeInputSchema.parse(args);
                 const data = await executeGetPrCycleTime(parsed);
                 const subject = parsed.repo ? `repository "${parsed.repo}"` : 'organization';
-                const summary = `PR Review Cycle Time for ${subject}: Median ${data.reviewCycleTime.headlineHours} business hours (p90: ${data.reviewCycleTime.businessHours.p90}h, Wall-clock p50: ${data.reviewCycleTime.wallClockHours.median}h). Total lead time median: ${data.totalLeadTime.headlineHours}h. Analyzed ${data.counts.mergedHumanPrs} human PRs, ${data.counts.staleOutliersCount} stale outliers (>30d).`;
+                const p90 = data.reviewCycleTime?.wallClockHours?.p90 ?? data.reviewCycleTime?.headlineHours ?? 0;
+                const p50 = data.reviewCycleTime?.wallClockHours?.median ?? data.reviewCycleTime?.headlineHours ?? 0;
+                const summary = `PR Review Cycle Time for ${subject}: Median ${data.reviewCycleTime.headlineHours}h (p90: ${p90}h, Wall-clock p50: ${p50}h). Total lead time median: ${data.totalLeadTime.headlineHours}h. Analyzed ${data.counts.mergedHumanPrs} human PRs, ${data.counts.staleOutliersCount} stale outliers (>30d).`;
+                return { toolName, args, success: true, data, summary, latencyMs: Date.now() - tStart };
+            }
+
+            case 'get_pr_risk': {
+                const { evaluatePullRequestRisk } = await import('../../analytics/prRisk.service.js');
+                const repo = typeof args.repo === 'string' ? args.repo.trim() : (typeof args.repository === 'string' ? args.repository.trim() : '');
+                const prId = typeof args.prNumber === 'number' ? args.prNumber : (typeof args.prId === 'number' || typeof args.prId === 'string' ? args.prId : 1);
+                const author = typeof args.author === 'string' ? args.author.trim() : 'unknown';
+                const modifiedFiles: string[] = Array.isArray(args.modifiedFiles) ? args.modifiedFiles : [];
+                const data = await evaluatePullRequestRisk({
+                    repository: repo,
+                    prId,
+                    author,
+                    modifiedFiles,
+                });
+                const recs = Array.isArray(data.recommendations) ? data.recommendations.join(', ') : 'Team Maintainers';
+                const targetDesc = repo ? `for repository "${repo}" PR #${prId}` : `for PR #${prId}`;
+                const summary = `PR Merge Risk Assessment ${targetDesc}: Risk Score ${data.riskScore}/100 (${data.severity}). Critical Files: ${data.criticalFiles.length > 0 ? data.criticalFiles.join(', ') : 'None'}. Affected People: ${data.affectedPeople.join(', ')}. Recommendations: ${recs}.`;
                 return { toolName, args, success: true, data, summary, latencyMs: Date.now() - tStart };
             }
 
@@ -171,6 +191,7 @@ export function isCoreTool(name: string): boolean {
         'search_evidence',
         'get_person_identity',
         'get_pr_cycle_time',
+        'get_pr_risk',
         'get_recent_commits',
     ].includes(name);
 }

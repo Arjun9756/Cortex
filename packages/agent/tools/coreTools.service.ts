@@ -427,7 +427,7 @@ export async function executeGetRepoContributors(input: GetRepoContributorsInput
         // If primaryOwner is recorded in PostgreSQL but wasn't in graph contributors list, add them
         if (primaryOwner && !contributors.some(c => c.name.toLowerCase() === primaryOwner!.toLowerCase())) {
             contributors.unshift({ name: primaryOwner, commits: storedCommitCount > 0 ? storedCommitCount : 1, role: 'Primary Owner' });
-        } else if (contributors.length === 1 && storedCommitCount > contributors[0].commits) {
+        } else if (contributors.length === 1 && contributors[0] && storedCommitCount > contributors[0].commits) {
             contributors[0].commits = storedCommitCount;
         }
 

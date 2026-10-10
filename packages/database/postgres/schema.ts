@@ -77,7 +77,7 @@ export async function ensurePostgresTables(): Promise<void> {
             CREATE TABLE IF NOT EXISTS repo_metrics (
                 id SERIAL PRIMARY KEY,
                 source VARCHAR(255) NOT NULL,
-                external_id VARCHAR(255) UNIQUE,
+                external_id VARCHAR(255),
                 repo_name VARCHAR(255) NOT NULL,
                 bus_factor NUMERIC(4, 1) DEFAULT 1.0,
                 risk_score INTEGER DEFAULT 0,
@@ -93,10 +93,7 @@ export async function ensurePostgresTables(): Promise<void> {
         await sql`ALTER TABLE repo_metrics ADD COLUMN IF NOT EXISTS primary_owner_percentage NUMERIC(5, 2) DEFAULT 0`;
         await sql`ALTER TABLE repo_metrics ADD COLUMN IF NOT EXISTS technologies JSONB`;
         await sql`ALTER TABLE repo_metrics ADD COLUMN IF NOT EXISTS top_contributors JSONB`;
-        await sql`
-            CREATE UNIQUE INDEX IF NOT EXISTS repo_metrics_external_id_idx 
-            ON repo_metrics(external_id)
-        `;
+        // Note: Uniqueness is enforced on (source, external_id) via repo_metrics_source_external_id_uniq below
 
         // 4. Technology Metrics Table (Tech footprint & expertise mapping)
         await sql`

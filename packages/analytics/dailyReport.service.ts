@@ -133,7 +133,8 @@ export async function aggregateDailyReportData(): Promise<DailyReportData> {
             `);
             activeContributors = result.records.map(r => r.get('name')).filter(Boolean);
         } catch (e: any) {
-            console.warn('[DailyReport] Neo4j active contributors error:', e?.message);
+            console.warn('[DailyReport] Neo4j active contributors notice (using PostgreSQL person_metrics fallback):', e?.message);
+            activeContributors = (highRiskPeopleRows || []).map(r => r.person_name).filter(Boolean).slice(0, 10);
         }
 
         const totalRepos = repoStats?.count ?? 15;

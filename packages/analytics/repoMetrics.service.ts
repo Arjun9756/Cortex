@@ -112,7 +112,7 @@ async function resolveRepoTechnologies(
     return technologies;
 }
 
-export async function calculateAllRepoMetrics(source: DataSource) {
+export async function calculateAllRepoMetrics(source: DataSource = 'webhook') {
     const session = neo4jSession();
     const trustedSources = aggregationSources(source);
 

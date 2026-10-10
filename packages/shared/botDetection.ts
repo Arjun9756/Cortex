@@ -44,6 +44,20 @@ const KNOWN_BOT_USERNAMES = new Set([
     'cla-assistant[bot]',
     'custom-ci-auto',
     'jira-sentry-automation[bot]',
+    'jira-bot',
+    'jira[bot]',
+    'atlassian-addons-admin',
+    'slack-jira-bot',
+    'vercel[bot]',
+    'netlify[bot]',
+    'coveralls[bot]',
+    'linear[bot]',
+    'gitguardian[bot]',
+    'copilot[bot]',
+    'github-app[bot]',
+    'datadog[bot]',
+    'datadog-agent',
+    'k8s-ci-robot',
 ]);
 
 /**
@@ -61,8 +75,10 @@ export function isBotAccount(
 
     for (const cand of candidates) {
         if (cand.endsWith('[bot]')) return true;
-        if (cand.startsWith('bot-') || cand.startsWith('bot_') || cand.endsWith('-bot') || cand.endsWith('_bot')) return true;
+        if (cand.startsWith('bot-') || cand.startsWith('bot_') || cand.endsWith('-bot') || cand.endsWith('_bot') || cand.includes('bot/')) return true;
         if (KNOWN_BOT_USERNAMES.has(cand)) return true;
+        if (cand.includes('bot') && (cand.includes('github') || cand.includes('slack') || cand.includes('jira') || cand.includes('ci') || cand.includes('automation') || cand.includes('action'))) return true;
+        if (cand.startsWith('addon_') || cand.startsWith('app_') || cand === 'automation') return true;
     }
 
     if (email) {

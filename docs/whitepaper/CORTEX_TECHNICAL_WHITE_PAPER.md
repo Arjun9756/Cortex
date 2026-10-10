@@ -46,6 +46,9 @@
 7. [What Cortex Guarantees & What It Honestly Does Not](#7-what-cortex-guarantees--what-it-honestly-does-not)
    - 7.1 Explicit System Guarantees
    - 7.2 Explicit System Non-Guarantees & Hard Boundaries
+   - 7.3 The Honest Capability Matrix (What Cortex Can Do vs. What It Cannot)
+   - 7.4 Automated Degradation Resilience & Fallback Guarantees
+   - 7.5 Universal Multi-Provider Bot Quarantine Standard
 8. [Practical Scenarios & Operational Use Cases](#8-practical-scenarios--operational-use-cases)
    - 8.1 Scenario A: Sudden Senior Architect Resignation
    - 8.2 Scenario B: Mid-Level Engineer Fast-Track Onboarding
@@ -697,6 +700,42 @@ Defensibility requires absolute honesty regarding capabilities and limitations. 
 3. **No Employee Surveillance or Productivity Evaluation:** Cortex **does not** rank developers by productivity, typing speed, or working hours. Commit counts are explicitly qualified as activity footprint indicators, never performance scores. Cortex refuses feature requests for developer ranking leaderboards.
 4. **No Guarantee of Successor Willingness:** Cortex calculates technical and contextual compatibility for potential successors; it **cannot** guarantee that a candidate is willing, contracted, or interpersonally suited to inherit a given service.
 5. **No Autonomous Code Modification:** Cortex is an observational intelligence layer; it **never** alters repository code, auto-merges pull requests, or modifies production configurations.
+
+### 7.3 The Honest Capability Matrix (What Cortex Can Do vs. What It Cannot)
+
+To ensure engineering leaders and team members have complete, unvarnished clarity, the table below defines the definitive boundary of the Cortex platform:
+
+| Dimension | What Cortex Honestly DOES | What Cortex Honestly CANNOT / WILL NOT Do |
+| :--- | :--- | :--- |
+| **Architectural Knowledge** | Traces commit lineage, file ownership shares, and cross-service dependencies based on verified Git and PR history. | Cannot read human minds or capture undocumented conversations held in hallway chats, offline phone calls, or physical whiteboards. |
+| **Bus Factor Risk** | Mathematically computes how many contributors represent $\ge 50\%$ of code ownership and flags fragile Single Points of Failure ($BF \le 1$). | Does not evaluate code quality, algorithmic elegance, bug counts, or test coverage. A codebase with $BF=4$ can still be architecturally flawed. |
+| **Successor Planning** | Evaluates code stack familiarity, shared repository history, and existing workload capacity to suggest successor candidates. | Cannot guarantee a recommended engineer is willing, available, contracted, or interpersonally prepared to take on ownership. |
+| **Pull Request Review Velocity** | Measures real wall-clock review turnaround time, lead time distribution, and p90 tail latency, excluding draft time and bots. | Does not judge whether a pull request review was thorough, constructive, or mathematically sound. |
+| **Pre-Merge PR Risk** | Computes pre-merge risk ($0–100$) based on file blast radius, repository bus factor, author unfamiliarity, and critical file ownership. | Does not block or alter CI builds autonomously; provides advisory risk intelligence for engineering leaders and reviewers. |
+| **Developer Activity** | Tracks commits, active pull requests, and verified contributions as architectural footprints. | Strictly **REFUSES** to rank developers on productivity, typing speed, or leaderboards. Cortex is not an employee surveillance tool. |
+| **System High Availability** | Gracefully falls back to relational PostgreSQL event ledgers if graph discovery or vector layers experience cloud pauses or maintenance. | Cannot fabricate missing historical data if tool webhooks were disconnected or unconfigured during a historical period. |
+| **Data Privacy & Governance** | Deploys 100% inside the customer Virtual Private Cloud (BYOC) with zero raw source code egress and automated row-level security. | Cannot govern data outside the customer's cloud boundary if third-party webhook credentials are mismanaged by customer operators. |
+
+### 7.4 Automated Degradation Resilience & Fallback Guarantees
+
+In modern enterprise cloud environments, downstream graph databases or vector search engines may undergo maintenance, network blips, or automatic cloud provider tier pauses. 
+
+Cortex is architected with a **Multi-Tier Degradation Shield**:
+1. **Graph Maintenance Fallback:** If the primary Neo4j property graph instance is temporarily unreachable or undergoing maintenance, all background calculation services (`personMetrics.service.ts`, `technologyMetrics.ts`, `knowledge.risk.predict.ts`, `dailyReport.service.ts`) automatically and gracefully fall back to querying verified PostgreSQL relational event ledgers (`events`, `person_identity`, `repo_metrics`).
+2. **Zero-Crash Invariant:** Webhook ingestion workers, background metric recalculation schedules, and dashboard APIs never throw fatal unhandled exceptions during graph unavailability. Dashboards serve resilient relational aggregates while graph routing tables recover.
+3. **Automatic Reconnection:** Once the Neo4j instance restores availability, workers seamlessly resume full topology graph traversals and write-batch syncing without manual operator intervention.
+
+### 7.5 Universal Multi-Provider Bot Quarantine Standard
+
+A major source of distorted engineering metrics across traditional tools is **automated bot contamination**: CI/CD runners, dependency update bots, and automation service accounts being misidentified as human engineers. This artificially inflates headcount, distorts bus factor calculations, and recommends automated runners as repository owners.
+
+Cortex enforces a **Universal Multi-Provider Bot Quarantine Standard** (`packages/shared/botDetection.ts`):
+1. **Multi-Source Pattern Matching:** Automatically identifies bots across GitHub, Slack, and Jira using:
+   - Account syntax markers: `[bot]`, `bot-`, `bot_`, `-bot`, `_bot`.
+   - Known enterprise bot identifiers: `dependabot`, `renovate`, `github-actions`, `snyk-bot`, `codecov`, `slackbot`, `jira-bot`, `atlassian-addons-admin`, `vercel[bot]`, `linear[bot]`, `datadog[bot]`, `k8s-ci-robot`.
+   - Header & email heuristics: `noreply@github.com`, `automation@atlassian.com`, and Jira application account types (`user.accountType === 'app'`).
+2. **Strict Identity Isolation:** Identified bots are permanently tagged with `is_bot = true` in PostgreSQL `person_identity` and quarantined with unique `bot_<id>` identifiers. They are structurally blocked from being merged with any human engineer identity.
+3. **Universal Analytics Exclusion:** All Cypher queries enforce `CYPHER_BOT_FILTER`, and all SQL aggregations enforce `(is_bot IS FALSE OR is_bot IS NULL)`. Bots can never hold code ownership, cannot count toward human repository bus factor, and are permanently excluded from successor candidate pools.
 
 ---
 

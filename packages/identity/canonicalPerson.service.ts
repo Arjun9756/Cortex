@@ -5,6 +5,7 @@ import { calculateNameSimilarity } from './stringSimilarity.js';
 import { createGroqChatCompletion } from '../llm/providers/groq.js';
 import { upsertCanonicalPersonNode, upsertIdentityNode, runGraphWrite } from '../database/neo4j/graph.repository.js';
 import { assertDataSource, aggregationSources, type DataSource } from '../database/provenance.js';
+import { isBotAccount } from '../shared/botDetection.js';
 
 export type SupportedProvider =
     | 'github'
@@ -116,7 +117,7 @@ export async function resolveIdentity(input: ProviderIdentityInput): Promise<Ide
     const cleanUsername = username ? username.trim().toLowerCase() : null;
     const cleanDisplayName = displayName ? displayName.trim() : (username || externalId);
     const trustedSources = aggregationSources(input.source);
-    const isBot = Boolean(input.isBot);
+    const isBot = Boolean(input.isBot) || isBotAccount(cleanDisplayName, cleanEmail, cleanUsername, externalId);
     const isActive = input.isActive !== false;
 
     // Step 0: Check if identity is already linked to a canonical person in Postgres (Preserves confirmed merges)

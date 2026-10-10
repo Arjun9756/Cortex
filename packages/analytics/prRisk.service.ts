@@ -56,8 +56,8 @@ export async function evaluatePullRequestRisk(input: PullRequestRiskInput): Prom
     try {
         // 2. Blast Radius & Dependent Nodes (Max 2 Hops, Localized Subgraph)
         let blastRadiusCount = 0;
-        const affectedReposSet = new Set<string>([repository]);
-        const affectedPeopleSet = new Set<string>([author]);
+        const affectedReposSet = new Set<string>(repository ? [repository] : []);
+        const affectedPeopleSet = new Set<string>(author && author !== 'unknown' ? [author] : []);
         const criticalFiles: string[] = [];
 
         if (modifiedFiles.length > 0) {
@@ -90,7 +90,8 @@ export async function evaluatePullRequestRisk(input: PullRequestRiskInput): Prom
 
         // 3. Repository Health & Bus Factor from Postgres
         let repoBusFactor = 2;
-        try {
+        if (repository) {
+            try {
             const [repoMetrics] = await sql`
                 SELECT bus_factor, risk_score 
                 FROM repo_metrics 
@@ -104,19 +105,23 @@ export async function evaluatePullRequestRisk(input: PullRequestRiskInput): Prom
         } catch (dbErr: any) {
             console.warn(`[PRRisk] Repo metrics read warning: ${dbErr?.message}`);
         }
+        }
 
         // 4. Knowledge Risk of PR Author
         let authorRiskPercent = 40;
-        try {
+        if (author && author !== 'unknown') {
+            try {
             const personRisk = await calculateKnowledgeRisk(author);
             authorRiskPercent = Math.round(personRisk.totalRisk * 100);
         } catch (personErr: any) {
             console.warn(`[PRRisk] Knowledge risk calc warning for ${author}: ${personErr?.message}`);
         }
+        }
 
         // 5. Previous Incidents touching same repo / files
         let incidentCount = 0;
-        try {
+        if (repository) {
+            try {
             const incidentEvents = await sql`
                 SELECT COUNT(*) as count 
                 FROM events 
@@ -127,6 +132,7 @@ export async function evaluatePullRequestRisk(input: PullRequestRiskInput): Prom
             incidentCount = Number(incidentEvents[0]?.count ?? 0);
         } catch (err: any) {
             console.warn(`[PRRisk] Incident events read warning: ${err?.message}`);
+        }
         }
 
         // 6. Compute Weighted Risk Score (0-100)
@@ -155,10 +161,10 @@ export async function evaluatePullRequestRisk(input: PullRequestRiskInput): Prom
             recommendations.push(`Critical files modified (${criticalFiles.length}). Require secondary owner sign-off.`);
         }
         if (repoBusFactor <= 1) {
-            recommendations.push(`Repository "${repository}" has Bus Factor of 1. Ensure documentation is updated.`);
+            recommendations.push(repository ? `Repository "${repository}" has Bus Factor of 1. Ensure documentation is updated.` : `Target repository has Bus Factor of 1. Ensure documentation is updated.`);
         }
         if (authorRiskPercent >= 70) {
-            recommendations.push(`Author "${author}" has high departure/knowledge risk. Code review by senior peer required.`);
+            recommendations.push(author && author !== 'unknown' ? `Author "${author}" has high departure/knowledge risk. Code review by senior peer required.` : 'Author has high departure/knowledge risk. Code review by senior peer required.');
         }
         if (recommendations.length === 0) {
             recommendations.push('Standard peer review recommended before merging.');

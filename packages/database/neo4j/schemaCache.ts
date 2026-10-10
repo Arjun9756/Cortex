@@ -51,7 +51,15 @@ export async function getGraphSchema(): Promise<GraphSchema> {
             return schemaCache
         }
 
-        throw error
+        // Resilient default fallback schema when Neo4j is degraded or unseeded
+        const fallbackSchema: GraphSchema = {
+            nodeLabels: ['PERSON', 'REPOSITORY', 'TECHNOLOGY', 'COMMIT', 'PULL_REQUEST', 'ISSUE', 'FILE'],
+            relationshipTypes: ['CONTRIBUTED_TO', 'AUTHORED', 'WORKS_ON', 'USES', 'DEPENDS_ON', 'PART_OF', 'ASSIGNED_TO'],
+            lastUpdated: now
+        }
+        schemaCache = fallbackSchema
+        console.warn('[Schema Cache] Returning default graph schema fallback due to Neo4j unavailability')
+        return fallbackSchema
 
     } finally {
         await session.close()

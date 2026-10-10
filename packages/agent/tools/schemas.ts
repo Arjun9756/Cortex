@@ -275,7 +275,7 @@ export const GetPrCycleTimeOutputSchema = z.object({
             min: z.number(),
             max: z.number(),
             average: z.number(),
-        }),
+        }).optional(),
         wallClockHours: z.object({
             median: z.number(),
             p90: z.number(),
@@ -284,8 +284,8 @@ export const GetPrCycleTimeOutputSchema = z.object({
             min: z.number(),
             max: z.number(),
             average: z.number(),
-        }),
-        unit: z.literal('business_hours'),
+        }).optional(),
+        unit: z.string().optional(),
     }),
     totalLeadTime: z.object({
         headlineHours: z.number(),
@@ -507,3 +507,11 @@ export type GraphSearchInput = z.infer<typeof GraphSearchSchema>;
 export type VectorSearchInput = z.infer<typeof VectorSearchSchema>;
 export type KnowledgeRiskInput = z.infer<typeof KnowledgeRiskLegacySchema>;
 export type SqlSearchInput = z.infer<typeof SqlSearchSchema>;
+
+// 13. get_pr_risk
+export const GetPrRiskInputSchema = z.object({
+    repo: z.string().optional().describe('Repository name for PR risk evaluation'),
+    prNumber: z.number().int().optional().describe('Pull request number'),
+    author: z.string().optional().describe('PR author name or login'),
+});
+export type GetPrRiskInput = z.infer<typeof GetPrRiskInputSchema>;

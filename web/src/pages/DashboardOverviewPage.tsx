@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import {
   getDashboardOverview,
   getRepositoryDetails,
+  getPrMetrics,
   type DashboardOverviewResponse,
   type RiskAlertItem,
   type RepositoryDetails,
+  type PrMetricsReport,
 } from '../lib/api';
 import type { NavTab } from '../components/Sidebar';
 import { RISK_THRESHOLDS } from '../constants/riskThresholds';
@@ -29,6 +31,8 @@ import {
   TrendingDown,
   BarChart3,
   Database,
+  GitPullRequest,
+  Clock,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -70,6 +74,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [loadTimeMs, setLoadTimeMs] = useState<number | null>(null);
+  const [prData, setPrData] = useState<PrMetricsReport | null>(null);
 
   // Detail Modal state for Repositories
   const [selectedRepoDetails, setSelectedRepoDetails] = useState<RepositoryDetails | null>(null);
@@ -87,8 +92,18 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const res = await getDashboardOverview();
-      setData(res);
+      const [res, prRes] = await Promise.allSettled([
+        getDashboardOverview(),
+        getPrMetrics({ days: 30 })
+      ]);
+      if (res.status === 'fulfilled') {
+        setData(res.value);
+      } else {
+        throw res.reason;
+      }
+      if (prRes.status === 'fulfilled' && prRes.value?.status) {
+        setPrData(prRes.value.metrics);
+      }
       const endTime = performance.now();
       setLoadTimeMs(Math.round(endTime - startTime));
       if (onSyncUpdated) {
@@ -585,6 +600,129 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             <div className="text-center space-y-1">
               <BarChart3 className="h-8 w-8 mx-auto text-slate-600" />
               <p>No activity trend data available yet.</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─── ROW 4b: PULL REQUEST VELOCITY & TURNAROUND PREVIEW ─────────────── */}
+      <div className="p-5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+              <GitPullRequest className="h-4 w-4 text-cyan-400" />
+              <span>Pull Request Review Cycle & Throughput (30D)</span>
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              Real-time review velocity, code turnaround distribution, and active pull requests.
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigate('pull-requests')}
+            className="text-xs text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 cursor-pointer transition-colors"
+          >
+            <span>View Full PR Analytics</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {prData ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+              <div className="p-3 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)]">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Median Review Turnaround</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-lg font-bold text-white font-mono">
+                    {prData.reviewCycleTime?.headlineHours ?? 0}h
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">p50 wall-clock</span>
+                </div>
+              </div>
+              <div className="p-3 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)]">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">90th Percentile (p90)</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-lg font-bold text-amber-400 font-mono">
+                    {prData.reviewCycleTime?.wallClockHours?.p90 ?? prData.reviewCycleTime?.headlineHours ?? 0}h
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">tail latency</span>
+                </div>
+              </div>
+              <div className="p-3 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)]">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Open PR Backlog</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-lg font-bold text-cyan-400 font-mono">
+                    {prData.counts?.openPrs ?? 0}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">active items</span>
+                </div>
+              </div>
+              <div className="p-3 bg-[var(--bg-subtle)] rounded-md border border-[var(--border-subtle)]">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium block">Human Merged PRs</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-lg font-bold text-emerald-400 font-mono">
+                    {prData.counts?.mergedHumanPrs ?? 0}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">30d evaluated</span>
+                </div>
+              </div>
+            </div>
+
+            {prData.evaluatedPrs && prData.evaluatedPrs.length > 0 ? (
+              <div className="overflow-x-auto mt-2">
+                <table className="cortex-table">
+                  <thead>
+                    <tr>
+                      <th>Pull Request</th>
+                      <th>Repository</th>
+                      <th>Author</th>
+                      <th>Review Time</th>
+                      <th>Lines Changed</th>
+                      <th className="text-right">State</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prData.evaluatedPrs.slice(0, 5).map((pr) => (
+                      <tr key={pr.prId || `${pr.repoName}-${pr.number}`}>
+                        <td className="font-medium text-white max-w-[280px] truncate">
+                          <span className="text-slate-400 font-mono mr-1.5">#{pr.number}</span>
+                          <span title={pr.title}>{pr.title}</span>
+                        </td>
+                        <td className="font-mono text-xs text-indigo-300">{pr.repoName}</td>
+                        <td className="text-xs text-slate-300">{pr.author}</td>
+                        <td className="font-mono text-xs text-slate-300">
+                          {pr.reviewTimeWallClockHours !== null ? `${pr.reviewTimeWallClockHours.toFixed(1)}h` : 'In Review'}
+                        </td>
+                        <td className="font-mono text-xs">
+                          <span className="text-emerald-400">+{pr.additions}</span>{' '}
+                          <span className="text-rose-400">-{pr.deletions}</span>
+                        </td>
+                        <td className="text-right">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider font-semibold ${
+                            pr.state === 'merged'
+                              ? 'bg-purple-950/50 text-purple-300 border border-purple-800/60'
+                              : pr.state === 'open'
+                              ? 'bg-emerald-950/50 text-emerald-300 border border-emerald-800/60'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}>
+                            {pr.state}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-4 bg-[var(--bg-subtle)] rounded border border-[var(--border-subtle)] text-xs text-[var(--text-muted)] text-center">
+                <span>No individual PR items to display for the selected timeframe.</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="h-24 flex items-center justify-center text-xs text-[var(--text-muted)]">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-slate-500 animate-spin" />
+              <span>Loading PR throughput metrics...</span>
             </div>
           </div>
         )}

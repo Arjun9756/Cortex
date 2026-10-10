@@ -165,6 +165,74 @@ export function startMetricsScheduler() {
     runAnalyticsJob('webhook').catch(err => {
         console.error('[Scheduler] Initial startup metrics calculation error:', err?.message ?? err)
     })
+
+    // 5. 5-Hour Keepalive Ping for Multi-Cloud Persistence (Postgres, Neo4j, Qdrant, Redis)
+    cron.schedule('0 */5 * * *', async () => {
+        await runCloudKeepalivePing();
+    }, {
+        name: "CloudKeepaliveJob"
+    });
+    console.log('[Scheduler] Multi-cloud keepalive scheduled — runs every 5 hours');
+}
+
+/**
+ * Multi-Cloud Keepalive Ping Service
+ * Runs every 5 hours to prevent idle sleep / hibernation on cloud instances:
+ * - PostgreSQL: SELECT 1
+ * - Neo4j: RETURN 1
+ * - Qdrant: getCollections()
+ * - Redis: PING
+ */
+export async function runCloudKeepalivePing(): Promise<{
+    postgres: boolean;
+    neo4j: boolean;
+    qdrant: boolean;
+    redis: boolean;
+}> {
+    const results = { postgres: false, neo4j: false, qdrant: false, redis: false };
+
+    // 1. PostgreSQL Keepalive
+    try {
+        await sql`SELECT 1 AS keepalive`;
+        results.postgres = true;
+    } catch (pgErr: any) {
+        console.warn('[Keepalive] Postgres keepalive warning:', pgErr?.message);
+    }
+
+    // 2. Neo4j Keepalive
+    try {
+        const { driver, neo4jDatabase } = await import('../../apps/api/config/neo4j.js');
+        const session = driver.session({ database: neo4jDatabase });
+        try {
+            await session.run('RETURN 1 AS keepalive');
+            results.neo4j = true;
+        } finally {
+            await session.close();
+        }
+    } catch (neoErr: any) {
+        console.warn('[Keepalive] Neo4j keepalive warning:', neoErr?.message);
+    }
+
+    // 3. Qdrant Keepalive
+    try {
+        const { default: qdrantClient } = await import('../../apps/api/config/qdrant.js');
+        await qdrantClient.getCollections();
+        results.qdrant = true;
+    } catch (qdErr: any) {
+        console.warn('[Keepalive] Qdrant keepalive warning:', qdErr?.message);
+    }
+
+    // 4. Redis Keepalive
+    try {
+        const { default: redis } = await import('../../apps/api/config/redis.js');
+        const pong = await redis.ping();
+        results.redis = pong === 'PONG';
+    } catch (redErr: any) {
+        console.warn('[Keepalive] Redis keepalive warning:', redErr?.message);
+    }
+
+    console.log(`[Keepalive] Multi-cloud health ping: Postgres=${results.postgres}, Neo4j=${results.neo4j}, Qdrant=${results.qdrant}, Redis=${results.redis}`);
+    return results;
 }
 
 export async function runMetricsNow(source: DataSource) {

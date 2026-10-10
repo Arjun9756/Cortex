@@ -21,6 +21,10 @@ export interface PrMetricRecord {
     number: number;
     title: string;
     author: string;
+    authorEmail?: string | null;
+    mergedBy?: string | null;
+    mergerEmail?: string | null;
+    reviewers?: Array<{ name: string; email?: string }>;
     isBot: boolean;
     isDraft: boolean;
     createdAt: string;
@@ -326,6 +330,22 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
         }
     }
 
+    const userEmailMap = new Map<string, string>();
+    try {
+        const identityRows = await sql`
+            SELECT LOWER(username) AS username, email
+            FROM person_identity
+            WHERE email IS NOT NULL AND source IN ${sql([...trustedSources])}
+        `;
+        for (const row of identityRows) {
+            if (row.username && row.email) {
+                userEmailMap.set(row.username.toLowerCase(), row.email);
+            }
+        }
+    } catch {
+        // Non-blocking fallback if person_identity table not available
+    }
+
     const prRecords: PrMetricRecord[] = [];
     const allEvaluatedPrs: PrMetricRecord[] = [];
     let totalEvaluated = 0;
@@ -381,12 +401,30 @@ export async function calculatePrMetrics(options: PrMetricsOptions = {}): Promis
             }
         }
 
+        // Attribution: author, merger, reviewers
+        const authorEmail = pr.user?.email || pr.head?.user?.email || pr.author_email || userEmailMap.get(author.toLowerCase()) || null;
+        const mergedBy = pr.merged_by?.login || pr.merged_by?.name || (state === 'merged' ? (pr.sender?.login || null) : null);
+        const mergerEmail = pr.merged_by?.email || (mergedBy ? userEmailMap.get(mergedBy.toLowerCase()) : null) || null;
+
+        const rawReviewers = pr.requested_reviewers || pr.reviewers || [];
+        const reviewers: Array<{ name: string; email?: string }> = Array.isArray(rawReviewers)
+            ? rawReviewers.map((r: any) => {
+                const rName = r.login || r.name || String(r);
+                const rEmail = r.email || userEmailMap.get(rName.toLowerCase()) || undefined;
+                return { name: rName, email: rEmail };
+            })
+            : [];
+
         const record: PrMetricRecord = {
             prId: key,
             repoName: item.repoName,
             number: Number(item.prNumber) || 0,
             title: pr.title || 'Untitled PR',
             author,
+            authorEmail,
+            mergedBy,
+            mergerEmail,
+            reviewers,
             isBot,
             isDraft,
             createdAt: createdDate.toISOString(),

@@ -8,7 +8,9 @@ import {
   Bot,
   Layers,
   ArrowUpDown,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import {
   BarChart,
@@ -58,9 +60,11 @@ export const PullRequestsPage: React.FC = () => {
   // Outlier Modal
   const [isOutlierModalOpen, setIsOutlierModalOpen] = useState<boolean>(false);
 
-  // Table Sorting
+  // Table Sorting & Pagination
   const [sortField, setSortField] = useState<string>('mergedHumanPrs');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   // Load available repositories list once
   useEffect(() => {
@@ -109,6 +113,7 @@ export const PullRequestsPage: React.FC = () => {
   };
 
   useEffect(() => {
+    setCurrentPage(1);
     fetchMetrics();
   }, [selectedDays, selectedRepo, includeBots]);
 
@@ -745,93 +750,201 @@ export const PullRequestsPage: React.FC = () => {
           </span>
         </div>
 
-        {(!headlineMetrics?.evaluatedPrs || headlineMetrics.evaluatedPrs.length === 0) ? (
-          <div className="py-12 flex flex-col items-center justify-center text-center space-y-2 text-[var(--text-muted)] text-xs">
-            <GitPullRequest className="w-8 h-8 opacity-40" />
-            <p className="font-medium text-[var(--text-secondary)]">No pull requests evaluated in this timeframe.</p>
-            <p className="text-[11px]">Open or merge a pull request on a connected repository to see it tracked here in real time.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto border border-[var(--border-subtle)] rounded-lg">
-            <table className="cortex-table">
-              <thead>
-                <tr>
-                  <th>PR # &amp; Title</th>
-                  <th>Repository</th>
-                  <th>Author</th>
-                  <th>State</th>
-                  <th className="text-right">Review Cycle Time</th>
-                  <th className="text-right">Total Lead Time</th>
-                  <th className="text-right">Changes</th>
-                  <th>Created At</th>
-                  <th>Merged / Closed At</th>
-                </tr>
-              </thead>
-              <tbody>
-                {headlineMetrics.evaluatedPrs.map((pr: EvaluatedPrItem) => {
-                  const stateBadge = pr.state === 'merged' 
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                    : pr.state === 'open'
-                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                      : 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        {(() => {
+          const allPrs = headlineMetrics?.evaluatedPrs || [];
+          const totalItems = allPrs.length;
+          const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          const startIndex = (currentPage - 1) * pageSize;
+          const paginatedPrs = allPrs.slice(startIndex, startIndex + pageSize);
 
-                  const formatTimestamp = (iso: string | null | undefined) => {
-                    if (!iso) return '—';
-                    const d = new Date(iso);
-                    return isNaN(d.getTime()) ? '—' : d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                  };
+          if (totalItems === 0) {
+            return (
+              <div className="py-12 flex flex-col items-center justify-center text-center space-y-2 text-[var(--text-muted)] text-xs">
+                <GitPullRequest className="w-8 h-8 opacity-40" />
+                <p className="font-medium text-[var(--text-secondary)]">No pull requests evaluated in this timeframe.</p>
+                <p className="text-[11px]">Open or merge a pull request on a connected repository to see it tracked here in real time.</p>
+              </div>
+            );
+          }
 
-                  return (
-                    <tr key={pr.prId || `${pr.repoName}#${pr.number}`}>
-                      <td>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-mono text-xs font-bold text-indigo-400">#{pr.number}</span>
-                          <span className="font-medium text-xs text-[var(--text-primary)] max-w-xs truncate" title={pr.title}>
-                            {pr.title}
-                          </span>
-                          {pr.isDraft && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
-                              Draft
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="font-mono text-xs text-[var(--text-secondary)]">
-                        {pr.repoName}
-                      </td>
-                      <td className="text-xs text-[var(--text-secondary)]">
-                        <span className="font-mono">{pr.author}</span>
-                        {pr.isBot && <span className="ml-1 text-[10px] text-amber-400 font-semibold">[BOT]</span>}
-                      </td>
-                      <td>
-                        <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border ${stateBadge}`}>
-                          {pr.state}
-                        </span>
-                      </td>
-                      <td className="text-right font-mono text-xs font-semibold text-[var(--text-primary)]">
-                        {pr.state === 'merged' ? formatPrDuration(pr.reviewTimeWallClockHours) : '—'}
-                      </td>
-                      <td className="text-right font-mono text-xs text-[var(--text-secondary)]">
-                        {pr.state === 'merged' ? formatPrDuration(pr.totalLeadTimeHours) : '—'}
-                      </td>
-                      <td className="text-right font-mono text-xs">
-                        <span className="text-emerald-400">+{pr.additions}</span>
-                        <span className="text-[var(--text-muted)] mx-1">/</span>
-                        <span className="text-rose-400">-{pr.deletions}</span>
-                      </td>
-                      <td className="font-mono text-xs text-[var(--text-muted)]">
-                        {formatTimestamp(pr.createdAt)}
-                      </td>
-                      <td className="font-mono text-xs text-[var(--text-muted)]">
-                        {formatTimestamp(pr.mergedAt || pr.closedAt)}
-                      </td>
+          return (
+            <div className="space-y-4">
+              <div className="overflow-x-auto border border-[var(--border-subtle)] rounded-lg">
+                <table className="cortex-table">
+                  <thead>
+                    <tr>
+                      <th>PR # &amp; Title</th>
+                      <th>Repository</th>
+                      <th>Author</th>
+                      <th>Merged By</th>
+                      <th>Reviewers</th>
+                      <th>State</th>
+                      <th className="text-right">Review Cycle Time</th>
+                      <th className="text-right">Total Lead Time</th>
+                      <th className="text-right">Changes</th>
+                      <th>Created At</th>
+                      <th>Merged / Closed At</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                  </thead>
+                  <tbody>
+                    {paginatedPrs.map((pr: EvaluatedPrItem) => {
+                      const stateBadge = pr.state === 'merged' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : pr.state === 'open'
+                          ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                          : 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+
+                      const formatTimestamp = (iso: string | null | undefined) => {
+                        if (!iso) return '—';
+                        const d = new Date(iso);
+                        return isNaN(d.getTime()) ? '—' : d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                      };
+
+                      return (
+                        <tr key={pr.prId || `${pr.repoName}#${pr.number}`}>
+                          <td>
+                            <div className="flex items-center space-x-2">
+                              <span className="font-mono text-xs font-bold text-indigo-400">#{pr.number}</span>
+                              <span className="font-medium text-xs text-[var(--text-primary)] max-w-xs truncate" title={pr.title}>
+                                {pr.title}
+                              </span>
+                              {pr.isDraft && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                                  Draft
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="font-mono text-xs text-[var(--text-secondary)]">
+                            {pr.repoName}
+                          </td>
+                          <td className="text-xs text-[var(--text-secondary)]">
+                            <div className="flex flex-col">
+                              <div className="flex items-center space-x-1">
+                                <span className="font-mono font-medium text-[var(--text-primary)]">{pr.author}</span>
+                                {pr.isBot && <span className="text-[10px] text-amber-400 font-semibold">[BOT]</span>}
+                              </div>
+                              {pr.authorEmail && (
+                                <span className="text-[10px] font-mono text-[var(--text-muted)] truncate max-w-[140px]" title={pr.authorEmail}>
+                                  {pr.authorEmail}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-xs text-[var(--text-secondary)]">
+                            {pr.state === 'merged' && (pr.mergedBy || pr.mergerEmail) ? (
+                              <div className="flex flex-col">
+                                <span className="font-mono text-[var(--text-primary)]">{pr.mergedBy || 'Merger'}</span>
+                                {pr.mergerEmail && (
+                                  <span className="text-[10px] font-mono text-[var(--text-muted)] truncate max-w-[140px]" title={pr.mergerEmail}>
+                                    {pr.mergerEmail}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[var(--text-muted)] font-mono">—</span>
+                            )}
+                          </td>
+                          <td className="text-xs text-[var(--text-secondary)]">
+                            {pr.reviewers && pr.reviewers.length > 0 ? (
+                              <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                {pr.reviewers.map((rev, rIdx) => (
+                                  <span
+                                    key={rIdx}
+                                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700"
+                                    title={rev.email ? `${rev.name} <${rev.email}>` : rev.name}
+                                  >
+                                    {rev.name}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[var(--text-muted)] font-mono text-[11px]">None assigned</span>
+                            )}
+                          </td>
+                          <td>
+                            <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border ${stateBadge}`}>
+                              {pr.state}
+                            </span>
+                          </td>
+                          <td className="text-right font-mono text-xs font-semibold text-[var(--text-primary)]">
+                            {pr.state === 'merged' ? formatPrDuration(pr.reviewTimeWallClockHours) : '—'}
+                          </td>
+                          <td className="text-right font-mono text-xs text-[var(--text-secondary)]">
+                            {pr.state === 'merged' ? formatPrDuration(pr.totalLeadTimeHours) : '—'}
+                          </td>
+                          <td className="text-right font-mono text-xs">
+                            <span className="text-emerald-400">+{pr.additions}</span>
+                            <span className="text-[var(--text-muted)] mx-1">/</span>
+                            <span className="text-rose-400">-{pr.deletions}</span>
+                          </td>
+                          <td className="font-mono text-xs text-[var(--text-muted)]">
+                            {formatTimestamp(pr.createdAt)}
+                          </td>
+                          <td className="font-mono text-xs text-[var(--text-muted)]">
+                            {formatTimestamp(pr.mergedAt || pr.closedAt)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalItems > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
+                  <div className="flex items-center space-x-3">
+                    <span>
+                      Showing <strong>{startIndex + 1}</strong> to <strong>{Math.min(startIndex + pageSize, totalItems)}</strong> of <strong>{totalItems}</strong> pull requests
+                    </span>
+                    <span className="text-slate-600">|</span>
+                    <label className="flex items-center space-x-1.5">
+                      <span>Per page:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded px-2 py-0.5 text-xs text-[var(--text-primary)] focus:outline-none"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1}
+                      className="px-2.5 py-1 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--border-subtle)] transition-colors flex items-center space-x-1"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>Prev</span>
+                    </button>
+
+                    <span className="font-mono text-xs text-[var(--text-secondary)] px-2">
+                      Page {currentPage} of {totalPages}
+                    </span>
+
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage >= totalPages}
+                      className="px-2.5 py-1 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--border-subtle)] transition-colors flex items-center space-x-1"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ─── 5. Noise & Bot Transparency Footnote ──────────────────── */}

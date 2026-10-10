@@ -951,7 +951,26 @@ export async function getPrCycleTimeMetrics(req: Request, res: Response) {
             );
         }
 
-        res.json({ status: true, metrics, repoBreakdown });
+        const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+        const pageSize = Math.max(1, Math.min(100, parseInt(req.query.pageSize as string, 10) || 15));
+        const totalEvaluated = metrics.evaluatedPrs?.length || 0;
+        const totalPages = Math.max(1, Math.ceil(totalEvaluated / pageSize));
+        const paginatedEvaluatedPrs = metrics.evaluatedPrs?.slice((page - 1) * pageSize, page * pageSize) || [];
+
+        res.json({
+            status: true,
+            metrics: {
+                ...metrics,
+                paginatedEvaluatedPrs,
+            },
+            repoBreakdown,
+            pagination: {
+                page,
+                pageSize,
+                total: totalEvaluated,
+                totalPages
+            }
+        });
     } catch (err: any) {
         console.error('[getPrCycleTimeMetrics] Error:', err?.message);
         res.status(500).json({ status: false, error: 'Failed to compute PR metrics', message: err?.message });

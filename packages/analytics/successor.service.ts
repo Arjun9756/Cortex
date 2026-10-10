@@ -258,46 +258,60 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
         }
 
         // Step 2: Scoped Neo4j queries for target and candidates + repo-level technologies
-        const graphRes = await session.run(`
-            MATCH (p:PERSON)
-            WHERE (toLower(p.name) = toLower($rawPersonName) OR toLower(p.name) IN $targetNamesLower OR p.name IN $candidateNames)
-              AND ${CYPHER_BOT_FILTER}
-              AND (toLower(p.name) = toLower($rawPersonName) OR toLower(p.name) IN $targetNamesLower OR (COALESCE(p.isActive, true) = true AND COALESCE(p.employmentStatus, 'active') <> 'alumni'))
-            OPTIONAL MATCH (p)-[:USES]->(t1:TECHNOLOGY)
-            OPTIONAL MATCH (p)-[:AUTHORED|CREATED|WORKS_ON|ASSIGNED_TO|CONTRIBUTED_TO]-(w)-[:USES|MENTIONED_IN]-(t2:TECHNOLOGY)
-            OPTIONAL MATCH (p)-[:WORKS_ON|CONTRIBUTED_TO]-(r1:REPOSITORY)
-            OPTIONAL MATCH (p)-[:AUTHORED|CREATED]-(w)-[:PART_OF|BELONGS_TO]-(r2:REPOSITORY)
-            WITH p,
-                 collect(DISTINCT toLower(trim(t1.name))) + collect(DISTINCT toLower(trim(t2.name))) AS rawTechs,
-                 collect(DISTINCT toLower(trim(r1.name))) + collect(DISTINCT toLower(trim(r2.name))) AS rawRepos,
-                 max(coalesce(w.timestamp, w.createdAt, w.created_at)) AS latestTime
-            RETURN p.name AS name,
-                   p.email AS email,
-                   p.externalId AS externalId,
-                   rawTechs,
-                   rawRepos,
-                   latestTime
-        `, { rawPersonName, targetNamesLower, candidateNames });
+        let graphResRecords: any[] = [];
+        let repoTechRecords: any[] = [];
+        try {
+            const graphRes = await session.run(`
+                MATCH (p:PERSON)
+                WHERE (toLower(p.name) = toLower($rawPersonName) OR toLower(p.name) IN $targetNamesLower OR p.name IN $candidateNames)
+                  AND ${CYPHER_BOT_FILTER}
+                  AND (toLower(p.name) = toLower($rawPersonName) OR toLower(p.name) IN $targetNamesLower OR (COALESCE(p.isActive, true) = true AND COALESCE(p.employmentStatus, 'active') <> 'alumni'))
+                OPTIONAL MATCH (p)-[:USES]->(t1:TECHNOLOGY)
+                OPTIONAL MATCH (p)-[:AUTHORED|CREATED|WORKS_ON|ASSIGNED_TO|CONTRIBUTED_TO]-(w)-[:USES|MENTIONED_IN]-(t2:TECHNOLOGY)
+                OPTIONAL MATCH (p)-[:WORKS_ON|CONTRIBUTED_TO]-(r1:REPOSITORY)
+                OPTIONAL MATCH (p)-[:AUTHORED|CREATED]-(w)-[:PART_OF|BELONGS_TO]-(r2:REPOSITORY)
+                WITH p,
+                     collect(DISTINCT toLower(trim(t1.name))) + collect(DISTINCT toLower(trim(t2.name))) AS rawTechs,
+                     collect(DISTINCT toLower(trim(r1.name))) + collect(DISTINCT toLower(trim(r2.name))) AS rawRepos,
+                     max(coalesce(w.timestamp, w.createdAt, w.created_at)) AS latestTime
+                RETURN p.name AS name,
+                       p.email AS email,
+                       p.externalId AS externalId,
+                       rawTechs,
+                       rawRepos,
+                       latestTime
+            `, { rawPersonName, targetNamesLower, candidateNames });
 
-        const repoTechRes = await session.run(`
-            MATCH (r:REPOSITORY)
-            OPTIONAL MATCH (r)-[:USES]->(t1:TECHNOLOGY)
-            OPTIONAL MATCH (c:COMMIT)-[:PART_OF]->(r)
-            OPTIONAL MATCH (c)-[:USES]->(t2:TECHNOLOGY)
-            RETURN toLower(r.name) AS repoName,
-                   collect(DISTINCT toLower(trim(t1.name))) + collect(DISTINCT toLower(trim(t2.name))) AS techs
-        `);
-
-        if (graphRes.records.length === 0) {
-            return [];
+            const repoTechRes = await session.run(`
+                MATCH (r:REPOSITORY)
+                OPTIONAL MATCH (r)-[:USES]->(t1:TECHNOLOGY)
+                OPTIONAL MATCH (c:COMMIT)-[:PART_OF]->(r)
+                OPTIONAL MATCH (c)-[:USES]->(t2:TECHNOLOGY)
+                RETURN toLower(r.name) AS repoName,
+                       collect(DISTINCT toLower(trim(t1.name))) + collect(DISTINCT toLower(trim(t2.name))) AS techs
+            `);
+            graphResRecords = graphRes.records;
+            repoTechRecords = repoTechRes.records;
+        } catch (neoErr: any) {
+            console.warn('[SuccessorService] Neo4j graph lookup unavailable; using PostgreSQL fallback:', neoErr?.message);
         }
 
         // Map repository-level technologies
         const repoTechMap = new Map<string, Set<string>>();
-        for (const r of repoTechRes.records) {
+        for (const r of repoTechRecords) {
             const rName = r.get('repoName');
             const techs = new Set<string>((r.get('techs') || []).filter(Boolean));
             repoTechMap.set(rName, techs);
+        }
+        if (repoTechMap.size === 0) {
+            for (const rm of rmRows) {
+                if (rm.repo_name) {
+                    const rawTechs = Array.isArray(rm.technologies)
+                        ? rm.technologies.map((t: any) => (typeof t === 'string' ? t : (t.name || '')).toLowerCase().trim()).filter(Boolean)
+                        : [];
+                    repoTechMap.set(rm.repo_name.toLowerCase().trim(), new Set(rawTechs));
+                }
+            }
         }
 
         // Map bus factors and SPOF repositories
@@ -316,7 +330,8 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
         // Build canonical map of person profiles
         const profileMap = new Map<string, InternalPersonProfile>();
 
-        for (const record of graphRes.records) {
+        if (graphResRecords.length > 0) {
+            for (const record of graphResRecords) {
             const name: string = record.get('name');
             if (!name || !name.trim()) continue;
 
@@ -393,6 +408,43 @@ export async function calculateSuccessorsByRepo(rawPersonName: string): Promise<
                 externalId: record.get('externalId') || null
             });
         }
+    } else {
+        // Postgres fallback
+        for (const pm of pmRows) {
+            const name = pm.person_name;
+            if (!name || !name.trim()) continue;
+
+            const rawTechs = Array.isArray(pm.top_technologies)
+                ? pm.top_technologies.map((t: any) => (typeof t === 'string' ? t : (t.name || '')).toLowerCase().trim()).filter(Boolean)
+                : [];
+            const rawRepos = Array.isArray(pm.repos)
+                ? pm.repos.map((r: any) => String(r).toLowerCase().trim()).filter(Boolean)
+                : [];
+            const techs = new Set<string>(rawTechs);
+            const repos = new Set<string>(rawRepos);
+
+            let spofCount = 0;
+            for (const rName of repos) {
+                const info = spofRepoMap.get(rName);
+                if (info && info.busFactor <= 1) spofCount++;
+            }
+
+            const normName = name.trim().toLowerCase();
+            profileMap.set(normName, {
+                name: name.trim(),
+                technologies: techs,
+                repositories: repos,
+                latestActivityTimestamp: Date.now(),
+                spofReposCount: spofCount,
+                knowledgeRisk: Number(pm.risk_score || 0) / 100,
+                externalId: pm.external_id || null,
+            });
+        }
+    }
+
+    if (profileMap.size === 0) {
+        return [];
+    }
 
         // Filter out raw Slack user ID duplicate nodes
         for (const [key, profile] of profileMap.entries()) {

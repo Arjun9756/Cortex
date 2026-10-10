@@ -440,10 +440,36 @@ export async function calculateActivity(
 
         return { score, count: recentCount, evidence };
     } catch (error: any) {
-        console.error('[Activity] Query failed:', error.message);
-        return { score: 0, count: 0, evidence: [] };
+        console.warn('[Activity] Neo4j query notice, falling back to PostgreSQL events:', error?.message);
+        try {
+            const personTerm = `%${personName.toLowerCase()}%`;
+            const thirtyDaysAgoIso = new Date(Date.now() - (30 * 24 * 60 * 60 * 1000)).toISOString();
+            const evRows = await sql`
+                SELECT id, event_type, created_at, payload
+                FROM events
+                WHERE source IN ${sql([...DISPLAYABLE_SOURCES])}
+                  AND created_at >= ${thirtyDaysAgoIso}::timestamptz
+                  AND (
+                      lower(COALESCE(payload->>'author', '')) LIKE ${personTerm}
+                      OR lower(COALESCE(payload->'head_commit'->'author'->>'name', '')) LIKE ${personTerm}
+                      OR lower(COALESCE(payload->'head_commit'->'author'->>'email', '')) LIKE ${personTerm}
+                      OR lower(COALESCE(payload->'sender'->>'login', '')) LIKE ${personTerm}
+                  )
+                LIMIT 50
+            `;
+            const recentCount = evRows.length;
+            const score = Math.max(0, 1 - Math.min(recentCount / 20, 1));
+            const evidence = evRows.slice(0, 10).map((r: any) => ({
+                name: `${r.event_type} event by ${personName}`,
+                type: r.event_type?.toUpperCase() || 'ACTIVITY',
+                timestamp: toReadableTimestamp(r.created_at)
+            }));
+            return { score, count: recentCount, evidence };
+        } catch {
+            return { score: 0.5, count: 0, evidence: [] };
+        }
     } finally {
-        await session.close();
+        try { await session.close(); } catch {}
     }
 }
 
@@ -607,79 +633,107 @@ export async function calculatePendingWork(
     count: number;
     evidence: Array<{ name: string; type: string; status?: string | undefined }>;
 }> {
-    if (!mapping.relation || !usedRelations.includes(mapping.relation)) {
-        console.log(`[PendingWork] Relation "${mapping.relation}" not found, returning 0`);
-        return { score: 0, count: 0, evidence: [] };
-    }
+    let session: any = null;
+    let count = 0;
+    let evidence: Array<{ name: string; type: string; status?: string | undefined }> = [];
 
-    const session = driver.session();
-    try {
-        const ctx = await resolvePersonContext(session, personName, source);
-        const targetLabel = mapping.targetLabel || 'ISSUE';
-        const pMatch = cypherPersonMatch('p');
-        const queryParams = {
-            canonicalPersonId: ctx.canonicalPersonId,
-            names: ctx.names,
-            externalIds: ctx.externalIds,
-            emails: ctx.emails,
-            source,
-        };
-
-        // Query 1: Get total count (exclude completed/closed work, and guard against ticket reassignment)
-        const countResult = await session.run(
-            `MATCH (p:PERSON)<-[r:${mapping.relation}]-(issue:${targetLabel})
-             WHERE ${pMatch} AND ${CYPHER_BOT_FILTER}
-               AND (issue.status IS NULL OR NOT toLower(issue.status) IN ['closed', 'done', 'resolved', 'completed'])
-               AND (issue.assignee IS NULL OR toLower(trim(issue.assignee)) IN [n IN $names | toLower(n)] OR toLower(trim(issue.assignee)) = toLower(trim(p.name)))
-               AND NOT EXISTS {
-                   MATCH (issue)-[newer:${mapping.relation}]->(other:PERSON)
-                   WHERE elementId(other) <> elementId(p)
-                     AND coalesce(newer.updatedAt, newer.createdAt, 0) > coalesce(r.updatedAt, r.createdAt, 0)
-               }
-             RETURN count(issue) as totalCount`,
-            queryParams
-        );
-        const count = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0;
-
-        // Query 2: Get evidence (top 10)
-        const evidenceResult = await session.run(
-            `MATCH (p:PERSON)<-[r:${mapping.relation}]-(issue:${targetLabel})
-             WHERE ${pMatch} AND ${CYPHER_BOT_FILTER}
-               AND (issue.status IS NULL OR NOT toLower(issue.status) IN ['closed', 'done', 'resolved', 'completed'])
-               AND (issue.assignee IS NULL OR toLower(trim(issue.assignee)) IN [n IN $names | toLower(n)] OR toLower(trim(issue.assignee)) = toLower(trim(p.name)))
-               AND NOT EXISTS {
-                   MATCH (issue)-[newer:${mapping.relation}]->(other:PERSON)
-                   WHERE elementId(other) <> elementId(p)
-                     AND coalesce(newer.updatedAt, newer.createdAt, 0) > coalesce(r.updatedAt, r.createdAt, 0)
-               }
-             RETURN issue.name as name,
-                    labels(issue)[0] as type,
-                    issue.status as status
-             LIMIT 10`,
-            queryParams
-        );
-
-        const evidence = evidenceResult.records.map(record => {
-            const status = record.get('status') as string | null;
-            const item: { name: string; type: string; status?: string | undefined } = {
-                name: record.get('name') as string,
-                type: record.get('type') as string
+    if (mapping.relation && usedRelations.includes(mapping.relation)) {
+        session = driver.session();
+        try {
+            const ctx = await resolvePersonContext(session, personName, source);
+            const targetLabel = mapping.targetLabel || 'ISSUE';
+            const pMatch = cypherPersonMatch('p');
+            const queryParams = {
+                canonicalPersonId: ctx.canonicalPersonId,
+                names: ctx.names,
+                externalIds: ctx.externalIds,
+                emails: ctx.emails,
+                source,
             };
-            if (status !== null && status !== undefined) {
-                item.status = status;
+
+            // Query 1: Get total count (exclude completed/closed work, and guard against ticket reassignment)
+            const countResult = await session.run(
+                `MATCH (p:PERSON)<-[r:${mapping.relation}]-(issue:${targetLabel})
+                 WHERE ${pMatch} AND ${CYPHER_BOT_FILTER}
+                   AND (issue.status IS NULL OR NOT toLower(issue.status) IN ['closed', 'done', 'resolved', 'completed'])
+                   AND (issue.assignee IS NULL OR toLower(trim(issue.assignee)) IN [n IN $names | toLower(n)] OR toLower(trim(issue.assignee)) = toLower(trim(p.name)))
+                   AND NOT EXISTS {
+                       MATCH (issue)-[newer:${mapping.relation}]->(other:PERSON)
+                       WHERE elementId(other) <> elementId(p)
+                         AND coalesce(newer.updatedAt, newer.createdAt, 0) > coalesce(r.updatedAt, r.createdAt, 0)
+                   }
+                 RETURN count(issue) as totalCount`,
+                queryParams
+            );
+            count = countResult.records[0]?.get('totalCount')?.toNumber() ?? 0;
+
+            // Query 2: Get evidence (top 10)
+            const evidenceResult = await session.run(
+                `MATCH (p:PERSON)<-[r:${mapping.relation}]-(issue:${targetLabel})
+                 WHERE ${pMatch} AND ${CYPHER_BOT_FILTER}
+                   AND (issue.status IS NULL OR NOT toLower(issue.status) IN ['closed', 'done', 'resolved', 'completed'])
+                   AND (issue.assignee IS NULL OR toLower(trim(issue.assignee)) IN [n IN $names | toLower(n)] OR toLower(trim(issue.assignee)) = toLower(trim(p.name)))
+                   AND NOT EXISTS {
+                       MATCH (issue)-[newer:${mapping.relation}]->(other:PERSON)
+                       WHERE elementId(other) <> elementId(p)
+                         AND coalesce(newer.updatedAt, newer.createdAt, 0) > coalesce(r.updatedAt, r.createdAt, 0)
+                   }
+                 RETURN issue.name as name,
+                        labels(issue)[0] as type,
+                        issue.status as status
+                 LIMIT 10`,
+                queryParams
+            );
+
+            evidence = evidenceResult.records.map((record: any) => {
+                const status = record.get('status') as string | null;
+                const item: { name: string; type: string; status?: string | undefined } = {
+                    name: record.get('name') as string,
+                    type: record.get('type') as string
+                };
+                if (status !== null && status !== undefined) {
+                    item.status = status;
+                }
+                return item;
+            });
+        } catch (error: any) {
+            console.warn('[PendingWork] Neo4j query notice, falling back to PostgreSQL:', error?.message);
+        } finally {
+            if (session) {
+                try { await session.close(); } catch {}
             }
-            return item;
-        });
-
-        const score = Math.min(count / 10, 1);
-
-        console.log(`[PendingWork] ${count} pending items, score: ${score}`);
-
-        return { score, count, evidence };
-    } catch (error: any) {
-        console.error('[PendingWork] Query failed:', error.message);
-        return { score: 0, count: 0, evidence: [] };
-    } finally {
-        await session.close();
+        }
     }
+
+    // Fallback: If Neo4j has 0 items or is degraded, check active open PRs in PostgreSQL events
+    if (count === 0) {
+        try {
+            const personTerm = `%${personName.toLowerCase()}%`;
+            const openPrRows = await sql`
+                SELECT id, payload->>'title' as title, payload->>'state' as state
+                FROM events
+                WHERE source IN ${sql([source || 'webhook'])}
+                  AND event_type IN ('pull_request', 'issues')
+                  AND (payload->>'state' = 'open' OR payload->>'action' = 'opened')
+                  AND (
+                      lower(COALESCE(payload->>'author', '')) LIKE ${personTerm}
+                      OR lower(COALESCE(payload->'user'->>'login', '')) LIKE ${personTerm}
+                      OR lower(COALESCE(payload->'assignee'->>'login', '')) LIKE ${personTerm}
+                  )
+                LIMIT 20
+            `;
+            if (openPrRows.length > 0) {
+                count = openPrRows.length;
+                evidence = openPrRows.slice(0, 10).map((r: any) => ({
+                    name: r.title || `Open work item #${r.id}`,
+                    type: 'PULL_REQUEST',
+                    status: 'open'
+                }));
+            }
+        } catch {}
+    }
+
+    const score = Math.min(count / 10, 1);
+    console.log(`[PendingWork] ${count} pending items, score: ${score}`);
+    return { score, count, evidence };
 }

@@ -68,7 +68,7 @@ let heartbeatTimer: NodeJS.Timeout | null = null;
 export function normalizeServerUrl(rawUrl?: string): string {
     let url = (rawUrl || '').trim();
     if (!url) {
-        return 'https://cortex-admin-two.vercel.app/api/license/ping';
+        return 'https://app.cortexco.in/api/license/ping';
     }
     if (url.endsWith('/')) {
         url = url.slice(0, -1);
@@ -151,61 +151,79 @@ export async function pingLicenseServer(
     licenseKey: string,
     serverUrl?: string
 ): Promise<LicenseVerificationResult> {
-    const targetUrl = normalizeServerUrl(serverUrl || (env.LICENSE_SERVER_URL as string));
+    const primaryUrl = normalizeServerUrl(serverUrl || (env.LICENSE_SERVER_URL as string));
     const payload = buildLicensePingPayload(licenseKey);
     state.payload = payload;
 
-    const startTime = Date.now();
-    try {
-        const response = await fetch(targetUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'User-Agent': `Cortex-Client/${payload.app_version} (${payload.platform})`
-            },
-            body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(15000)
-        });
-
-        const latencyMs = Date.now() - startTime;
-        let responseJson: any;
-
-        try {
-            responseJson = await response.json();
-        } catch {
-            return {
-                success: false,
-                statusCode: response.status,
-                latencyMs,
-                error: `Invalid JSON response from license server (HTTP ${response.status})`
-            };
-        }
-
-        if (response.ok && responseJson.allowed === true && (responseJson.status === 'active' || !responseJson.status)) {
-            return {
-                success: true,
-                statusCode: response.status,
-                latencyMs,
-                response: responseJson as LicenseSuccessResponse
-            };
-        } else {
-            return {
-                success: false,
-                statusCode: response.status,
-                latencyMs,
-                response: responseJson as LicenseDeniedResponse
-            };
-        }
-    } catch (err: any) {
-        const latencyMs = Date.now() - startTime;
-        return {
-            success: false,
-            statusCode: 0,
-            latencyMs,
-            error: err.message || 'Connection to license server failed'
-        };
+    const urlsToTry = [primaryUrl];
+    if (primaryUrl.includes('app.cortexco.in')) {
+        urlsToTry.push('https://cortex-admin-two.vercel.app/api/license/ping');
     }
+
+    let lastError: any = null;
+    let lastStatusCode = 0;
+    let totalLatency = 0;
+
+    for (const targetUrl of urlsToTry) {
+        const startTime = Date.now();
+        try {
+            const response = await fetch(targetUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'User-Agent': `Cortex-Client/${payload.app_version} (${payload.platform})`
+                },
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(15000)
+            });
+
+            const latencyMs = Date.now() - startTime;
+            let responseJson: any;
+
+            try {
+                responseJson = await response.json();
+            } catch {
+                return {
+                    success: false,
+                    statusCode: response.status,
+                    latencyMs,
+                    error: `Invalid JSON response from license server (HTTP ${response.status})`
+                };
+            }
+
+            if (response.ok && responseJson.allowed === true && (responseJson.status === 'active' || !responseJson.status)) {
+                return {
+                    success: true,
+                    statusCode: response.status,
+                    latencyMs,
+                    response: responseJson as LicenseSuccessResponse
+                };
+            } else {
+                return {
+                    success: false,
+                    statusCode: response.status,
+                    latencyMs,
+                    response: responseJson as LicenseDeniedResponse
+                };
+            }
+        } catch (err: any) {
+            totalLatency += Date.now() - startTime;
+            lastError = err;
+            lastStatusCode = 0;
+            // If primary URL failed (e.g. DNS ENOTFOUND for app.cortexco.in), continue to fallback if available
+            if (urlsToTry.length > 1 && targetUrl === primaryUrl) {
+                console.warn(`[LICENSE] Primary domain ${targetUrl} not reachable (${err.message || 'DNS/Network'}). Attempting fallback...`);
+            }
+        }
+    }
+
+    return {
+        success: false,
+        statusCode: lastStatusCode,
+        latencyMs: totalLatency,
+        error: lastError?.message || 'Connection to license server failed'
+    };
 }
 
 /**

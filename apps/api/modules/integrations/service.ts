@@ -22,7 +22,7 @@ export interface IntegrationStatus {
 
 export class IntegrationService {
     public getAdminBaseUrl(): string {
-        const raw = process.env.LICENSE_SERVER_URL || process.env.CORTEX_LICENSE_SERVER_URL || 'https://cortex-admin-two.vercel.app';
+        const raw = process.env.LICENSE_SERVER_URL || process.env.CORTEX_LICENSE_SERVER_URL || 'https://app.cortexco.in';
         return raw.replace(/\/api\/license.*$/, '').replace(/\/$/, '');
     }
 

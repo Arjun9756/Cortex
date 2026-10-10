@@ -92,7 +92,18 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                 </div>
               </div>
             </div>
-          ) : details ? (
+          ) : details ? (() => {
+            const contributors = Array.isArray(details.contributors) ? details.contributors : [];
+            const technologies = Array.isArray(details.technologies) ? details.technologies : [];
+            const recentActivity = Array.isArray(details.recentActivity) ? details.recentActivity : [];
+            const suggestedBackups = Array.isArray(details.suggestedBackups) ? details.suggestedBackups : [];
+            const riskExplanation = details.riskExplanation || {
+              summary: isSPOF ? 'Critical Single Point of Failure detected.' : 'Distributed repository coverage.',
+              factors: []
+            };
+            const factors = Array.isArray(riskExplanation.factors) ? riskExplanation.factors : [];
+
+            return (
             <>
               {/* Top Stats Banner */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -102,7 +113,7 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className={`text-xl font-bold ${isSPOF ? 'text-rose-400' : 'text-emerald-400'}`}>
-                      {details.busFactor}
+                      {details.busFactor ?? 1}
                     </span>
                     <span className="text-xs text-[var(--text-muted)]">
                       {isSPOF ? '(Critical SPOF)' : '(Acceptable)'}
@@ -119,10 +130,10 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className={`text-xl font-bold ${isHighRisk ? 'text-rose-400' : 'text-amber-400'}`}>
-                      {details.riskScore}%
+                      {details.riskScore ?? 0}%
                     </span>
                     <span className="text-xs text-[var(--text-muted)] uppercase font-mono">
-                      {details.status}
+                      {details.status || 'fragile'}
                     </span>
                   </div>
                   <p className="text-[11px] text-[var(--text-secondary)]">
@@ -136,10 +147,10 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-xl font-bold text-cyan-400">
-                      {details.contributorCount}
+                      {details.contributorCount ?? contributors.length}
                     </span>
                     <span className="text-xs text-[var(--text-muted)]">
-                      Indexed engineer{details.contributorCount === 1 ? '' : 's'}
+                      Indexed engineer{(details.contributorCount ?? contributors.length) === 1 ? '' : 's'}
                     </span>
                   </div>
                   <p className="text-[11px] text-[var(--text-secondary)]">
@@ -159,12 +170,12 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-md bg-[var(--bg-panel)] border border-[var(--border-subtle)]">
                     <div className="flex items-center space-x-3">
                       <div className="h-8 w-8 rounded-full bg-[var(--accent-muted)] border border-[var(--accent-border)] flex items-center justify-center text-indigo-300 font-bold text-xs">
-                        {details.primaryOwner.name.charAt(0)}
+                        {details.primaryOwner.name ? details.primaryOwner.name.charAt(0) : 'U'}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-[var(--text-primary)] text-xs">
-                            {details.primaryOwner.name}
+                            {details.primaryOwner.name || 'Maintainer'}
                           </span>
                           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[var(--accent-muted)] text-indigo-300 border border-[var(--accent-border)]">
                             Primary Owner
@@ -179,12 +190,12 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                     <div className="flex items-center space-x-4 border-t sm:border-t-0 sm:border-l border-[var(--border-subtle)] pt-2 sm:pt-0 sm:pl-4 text-xs font-mono">
                       <div>
                         <span className="text-[var(--text-muted)] block text-[10px] uppercase">Commits</span>
-                        <span className="font-bold text-[var(--text-primary)]">{details.primaryOwner.commitCount}</span>
+                        <span className="font-bold text-[var(--text-primary)]">{details.primaryOwner.commitCount ?? 1}</span>
                       </div>
                       <div>
                         <span className="text-[var(--text-muted)] block text-[10px] uppercase">Ownership</span>
-                        <span className={`font-bold ${details.primaryOwner.ownershipPercentage >= 80 ? 'text-rose-400' : 'text-amber-400'}`}>
-                          {details.primaryOwner.ownershipPercentage}%
+                        <span className={`font-bold ${(details.primaryOwner.ownershipPercentage ?? 100) >= 80 ? 'text-rose-400' : 'text-amber-400'}`}>
+                          {details.primaryOwner.ownershipPercentage ?? 100}%
                         </span>
                       </div>
                     </div>
@@ -194,13 +205,13 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                 )}
 
                 {/* Additional Contributors if any */}
-                {details.contributors.length > 1 && (
+                {contributors.length > 1 && (
                   <div className="pt-1">
                     <span className="text-[10px] font-semibold text-[var(--text-muted)] block mb-1.5 uppercase">
-                      Other Contributors ({details.contributors.length - 1}):
+                      Other Contributors ({contributors.length - 1}):
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {details.contributors.slice(1).map((c, i) => (
+                      {contributors.slice(1).map((c, i) => (
                         <span
                           key={i}
                           className="text-xs px-2 py-0.5 rounded bg-[var(--bg-panel)] border border-[var(--border-subtle)] text-[var(--text-secondary)] flex items-center gap-1.5"
@@ -226,11 +237,11 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                 </h4>
 
                 <p className="text-xs text-[var(--text-primary)] font-medium leading-relaxed">
-                  {details.riskExplanation.summary}
+                  {riskExplanation.summary}
                 </p>
 
                 <div className="space-y-1.5 pt-0.5">
-                  {details.riskExplanation.factors.map((factor, idx) => (
+                  {factors.map((factor, idx) => (
                     <div key={idx} className="flex items-start space-x-2 text-xs text-[var(--text-secondary)]">
                       <span className="text-rose-400 font-bold shrink-0 mt-0.5">•</span>
                       <span>{factor}</span>
@@ -243,12 +254,12 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
               <div className="p-4 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-2.5">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
                   <Cpu className="h-3.5 w-3.5" />
-                  <span>Technologies & Stack in this Repository ({details.technologies.length})</span>
+                  <span>Technologies & Stack in this Repository ({technologies.length})</span>
                 </h4>
 
-                {details.technologies.length > 0 ? (
+                {technologies.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
-                    {details.technologies.map((tech, idx) => (
+                    {technologies.map((tech, idx) => (
                       <span
                         key={idx}
                         className="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs font-medium text-purple-300 flex items-center gap-1.5"
@@ -267,12 +278,12 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
               <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
                   <GitCommit className="h-4 w-4" />
-                  <span>Recent Activity & Commits ({details.recentActivity.length})</span>
+                  <span>Recent Activity & Commits ({recentActivity.length})</span>
                 </h4>
 
-                {details.recentActivity.length > 0 ? (
+                {recentActivity.length > 0 ? (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                    {details.recentActivity.map((act, idx) => (
+                    {recentActivity.map((act, idx) => (
                       <div
                         key={idx}
                         className="p-3 rounded-xl bg-[#090d18] border border-slate-800/80 flex items-center justify-between text-xs hover:border-slate-700 transition-all"
@@ -315,9 +326,9 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                   </span>
                 </div>
 
-                {details.suggestedBackups.length > 0 ? (
+                {suggestedBackups.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {details.suggestedBackups.map((candidate, idx) => (
+                    {suggestedBackups.map((candidate, idx) => (
                       <SuccessorCandidateCard key={idx} candidate={candidate} />
                     ))}
                   </div>
@@ -329,7 +340,8 @@ export const RepoDetailModal: React.FC<RepoDetailModalProps> = ({
                 )}
               </div>
             </>
-          ) : null}
+            );
+          })() : null}
         </div>
 
         {/* Modal Footer */}

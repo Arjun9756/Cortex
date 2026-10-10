@@ -4,6 +4,7 @@ import { getGraphSchema } from '../database/neo4j/schemaCache.js'
 import { groq, createGroqChatCompletion } from '../llm/providers/groq.js'
 import { buildKnowledgeRiskPrompt } from '../llm/prompts/knowledgeRisk.prompt.js'
 import { calculateActivity, calculateDependency, calculateExpertise, calculateDocumentation, calculateOwnership, calculatePendingWork } from './knowledge.risk.predict.js'
+import type { DataSource } from '../database/provenance.js'
 
 export interface KnowledgeRiskScore {
     person: string
@@ -55,7 +56,7 @@ const RELATION_MAPPING_TTL = 5 * 60 * 1000 // 5 minutes
  * Returns totalRisk on a 0–1 scale. Callers that store as a percentage
  * must multiply by 100 before writing to Postgres risk_score column.
  */
-export async function calculateKnowledgeRisk(personName: string): Promise<KnowledgeRiskScore> {
+export async function calculateKnowledgeRisk(personName: string, source: DataSource = 'webhook'): Promise<KnowledgeRiskScore> {
     // Get schema and relation mappings once
     const t0 = Date.now();
     console.log(`[KnowledgeRisk:Timing] Starting calculateKnowledgeRisk for: ${personName}`);
@@ -73,7 +74,7 @@ export async function calculateKnowledgeRisk(personName: string): Promise<Knowle
         calculateActivity(personName, mappings.activity, schema.relationshipTypes),
         calculateDocumentation(personName, mappings.documentation, schema.relationshipTypes),
         calculateExpertise(personName, mappings.expertise, schema.relationshipTypes),
-        calculatePendingWork(personName, mappings.pendingWork, schema.relationshipTypes, 'webhook'),
+        calculatePendingWork(personName, mappings.pendingWork, schema.relationshipTypes, source),
     ])
     console.log(`[KnowledgeRisk:Timing] Parallel component calculations: ${Date.now() - tCalc0}ms`);
 

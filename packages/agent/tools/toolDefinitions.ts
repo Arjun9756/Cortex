@@ -278,6 +278,32 @@ export const CORE_TOOL_DEFINITIONS = [
             },
         },
     },
+
+    // ─── 13. get_pr_risk ──────────────────────────────────────────────
+    {
+        type: 'function' as const,
+        function: {
+            name: 'get_pr_risk',
+            description: 'Evaluate Pull Request merge risk score (0-100), risk level (low, medium, high, critical), inspection gate breakdown (size risk, review complexity, domain novelty, target volatility), and reviewer recommendations. MANDATORY for questions asking "is this PR risky", "what is the PR merge risk", "which PRs are high risk", or reviewing open PR safety.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    repo: {
+                        type: 'string',
+                        description: 'Repository name for the pull request.',
+                    },
+                    prNumber: {
+                        type: 'number',
+                        description: 'Optional pull request number.',
+                    },
+                    author: {
+                        type: 'string',
+                        description: 'Optional PR author name or GitHub login.',
+                    },
+                },
+            },
+        },
+    },
 ];
 
 export const TOOL_DEFINITIONS = [

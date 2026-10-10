@@ -37,7 +37,7 @@ function chooseBestDisplayName(names: string[]): string {
  * Calculates metrics and risk scores grouped by Canonical Person ID.
  *
  * 1. Resolves all identities from Postgres `person_identity` table.
- * 2. Matches Neo4j PERSON nodes into their respective canonical person groups.
+ * 2. Matches Neo4j PERSON nodes into their respective canonical person groups (with Postgres fallback).
  * 3. Aggregates activity (commits, repos, technologies) across ALL provider aliases.
  * 4. Filters out ghost users with zero real activity (0 commits + 0 repos).
  * 5. Calculates 6-factor Knowledge Risk on the unified canonical identity.
@@ -107,79 +107,111 @@ export async function calculateAllPersonMetrics(source: DataSource) {
             }
         }
 
-        // Step 2: Fetch all PERSON nodes from Neo4j to ensure complete coverage (excluding bots)
-        const neo4jPersons = await session.run(
-            `MATCH (p:PERSON)
-             WHERE p.source IN $trustedSources AND ${CYPHER_BOT_FILTER}
-             RETURN p.name AS name, p.externalId AS externalId, p.email AS email, p.provider AS provider, p.canonicalPersonId AS canonicalPersonId, p.isActive AS isActive`
-            , { trustedSources }
-        );
+        // Step 2: Fetch all PERSON nodes from Neo4j (best effort with PostgreSQL identity fallback)
+        try {
+            const neo4jPersons = await session.run(
+                `MATCH (p:PERSON)
+                 WHERE p.source IN $trustedSources AND ${CYPHER_BOT_FILTER}
+                 RETURN p.name AS name, p.externalId AS externalId, p.email AS email, p.provider AS provider, p.canonicalPersonId AS canonicalPersonId, p.isActive AS isActive`
+                , { trustedSources }
+            );
 
-        for (const record of neo4jPersons.records) {
-            const pName = record.get("name")?.trim();
-            const pExt = record.get("externalId")?.trim();
-            const pEmail = record.get("email")?.trim()?.toLowerCase();
-            const pCanonical = record.get("canonicalPersonId")?.trim();
+            for (const record of neo4jPersons.records) {
+                const pName = record.get("name")?.trim();
+                const pExt = record.get("externalId")?.trim();
+                const pEmail = record.get("email")?.trim()?.toLowerCase();
+                const pCanonical = record.get("canonicalPersonId")?.trim();
 
-            if (!pName && !pExt && !pCanonical) continue;
+                if (!pName && !pExt && !pCanonical) continue;
 
-            // Strict policy: match Neo4j node to canonical group strictly on high-confidence identifiers:
-            // 1. canonicalPersonId
-            // 2. Exact email
-            // 3. Exact externalId
-            // NEVER match solely by display name similarity!
-            let matchedGroup: CanonicalPersonGroup | undefined;
+                let matchedGroup: CanonicalPersonGroup | undefined;
 
-            if (pCanonical && canonicalGroupsMap.has(pCanonical)) {
-                matchedGroup = canonicalGroupsMap.get(pCanonical);
-            }
+                if (pCanonical && canonicalGroupsMap.has(pCanonical)) {
+                    matchedGroup = canonicalGroupsMap.get(pCanonical);
+                }
 
-            if (!matchedGroup && pEmail) {
-                for (const group of canonicalGroupsMap.values()) {
-                    if (group.emails.has(pEmail)) {
-                        matchedGroup = group;
-                        break;
+                if (!matchedGroup && pEmail) {
+                    for (const group of canonicalGroupsMap.values()) {
+                        if (group.emails.has(pEmail)) {
+                            matchedGroup = group;
+                            break;
+                        }
                     }
                 }
-            }
 
-            if (!matchedGroup && pExt) {
-                for (const group of canonicalGroupsMap.values()) {
-                    if (group.externalIds.has(pExt)) {
-                        matchedGroup = group;
-                        break;
+                if (!matchedGroup && pExt) {
+                    for (const group of canonicalGroupsMap.values()) {
+                        if (group.externalIds.has(pExt)) {
+                            matchedGroup = group;
+                            break;
+                        }
                     }
                 }
-            }
 
-            if (matchedGroup) {
-                if (pName) {
-                    matchedGroup.names.add(pName);
-                    matchedGroup.aliases.add(pName);
+                if (matchedGroup) {
+                    if (pName) {
+                        matchedGroup.names.add(pName);
+                        matchedGroup.aliases.add(pName);
+                    }
+                    if (pExt) {
+                        matchedGroup.externalIds.add(pExt);
+                        matchedGroup.aliases.add(pExt);
+                    }
+                    if (pEmail) {
+                        matchedGroup.emails.add(pEmail);
+                        matchedGroup.aliases.add(pEmail);
+                    }
+                } else {
+                    const canonId = pCanonical || pExt || `person_${(pEmail || pName || 'anon').toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+                    const newGroup: CanonicalPersonGroup = {
+                        canonicalId: canonId,
+                        primaryName: pName || pExt || canonId,
+                        names: new Set<string>(pName ? [pName] : []),
+                        emails: new Set<string>(pEmail ? [pEmail] : []),
+                        usernames: new Set<string>(),
+                        externalIds: new Set<string>(pExt ? [pExt] : []),
+                        aliases: new Set<string>([pName, pExt, pEmail].filter(Boolean) as string[]),
+                        isActive: record.get('isActive') !== false,
+                    };
+                    canonicalGroupsMap.set(canonId, newGroup);
                 }
-                if (pExt) {
-                    matchedGroup.externalIds.add(pExt);
-                    matchedGroup.aliases.add(pExt);
+            }
+        } catch (neoErr: any) {
+            console.warn(`[PersonMetrics] Neo4j PERSON query notice (using PostgreSQL identity fallback): ${neoErr?.message}`);
+        } finally {
+            try { await session.close(); } catch {}
+        }
+
+        // Resilient Fallback: If no canonical groups found yet, derive directly from repo_metrics.top_contributors
+        if (canonicalGroupsMap.size === 0) {
+            try {
+                const repoRowsForPeople = await sql`
+                    SELECT top_contributors
+                    FROM repo_metrics
+                    WHERE source IN ${sql(trustedSources)} AND top_contributors IS NOT NULL
+                `;
+                for (const r of repoRowsForPeople) {
+                    const contribs = Array.isArray(r.top_contributors) ? r.top_contributors : [];
+                    for (const c of contribs) {
+                        const cPerson = (c.person || '').trim();
+                        if (!cPerson || isBotAccount(cPerson)) continue;
+                        const cId = `person_${cPerson.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+                        if (!canonicalGroupsMap.has(cId)) {
+                            canonicalGroupsMap.set(cId, {
+                                canonicalId: cId,
+                                primaryName: cPerson,
+                                names: new Set([cPerson]),
+                                emails: new Set(),
+                                usernames: new Set([cPerson.toLowerCase()]),
+                                externalIds: new Set([cId]),
+                                aliases: new Set([cPerson]),
+                                isActive: true,
+                            });
+                        }
+                    }
                 }
-                if (pEmail) {
-                    matchedGroup.emails.add(pEmail);
-                    matchedGroup.aliases.add(pEmail);
-                }
-            } else {
-                // New person node not yet registered in person_identity table
-                // Under strict policy: Keep as separate person
-                const canonId = pCanonical || pExt || `person_${(pEmail || pName || 'anon').toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-                const newGroup: CanonicalPersonGroup = {
-                    canonicalId: canonId,
-                    primaryName: pName || pExt || canonId,
-                    names: new Set<string>(pName ? [pName] : []),
-                    emails: new Set<string>(pEmail ? [pEmail] : []),
-                    usernames: new Set<string>(),
-                    externalIds: new Set<string>(pExt ? [pExt] : []),
-                    aliases: new Set<string>([pName, pExt, pEmail].filter(Boolean) as string[]),
-                    isActive: record.get('isActive') !== false,
-                };
-                canonicalGroupsMap.set(canonId, newGroup);
+            } catch (fallbackErr: any) {
+                console.warn(`[PersonMetrics] Top contributors fallback notice: ${fallbackErr?.message}`);
             }
         }
 
@@ -187,8 +219,6 @@ export async function calculateAllPersonMetrics(source: DataSource) {
         for (const group of canonicalGroupsMap.values()) {
             group.primaryName = chooseBestDisplayName(Array.from(group.names));
         }
-
-        await session.close();
 
         // Load all repository metrics to ensure absolute parity with repo_metrics (single source of truth)
         const repoRows = await sql`
@@ -249,7 +279,7 @@ export async function calculateAllPersonMetrics(source: DataSource) {
 
                     const repos = Array.from(reposSet);
 
-                    // 2. Query top technologies from Neo4j direct mentions
+                    // 2. Query top technologies from Neo4j direct mentions (with fallback to repo technologies)
                     let topTechnologies: Array<{ name: string; score: number }> = [];
                     try {
                         const techRes = await itemSession.run(
@@ -288,7 +318,7 @@ export async function calculateAllPersonMetrics(source: DataSource) {
                     }
 
                     // 3. 6-Factor Knowledge Risk Calculation on the canonical person
-                    const risk = await calculateKnowledgeRisk(primaryName);
+                    const risk = await calculateKnowledgeRisk(primaryName, source);
                     const riskScore = Math.round(risk.totalRisk * 100);
 
                     // 4. Upsert exactly ONE canonical record in person_metrics
@@ -319,7 +349,7 @@ export async function calculateAllPersonMetrics(source: DataSource) {
                     console.error(`[PersonMetrics] Failed for canonical person "${primaryName}": ${personError?.message}`);
                     return null;
                 } finally {
-                    await itemSession.close();
+                    try { await itemSession.close(); } catch {}
                 }
             }));
 

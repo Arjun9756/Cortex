@@ -39,14 +39,16 @@ export const UrgentRisksModal: React.FC<UrgentRisksModalProps> = ({
 
   if (!isOpen) return null;
 
-  const criticalCount = alerts.filter(a => a.severity === 'critical').length;
-  const warningCount = alerts.filter(a => a.severity === 'warning').length;
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+  const criticalCount = safeAlerts.filter(a => a?.severity?.toLowerCase() === 'critical').length;
+  const warningCount = safeAlerts.filter(a => a?.severity?.toLowerCase() === 'warning').length;
 
-  const spofCount = alerts.filter(a => a.category === 'Bus Factor' || a.entityType === 'repo').length;
-  const peopleRiskCount = alerts.filter(a => a.category === 'Knowledge Risk' || a.entityType === 'person').length;
-  const techRiskCount = alerts.filter(a => a.category === 'Skill Dependency' || a.entityType === 'tech').length;
+  const spofCount = safeAlerts.filter(a => a?.category === 'Bus Factor' || a?.entityType === 'repo').length;
+  const peopleRiskCount = safeAlerts.filter(a => a?.category === 'Knowledge Risk' || a?.entityType === 'person').length;
+  const techRiskCount = safeAlerts.filter(a => a?.category === 'Skill Dependency' || a?.entityType === 'tech').length;
 
-  const filteredAlerts = alerts.filter(alert => {
+  const filteredAlerts = safeAlerts.filter(alert => {
+    if (!alert) return false;
     if (activeCategory === 'all') return true;
     if (activeCategory === 'Bus Factor') return alert.category === 'Bus Factor' || alert.entityType === 'repo';
     if (activeCategory === 'Knowledge Risk') return alert.category === 'Knowledge Risk' || alert.entityType === 'person';

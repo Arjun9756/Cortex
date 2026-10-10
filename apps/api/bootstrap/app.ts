@@ -62,6 +62,14 @@ app.get('/' , (req,res)=>{
     })
 })
 
+app.get('/health', (req, res) => {
+    return res.status(200).json({
+        status: true,
+        healthy: true,
+        uptime: process.uptime()
+    });
+})
+
 // License status endpoint
 app.get('/api/license/status', (req, res) => {
     const status = getLicenseState();

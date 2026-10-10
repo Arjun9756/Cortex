@@ -10,7 +10,6 @@ const DEFAULT_ALIASES: AliasMapping[] = [
     { canonicalName: 'BullMQ', aliases: ['bullmq', 'Queue', 'processing-queue', 'cortexQueue'] },
     { canonicalName: 'Postgres', aliases: ['postgresql', 'PostgreSQL', 'postgres', 'psql'] },
     { canonicalName: 'Neo4j', aliases: ['neo4j', 'Neo4j Graph', 'graphdb'] },
-    { canonicalName: 'Cortex', aliases: ['cortex', 'Cortex Assistant', 'cortex-repo'] },
     { canonicalName: 'Billing Service', aliases: ['billing', 'billing-service', 'billing_service'] },
 ];
 

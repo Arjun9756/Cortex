@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import type { GraphNode, GraphEdge } from '../lib/api';
-import { ZoomIn, ZoomOut, Maximize2, Search, Sparkles, Move } from 'lucide-react';
-import { RISK_THRESHOLDS } from '../constants/riskThresholds';
+import { ZoomIn, ZoomOut, Maximize2, Minimize2, Search, ArrowRight, Route, X } from 'lucide-react';
 
 interface ForceGraphProps {
   nodes: GraphNode[];
@@ -46,23 +45,25 @@ export function getNodeCategory(node: Partial<GraphNode> & { type?: string; labe
   return 'TECHNOLOGY';
 }
 
+// ─── Reference Image Color Tokens ──────────────────────────────────────────────
+// Person: Blue, Repository: Purple, Technology: Emerald, Commit: Amber, Issue: Red, Pull Request: Orange
 const CATEGORY_STYLES: Record<NodeCategory, { color: string; glow: string; label: string }> = {
-  PERSON: { color: '#10B981', glow: 'rgba(16, 185, 129, 0.2)', label: 'Person' },
-  REPOSITORY: { color: '#3B82F6', glow: 'rgba(59, 130, 246, 0.2)', label: 'Repository' },
-  TECHNOLOGY: { color: '#818CF8', glow: 'rgba(129, 140, 248, 0.2)', label: 'Technology' },
-  COMMIT: { color: '#F59E0B', glow: 'rgba(245, 158, 11, 0.2)', label: 'Commit' },
-  ISSUE: { color: '#EF4444', glow: 'rgba(239, 68, 68, 0.2)', label: 'Issue' },
-  PULL_REQUEST: { color: '#06B6D4', glow: 'rgba(6, 182, 212, 0.2)', label: 'Pull Request' },
-  FILE: { color: '#64748B', glow: 'rgba(100, 116, 139, 0.2)', label: 'File' },
+  PERSON: { color: '#3B82F6', glow: 'rgba(59, 130, 246, 0.45)', label: 'Person' },
+  REPOSITORY: { color: '#A855F7', glow: 'rgba(168, 85, 247, 0.45)', label: 'Repository' },
+  TECHNOLOGY: { color: '#10B981', glow: 'rgba(16, 185, 129, 0.45)', label: 'Technology' },
+  COMMIT: { color: '#F59E0B', glow: 'rgba(245, 158, 11, 0.45)', label: 'Commit' },
+  ISSUE: { color: '#EF4444', glow: 'rgba(239, 68, 68, 0.45)', label: 'Issue' },
+  PULL_REQUEST: { color: '#F97316', glow: 'rgba(249, 115, 22, 0.45)', label: 'Pull Request' },
+  FILE: { color: '#64748B', glow: 'rgba(100, 116, 139, 0.35)', label: 'File' },
 };
 
 function formatNodeDisplayLabel(name: string): string {
   if (!name) return '';
   if (/^[0-9a-f]{32,40}$/i.test(name)) {
-    return name.slice(0, 8) + '...';
+    return name.slice(0, 8);
   }
-  if (name.length > 24) {
-    return name.slice(0, 21) + '...';
+  if (name.length > 22) {
+    return name.slice(0, 20) + '...';
   }
   return name;
 }
@@ -70,6 +71,7 @@ function formatNodeDisplayLabel(name: string): string {
 export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClick }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [hoveredNode, setHoveredNode] = useState<SimNode | null>(null);
   const [selectedNode, setSelectedNode] = useState<SimNode | null>(null);
@@ -77,13 +79,21 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [zoom, setZoom] = useState<number>(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
+  // Pathfinding state
+  const [pathFromId, setPathFromId] = useState<string>('');
+  const [pathToId, setPathToId] = useState<string>('');
+
+  // Mouse interaction state
   const isMouseDownRef = useRef<boolean>(false);
+  const mouseDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const draggedNodeRef = useRef<SimNode | null>(null);
   const isPanningRef = useRef<boolean>(false);
+  const wakeSimulationRef = useRef<() => void>(() => {});
 
-  // Category counts for legend badges
+  // Category counts
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { ALL: nodes.length };
     nodes.forEach(n => {
@@ -93,7 +103,7 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
     return counts;
   }, [nodes]);
 
-  // Filter nodes
+  // Filter nodes by category and search
   const filteredNodes = useMemo(() => {
     return nodes.filter(n => {
       const cat = getNodeCategory(n);
@@ -112,90 +122,50 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
     return edges.filter(e => filteredNodeIds.has(e.source) && filteredNodeIds.has(e.target));
   }, [edges, filteredNodeIds]);
 
-  // Convert raw nodes & edges into force simulation items
+  // Convert raw nodes & edges into simulation items
   const { simNodes, simEdges } = useMemo(() => {
-    const width = 1100;
-    const height = 750;
+    const width = 1200;
+    const height = 800;
 
     const simNodes: SimNode[] = filteredNodes.map((node, i) => {
       const angle = (i / Math.max(1, filteredNodes.length)) * Math.PI * 2;
-      const radiusDist = 180 + Math.random() * 160;
+      const radiusDist = 180 + (i % 5) * 45;
       const cat = getNodeCategory(node);
       const style = CATEGORY_STYLES[cat] || CATEGORY_STYLES.TECHNOLOGY;
 
-      let radius = 9;
-      let nodeColor = style.color;
-      let glowColor = style.glow;
-
-      if (cat === 'REPOSITORY') {
-        const repoStatus = String(node.status || '').toLowerCase();
-        const busFactor = Number(node.bus_factor || 0);
-        const riskScore = Number(node.risk_score || 0);
-
-        if (repoStatus === 'empty') {
-          nodeColor = '#64748B'; // Neutral Slate for empty/scaffold repo
-          glowColor = 'rgba(100, 116, 139, 0.2)';
-          radius = 11;
-        } else if (repoStatus === 'fragile' || (busFactor <= 1 && riskScore >= RISK_THRESHOLDS.CRITICAL)) {
-          nodeColor = '#EF4444'; // Red (critical risk / SPOF)
-          glowColor = 'rgba(239, 68, 68, 0.25)';
-          radius = 15;
-        } else if (repoStatus === 'concentrated' || riskScore >= RISK_THRESHOLDS.HIGH) {
-          nodeColor = '#F59E0B'; // Amber (concentrated risk)
-          glowColor = 'rgba(245, 158, 11, 0.25)';
-          radius = 13;
-        } else {
-          nodeColor = '#10B981'; // Emerald (healthy)
-          glowColor = 'rgba(16, 185, 129, 0.2)';
-          radius = 12;
-        }
-      } else if (cat === 'PERSON') {
-        const riskScore = Number(node.risk_score || 0);
-        const commits = Number(node.commit_count || 0);
-        if (riskScore >= RISK_THRESHOLDS.CRITICAL) {
-          nodeColor = '#EF4444'; // Critical Knowledge Risk
-          glowColor = 'rgba(239, 68, 68, 0.25)';
-        } else if (riskScore >= RISK_THRESHOLDS.HIGH) {
-          nodeColor = '#F97316'; // High Knowledge Risk
-          glowColor = 'rgba(249, 115, 22, 0.25)';
-        } else if (riskScore >= RISK_THRESHOLDS.MODERATE) {
-          nodeColor = '#F59E0B'; // Moderate Knowledge Risk
-          glowColor = 'rgba(245, 158, 11, 0.25)';
-        } else {
-          nodeColor = '#10B981'; // Low Knowledge Risk
-          glowColor = 'rgba(16, 185, 129, 0.2)';
-        }
-        radius = Math.min(20, Math.max(11, 11 + Math.log10(commits + 1) * 2.8));
-      } else if (cat === 'TECHNOLOGY') {
-        const usage = Number(node.usage_percent || 0);
-        radius = Math.min(16, Math.max(9, 9 + Math.round(usage / 18)));
-        nodeColor = '#818CF8';
-        glowColor = 'rgba(129, 140, 248, 0.2)';
-      } else if (cat === 'COMMIT') {
-        radius = 6;
-      } else if (cat === 'ISSUE') {
-        radius = 8;
-      }
+      let radius = 10;
+      if (cat === 'REPOSITORY') radius = 14;
+      else if (cat === 'PERSON') radius = 13;
+      else if (cat === 'TECHNOLOGY') radius = 11;
+      else if (cat === 'COMMIT') radius = 7;
+      else if (cat === 'ISSUE') radius = 8;
+      else if (cat === 'PULL_REQUEST') radius = 9;
 
       return {
         ...node,
         category: cat,
-        color: nodeColor,
-        glowColor: glowColor,
+        color: style.color,
+        glowColor: style.glow,
         x: width / 2 + Math.cos(angle) * radiusDist,
         y: height / 2 + Math.sin(angle) * radiusDist,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: (Math.random() - 0.5) * 0.2,
         radius,
       };
     });
 
-    const nodeMap = new Map(simNodes.map(n => [n.id, n]));
+    const nodeMap = new Map<string, SimNode>();
+    simNodes.forEach(n => {
+      if (n.id) nodeMap.set(n.id, n);
+      if (n.name && !nodeMap.has(n.name)) nodeMap.set(n.name, n);
+      if (n.id) nodeMap.set(n.id.toLowerCase(), n);
+      if (n.name) nodeMap.set(n.name.toLowerCase(), n);
+    });
 
     const simEdges = filteredEdges
       .map(edge => {
-        const sourceNode = nodeMap.get(edge.source);
-        const targetNode = nodeMap.get(edge.target);
+        const sourceNode = nodeMap.get(edge.source) || nodeMap.get(edge.source.toLowerCase());
+        const targetNode = nodeMap.get(edge.target) || nodeMap.get(edge.target.toLowerCase());
         if (sourceNode && targetNode) {
           return { ...edge, sourceNode, targetNode };
         }
@@ -206,8 +176,55 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
     return { simNodes, simEdges };
   }, [filteredNodes, filteredEdges]);
 
-  // Connected node IDs calculation
+  // Shortest path calculation via BFS when pathFromId and pathToId are chosen
+  const activePathInfo = useMemo(() => {
+    if (!pathFromId || !pathToId || pathFromId === pathToId) return null;
+
+    const adj = new Map<string, string[]>();
+    simEdges.forEach(e => {
+      if (!adj.has(e.source)) adj.set(e.source, []);
+      if (!adj.has(e.target)) adj.set(e.target, []);
+      adj.get(e.source)!.push(e.target);
+      adj.get(e.target)!.push(e.source);
+    });
+
+    const queue: string[] = [pathFromId];
+    const visited = new Set<string>([pathFromId]);
+    const parent = new Map<string, string>();
+
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      if (cur === pathToId) {
+        const path: string[] = [];
+        let curr: string | undefined = pathToId;
+        while (curr) {
+          path.unshift(curr);
+          curr = parent.get(curr);
+        }
+        const edgeKeys = new Set<string>();
+        for (let i = 0; i < path.length - 1; i++) {
+          edgeKeys.add(`${path[i]}->${path[i + 1]}`);
+          edgeKeys.add(`${path[i + 1]}->${path[i]}`);
+        }
+        return { pathNodes: new Set(path), pathEdges: edgeKeys, hops: path.length - 1 };
+      }
+
+      for (const neighbor of adj.get(cur) || []) {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          parent.set(neighbor, cur);
+          queue.push(neighbor);
+        }
+      }
+    }
+    return null;
+  }, [pathFromId, pathToId, simEdges]);
+
+  // Connected node IDs for highlighting
   const connectedNodeIds = useMemo(() => {
+    if (activePathInfo) {
+      return activePathInfo.pathNodes;
+    }
     const active = selectedNode || hoveredNode;
     if (!active) return new Set<string>();
 
@@ -217,9 +234,9 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
       if (e.target === active.id) set.add(e.source);
     });
     return set;
-  }, [selectedNode, hoveredNode, simEdges]);
+  }, [selectedNode, hoveredNode, simEdges, activePathInfo]);
 
-  // Canvas Physics & Render Loop
+  // ─── High DPI Canvas Physics & Render Loop ──────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -227,11 +244,26 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
     if (!ctx) return;
 
     let animId: number;
-    let iterations = 0;
+    let isRunning = true;
+    let kineticEnergy = 100;
+
+    const wakeSimulation = () => {
+      kineticEnergy = 100;
+      if (!isRunning) {
+        isRunning = true;
+        animId = requestAnimationFrame(runSimulation);
+      }
+    };
+    wakeSimulationRef.current = wakeSimulation;
 
     const runSimulation = () => {
-      if (iterations < 250) {
-        // Repulsion
+      if (!isRunning) return;
+
+      // 1. Organic Spring & Repulsion Physics
+      if (kineticEnergy > 0.05 || draggedNodeRef.current) {
+        let totalEnergy = 0;
+
+        // Node-to-node repulsion
         for (let i = 0; i < simNodes.length; i++) {
           for (let j = i + 1; j < simNodes.length; j++) {
             const n1 = simNodes[i];
@@ -240,9 +272,9 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
 
             const dx = n2.x - n1.x;
             const dy = n2.y - n1.y;
-            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            if (dist < 200) {
-              const force = ((200 - dist) / dist) * 0.1;
+            const dist = Math.hypot(dx, dy) || 1;
+            if (dist < 220) {
+              const force = ((220 - dist) / dist) * 0.08;
               n1.vx -= dx * force;
               n1.vy -= dy * force;
               n2.vx += dx * force;
@@ -251,12 +283,12 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
           }
         }
 
-        // Edge attraction
+        // Edge spring attraction
         simEdges.forEach(edge => {
           const dx = edge.targetNode.x - edge.sourceNode.x;
           const dy = edge.targetNode.y - edge.sourceNode.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const force = (dist - 130) * 0.015;
+          const dist = Math.hypot(dx, dy) || 1;
+          const force = (dist - 120) * 0.012;
           if (edge.sourceNode !== draggedNodeRef.current) {
             edge.sourceNode.vx += (dx / dist) * force;
             edge.sourceNode.vy += (dy / dist) * force;
@@ -267,34 +299,47 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
           }
         });
 
-        // Center gravity
+        // Center gravity & damping
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
         simNodes.forEach(node => {
           if (node === draggedNodeRef.current) return;
-          node.vx += (550 - node.x) * 0.0005;
-          node.vy += (375 - node.y) * 0.0005;
+          node.vx += (centerX - node.x) * 0.0004;
+          node.vy += (centerY - node.y) * 0.0004;
           node.x += node.vx;
           node.y += node.vy;
-          node.vx *= 0.78;
-          node.vy *= 0.78;
+          node.vx *= 0.82;
+          node.vy *= 0.82;
+          totalEnergy += node.vx * node.vx + node.vy * node.vy;
         });
 
-        iterations++;
+        kineticEnergy = totalEnergy;
       }
 
-      // Render Canvas
+      // 2. Clear Canvas & Deep Obsidian Starfield Gradient
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#0B0F17';
+      const bgGrad = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, 40,
+        canvas.width / 2, canvas.height / 2, canvas.width * 0.75
+      );
+      bgGrad.addColorStop(0, '#0E1424');
+      bgGrad.addColorStop(0.6, '#080C16');
+      bgGrad.addColorStop(1, '#05070D');
+      ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.save();
+      // Camera Transform: Zoom & Pan around center
       ctx.translate(canvas.width / 2 + pan.x, canvas.height / 2 + pan.y);
       ctx.scale(zoom, zoom);
       ctx.translate(-canvas.width / 2, -canvas.height / 2);
 
-      const hasActiveSelection = selectedNode !== null || hoveredNode !== null;
+      const hasActiveSelection = selectedNode !== null || hoveredNode !== null || Boolean(activePathInfo);
 
-      // Draw Edges
+      // 3. Draw Edges
       simEdges.forEach(edge => {
+        const isPathEdge = activePathInfo?.pathEdges.has(`${edge.source}->${edge.target}`);
         const isConnectedToActive =
           (selectedNode && (selectedNode.id === edge.source || selectedNode.id === edge.target)) ||
           (hoveredNode && (hoveredNode.id === edge.source || hoveredNode.id === edge.target));
@@ -303,72 +348,72 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
         ctx.moveTo(edge.sourceNode.x, edge.sourceNode.y);
         ctx.lineTo(edge.targetNode.x, edge.targetNode.y);
 
-        if (isConnectedToActive) {
+        if (isPathEdge) {
+          ctx.strokeStyle = '#38BDF8';
+          ctx.lineWidth = 2.8;
+          ctx.shadowColor = '#38BDF8';
+          ctx.shadowBlur = 8;
+        } else if (isConnectedToActive) {
           ctx.strokeStyle = 'rgba(99, 102, 241, 0.85)';
           ctx.lineWidth = 2.0;
+          ctx.shadowBlur = 0;
         } else if (hasActiveSelection) {
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
-          ctx.lineWidth = 0.5;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+          ctx.lineWidth = 0.6;
+          ctx.shadowBlur = 0;
         } else {
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
           ctx.lineWidth = 1.0;
+          ctx.shadowBlur = 0;
         }
         ctx.stroke();
-
-        // Relation label on high zoom or selection
-        const relationLabel = edge.type || edge.label || '';
-        if (isConnectedToActive && relationLabel && zoom >= 0.8) {
-          const midX = (edge.sourceNode.x + edge.targetNode.x) / 2;
-          const midY = (edge.sourceNode.y + edge.targetNode.y) / 2;
-          ctx.font = '9px monospace';
-          ctx.fillStyle = '#818CF8';
-          ctx.textAlign = 'center';
-          ctx.fillText(relationLabel, midX, midY - 4);
-        }
+        ctx.shadowBlur = 0;
       });
 
-      // Draw Nodes
+      // 4. Draw Nodes
       simNodes.forEach(node => {
         const isSelected = selectedNode?.id === node.id;
         const isHovered = hoveredNode?.id === node.id;
         const isConnected = connectedNodeIds.has(node.id);
+        const isPathNode = activePathInfo?.pathNodes.has(node.id);
 
         let opacity = 1.0;
-        if (hasActiveSelection && !isConnected) {
+        if (hasActiveSelection && !isConnected && !isPathNode) {
           opacity = 0.22;
         }
 
         ctx.globalAlpha = opacity;
 
-        // Subtle glow aura on hover or selection only
-        if (isSelected || isHovered) {
+        // Glowing Aura
+        const showGlow = isSelected || isHovered || isPathNode;
+        if (showGlow) {
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 4, 0, Math.PI * 2);
-          ctx.fillStyle = node.glowColor;
+          ctx.arc(node.x, node.y, node.radius + 6, 0, Math.PI * 2);
+          ctx.fillStyle = isPathNode ? 'rgba(56, 189, 248, 0.35)' : node.glowColor;
           ctx.fill();
         }
 
-        // Node circle
+        // Inner Circle Fill
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.fillStyle = node.color;
+        ctx.fillStyle = isPathNode ? '#38BDF8' : node.color;
         ctx.fill();
 
-        // Border
+        // Node Crisp Border
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = isSelected ? '#FFFFFF' : '#1E2638';
-        ctx.lineWidth = isSelected ? 2.0 : 1.2;
+        ctx.strokeStyle = isSelected || isPathNode ? '#FFFFFF' : 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = isSelected ? 2.2 : 1.2;
         ctx.stroke();
 
         // Node Label
         const labelText = formatNodeDisplayLabel(node.name || node.id);
         ctx.font = `500 ${node.category === 'PERSON' || node.category === 'REPOSITORY' ? '12px' : '11px'} -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        ctx.fillStyle = isSelected || isHovered ? '#FFFFFF' : 'rgba(241, 245, 249, 0.85)';
+        ctx.fillStyle = isSelected || isHovered || isPathNode ? '#FFFFFF' : 'rgba(241, 245, 249, 0.88)';
         ctx.textAlign = 'center';
         ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 4;
-        ctx.fillText(labelText, node.x, node.y + node.radius + 14);
+        ctx.shadowBlur = 5;
+        ctx.fillText(labelText, node.x, node.y + node.radius + 15);
         ctx.shadowBlur = 0;
 
         ctx.globalAlpha = 1.0;
@@ -376,26 +421,104 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
 
       ctx.restore();
 
+      // 5. Draw Bottom-Left Minimap HUD
+      drawMinimap();
+
       animId = requestAnimationFrame(runSimulation);
+    };
+
+    // Helper to render the live minimap in the corner canvas
+    const drawMinimap = () => {
+      const minimap = minimapCanvasRef.current;
+      if (!minimap) return;
+      const mCtx = minimap.getContext('2d');
+      if (!mCtx) return;
+
+      mCtx.clearRect(0, 0, minimap.width, minimap.height);
+      mCtx.fillStyle = 'rgba(10, 14, 26, 0.88)';
+      mCtx.fillRect(0, 0, minimap.width, minimap.height);
+
+      if (simNodes.length === 0) return;
+
+      // Find graph bounding box
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      simNodes.forEach(n => {
+        if (n.x < minX) minX = n.x;
+        if (n.x > maxX) maxX = n.x;
+        if (n.y < minY) minY = n.y;
+        if (n.y > maxY) maxY = n.y;
+      });
+
+      const pad = 80;
+      minX -= pad; maxX += pad; minY -= pad; maxY += pad;
+      const gWidth = Math.max(100, maxX - minX);
+      const gHeight = Math.max(100, maxY - minY);
+
+      const mapScale = Math.min(minimap.width / gWidth, minimap.height / gHeight);
+      const offsetX = (minimap.width - gWidth * mapScale) / 2;
+      const offsetY = (minimap.height - gHeight * mapScale) / 2;
+
+      // Draw mini dots
+      simNodes.forEach(n => {
+        const mx = offsetX + (n.x - minX) * mapScale;
+        const my = offsetY + (n.y - minY) * mapScale;
+        mCtx.beginPath();
+        mCtx.arc(mx, my, 2.2, 0, Math.PI * 2);
+        mCtx.fillStyle = n.color;
+        mCtx.fill();
+      });
+
+      // Draw camera viewport box
+      const viewLeft = (canvas.width / 2 - (canvas.width / 2 + pan.x)) / zoom + canvas.width / 2;
+      const viewTop = (canvas.height / 2 - (canvas.height / 2 + pan.y)) / zoom + canvas.height / 2;
+      const viewWidth = canvas.width / zoom;
+      const viewHeight = canvas.height / zoom;
+
+      const vx = offsetX + (viewLeft - minX) * mapScale;
+      const vy = offsetY + (viewTop - minY) * mapScale;
+      const vw = viewWidth * mapScale;
+      const vh = viewHeight * mapScale;
+
+      mCtx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+      mCtx.lineWidth = 1.2;
+      mCtx.strokeRect(vx, vy, vw, vh);
     };
 
     runSimulation();
 
     return () => {
+      isRunning = false;
       cancelAnimationFrame(animId);
     };
-  }, [simNodes, simEdges, zoom, pan, selectedNode, hoveredNode, connectedNodeIds]);
+  }, [simNodes, simEdges, zoom, pan, selectedNode, hoveredNode, connectedNodeIds, activePathInfo]);
 
-  // Smooth Mouse Panning, Node Dragging & Wheel Zooming
+  // ─── Exact Canvas Screen Coordinate & Click Hit-Testing ─────────────────────
+  const getCanvasMousePos = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { mouseX: 0, mouseY: 0, graphX: 0, graphY: 0 };
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+
+    const graphX = (mouseX - (canvas.width / 2 + pan.x)) / zoom + canvas.width / 2;
+    const graphY = (mouseY - (canvas.height / 2 + pan.y)) / zoom + canvas.height / 2;
+
+    return { mouseX, mouseY, graphX, graphY };
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     isMouseDownRef.current = true;
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
     lastMousePosRef.current = { x: e.clientX, y: e.clientY };
 
     if (hoveredNode) {
       draggedNodeRef.current = hoveredNode;
       isPanningRef.current = false;
-      setSelectedNode(hoveredNode);
-      if (onNodeClick) onNodeClick(hoveredNode);
+      wakeSimulationRef.current();
     } else {
       draggedNodeRef.current = null;
       isPanningRef.current = true;
@@ -405,13 +528,8 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
 
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    const graphX = (mx - (canvas.width / 2 + pan.x)) / zoom + canvas.width / 2;
-    const graphY = (my - (canvas.height / 2 + pan.y)) / zoom + canvas.height / 2;
+    const { mouseX, mouseY } = getCanvasMousePos(e);
 
     if (isMouseDownRef.current) {
       const dx = e.clientX - lastMousePosRef.current.x;
@@ -422,6 +540,7 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
         draggedNodeRef.current.y += dy / zoom;
         draggedNodeRef.current.vx = 0;
         draggedNodeRef.current.vy = 0;
+        wakeSimulationRef.current();
       } else {
         setPan(p => ({ x: p.x + dx, y: p.y + dy }));
       }
@@ -430,30 +549,95 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
       return;
     }
 
-    // Hover detection
-    const found = simNodes.find(n => {
-      const dX = n.x - graphX;
-      const dY = n.y - graphY;
-      return Math.sqrt(dX * dX + dY * dY) <= n.radius + 8;
+    // Precise Screen-Space Hit Detection
+    // Checks physical pixel distance on screen between mouse and node
+    let closestNode: SimNode | null = null;
+    let closestDist = Infinity;
+
+    simNodes.forEach(n => {
+      const nodeScreenX = (n.x - canvas.width / 2) * zoom + (canvas.width / 2 + pan.x);
+      const nodeScreenY = (n.y - canvas.height / 2) * zoom + (canvas.height / 2 + pan.y);
+      const dist = Math.hypot(mouseX - nodeScreenX, mouseY - nodeScreenY);
+
+      // Minimum 24px clickable hitbox on screen regardless of zoom
+      const effectiveHitRadius = Math.max(24, n.radius * zoom + 8);
+      if (dist <= effectiveHitRadius && dist < closestDist) {
+        closestDist = dist;
+        closestNode = n;
+      }
     });
 
-    setHoveredNode(found || null);
+    setHoveredNode(closestNode);
   };
 
-  const handleMouseUp = () => {
-    isMouseDownRef.current = false;
-    draggedNodeRef.current = null;
-    isPanningRef.current = false;
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isMouseDownRef.current) {
+      const moveDistance = Math.hypot(
+        e.clientX - mouseDownPosRef.current.x,
+        e.clientY - mouseDownPosRef.current.y
+      );
+
+      // Clean Click Detection: Click fired if mouse didn't drag more than 5px
+      if (moveDistance < 5) {
+        if (hoveredNode) {
+          setSelectedNode(hoveredNode);
+          if (onNodeClick) onNodeClick(hoveredNode);
+        } else {
+          setSelectedNode(null);
+        }
+      }
+
+      isMouseDownRef.current = false;
+      draggedNodeRef.current = null;
+      isPanningRef.current = false;
+    }
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    setZoom(z => Math.max(0.3, Math.min(z * zoomFactor, 3.0)));
-  };
+  // ─── Non-Passive Wheel Event Listener (Prevents Entire Browser Page Scrolling) ───
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const zoomFactor = e.deltaY < 0 ? 1.09 : 0.91;
+      setZoom(z => Math.max(0.25, Math.min(z * zoomFactor, 3.5)));
+      wakeSimulationRef.current();
+    };
+
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      canvas.removeEventListener('wheel', onWheel);
+    };
+  }, []);
+
+  // ─── Dynamic Canvas Dimensions based on parent container ─────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !canvas.parentElement) return;
+
+    const updateSize = () => {
+      const rect = canvas.parentElement?.getBoundingClientRect();
+      if (rect && rect.width > 0 && rect.height > 0) {
+        const newW = Math.round(rect.width);
+        const newH = Math.round(rect.height);
+        if (canvas.width !== newW || canvas.height !== newH) {
+          canvas.width = newW;
+          canvas.height = newH;
+          wakeSimulationRef.current();
+        }
+      }
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(canvas.parentElement);
+    return () => observer.disconnect();
+  }, []);
 
   const categoriesList: { id: string; label: string; color?: string }[] = [
-    { id: 'ALL', label: 'All Nodes' },
+    { id: 'ALL', label: 'All' },
     { id: 'PERSON', label: 'Person', color: CATEGORY_STYLES.PERSON.color },
     { id: 'REPOSITORY', label: 'Repository', color: CATEGORY_STYLES.REPOSITORY.color },
     { id: 'TECHNOLOGY', label: 'Technology', color: CATEGORY_STYLES.TECHNOLOGY.color },
@@ -462,116 +646,242 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({ nodes, edges, onNodeClic
     { id: 'PULL_REQUEST', label: 'Pull Request', color: CATEGORY_STYLES.PULL_REQUEST.color },
   ];
 
-  return (
-    <div className="w-full space-y-4">
-      {/* Clean Toolbar ABOVE Canvas Container */}
-      <div className="cortex-card p-2.5 flex flex-wrap items-center justify-between gap-3">
-        {/* Node Category Pills */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {categoriesList.map(cat => {
-            const count = categoryCounts[cat.id] || 0;
-            const isSelected = filterCategory === cat.id;
+  const handleToggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  };
 
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setFilterCategory(cat.id)}
-                className={`flex items-center space-x-1.5 px-2.5 py-1 rounded text-xs font-mono transition-colors cursor-pointer ${
-                  isSelected
-                    ? 'bg-indigo-600 text-white font-semibold'
-                    : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-white border border-[var(--border-subtle)]'
-                }`}
-              >
-                {cat.color && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />}
-                <span>{cat.label}</span>
-                <span className={`text-[10px] px-1 py-0.2 rounded ${isSelected ? 'bg-white/20 text-white' : 'text-[var(--text-muted)]'}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+  return (
+    <div ref={containerRef} className="w-full flex flex-col space-y-3 bg-[#06080F] text-slate-100 p-2 rounded-2xl border border-slate-800/80 shadow-2xl overflow-hidden">
+      {/* ─── Top Header Toolbar (Matches User Reference Image) ──────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 bg-[#0B0F1C]/90 rounded-xl border border-slate-800/60 backdrop-blur-md">
+        {/* Search Bar */}
+        <div className="relative flex items-center min-w-[200px] max-w-xs flex-1">
+          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={e => { setSearchTerm(e.target.value); wakeSimulationRef.current(); }}
+            placeholder="Search nodes..."
+            className="w-full bg-[#121829] border border-slate-700/60 focus:border-indigo-500 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none font-mono transition-colors"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-2 text-slate-400 hover:text-white">
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
-        {/* Search Bar & Pan / Zoom Help */}
-        <div className="flex items-center space-x-2.5">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-[var(--text-muted)]" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Search nodes..."
-              className="bg-[var(--bg-app)] border border-[var(--border-strong)] focus:border-indigo-500 rounded-lg pl-8 pr-2.5 py-1 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none w-40 font-mono transition-colors"
-            />
+        {/* Shortest Path Finding Controls ("Path from... to...") */}
+        <div className="flex items-center space-x-2 text-xs font-mono">
+          <div className="flex items-center space-x-1.5 text-cyan-400 bg-cyan-950/30 px-2 py-1 rounded-md border border-cyan-800/40">
+            <Route className="w-3.5 h-3.5" />
+            <span>Path:</span>
           </div>
 
-          <div className="flex items-center space-x-1 bg-[var(--bg-app)] p-0.5 rounded-lg border border-[var(--border-strong)]">
-            <button onClick={() => setZoom(z => Math.min(z * 1.2, 3.0))} className="p-1 hover:bg-[var(--bg-elevated)] rounded text-[var(--text-muted)] hover:text-white transition-colors cursor-pointer" title="Zoom In">
-              <ZoomIn className="h-3.5 w-3.5" />
+          <select
+            value={pathFromId}
+            onChange={e => setPathFromId(e.target.value)}
+            className="bg-[#121829] border border-slate-700/60 focus:border-cyan-500 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none max-w-[160px] truncate"
+          >
+            <option value="">Path from...</option>
+            {simNodes.map(n => (
+              <option key={n.id} value={n.id}>
+                {n.name || n.id}
+              </option>
+            ))}
+          </select>
+
+          <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
+
+          <select
+            value={pathToId}
+            onChange={e => setPathToId(e.target.value)}
+            className="bg-[#121829] border border-slate-700/60 focus:border-cyan-500 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none max-w-[160px] truncate"
+          >
+            <option value="">to...</option>
+            {simNodes.map(n => (
+              <option key={n.id} value={n.id}>
+                {n.name || n.id}
+              </option>
+            ))}
+          </select>
+
+          {(pathFromId || pathToId) && (
+            <button
+              onClick={() => { setPathFromId(''); setPathToId(''); }}
+              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors"
+              title="Clear path"
+            >
+              Clear
             </button>
-            <button onClick={() => setZoom(z => Math.max(z * 0.8, 0.3))} className="p-1 hover:bg-[var(--bg-elevated)] rounded text-[var(--text-muted)] hover:text-white transition-colors cursor-pointer" title="Zoom Out">
-              <ZoomOut className="h-3.5 w-3.5" />
-            </button>
-            <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); setSelectedNode(null); setSearchTerm(''); setFilterCategory('ALL'); }} className="p-1 hover:bg-[var(--bg-elevated)] rounded text-[var(--text-muted)] hover:text-white transition-colors cursor-pointer" title="Reset Graph View">
-              <Maximize2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          )}
+
+          {activePathInfo && (
+            <span className="text-[11px] text-cyan-400 font-bold px-2 py-0.5 bg-cyan-900/40 rounded border border-cyan-700/50">
+              {activePathInfo.hops} hops
+            </span>
+          )}
+        </div>
+
+        {/* View Controls & Fullscreen */}
+        <div className="flex items-center space-x-1.5">
+          <button
+            onClick={() => { setZoom(z => Math.min(z * 1.2, 3.5)); wakeSimulationRef.current(); }}
+            className="p-1.5 bg-[#121829] hover:bg-slate-800 border border-slate-700/60 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="Zoom In"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => { setZoom(z => Math.max(z * 0.8, 0.25)); wakeSimulationRef.current(); }}
+            className="p-1.5 bg-[#121829] hover:bg-slate-800 border border-slate-700/60 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="Zoom Out"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => {
+              setZoom(1);
+              setPan({ x: 0, y: 0 });
+              setSelectedNode(null);
+              setPathFromId('');
+              setPathToId('');
+              wakeSimulationRef.current();
+            }}
+            className="p-1.5 bg-[#121829] hover:bg-slate-800 border border-slate-700/60 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="Reset View"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={handleToggleFullscreen}
+            className="p-1.5 bg-[#121829] hover:bg-slate-800 border border-slate-700/60 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5 text-indigo-400" />}
+          </button>
         </div>
       </div>
 
-      {/* Canvas Container Box */}
-      <div ref={containerRef} className="relative w-full h-[650px] bg-[#0B0F17] rounded-xl border border-[var(--border-subtle)] overflow-hidden shadow-inner">
-        {/* Floating Pan & Drag Instructions Badge */}
-        <div className="absolute top-3 left-3 z-10 flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[var(--bg-panel)]/90 border border-[var(--border-subtle)] text-[var(--text-muted)] text-[11px] font-mono pointer-events-none backdrop-blur-md">
-          <Move className="w-3 h-3 text-indigo-400" />
-          <span>Drag to pan | Scroll to zoom</span>
-        </div>
+      {/* ─── Category Filter Pills (Exact Color Dots as Reference Image) ──────────── */}
+      <div className="flex items-center space-x-2 px-2 overflow-x-auto pb-1 text-xs font-mono">
+        {categoriesList.map(cat => {
+          const isSelected = filterCategory === cat.id;
+          const count = categoryCounts[cat.id] || 0;
 
+          return (
+            <button
+              key={cat.id}
+              onClick={() => { setFilterCategory(cat.id); wakeSimulationRef.current(); }}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-indigo-600/90 text-white font-semibold ring-1 ring-indigo-400 shadow-md'
+                  : 'bg-[#101524] text-slate-300 hover:text-white hover:bg-[#161E34] border border-slate-800/80'
+              }`}
+            >
+              {cat.color && (
+                <span
+                  className="w-2.5 h-2.5 rounded-full inline-block shadow-sm"
+                  style={{ backgroundColor: cat.color, boxShadow: `0 0 6px ${cat.color}` }}
+                />
+              )}
+              <span>{cat.label}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'text-slate-400 bg-slate-800/60'}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ─── Graph Canvas Display Container ──────────────────────────────────────── */}
+      <div className="relative w-full h-[680px] bg-[#070A14] rounded-xl border border-slate-800/70 overflow-hidden shadow-inner">
         {/* Interactive Canvas */}
         <canvas
           ref={canvasRef}
-          width={1100}
-          height={750}
+          width={1200}
+          height={800}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          onWheel={handleWheel}
-          className="w-full h-full cursor-grab active:cursor-grabbing"
+          className="w-full h-full cursor-grab active:cursor-grabbing block"
         />
 
-        {/* Selected Node Drawer */}
-        {selectedNode && (
-          <div className="absolute bottom-4 right-4 z-20 max-w-sm bg-[var(--bg-panel)] border border-[var(--border-strong)] p-4 rounded-xl shadow-2xl space-y-2.5 animate-in fade-in">
+        {/* ─── Bottom-Left Minimap HUD (Matches Reference Image) ───────────────── */}
+        <div className="absolute bottom-3 left-3 z-20 flex flex-col items-start bg-[#0A0E1C]/85 border border-slate-800/90 p-1.5 rounded-xl shadow-2xl backdrop-blur-md pointer-events-auto">
+          <div className="text-[9px] font-mono font-semibold uppercase text-slate-400 px-1 mb-1 tracking-wider flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            Minimap
+          </div>
+          <canvas
+            ref={minimapCanvasRef}
+            width={160}
+            height={100}
+            className="rounded-lg border border-slate-800/80 cursor-crosshair bg-[#050811]"
+            onClick={e => {
+              const minimap = minimapCanvasRef.current;
+              if (!minimap) return;
+              const rect = minimap.getBoundingClientRect();
+              const mx = (e.clientX - rect.left) / rect.width;
+              const my = (e.clientY - rect.top) / rect.height;
+              // Center pan on clicked minimap region
+              setPan({
+                x: -(mx - 0.5) * 1200 * zoom,
+                y: -(my - 0.5) * 800 * zoom,
+              });
+              wakeSimulationRef.current();
+            }}
+          />
+        </div>
+
+        {/* Selected Node Drawer (Standalone Mode Only) */}
+        {!onNodeClick && selectedNode && (
+          <div className="absolute bottom-4 right-4 z-20 max-w-sm w-80 bg-[#0E1528]/95 border border-slate-700/80 p-4 rounded-xl shadow-2xl space-y-2.5 backdrop-blur-xl animate-in fade-in">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase font-mono px-2 py-0.5 rounded text-white" style={{ backgroundColor: selectedNode.color }}>
                 {selectedNode.category}
               </span>
-              <button onClick={() => setSelectedNode(null)} className="text-xs text-[var(--text-muted)] hover:text-white cursor-pointer px-1 py-0.5 rounded hover:bg-[var(--bg-elevated)]">✕</button>
+              <button
+                onClick={() => setSelectedNode(null)}
+                className="text-xs text-slate-400 hover:text-white cursor-pointer px-1 py-0.5 rounded hover:bg-slate-800"
+              >
+                ✕
+              </button>
             </div>
 
             <div>
-              <h4 className="font-bold text-[var(--text-primary)] text-sm leading-snug tracking-tight">{selectedNode.name || selectedNode.id}</h4>
-              <p className="text-[11px] text-[var(--text-muted)] font-mono mt-0.5 break-all">ID: {selectedNode.id}</p>
+              <h4 className="font-bold text-white text-sm leading-snug tracking-tight">{selectedNode.name || selectedNode.id}</h4>
+              <p className="text-[11px] text-slate-400 font-mono mt-0.5 break-all">ID: {selectedNode.id}</p>
             </div>
 
+            {selectedNode.status && (
+              <p className="text-xs text-slate-300 font-mono">
+                Status: <span className="text-indigo-400 font-semibold">{selectedNode.status}</span>
+              </p>
+            )}
+
             {selectedNode.email && (
-              <p className="text-xs text-indigo-400 font-mono flex items-center gap-1.5">
-                <span>Email:</span> <span className="text-[var(--text-primary)] font-medium">{selectedNode.email}</span>
+              <p className="text-xs text-blue-400 font-mono flex items-center gap-1.5">
+                <span>Email:</span> <span className="text-slate-200 font-medium">{selectedNode.email}</span>
               </p>
             )}
 
-            {selectedNode.role && (
-              <p className="text-xs text-[var(--text-muted)] font-mono">
-                Role: <span className="text-[var(--text-secondary)]">{selectedNode.role}</span>
-              </p>
-            )}
-
-            <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)]">
-              <span>Connected Edges: <strong className="text-[var(--text-primary)]">{connectedNodeIds.size - 1}</strong></span>
-              <span className="text-emerald-400 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-emerald-400" /> Connected
-              </span>
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-400">
+              <span>Connected: <strong className="text-white">{connectedNodeIds.size - 1} nodes</strong></span>
+              <button
+                onClick={() => {
+                  setPathFromId(selectedNode.id);
+                }}
+                className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 underline cursor-pointer"
+              >
+                Set Path Start
+              </button>
             </div>
           </div>
         )}
